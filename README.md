@@ -1,3 +1,3 @@
-# Brand-Performance Briefing Agent
+# PharmAgentics
 
-Automates the weekly brand report: data pull, anomaly detection, LLM-drafted performance narrative, and flagged actions.
+Multi-agent AI platform for pharma commercial analytics, where a shared data layer and orchestration power agents for brand-performance briefings, plain-language forecast explanations, payer-access impact analysis (NBRx, abandonment, net price), and HCP segmentation with next-best-action targeting.
