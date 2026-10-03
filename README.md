@@ -1,0 +1,2 @@
+# PharmAgentics
+A multi-agent AI platform that helps pharma commercial teams track brand performance, explain forecast swings in plain language, gauge how payer access changes affect NBRx and net price, and decide which HCPs to reach next, all built on a shared data layer and orchestration.
