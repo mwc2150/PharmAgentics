@@ -31,6 +31,7 @@ A `core` spec records what each lane needs from the shared part. It does not spe
 | [brief-003](brief-003-narrative-renderer/spec.md) | Narrative and renderer | 5 | EV-1.1 to EV-1.3, EV-7.1 to EV-7.5, EV-8.5 | P1-Q6, P3-Q3, P3-Q5, P3-Q6, P4-Q3, P4-Q6 | brief-002 | 007-narrative-renderer |
 | [brief-004](brief-004-verifier/spec.md) | Verifier | 6 | EV-1.1, EV-5.3, EV-6.1, EV-9.1, EV-9.2 | P1-Q1, P1-Q4, P2-Q5, P3-Q6 | brief-003 | 008-verifier |
 | [brief-005](brief-005-review-signoff/spec.md) | Review, sign-off and feedback | 7 | EV-6.2, EV-6.3, EV-8.1 | P1-Q1, P1-Q4, P1-Q6, P2-Q5 | brief-004, core-005 | 009 (review part) |
+| [brief-006](brief-006-agent-demo-ui/spec.md) | Agent demo and question-answer UI (prototype). **Unfinished**: foundation modules only; see its [build status](brief-006-agent-demo-ui/tasks.md#build-status-review-of-2026-10-23) | 1 to 7 (prototype) | none (not scored yet) | P1-Q2, P1-Q3, P1-Q5, P2-Q1 to P2-Q3, P3-Q1 to P3-Q3, P4-Q2 | core-001 | none |
 
 **Build order** (Briefing Architecture §14, three builds): scripted baseline first (core-001 to core-005, brief-001, a fixed-order brief-002, then brief-003 to brief-005), then low-code, then the Magentic agent. core-006 starts early so every build is scored on the same cases.
 
