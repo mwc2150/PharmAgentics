@@ -32,7 +32,7 @@ def _decode_regions(value: Any) -> list[str]:
 def validate_and_quantify(week: int, case_id: str = "week18") -> dict[str, Any]:
     row = fetchone(
         """
-        SELECT brand, week, week_ending, metric, forecast, actual
+        SELECT brand, week, week_ending, metric, forecast, actual, access_status
         FROM weekly_performance
         WHERE region = 'NATIONAL' AND metric = 'TRx' AND week = ?
         """,
@@ -57,6 +57,7 @@ def validate_and_quantify(week: int, case_id: str = "week18") -> dict[str, Any]:
     actual = float(row["actual"])
     variance = actual - forecast
     missing = [r["region"] for r in regions if r["actual"] is None or r["forecast"] is None]
+    provisional = str(row.get("access_status") or "") == "provisional"
     payload = {
         "brand": row["brand"],
         "week": week,
@@ -69,6 +70,7 @@ def validate_and_quantify(week: int, case_id: str = "week18") -> dict[str, Any]:
         "n_regions": len(regions),
         "missing_regions": missing,
         "data_complete": not missing,
+        "actual_is_provisional": provisional,
         "source": "duckdb.weekly_performance",
         "ok": True,
     }

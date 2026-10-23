@@ -1,10 +1,8 @@
 # Forecast-Explanation Agent
 
-Sienna & Alvin · custom Forecast lane demo (DuckDB + Q&A)
+Sienna & Alvin · PharmAgentics · v0.1 prototype
 
 When weekly TRx forecast and actuals diverge, this agent explains **drivers, magnitude, confidence, and what to check**. It does not take commercial actions.
-
-This folder is the Forecast column. It is **not** wired to the Briefing Magentic loop. It uses a local LUMINA Week 18 DuckDB projection so the demo can run tonight. It does **not** replace Meghna's 14-table world in `data/agent_visible/`. Tools will retarget `forecast_vs_actual_weekly` after that world is the case source (System S3).
 
 ## Defaults locked for v1
 
@@ -15,13 +13,9 @@ This folder is the Forecast column. It is **not** wired to the Briefing Magentic
 
 If Ollama is not running, use **stub** mode. The tools stay real; only the planner is scripted.
 
-## Demo
-
-From this folder:
+## Tonight's demo
 
 ```bash
-python -m pip install -r requirements.txt
-python -m pytest tests
 streamlit run app.py
 ```
 
@@ -33,9 +27,33 @@ Keep Investigator on `stub`. Then either click **Load briefing request** or ask 
 
 Numbers come from DuckDB tables (`weekly_performance`, `commercial_events`). Ground truth stays in `eval_ground_truth` and is hidden unless you turn on the evaluator toggle.
 
-## CLI handoff
+## Forecast lane API (Figma Make Stage 4)
 
-Same contract the Briefing Agent will post:
+The 7-stage workbench stays in Figma Make. This process is Stage 4b plus pin, gate, detection, draft and `V = Σc + r`.
+
+```bash
+export PHARMAGENTICS_DATA_DIR=/path/to/PharmAgentics/data/agent_visible
+python -m feagent.server
+```
+
+- `POST /forecast/runs` — full 7-stage payload the Make shell can render
+- `POST /investigate` — `InvestigationReport` only
+- `GET /forecast/cases` — the three Forecast-lane investigation cards
+- `GET /demo` — browser smoke test
+
+Make previews are HTTPS, so tunnel `:8787` (cloudflared or ngrok) before pasting the origin into Make.
+
+## Run
+
+From this folder:
+
+```bash
+.venv/bin/pip install -r forecast_explanation_agent/requirements.txt
+.venv/bin/pytest forecast_explanation_agent/tests
+streamlit run app.py
+```
+
+CLI handoff (same contract the Briefing Agent will post):
 
 ```bash
 python -m feagent.api data/cases/week18_observable.json --mode stub
@@ -57,6 +75,8 @@ That file contains `default_request`. For a standalone request file, pass JSON w
 
 ## Ollama
 
+This machine already has Ollama up with `gpt-oss:20b`. Put that name in the sidebar (or `export OLLAMA_MODEL=gpt-oss:20b`). To use another model:
+
 ```bash
 ollama pull llama3.1
 export OLLAMA_MODEL=llama3.1
@@ -69,18 +89,18 @@ In the UI: set Investigator to `auto` or `ollama`. `auto` falls back to stub if 
 | Piece | v1 status |
 | --- | --- |
 | Investigation request schema | Stable handoff |
-| Deterministic tools | Real on the LUMINA projection |
+| Deterministic tools | Real on synthetic data |
 | Stub investigator | Real playbook |
 | Ollama investigator | Wired; needs a pulled model |
 | Week 18 case | Placeholder with hidden ground truth |
-| Shared 14-table world | Not queried yet |
+| CMS / public calibration | Missing |
 | Live Briefing Agent | Not wired; JSON contract only |
 | Held-out evaluation suite | Not built |
 
 ## Layout
 
 ```
-agents/forecast-explanation/
+forecast_explanation_agent/
   app.py                 Streamlit UI
   feagent/               tools, investigator, Ollama client, request API
   data/cases/            observable case + evaluator-only ground truth

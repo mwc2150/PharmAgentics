@@ -15,7 +15,7 @@ def to_dict(obj: Any) -> dict[str, Any]:
 
 @dataclass
 class InvestigationRequest:
-    """Handoff contract from the Briefing Agent or a manual trigger."""
+    """Handoff contract from the Briefing Agent, Figma Make, or a manual trigger."""
 
     request_id: str
     source: RequestSource
@@ -26,19 +26,30 @@ class InvestigationRequest:
     notes: str | None = None
     forecast: float | None = None
     actual: float | None = None
+    week_start: str | None = None
+    territory_id: str = "NATIONAL"
+    product_id: str = "BXA"
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "InvestigationRequest":
+        week = payload.get("week")
+        week_start = payload.get("week_start")
+        week_ending = payload.get("week_ending")
+        if week is None and not week_start:
+            raise ValueError("InvestigationRequest needs week or week_start")
         return cls(
             request_id=str(payload["request_id"]),
             source=payload.get("source", "manual"),
-            brand=payload["brand"],
-            week=int(payload["week"]),
-            week_ending=str(payload["week_ending"]),
+            brand=str(payload.get("brand") or "BXA Cardiovela"),
+            week=int(week) if week is not None else 0,
+            week_ending=str(week_ending or week_start or ""),
             metric=payload.get("metric", "TRx"),
             notes=payload.get("notes"),
             forecast=_opt_float(payload.get("forecast")),
             actual=_opt_float(payload.get("actual")),
+            week_start=str(week_start) if week_start else None,
+            territory_id=str(payload.get("territory_id") or "NATIONAL"),
+            product_id=str(payload.get("product_id") or "BXA"),
         )
 
 

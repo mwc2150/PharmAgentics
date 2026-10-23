@@ -67,6 +67,37 @@ def run_stub(request: InvestigationRequest, case_id: str = "week18") -> Investig
     quantified = run_tool("validate_and_quantify", {"week": request.week, "case_id": case_id})
     evidence.append(quantified)
     q = quantified["payload"]
+    if not q.get("ok"):
+        raise RuntimeError(q.get("error") or "validate_and_quantify failed")
+
+    if q.get("actual_is_provisional"):
+        residual = float(q["variance_trx"])
+        headline = (
+            f"{q['brand']} actual is provisional in week ending {q['week_ending']}; "
+            "attribution is paused."
+        )
+        return _report(
+            request,
+            q,
+            headline,
+            [],
+            residual,
+            [
+                CheckItem(
+                    question="Re-run this cut after a complete feed lands.",
+                    why="The forecast table marks the actual provisional; a miss here is not a demand shock.",
+                    owner="Commercial analytics",
+                )
+            ],
+            [
+                "Provisional actuals are withheld from driver attribution (FE-01 to FE-03).",
+                "Do not report a percent miss on a failed cut.",
+            ],
+            evidence,
+            investigator_mode="stub",
+            model=None,
+            abstained=True,
+        )
 
     deltas = run_tool("get_region_deltas", {"week": request.week, "case_id": case_id})
     evidence.append(deltas)
@@ -83,7 +114,7 @@ def run_stub(request: InvestigationRequest, case_id: str = "week18") -> Investig
         )
         evidence.append(contrast)
         payload = contrast["payload"]
-        if not payload.get("ok"):
+        if not payload.get("ok") or payload.get("estimated_total_trx") is None:
             continue
         impact = float(payload["estimated_total_trx"])
         driver_impacts[payload["driver"]] = impact
@@ -107,7 +138,7 @@ def run_stub(request: InvestigationRequest, case_id: str = "week18") -> Investig
 
     headline = (
         f"{q['brand']} missed forecast by {abs(q['variance_trx']):,.0f} {q['metric']} "
-        f"({q['variance_pct']:.0%}) in week {q['week']}."
+        f"({q['variance_pct']:.0%}) in week ending {q['week_ending']}."
     )
     checks = [
         CheckItem(

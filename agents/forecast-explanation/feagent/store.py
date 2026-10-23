@@ -17,6 +17,7 @@ from feagent.synthetic import build_case, week_ending
 
 SCHEMA_VERSION = "2"
 _connection: duckdb.DuckDBPyConnection | None = None
+_world = "lumina"
 
 BRIEFING_REQUEST = {
     "request_id": "brief_lumina_w18",
@@ -33,14 +34,34 @@ BRIEFING_REQUEST = {
 }
 
 
+def use_world(name: str) -> None:
+    """lumina = Week 18 fixture; shared = Meghna day1-v1 forecast tables."""
+    global _world
+    if name not in {"lumina", "shared"}:
+        raise ValueError(f"Unknown world: {name}")
+    _world = name
+
+
+def current_world() -> str:
+    return _world
+
+
 def reset() -> None:
-    global _connection
+    global _connection, _world
     if _connection is not None:
         _connection.close()
         _connection = None
+    from feagent.shared_world import reset as reset_shared
+
+    reset_shared()
+    _world = "lumina"
 
 
 def connect() -> duckdb.DuckDBPyConnection:
+    if _world == "shared":
+        from feagent.shared_world import connect as shared_connect
+
+        return shared_connect()
     global _connection
     if _connection is None:
         _connection = duckdb.connect(config.DUCKDB_PATH)
