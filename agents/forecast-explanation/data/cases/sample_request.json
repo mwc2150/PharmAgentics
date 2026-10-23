@@ -1,0 +1,9 @@
+{
+  "request_id": "req_lumina_w18",
+  "source": "manual",
+  "brand": "LUMINA",
+  "week": 18,
+  "week_ending": "2026-05-08",
+  "metric": "TRx",
+  "notes": "Material TRx miss flagged for investigation."
+}

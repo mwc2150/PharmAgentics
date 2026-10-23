@@ -1,0 +1,27 @@
+{
+  "case_id": "week18_reference",
+  "restricted": "evaluator_only",
+  "injected_drivers": [
+    {
+      "driver": "payer_access",
+      "event_id": "evt_payer_001",
+      "impact_trx": -1350.0,
+      "by_region": {
+        "Northeast": -675.0,
+        "South": -675.0
+      },
+      "start_week": 18
+    },
+    {
+      "driver": "competitor_activity",
+      "event_id": "evt_comp_001",
+      "impact_trx": -650.0,
+      "by_region": {
+        "Midwest": -650.0
+      },
+      "start_week": 18
+    }
+  ],
+  "residual_trx": -400.0,
+  "notes": "Investigator tools must not load this file."
+}

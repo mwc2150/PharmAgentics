@@ -1,0 +1,1117 @@
+{
+  "brand": "LUMINA",
+  "metric": "TRx",
+  "flagged_week": 18,
+  "weekly_national": [
+    {
+      "brand": "LUMINA",
+      "week": 1,
+      "week_ending": "2026-01-09",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 2,
+      "week_ending": "2026-01-16",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 3,
+      "week_ending": "2026-01-23",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 4,
+      "week_ending": "2026-01-30",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 5,
+      "week_ending": "2026-02-06",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 6,
+      "week_ending": "2026-02-13",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 7,
+      "week_ending": "2026-02-20",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 8,
+      "week_ending": "2026-02-27",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 9,
+      "week_ending": "2026-03-06",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 10,
+      "week_ending": "2026-03-13",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 11,
+      "week_ending": "2026-03-20",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 12,
+      "week_ending": "2026-03-27",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 13,
+      "week_ending": "2026-04-03",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 14,
+      "week_ending": "2026-04-10",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 15,
+      "week_ending": "2026-04-17",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 16,
+      "week_ending": "2026-04-24",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 17,
+      "week_ending": "2026-05-01",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 12000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 18,
+      "week_ending": "2026-05-08",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 9600.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 19,
+      "week_ending": "2026-05-15",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 9600.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 20,
+      "week_ending": "2026-05-22",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 9600.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 21,
+      "week_ending": "2026-05-29",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 9600.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 22,
+      "week_ending": "2026-06-05",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 9600.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 23,
+      "week_ending": "2026-06-12",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 9600.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 24,
+      "week_ending": "2026-06-19",
+      "metric": "TRx",
+      "forecast": 12000.0,
+      "actual": 9600.0
+    }
+  ],
+  "weekly_region": [
+    {
+      "brand": "LUMINA",
+      "week": 1,
+      "week_ending": "2026-01-09",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 1,
+      "week_ending": "2026-01-09",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 1,
+      "week_ending": "2026-01-09",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 1,
+      "week_ending": "2026-01-09",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 2,
+      "week_ending": "2026-01-16",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 2,
+      "week_ending": "2026-01-16",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 2,
+      "week_ending": "2026-01-16",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 2,
+      "week_ending": "2026-01-16",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 3,
+      "week_ending": "2026-01-23",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 3,
+      "week_ending": "2026-01-23",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 3,
+      "week_ending": "2026-01-23",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 3,
+      "week_ending": "2026-01-23",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 4,
+      "week_ending": "2026-01-30",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 4,
+      "week_ending": "2026-01-30",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 4,
+      "week_ending": "2026-01-30",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 4,
+      "week_ending": "2026-01-30",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 5,
+      "week_ending": "2026-02-06",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 5,
+      "week_ending": "2026-02-06",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 5,
+      "week_ending": "2026-02-06",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 5,
+      "week_ending": "2026-02-06",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 6,
+      "week_ending": "2026-02-13",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 6,
+      "week_ending": "2026-02-13",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 6,
+      "week_ending": "2026-02-13",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 6,
+      "week_ending": "2026-02-13",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 7,
+      "week_ending": "2026-02-20",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 7,
+      "week_ending": "2026-02-20",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 7,
+      "week_ending": "2026-02-20",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 7,
+      "week_ending": "2026-02-20",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 8,
+      "week_ending": "2026-02-27",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 8,
+      "week_ending": "2026-02-27",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 8,
+      "week_ending": "2026-02-27",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 8,
+      "week_ending": "2026-02-27",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 9,
+      "week_ending": "2026-03-06",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 9,
+      "week_ending": "2026-03-06",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 9,
+      "week_ending": "2026-03-06",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 9,
+      "week_ending": "2026-03-06",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 10,
+      "week_ending": "2026-03-13",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 10,
+      "week_ending": "2026-03-13",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 10,
+      "week_ending": "2026-03-13",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 10,
+      "week_ending": "2026-03-13",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 11,
+      "week_ending": "2026-03-20",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 11,
+      "week_ending": "2026-03-20",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 11,
+      "week_ending": "2026-03-20",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 11,
+      "week_ending": "2026-03-20",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 12,
+      "week_ending": "2026-03-27",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 12,
+      "week_ending": "2026-03-27",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 12,
+      "week_ending": "2026-03-27",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 12,
+      "week_ending": "2026-03-27",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 13,
+      "week_ending": "2026-04-03",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 13,
+      "week_ending": "2026-04-03",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 13,
+      "week_ending": "2026-04-03",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 13,
+      "week_ending": "2026-04-03",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 14,
+      "week_ending": "2026-04-10",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 14,
+      "week_ending": "2026-04-10",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 14,
+      "week_ending": "2026-04-10",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 14,
+      "week_ending": "2026-04-10",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 15,
+      "week_ending": "2026-04-17",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 15,
+      "week_ending": "2026-04-17",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 15,
+      "week_ending": "2026-04-17",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 15,
+      "week_ending": "2026-04-17",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 16,
+      "week_ending": "2026-04-24",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 16,
+      "week_ending": "2026-04-24",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 16,
+      "week_ending": "2026-04-24",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 16,
+      "week_ending": "2026-04-24",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 17,
+      "week_ending": "2026-05-01",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 17,
+      "week_ending": "2026-05-01",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 17,
+      "week_ending": "2026-05-01",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 17,
+      "week_ending": "2026-05-01",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 3000.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 18,
+      "week_ending": "2026-05-08",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 18,
+      "week_ending": "2026-05-08",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2250.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 18,
+      "week_ending": "2026-05-08",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 18,
+      "week_ending": "2026-05-08",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2900.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 19,
+      "week_ending": "2026-05-15",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 19,
+      "week_ending": "2026-05-15",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2250.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 19,
+      "week_ending": "2026-05-15",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 19,
+      "week_ending": "2026-05-15",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2900.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 20,
+      "week_ending": "2026-05-22",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 20,
+      "week_ending": "2026-05-22",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2250.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 20,
+      "week_ending": "2026-05-22",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 20,
+      "week_ending": "2026-05-22",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2900.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 21,
+      "week_ending": "2026-05-29",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 21,
+      "week_ending": "2026-05-29",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2250.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 21,
+      "week_ending": "2026-05-29",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 21,
+      "week_ending": "2026-05-29",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2900.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 22,
+      "week_ending": "2026-06-05",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 22,
+      "week_ending": "2026-06-05",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2250.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 22,
+      "week_ending": "2026-06-05",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 22,
+      "week_ending": "2026-06-05",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2900.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 23,
+      "week_ending": "2026-06-12",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 23,
+      "week_ending": "2026-06-12",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2250.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 23,
+      "week_ending": "2026-06-12",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 23,
+      "week_ending": "2026-06-12",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2900.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 24,
+      "week_ending": "2026-06-19",
+      "region": "Northeast",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 24,
+      "week_ending": "2026-06-19",
+      "region": "Midwest",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2250.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 24,
+      "week_ending": "2026-06-19",
+      "region": "South",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2225.0
+    },
+    {
+      "brand": "LUMINA",
+      "week": 24,
+      "week_ending": "2026-06-19",
+      "region": "West",
+      "metric": "TRx",
+      "forecast": 3000.0,
+      "actual": 2900.0
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_payer_001",
+      "driver": "payer_access",
+      "label": "Formulary downgrade (Plan Alpha)",
+      "week": 17,
+      "week_ending": "2026-05-01",
+      "exposed_regions": [
+        "Northeast",
+        "South"
+      ],
+      "control_regions": [
+        "West"
+      ],
+      "excluded_regions": [
+        "Midwest"
+      ],
+      "notes": "Midwest excluded from this contrast because a competitor event lands there in week 18."
+    },
+    {
+      "event_id": "evt_comp_001",
+      "driver": "competitor_activity",
+      "label": "Competitor launch (Rivalza)",
+      "week": 18,
+      "week_ending": "2026-05-08",
+      "exposed_regions": [
+        "Midwest"
+      ],
+      "control_regions": [
+        "West"
+      ],
+      "excluded_regions": [
+        "Northeast",
+        "South"
+      ],
+      "notes": "Payer-exposed regions excluded so the competitor contrast is not mixed with the access shock."
+    }
+  ],
+  "default_request": {
+    "request_id": "req_lumina_w18",
+    "source": "manual",
+    "brand": "LUMINA",
+    "week": 18,
+    "week_ending": "2026-05-08",
+    "metric": "TRx",
+    "notes": "Material TRx miss flagged for investigation."
+  },
+  "data_status": {
+    "forecast_actuals": "synthetic_placeholder",
+    "events": "synthetic_placeholder",
+    "public_calibration": "missing"
+  }
+}
