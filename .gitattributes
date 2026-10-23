@@ -1,0 +1,7 @@
+# Spec Kit tracks managed files by SHA-256. Keep them LF on every OS so
+# Windows checkouts (core.autocrlf=true) do not show them as modified.
+.specify/** text eol=lf
+.claude/skills/** text eol=lf
+.agents/** text eol=lf
+specs/** text eol=lf
+*.md text eol=lf
