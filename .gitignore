@@ -1,6 +1,71 @@
-.venv/
+# ---- Evaluation ground truth: NEVER commit (constitution XI) ----
+# Answer key, true pre-artifact data, counterfactual components, evaluator notes.
+# Share these with teammates outside git.
+eval_private/
+**/answer_key*.csv
+**/answer_key*.json
+**/answer_key*.parquet
+**/*counterfactual*.csv
+**/*counterfactual*.parquet
+**/*true_before_feed_artifacts*.csv
+**/*true_before_feed_artifacts*.parquet
+# Sealed held-out parameters and generator seeds for held-out worlds
+heldout_sealed/
+**/heldout_params*
+
+# ---- Secrets and local config ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+**/credentials*.json
+
+# ---- Claude Code: keep the spec-kit skills, ignore local state ----
+.claude/*
+!.claude/skills/
+.claude/settings.local.json
+CLAUDE.local.md
+
+# ---- Spec Kit local state (see also .specify/.gitignore) ----
+.specify/feature.json
+
+# ---- Python ----
 __pycache__/
 *.py[cod]
-local/
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# ---- Generated runtime artifacts (rebuild from seed or run) ----
+snapshots/
+runs/
+briefs_out/
 *.duckdb
 *.duckdb.wal
+*.parquet
+phoenix_data/
+local/
+.phoenix/
+traces/
+experiments/
+
+# ---- Editors and OS ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+~$*
+*.tmp
+
+# ---- Streamlit ----
+.streamlit/secrets.toml
