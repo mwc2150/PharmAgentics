@@ -53,6 +53,7 @@ briefs_out/
 *.duckdb.wal
 *.parquet
 phoenix_data/
+local/
 .phoenix/
 traces/
 experiments/
