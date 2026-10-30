@@ -29,9 +29,12 @@ class InvestigationRequest:
     week_start: str | None = None
     territory_id: str = "NATIONAL"
     product_id: str = "BXA"
+    window_weeks: int = 1
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "InvestigationRequest":
+        if not payload.get("request_id"):
+            raise ValueError("request_id is required")
         week = payload.get("week")
         week_start = payload.get("week_start")
         week_ending = payload.get("week_ending")
@@ -50,6 +53,7 @@ class InvestigationRequest:
             week_start=str(week_start) if week_start else None,
             territory_id=str(payload.get("territory_id") or "NATIONAL"),
             product_id=str(payload.get("product_id") or "BXA"),
+            window_weeks=_window_weeks(payload.get("window_weeks")),
         )
 
 
@@ -61,6 +65,7 @@ class DriverEstimate:
     method: str
     evidence_ids: list[str] = field(default_factory=list)
     notes: str = ""
+    confidence_reasons: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -97,9 +102,24 @@ class InvestigationReport:
     investigator_mode: str
     model: str | None = None
     abstained: bool = False
+    territory_id: str = "NATIONAL"
+    verification: dict[str, Any] = field(default_factory=dict)
+    window_weeks: int = 1
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+MAX_WINDOW_WEEKS = 52
+
+
+def _window_weeks(value: Any) -> int:
+    if value is None or value == "":
+        return 1
+    weeks = int(value)
+    if not 1 <= weeks <= MAX_WINDOW_WEEKS:
+        raise ValueError(f"window_weeks must be between 1 and {MAX_WINDOW_WEEKS}, got {weeks}")
+    return weeks
 
 
 def _opt_float(value: Any) -> float | None:

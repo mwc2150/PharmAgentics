@@ -15,7 +15,7 @@ from feagent import config
 from feagent.config import BRAND, METRIC
 from feagent.synthetic import build_case, week_ending
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 _connection: duckdb.DuckDBPyConnection | None = None
 _world = "lumina"
 
@@ -149,7 +149,8 @@ def _ensure_schema(con: duckdb.DuckDBPyConnection) -> None:
             exposed_regions VARCHAR,
             control_regions VARCHAR,
             excluded_regions VARCHAR,
-            notes VARCHAR
+            notes VARCHAR,
+            start_week INTEGER
         )
         """
     )
@@ -250,11 +251,12 @@ def _seed(con: duckdb.DuckDBPyConnection) -> None:
             json.dumps(event["control_regions"]),
             json.dumps(event.get("excluded_regions", [])),
             event.get("notes", ""),
+            event.get("start_week"),
         )
         for event in obs["events"]
     ]
     con.executemany(
-        "INSERT INTO commercial_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO commercial_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         event_rows,
     )
     manual = obs["default_request"]

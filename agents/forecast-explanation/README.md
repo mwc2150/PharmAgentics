@@ -16,7 +16,8 @@ If Ollama is not running, use **stub** mode. The tools stay real; only the plann
 ## Tonight's demo
 
 ```bash
-streamlit run app.py
+cd forecast_explanation_agent
+../.venv/bin/streamlit run app.py
 ```
 
 Keep Investigator on `stub`. Then either click **Load briefing request** or ask the three questions:
@@ -33,7 +34,7 @@ The 7-stage workbench stays in Figma Make. This process is Stage 4b plus pin, ga
 
 ```bash
 export PHARMAGENTICS_DATA_DIR=/path/to/PharmAgentics/data/agent_visible
-python -m feagent.server
+../.venv/bin/python -m feagent.server
 ```
 
 - `POST /forecast/runs` — full 7-stage payload the Make shell can render
@@ -45,18 +46,19 @@ Make previews are HTTPS, so tunnel `:8787` (cloudflared or ngrok) before pasting
 
 ## Run
 
-From this folder:
+From the repo root (`Forecast-explanation agent (Sienna & Alvin)`):
 
 ```bash
 .venv/bin/pip install -r forecast_explanation_agent/requirements.txt
 .venv/bin/pytest forecast_explanation_agent/tests
-streamlit run app.py
+cd forecast_explanation_agent
+../.venv/bin/streamlit run app.py
 ```
 
 CLI handoff (same contract the Briefing Agent will post):
 
 ```bash
-python -m feagent.api data/cases/week18_observable.json --mode stub
+../.venv/bin/python -m feagent.api data/cases/week18_observable.json --mode stub
 ```
 
 That file contains `default_request`. For a standalone request file, pass JSON with:

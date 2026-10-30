@@ -101,6 +101,16 @@ def resolve_week(week: int | None, week_start: str | None) -> dict[str, object]:
     return {"week": int(row[0]), "week_start": str(row[1]), "week_ending": str(row[2])}
 
 
+def _week_of(con: duckdb.DuckDBPyConnection, start_date: str) -> int:
+    row = con.execute(
+        "SELECT week FROM week_index WHERE week_start <= CAST(? AS DATE) AND CAST(? AS DATE) <= week_end",
+        [start_date, start_date],
+    ).fetchone()
+    if row is None:
+        raise ValueError(f"Event start {start_date} is outside the calendar")
+    return int(row[0])
+
+
 def _load(root: Path, con: duckdb.DuckDBPyConnection) -> None:
     forecast = root / "forecast_vs_actual_weekly.csv"
     calendar = root / "calendar.csv"
@@ -155,6 +165,7 @@ def _load(root: Path, con: duckdb.DuckDBPyConnection) -> None:
             [t for t in TERRITORIES if t != "MID_ATLANTIC"],
             [],
             "Observable access change from 2025-08-04. Magnitude comes from DiD, not a label.",
+            "2025-08-04",
         ),
         (
             "evt_promo_southeast",
@@ -166,6 +177,7 @@ def _load(root: Path, con: duckdb.DuckDBPyConnection) -> None:
             [t for t in TERRITORIES if t != "SOUTHEAST"],
             [],
             "Lapse began 2026-08-03. Event is dated to the investigation week so the window catches it.",
+            "2026-08-03",
         ),
         (
             "evt_comp_metacora",
@@ -177,6 +189,7 @@ def _load(root: Path, con: duckdb.DuckDBPyConnection) -> None:
             [],
             [],
             "National launch: no clean control region. Stub should treat confidence as low.",
+            "2026-03-02",
         ),
     ]
     con.execute(
@@ -190,12 +203,13 @@ def _load(root: Path, con: duckdb.DuckDBPyConnection) -> None:
             exposed_regions VARCHAR,
             control_regions VARCHAR,
             excluded_regions VARCHAR,
-            notes VARCHAR
+            notes VARCHAR,
+            start_week INTEGER
         )
         """
     )
     con.executemany(
-        "INSERT INTO commercial_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO commercial_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
             (
                 event_id,
@@ -207,8 +221,9 @@ def _load(root: Path, con: duckdb.DuckDBPyConnection) -> None:
                 json.dumps(control),
                 json.dumps(excluded),
                 notes,
+                _week_of(con, start_date),
             )
-            for event_id, driver, label, week, week_ending, exposed, control, excluded, notes in events
+            for event_id, driver, label, week, week_ending, exposed, control, excluded, notes, start_date in events
         ],
     )
     con.execute(

@@ -1,6 +1,13 @@
+import pytest
+
 from feagent.pipeline import run_forecast_pipeline
 from feagent.shared_world import available as shared_available
 from feagent.store import reset
+
+requires_shared = pytest.mark.skipif(
+    not shared_available(),
+    reason="PharmAgentics data/agent_visible not found; set PHARMAGENTICS_DATA_DIR",
+)
 
 
 def test_lumina_pipeline_still_reconciles():
@@ -24,9 +31,8 @@ def test_lumina_pipeline_still_reconciles():
     assert run["stages"][6]["status"] == "PENDING"
 
 
+@requires_shared
 def test_bxa_national_miss_matches_figma_card():
-    if not shared_available():
-        return
     reset()
     run = run_forecast_pipeline(
         {
@@ -46,9 +52,8 @@ def test_bxa_national_miss_matches_figma_card():
     assert run["stages"][5]["result"]["reconciles"] is True
 
 
+@requires_shared
 def test_bxa_provisional_abstains():
-    if not shared_available():
-        return
     reset()
     run = run_forecast_pipeline(
         {

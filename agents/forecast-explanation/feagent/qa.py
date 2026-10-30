@@ -65,14 +65,27 @@ def _format(intent: str, report: InvestigationReport) -> str:
     return _format_why(report)
 
 
+def _event_labels(report: InvestigationReport) -> list[str]:
+    label_by_tool = {rec.tool_id: rec.payload.get("label") for rec in report.evidence}
+    labels = []
+    for driver in report.drivers:
+        label = next((label_by_tool.get(e) for e in driver.evidence_ids if label_by_tool.get(e)), None)
+        if label:
+            labels.append(label)
+    return labels
+
+
 def _format_why(report: InvestigationReport) -> str:
     drivers = _driver_lines(report)
+    labels = _event_labels(report)
+    events = (
+        "Events that sit next to the miss: " + "; ".join(labels) + ".\n\n" if labels else ""
+    )
     return (
         f"**{report.headline}**\n\n"
         f"Forecast was **{report.forecast_trx:,.0f} TRx**; actual was **{report.actual_trx:,.0f} TRx** "
         f"in week {report.week} ending {report.week_ending}.\n\n"
-        "Two events sit next to the miss: Plan Alpha's formulary downgrade in week 17 "
-        "(Northeast and South) and the Rivalza launch in week 18 (Midwest).\n\n"
+        f"{events}"
         f"{drivers}\n\n"
         f"**Unexplained residual: {report.residual_trx:,.0f} TRx.** "
         "Numbers come from deterministic tools (exposed vs named controls). "

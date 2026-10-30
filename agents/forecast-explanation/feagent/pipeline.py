@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 from typing import Any
 
 from feagent import store
@@ -11,6 +12,23 @@ from feagent.schema import InvestigationRequest
 from feagent.shared_world import available as shared_available
 from feagent.shared_world import resolve_week
 from feagent.tools import reconcile_attribution, validate_and_quantify
+
+_PIPELINE_LOCK = threading.RLock()
+
+VERIFICATION_STAGE_STATUS = {"PASS": "COMPLETE", "WARN": "FLAG", "FAIL": "FAIL"}
+
+
+def _check_status(verification: dict[str, Any], check_id: str) -> str | None:
+    return next((c["status"] for c in verification["checks"] if c["id"] == check_id), None)
+
+
+def _verification_summary(verification: dict[str, Any]) -> str:
+    verdict = verification["verdict"]
+    if verdict == "PASS":
+        return "V = Σc + r; all checks passed"
+    wanted = "fail" if verdict == "FAIL" else "warn"
+    details = "; ".join(c["detail"] for c in verification["checks"] if c["status"] == wanted)
+    return ("Verification failed: " if verdict == "FAIL" else "V = Σc + r holds; ") + details
 
 STAGE_META = [
     {"id": 1, "name": "Load & Pin", "kind": "deterministic"},
@@ -66,7 +84,8 @@ FORECAST_LANE_CASES = [
             "week_start": "2025-08-04",
             "territory_id": "MID_ATLANTIC",
             "metric": "TRx",
-            "notes": "CA-Q5. Single-week DiD on the start week; 13-week sum is in the card copy.",
+            "window_weeks": 13,
+            "notes": "CA-Q5. 13-week window from the tier-change week; the 13-week sum is the card's -730.",
         },
     },
 ]
@@ -88,6 +107,13 @@ def run_forecast_pipeline(
     payload: dict[str, Any],
     mode: str = "stub",
 ) -> dict[str, Any]:
+    # store.use_world() and the DuckDB connections are process-wide; FastAPI runs
+    # sync handlers on a thread pool, so one run at a time keeps worlds from mixing.
+    with _PIPELINE_LOCK:
+        return _run_forecast_pipeline(payload, mode)
+
+
+def _run_forecast_pipeline(payload: dict[str, Any], mode: str) -> dict[str, Any]:
     world = select_world(payload)
     store.use_world(world)
     store.connect()
@@ -105,15 +131,20 @@ def run_forecast_pipeline(
         "week_start": request.week_start,
         "week_ending": request.week_ending,
         "territory_id": request.territory_id,
+        "window_weeks": request.window_weeks,
         "product_id": request.product_id,
         "brand": request.brand,
         "forecast_issue_note": "4-week-ahead locked forecast in shared world",
     }
     fingerprint = hashlib.sha256(
-        f"{world}|{request.week}|{request.week_start}|{request.territory_id}".encode()
+        f"{world}|{request.week}|{request.week_start}|{request.territory_id}|{request.window_weeks}".encode()
     ).hexdigest()[:10].upper()
 
-    gate = validate_and_quantify(request.week)["payload"]
+    gate = validate_and_quantify(
+        request.week, territory_id=request.territory_id, window_weeks=request.window_weeks
+    )["payload"]
+    if not gate.get("ok"):
+        raise ValueError(gate.get("error") or "validate_and_quantify failed")
     provisional = bool(gate.get("actual_is_provisional"))
     detection = {
         "metric": "TRx",
@@ -121,12 +152,14 @@ def run_forecast_pipeline(
         "actual": gate.get("actual"),
         "variance_trx": gate.get("variance_trx"),
         "variance_pct": gate.get("variance_pct"),
+        "window_weeks": request.window_weeks,
         "rule": "V = A − F against the locked forecast",
         "material": abs(float(gate.get("variance_trx") or 0)) >= 100,
         "provisional": provisional,
     }
 
     report = run_investigation(request, mode=mode)
+    verification = report.verification
     recon = reconcile_attribution(
         report.variance_trx,
         {d.driver: d.impact_trx for d in report.drivers},
@@ -153,6 +186,7 @@ def run_forecast_pipeline(
             "summary": (
                 f"V = {detection['variance_trx']:+,.0f} TRx "
                 f"({float(detection['variance_pct'] or 0):+.1%})"
+                + (f" over {request.window_weeks} weeks" if request.window_weeks > 1 else "")
             ),
             "result": detection,
         },
@@ -174,6 +208,7 @@ def run_forecast_pipeline(
                         "driver": d.driver,
                         "impact_trx": d.impact_trx,
                         "confidence": d.confidence,
+                        "confidence_reasons": d.confidence_reasons,
                         "method": d.method,
                         "notes": d.notes,
                     }
@@ -189,9 +224,14 @@ def run_forecast_pipeline(
         },
         {
             **STAGE_META[5],
-            "status": "COMPLETE" if recon.get("reconciles") else "FAIL",
-            "summary": "V = Σc + r" if recon.get("reconciles") else "Reconciliation failed",
-            "result": recon,
+            "status": VERIFICATION_STAGE_STATUS[verification["verdict"]],
+            "summary": _verification_summary(verification),
+            "result": {
+                **recon,
+                "reconciles": _check_status(verification, "arithmetic") == "pass",
+                "verdict": verification["verdict"],
+                "checks": verification["checks"],
+            },
         },
         {
             **STAGE_META[6],
@@ -208,6 +248,10 @@ def run_forecast_pipeline(
         "seed": 7 if world == "shared" else None,
         "pin": pin,
         "stages": stages,
-        "workflow_status": "Processing Complete — Pending Human Approval",
+        "workflow_status": (
+            "Verification Failed — Needs Review"
+            if verification["verdict"] == "FAIL"
+            else "Processing Complete — Pending Human Approval"
+        ),
         "report": report.to_dict(),
     }

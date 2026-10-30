@@ -26,6 +26,7 @@ DRIVER_LABELS = {
 }
 METHOD_LABELS = {
     "difference_in_differences_vs_named_controls": "Exposed vs control (DiD)",
+    "forecast_error_difference_vs_named_controls": "Forecast error vs controls",
     "variance − explained drivers": "Residual",
 }
 

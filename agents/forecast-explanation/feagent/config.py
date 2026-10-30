@@ -15,6 +15,6 @@ OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/"
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:20b")
 OLLAMA_TIMEOUT_SEC = float(os.environ.get("OLLAMA_TIMEOUT_SEC", "60"))
 
-MAX_INVESTIGATOR_STEPS = int(os.environ.get("MAX_INVESTIGATOR_STEPS", "8"))
+MAX_INVESTIGATOR_STEPS = int(os.environ.get("MAX_INVESTIGATOR_STEPS", "12"))
 BRAND = "LUMINA"
 METRIC = "TRx"
