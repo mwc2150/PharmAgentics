@@ -1,0 +1,31 @@
+id: F-011
+lane: forecast
+story: BM-Q5
+persona: BM Brand Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: What should be checked next, and by which team?'
+review_note: null
+period: week of 2026-08-24
+anchor: Follow-ups for 2026-08-24
+story_text: As the Brand Manager, I want each follow-up tied to an owner, so that the diagnosis turns into action.
+given: two drivers and a residual.
+when: the report writes follow-ups.
+then: each has a concrete check, an owner and the evidence behind it.
+reference_answer: |-
+  Forecasting: review the competitor assumption; the post-launch gap has lasted since March.
+  Sales leadership: confirm Southeast coverage is restored; calls returned to about 60 a week on 2026-09-07.
+  Commercial analytics: split the residual and the South Central gap by plan and specialty.
+  Market access: none; no BXA access change in this period.
+must_not_say:
+  text: '"monitor the situation."'
+  phrases:
+  - monitor the situation
+  semantic: []
+action: The Brand Manager sends each check to its owner.
+eval_items:
+- FE-22
+facts: []
+source: docs/planning/user-stories.md#BM-Q5

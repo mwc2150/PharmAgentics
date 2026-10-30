@@ -1,0 +1,41 @@
+id: F-002
+lane: forecast
+story: CA-Q2
+persona: CA Commercial Analytics Analyst
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: Which regions or segments drive the miss?'
+review_note: null
+period: week of 2026-08-24
+anchor: National miss, 2026-08-24
+story_text: As the analyst, I want the national miss split by territory, so that a local effect is not hidden in the aggregate.
+given: a national miss with one territory far worse than the rest.
+when: the agent localizes it.
+then: the territory table ties out to the national variance and Southeast leads.
+reference_answer: 'National BXA was 4,105 against a forecast of 5,141: V = −1,036 (−20.2%). Every territory missed. Southeast missed most, −343 (−42.2%): a third of the national miss from 16% of the forecast. Then Great Lakes −177, Pacific −127, New England −92, Mid-Atlantic −90, Northwest −88, South Central −70, Mountain −49. The eight sum exactly to the national figure.'
+must_not_say:
+  text: '"a broad national miss" with no territory split.'
+  phrases: []
+  semantic:
+  - a broad national miss
+action: The analyst points the investigation at Southeast first and treats the rest as a broad effect.
+eval_items:
+- FE-04
+- FE-05
+- FE-06
+facts:
+- id: national_variance_trx
+  value: -1036
+  sql: select variance_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NATIONAL' and week_start = DATE '2026-08-24'
+- id: southeast_variance_trx
+  value: -343
+  sql: select variance_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-08-24'
+- id: southeast_variance_pct
+  value: -42.2
+  sql: select 100 * variance_trx / forecast_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-08-24'
+- id: territories_sum_variance_trx
+  value: -1036
+  sql: select sum(variance_trx) from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id <> 'NATIONAL' and week_start = DATE '2026-08-24'
+source: docs/planning/user-stories.md#CA-Q2

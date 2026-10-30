@@ -1,0 +1,27 @@
+id: C-021
+lane: briefing
+story: P4-Q3
+persona: P4 Marketer (Magdalena)
+category: stress
+scenario: null
+split: dev
+status: draft
+question: Did the campaign reach the people it was meant to reach?
+review_note: The story states no period; add the weeks to the question before freezing.
+period: null
+anchor: Impressions without reach data
+story_text: As Magdalena, I want reach shown next to results, so that high impressions cannot hide low engagement.
+given: promotion data at territory level only.
+when: the brief shows a promotion story.
+then: it puts calls and impressions beside TRx for the same cut and weeks, and says that reach in the target segment cannot be shown yet.
+reference_answer: 'Partly. The data has digital impressions and rep calls by territory, product and week: in Southeast''s gap, impressions averaged 870 against a median of about 1,774. It has no reach by target segment, no channel spend and no consumer campaigns.'
+must_not_say:
+  text: '"the campaign reached its target HCPs."'
+  phrases:
+  - the campaign reached its target HCPs
+  semantic: []
+action: Magdalena asks for channel spend and reach data. The brief tells her this is open (Architecture A16).
+eval_items:
+- EV-7.5
+facts: []
+source: docs/planning/user-stories.md#P4-Q3

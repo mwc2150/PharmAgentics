@@ -1,0 +1,32 @@
+id: F-004
+lane: forecast
+story: CA-Q4
+persona: CA Commercial Analytics Analyst
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-06-01 to 2026-06-29, Pacific: What supports or contradicts each hypothesis?'
+review_note: null
+period: weeks of 2026-06-01 to 2026-06-29, Pacific
+anchor: Pacific supply, Jun 2026
+story_text: As the analyst, I want evidence for and against each driver, so that timing alone never decides attribution.
+given: a supply drop that starts and ends with the miss.
+when: the agent tests hypotheses.
+then: it supports supply, records the competitor and promotion checks that cut against them, and names its comparison group.
+reference_answer: |-
+  Supports supply. BXA inventory fill in Pacific ran 0.69 to 0.72 with about 23% backordered. Pacific missed by −1,526 over the five weeks (−39.5%) against −10.2% in other territories. The miss shrank to −8.9% the week supply returned to 1.0.
+  Contradicts competitor. Metacora's Pacific share before June (9.2%) was in line with other territories (8.8% to 10.0%).
+  Contradicts promotion. Pacific rep calls averaged 54 a week with no vacancy.
+must_not_say:
+  text: '"Pacific missed because of Metacora."'
+  phrases:
+  - Pacific missed because of Metacora
+  semantic: []
+action: The analyst signs off the supply finding.
+eval_items:
+- FE-10
+- FE-11
+- FE-12
+facts: []
+source: docs/planning/user-stories.md#CA-Q4

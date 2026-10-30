@@ -1,0 +1,28 @@
+id: C-019
+lane: briefing
+story: P4-Q1
+persona: P4 Marketer (Magdalena)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-02-02 to 2026-04-06, Great Lakes: Did my campaign move brand sales, and by how much?'
+review_note: null
+period: weeks of 2026-02-02 to 2026-04-06, Great Lakes
+anchor: Great Lakes coverage gap, Feb to Apr 2026
+story_text: As Magdalena, I want promotion tested with a verdict either way, so that sales gains are not credited to whichever campaign launched last.
+given: a territory where promotion lapses and then returns.
+when: the brief tests promotion.
+then: promotion gets a "supported" verdict for the Great Lakes drop, with the size stated as an association and the method named.
+reference_answer: 'The release has no sustained BXA campaign push: rep calls and digital impressions never exceed 1.5 times their territory median, and sample spikes last a single week. The clearest read on promotion is its absence. In Great Lakes, aggregated rep calls fell from about 48 a week to about 20, and digital impressions averaged 915 against a median of 1,652. In the four weeks before Metacora launched, Great Lakes BXA TRx fell 16.5% while other territories rose 1.1%, about 120 TRx a week below trend. When calls returned on 2026-04-13, Great Lakes TRx jumped from 503 to 730 in one week.'
+must_not_say:
+  text: '"promotion caused a 120 TRx lift," or credit promotion in any week where its activity did not change.'
+  phrases:
+  - promotion caused a 120 TRx lift
+  semantic: []
+action: Magdalena uses the lapse as evidence that field and digital presence holds BXA volume in Great Lakes.
+eval_items:
+- EV-4.5
+- EV-4.1
+facts: []
+source: docs/planning/user-stories.md#P4-Q1

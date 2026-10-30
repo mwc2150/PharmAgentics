@@ -1,0 +1,29 @@
+id: C-023
+lane: briefing
+story: P4-Q5
+persona: P4 Marketer (Magdalena)
+category: compound_week
+scenario: null
+split: dev
+status: draft
+question: How confident is the estimate, and when will we know more?
+review_note: The story states no period; add the weeks to the question before freezing.
+period: null
+anchor: Great Lakes and Southeast together
+story_text: As Magdalena, I want confidence and timing stated plainly, so that early reads don't mislead the budget.
+given: two coverage gaps in different territories and months.
+when: the brief reports confidence.
+then: it says Medium, names both cases, and states when the next read is due.
+reference_answer: Medium. The Great Lakes estimate rests on one territory and aggregated activity, and is an association. Two things raise it. The second half of that gap overlaps Metacora's launch, but Metacora reached 8.8% to 10.0% of the basket in every territory, so the other territories remain a fair comparison. And the Southeast gap six months later shows the same pattern, about 31 points below other territories. In this data the effect shows in the first week activity changes and fades within one to two weeks after it returns, so a re-read four weeks after any change is enough.
+must_not_say:
+  text: '"High confidence" from one territory.'
+  phrases: []
+  semantic:
+  - High confidence
+action: Magdalena waits for the four-week re-read before moving budget.
+eval_items:
+- EV-5.1
+- EV-4.4
+- EV-7.2
+facts: []
+source: docs/planning/user-stories.md#P4-Q5

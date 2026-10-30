@@ -1,0 +1,28 @@
+id: F-012
+lane: forecast
+story: BM-Q6
+persona: BM Brand Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: Can the explanation be communicated defensibly?'
+review_note: null
+period: week of 2026-08-24
+anchor: Summary for 2026-08-24
+story_text: As the Brand Manager, I want wording I can repeat without overclaiming, so that the business is not exposed.
+given: the split above.
+when: the report writes its summary.
+then: it uses "matches" and "explains about," never "caused," and keeps the unexplained part in the sentence.
+reference_answer: 'A defensible version: "BXA was 20% below forecast in the week of August 24. About two-thirds of the gap matches Metacora''s share gain since launch. The Southeast coverage gap explains about one-fifth. About one-seventh is not explained yet."'
+must_not_say:
+  text: '"Metacora caused a 655-prescription loss."'
+  phrases:
+  - Metacora caused a 655-prescription loss
+  semantic: []
+action: The Brand Manager uses the summary in the leadership update.
+eval_items:
+- FE-24
+- FE-25
+facts: []
+source: docs/planning/user-stories.md#BM-Q6

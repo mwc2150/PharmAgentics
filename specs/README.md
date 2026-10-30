@@ -2,6 +2,8 @@
 
 One Spec Kit feature per component. Specs say WHAT and WHY. Each `plan.md` says HOW. Each `tasks.md` is the work list. Updated 2026-10-23 to the Oct 21–22 sources; the Oct 16 numbering (001 to 010) is retired.
 
+**2026-10-29:** the project moved to eval-driven development. Only the five `brief-###` specs (`brief-001` to `brief-005`, the Briefing lane's own) keep their `spec.md` but have no `plan.md` or `tasks.md`; those were scrapped and will be re-planned against the golden set in [`eval/`](../eval/README.md). The `core-*` specs, which serve both lanes, keep their plans, and so do any future `fcst-*` specs.
+
 **Sources, in order of precedence** (all in [`docs/planning/`](../docs/planning/README.md)): the Proposal; each lane's personas and evaluation pack; the [System Architecture](../docs/planning/system-architecture.md); each lane's architecture doc ([Briefing](../docs/planning/briefing-architecture.md)). The [user stories](../docs/planning/user-stories.md) supply the acceptance scenarios.
 
 **Constitutions:** shared [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) v2.0.0 and Briefing lane [`.specify/memory/constitution-briefing.md`](../.specify/memory/constitution-briefing.md) v1.0.0.
@@ -109,27 +111,21 @@ Spec Kit finds the active spec from `.specify/feature.json` (git-ignored) or the
 
 New specs: run `/speckit-specify` and then rename the created folder into its namespace (`core-`, `brief-` or `fcst-`), and update `feature.json` to match.
 
-## Source layout shared by all plans
+## Source layout
 
 ```text
 data/agent_visible/            the 14-table release; agent tools read only this (via DuckDB)
 local/pharmagentics.duckdb     built by the loader; git-ignored
 sql/                           reporting views (v0 gate)
 semantic_layer/                versioned YAML (core-002)
-src/pharmagentics/
+src/pharmagentics/             shared data layer and orchestration (core-001 to core-005)
   data/          loader and checker (core-001, built)
-  semantic/      (core-002)
-  validation/    (core-003)
-  contracts/  tools/            (core-004)
-  orchestrator/  (core-005)
-  evalharness/  tracing/        (core-006)
-  ci/            (brief-001)
-  triage/        (brief-002)
-  narrative/     (brief-003)
-  verifier/      (brief-004)
-  review/        (brief-005)
-prompts/                       versioned prompt files, pinned per run
-tests/  unit/  contract/  integration/  eval/
+agents/
+  brand-briefing/              Briefing lane (Michael, Meghna)
+  forecast-explanation/        Forecast lane (Alvin, Sienna)
+eval/                          eval harness, golden set and MLflow store (core-006)
+SoT/                           dated Drive exports of the source docs; drops git-ignored
+tests/                         data-foundation tests
 ```
 
-Outside the repository, never committed: the generator, the answer key, the pre-artifact true data, the counterfactual components and the sealed held-out parameters. Only `evalharness` reads them, through a path set in an environment variable (core-006).
+Outside the repository, never committed: the generator, the answer key, the pre-artifact true data, the counterfactual components and the sealed held-out parameters. Only `eval/harness/store.py` reads them, through a path set in an environment variable (core-006).

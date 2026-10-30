@@ -1,0 +1,28 @@
+id: F-006
+lane: forecast
+story: CA-Q6
+persona: CA Commercial Analytics Analyst
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-07-27, 2026-08-24: Can every finding be verified and reproduced?'
+review_note: null
+period: weeks of 2026-07-27, 2026-08-24
+anchor: Version 2026-07-27 for 2026-08-24
+story_text: As the analyst, I want every figure to trace to a tool output on pinned versions, so that I can sign off.
+given: a report on pinned forecast and actual versions.
+when: the analyst re-runs the same request.
+then: every figure and its tool record come back identical.
+reference_answer: The forecast for 2026-08-24 was issued 2026-07-27 (4-week horizon); that issue week is the version key. In all 104 weeks, territory forecasts and actuals sum exactly to NATIONAL, so any territory split can be checked against the total.
+must_not_say:
+  text: a number that comes from the model rather than a tool record.
+  phrases: []
+  semantic: []
+action: The analyst signs off and marks the report reviewed.
+eval_items:
+- FE-19
+- FE-20
+- FE-21
+facts: []
+source: docs/planning/user-stories.md#CA-Q6

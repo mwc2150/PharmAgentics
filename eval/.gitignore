@@ -1,0 +1,2 @@
+# Local MLflow store: runs, reruns, traces, spans and scores. Read it through the MLflow UI.
+mlflow/

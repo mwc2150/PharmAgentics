@@ -1,24 +1,24 @@
 # Tasks: Evaluation Harness and Tracing
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md)
-**Status**: Not started.
+**Status**: In progress (2026-10-29). Paths are now under `eval/` (see plan.md). Done: T001, T005, T008, T019. Built beyond the original list: scripted baselines for both lanes and the evidence checks (EV-1.1, EV-6.1, EV-6.2 re-run each claim's SQL). Partly done: T002 (case and answer models only), T004 (no runtime probe yet), T006 (no held-out access log), T010 (Forecast cases drafted as F-001 to F-018), T011 (reruns work; no core-005 replay yet), T014 (CLI; no versions-by-dimensions scorecard yet).
 
 ## Phase 1: Setup
 
-- [ ] T001 Create `cases/`, `src/pharmagentics/evalharness/`, `src/pharmagentics/tracing/`, test folders
+- [x] T001 Create `eval/` (golden, harness, labels, tests, mlflow)
 - [ ] T002 [P] Models: case, experiment, scorecard, failure entry, span attributes
 - [ ] T003 [P] Agree with Alvin and Sienna: answer-key format, tags, confidence, driver labels, held-out rules (FR-012; S10; Eval 8 to 12)
 
 ## Phase 2: Foundational
 
 - [ ] T004 `store.py` and `isolation.py`: env-var store, import scan, committed-file scan, runtime probe (FR-006)
-- [ ] T005 [P] Test: scan passes on the tree; a planted reader and a planted `answer_key.csv` each fail it (SC-002)
+- [x] T005 [P] Test: scan passes on the tree; a planted reader and a planted `answer_key.csv` each fail it (SC-002)
 - [ ] T006 Case model, splits and access log (`cases.py`) (FR-008)
 - [ ] T007 Span helpers and attribute vocabulary (`tracing/spans.py`) (FR-010)
 
 ## Phase 3: User Story 4 - Dev anchor cases (P1) MVP
 
-- [ ] T008 [US4] User-story importer: 24 Briefing stories to `cases/briefing/dev/C-001` … `C-024` (FR-007)
+- [x] T008 [US4] User-story importer: 24 Briefing stories to `eval/golden/briefing/` (C-001 … C-024) (FR-007)
 - [ ] T009 [US4] Review each imported case by hand against `docs/planning/user-stories.md`; freeze
 - [ ] T010 [P] [US4] Hand the 18 Forecast stories to Alvin and Sienna as `TC` drafts
 
@@ -35,7 +35,7 @@
 - [ ] T016 [US3] Instrument stages, tools, agent turns and model calls (FR-010)
 - [ ] T017 [US3] Provenance links token → tool record → span (`provenance.py`)
 - [ ] T018 [P] [US3] Test: every link in a dev brief resolves (SC-003)
-- [ ] T019 [US3] Phoenix experiment logging (`phoenix.py`) (FR-011)
+- [x] T019 [US3] MLflow run, rerun and trace logging (`eval/harness/run.py`) (FR-011)
 
 ## Phase 6: User Story 5 - Held-out and back-test (P1)
 

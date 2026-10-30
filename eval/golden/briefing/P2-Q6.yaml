@@ -1,0 +1,30 @@
+id: C-012
+lane: briefing
+story: P2-Q6
+persona: P2 Insights Manager (Marcus)
+category: stress
+scenario: null
+split: dev
+status: draft
+question: Is this freeing my team's time without risking our credibility?
+review_note: The story states no period; add the weeks to the question before freezing.
+period: null
+anchor: Held-out stretch with artifacts and holidays
+story_text: As Marcus, I want time saved and errors counted side by side, so that I adopt the agent on evidence.
+given: a held-out stretch of weeks that includes artifacts and holidays.
+when: every version of the brief runs on it.
+then: the scorecard reports run time, reviewer minutes, cost, critical errors and run-to-run spread for each version against the manual baseline.
+reference_answer: 'Time cannot be read from the data; the run measures it. What the data sets is the risk test: the release has three feed artifacts and holiday weeks that drop national TRx by 16% to 21% against the 4-week average. Reading any of them as a business event is a critical error.'
+must_not_say:
+  text: '"saves X hours" without the critical-error rate beside it.'
+  phrases: []
+  semantic:
+  - saves X hours
+action: Marcus decides on adoption from the scorecard.
+eval_items:
+- EV-8.2
+- EV-8.3
+- EV-8.4
+- EV-8.5
+facts: []
+source: docs/planning/user-stories.md#P2-Q6

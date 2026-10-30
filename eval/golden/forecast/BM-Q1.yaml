@@ -1,0 +1,29 @@
+id: F-007
+lane: forecast
+story: BM-Q1
+persona: BM Brand Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-07-06 to 2026-08-31: How significant is the miss, and where is it concentrated?'
+review_note: null
+period: weeks of 2026-07-06 to 2026-08-31
+anchor: Jul to Aug 2026
+story_text: As the Brand Manager, I want the size of the miss and where it sits, so that I know which markets matter.
+given: a broad miss with one territory far worse.
+when: the report's headline is written.
+then: it gives the size in TRx and percent, says the miss is broad, and names Southeast as the concentration.
+reference_answer: BXA ran 6,090 TRx below forecast over nine weeks, 13.7%. Every territory missed, from −8.4% (Mountain) to −27.2% (Southeast). Southeast holds 30% of the miss with 15% of the forecast; Pacific holds 18%.
+must_not_say:
+  text: '"Southeast drove the miss" as if the rest were on plan.'
+  phrases: []
+  semantic:
+  - Southeast drove the miss
+action: The Brand Manager treats it as a national issue with one local hotspot.
+eval_items:
+- FE-04
+- FE-05
+- FE-24
+facts: []
+source: docs/planning/user-stories.md#BM-Q1

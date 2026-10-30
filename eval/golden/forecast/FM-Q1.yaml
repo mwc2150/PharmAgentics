@@ -1,0 +1,43 @@
+id: F-013
+lane: forecast
+story: FM-Q1
+persona: FM Forecasting Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24, NATIONAL: What is the absolute and percentage forecast miss?'
+review_note: null
+period: week of 2026-08-24, NATIONAL
+anchor: National miss, 2026-08-24
+story_text: As the Forecasting Manager, I want the miss stated against the locked version with one denominator, so that performance is not obscured.
+given: a locked forecast and a final actual.
+when: the report states the miss.
+then: it gives V in TRx and as a percent of forecast, names the issue week, and keeps the sign.
+reference_answer: The forecast issued 2026-07-27 (4 weeks ahead) was 5,141. The actual was 4,105. V = −1,036, or −20.2% of forecast. Every row in the release uses the same 4-week horizon.
+must_not_say:
+  text: '"a 25% shortfall" (the miss divided by the actual instead of the forecast).'
+  phrases:
+  - a 25% shortfall
+  semantic: []
+action: The Forecasting Manager logs the miss against forecast version 2026-07-27.
+eval_items:
+- FE-04
+- FE-02
+facts:
+- id: forecast_issue_week
+  value: '2026-07-27'
+  sql: select forecast_issue_week from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NATIONAL' and week_start = DATE '2026-08-24'
+- id: national_forecast_trx
+  value: 5141
+  sql: select forecast_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NATIONAL' and week_start = DATE '2026-08-24'
+- id: national_actual_trx
+  value: 4105
+  sql: select actual_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NATIONAL' and week_start = DATE '2026-08-24'
+- id: national_variance_trx
+  value: -1036
+  sql: select variance_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NATIONAL' and week_start = DATE '2026-08-24'
+- id: national_variance_pct
+  value: -20.2
+  sql: select 100 * variance_trx / forecast_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NATIONAL' and week_start = DATE '2026-08-24'
+source: docs/planning/user-stories.md#FM-Q1

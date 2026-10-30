@@ -1,0 +1,32 @@
+id: F-008
+lane: forecast
+story: BM-Q2
+persona: BM Brand Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Mar to Sep 2026: What are the most plausible commercial drivers?'
+review_note: null
+period: Mar to Sep 2026
+anchor: Mar to Sep 2026
+story_text: As the Brand Manager, I want drivers ranked, so that a list of events turns into priorities.
+given: one broad and one local driver plus two ruled-out ones.
+when: the report ranks drivers.
+then: each is labelled supported, plausible or insufficient evidence, with its scope.
+reference_answer: |-
+  1. Metacora launch, broad. BXA's share of the basket fell from 35.4% (February) to 30.9% (Aug 17 to Sep 7), a 12.7% relative loss. That matches the broad miss: the national forecast, built before launch, ran 12.7% to 13.7% high in May to August.
+  2. Southeast coverage gap, local. Southeast missed 27.2% over the nine weeks while its aggregated rep calls fell by about 60% in August.
+  3. Ruled out for this period: access (no BXA change since 2025) and supply (all BXA fill above 0.95 in August).
+must_not_say:
+  text: '"Metacora caused the miss" without the share evidence and its assumption.'
+  phrases: []
+  semantic:
+  - Metacora caused the miss
+action: The Brand Manager sets the competitive response as the first priority.
+eval_items:
+- FE-07
+- FE-09
+- FE-25
+facts: []
+source: docs/planning/user-stories.md#BM-Q2

@@ -1,0 +1,33 @@
+id: F-009
+lane: forecast
+story: BM-Q3
+persona: BM Brand Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: How much of the miss does each driver explain?'
+review_note: null
+period: week of 2026-08-24
+anchor: Waterfall, 2026-08-24
+story_text: As the Brand Manager, I want a defensible split of the miss, so that resources follow the size of each cause.
+given: a miss with one broad and one local driver.
+when: the report attributes.
+then: contributions plus the residual equal the miss, each step names its method, and the residual is shown, not spread across drivers.
+reference_answer: |-
+  Forecast 5,141, actual 4,105, miss −1,036. Each step uses its own comparison:
+  Usual bias, −32. Before launch the national forecast ran 0.6% high on average.
+  Metacora share gain, −655. BXA's 12.7% relative share loss since February, applied to the forecast. Assumes the basket would otherwise have matched the forecast.
+  Southeast coverage gap, −204. Southeast's miss beyond the rate seen in the six territories with no other event that week.
+  Unexplained residual, −145, about 14% of the miss.
+must_not_say:
+  text: a split with no residual.
+  phrases: []
+  semantic: []
+action: 'The Brand Manager sizes the response: competitive defense first, Southeast coverage second.'
+eval_items:
+- FE-13
+- FE-16
+- FE-18
+facts: []
+source: docs/planning/user-stories.md#BM-Q3

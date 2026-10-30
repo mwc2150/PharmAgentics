@@ -1,0 +1,29 @@
+id: C-022
+lane: briefing
+story: P4-Q4
+persona: P4 Marketer (Magdalena)
+category: compound_week
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-11-03 to 2025-12-15, Mid-Atlantic: Is the lift real, or was it access, a competitor or the season?'
+review_note: null
+period: weeks of 2025-11-03 to 2025-12-15, Mid-Atlantic
+anchor: Mid-Atlantic rebound, Nov to Dec 2025
+story_text: As Magdalena, I want lifts tested against access, competitors and season, so that I never claim credit for a formulary win.
+given: a lift that follows an access restoration and a seasonal rise, with steady promotion.
+when: the brief tests promotion.
+then: promotion is "ruled out," access is the leading driver, and the seasonal share is noted.
+reference_answer: BXA on the Mid-Atlantic Medicare Part D plan rose 19% (183 to 218 TRx a week) and NBRx 42% against the summer, right after the plan removed prior authorization and step therapy on 2025-11-01. Mid-Atlantic rep calls stayed near 50 a week. National BXA rose 14.4% over the same weeks, so part of the lift is seasonal.
+must_not_say:
+  text: '"Q4 promotion lifted Mid-Atlantic."'
+  phrases:
+  - Q4 promotion lifted Mid-Atlantic
+  semantic: []
+action: Magdalena leaves this lift out of her campaign review.
+eval_items:
+- EV-4.5
+- EV-4.2
+- EV-3.4
+facts: []
+source: docs/planning/user-stories.md#P4-Q4

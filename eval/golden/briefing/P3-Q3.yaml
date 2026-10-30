@@ -1,0 +1,28 @@
+id: C-015
+lane: briefing
+story: P3-Q3
+persona: P3 Brand Director (Diana)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-06-01 to 2026-06-29, Pacific: Why did it happen, in terms I can explain to my leadership?'
+review_note: null
+period: weeks of 2026-06-01 to 2026-06-29, Pacific
+anchor: Pacific supply, Jun 2026
+story_text: As Diana, I want the explanation in plain words with one number each, so that I can repeat it upward.
+given: a regional supply shortfall with a clean recovery.
+when: the brief writes the story.
+then: it uses short sentences, one idea and one number per sentence, and calls it a supply problem, not a demand problem.
+reference_answer: 'A plain-language version: "For five weeks in June, Pacific pharmacies could fill only about 7 in 10 BXA orders. Pacific BXA prescriptions fell 34% while other territories fell 1%. Supply returned to normal on July 6, and prescriptions recovered."'
+must_not_say:
+  text: '"difference-in-differences," "fill-rate elasticity," or any term Diana would have to translate.'
+  phrases:
+  - difference-in-differences
+  - fill-rate elasticity
+  semantic: []
+action: Diana tells leadership it was supply, not demand. The brief tells her to ask supply chain and trade for the root cause.
+eval_items:
+- EV-7.1
+facts: []
+source: docs/planning/user-stories.md#P3-Q3

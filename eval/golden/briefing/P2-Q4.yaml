@@ -1,0 +1,29 @@
+id: C-010
+lane: briefing
+story: P2-Q4
+persona: P2 Insights Manager (Marcus)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27: Where is the change concentrated?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27
+anchor: Mid-Atlantic access change
+story_text: As Marcus, I want a national number broken down to where it actually happens, so that the right team acts.
+given: a plan-level access change hidden inside a rising national trend.
+when: the brief runs.
+then: concentration names territory, channel, plan and specialty, and the segment contributions sum to the territory change.
+reference_answer: 'Nationally the dip is invisible: BXA TRx rose 9.0% against June and July. Mid-Atlantic rose only 3.2%. Inside Mid-Atlantic, one Medicare Part D plan with 26% of the territory''s covered lives fell 22.5% (about 41 TRx a week), while the territory''s other channels rose 15.1%. The largest NBRx loss on that plan is in primary care, 12.1 to 7.3 a week.'
+must_not_say:
+  text: '"Mid-Atlantic Medicare is down" without the plan, or "BXA is growing nationally, no issues."'
+  phrases:
+  - BXA is growing nationally, no issues
+  semantic:
+  - Mid-Atlantic Medicare is down
+action: Marcus routes the story to market access with the plan named.
+eval_items:
+- EV-4.3
+- EV-3.1
+facts: []
+source: docs/planning/user-stories.md#P2-Q4

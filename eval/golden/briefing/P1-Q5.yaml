@@ -1,0 +1,43 @@
+id: C-005
+lane: briefing
+story: P1-Q5
+persona: P1 Commercial Analyst (Ace)
+category: compound_week
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-06-08: Am I confident nothing material was left out?'
+review_note: null
+period: week of 2026-06-08
+anchor: Pacific supply plus Metacora, 2026-06-08
+story_text: As Ace, I want every material change surfaced and ranked, so that the brief is not judged on what it missed.
+given: a week with a regional supply shortfall on top of an ongoing competitor launch.
+when: the brief runs.
+then: both stories appear, ranked by business impact, and the "considered and dropped" list shows what else was checked.
+reference_answer: National BXA TRx was 3,860, about 513 below its 4-week average (−11.7%). Two stories were live. First, Pacific BXA TRx fell to 464 against 709 a week in May, while BXA inventory fill there dropped to 0.687 with 22.5% of orders backordered (normal is 0.97 to 1.0); Pacific alone is about half of the national gap. Second, competitor Metacora (BXE), launched 2026-03-02, held about 12% of the basket and was still climbing.
+must_not_say:
+  text: '"BXA fell 12% nationally" with no regional split.'
+  phrases: []
+  semantic:
+  - BXA fell 12% nationally
+action: Ace scans the dropped list to confirm nothing large is missing, then signs off the draft for P2.
+eval_items:
+- EV-3.1
+- EV-3.3
+facts:
+- id: national_bxa_trx
+  value: 3860
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08'
+- id: national_vs_4wk_avg_pct
+  value: -11.7
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2026-06-08' - 28 and DATE '2026-06-08' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+- id: pacific_bxa_trx
+  value: 464
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08' and territory_id = 'PACIFIC'
+- id: pacific_fill_rate
+  value: 0.687
+  sql: select inventory_fill_rate from raw.inventory_weekly where week_start = DATE '2026-06-08' and territory_id = 'PACIFIC' and product_id = 'BXA'
+- id: pacific_backorder_pct
+  value: 22.5
+  sql: select 100 * distribution_backorder_rate from raw.inventory_weekly where week_start = DATE '2026-06-08' and territory_id = 'PACIFIC' and product_id = 'BXA'
+source: docs/planning/user-stories.md#P1-Q5

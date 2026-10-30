@@ -1,0 +1,37 @@
+id: C-003
+lane: briefing
+story: P1-Q3
+persona: P1 Commercial Analyst (Ace)
+category: null_week
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2025-04-21: Which changes are big enough to make the brief?'
+review_note: null
+period: week of 2025-04-21
+anchor: Quiet week, 2025-04-21
+story_text: As Ace, I want normal territory swings left out, so that the brief is consistent week to week and nobody chases noise.
+given: a week with no injected event and normal territory noise.
+when: the brief runs.
+then: 'it is a routine brief: KPI table, no stories, at most one line that territory swings stayed in their normal range.'
+reference_answer: 'National BXA TRx was 4,822, 0.2% below its 4-week average. Territories swung widely: Pacific +24.8% week over week, New England +15.1%, South Central +14.7%, Southeast −10.8%, Mid-Atlantic −10.5%. Those swings are normal here: outside holiday weeks, 1 week in 10 moves more than 15% to 22% in every territory. No access, promotion or inventory change sits in that week.'
+must_not_say:
+  text: '"Pacific surged 25%."'
+  phrases:
+  - Pacific surged 25%
+  semantic: []
+action: Ace ships the routine brief in minutes. The brief tells Ace nothing needs investigating.
+eval_items:
+- EV-3.2
+- EV-3.3
+facts:
+- id: national_bxa_trx
+  value: 4822
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-21'
+- id: national_vs_4wk_avg_pct
+  value: -0.2
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-21'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-04-21' - 28 and DATE '2025-04-21' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+- id: pacific_wow_pct
+  value: 24.8
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-21' and territory_id = 'PACIFIC') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-14' and territory_id = 'PACIFIC') - 1)
+source: docs/planning/user-stories.md#P1-Q3

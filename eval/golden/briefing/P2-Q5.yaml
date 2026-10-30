@@ -1,0 +1,46 @@
+id: C-011
+lane: briefing
+story: P2-Q5
+persona: P2 Insights Manager (Marcus)
+category: data_artifact
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-04-06, Mid-Atlantic: If someone challenges a claim, can I show the evidence behind it?'
+review_note: null
+period: week of 2026-04-06, Mid-Atlantic
+anchor: Mid-Atlantic restatement, 692 to 742
+story_text: As Marcus, I want every claim answered against the numbers as they stood at sign-off, so that a challenge does not mean rebuilding the analyst's work.
+given: a figure restated after sign-off.
+when: someone challenges the April number.
+then: its evidence link opens the value on the snapshot pinned at sign-off (692) and the restatement record beside it.
+reference_answer: 'The brief signed off in April reported Mid-Atlantic BXA TRx of 692 for that week. On 2026-07-13 the vendor restated all 32 cells (reason: late claims adjustment) to 742, up 50 (7.2%). NBRx moved from 97 to 98.'
+must_not_say:
+  text: '"742" as if it were the figure signed off in April.'
+  phrases: []
+  semantic:
+  - '742'
+action: 'Marcus answers on the spot: the April figure was right for the data of the day and was later restated.'
+eval_items:
+- EV-6.2
+- EV-1.2
+facts:
+- id: restated_cells
+  value: 32
+  sql: select count(*) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
+- id: trx_signed_off
+  value: 692
+  sql: select sum(trx_prior) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
+- id: trx_restated
+  value: 742
+  sql: select sum(trx_revised) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
+- id: nbrx_signed_off
+  value: 97
+  sql: select sum(nbrx_prior) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
+- id: nbrx_restated
+  value: 98
+  sql: select sum(nbrx_revised) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
+- id: restated_on
+  value: '2026-07-13'
+  sql: select min(revised_at) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
+source: docs/planning/user-stories.md#P2-Q5

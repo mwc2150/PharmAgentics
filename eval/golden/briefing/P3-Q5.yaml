@@ -1,0 +1,36 @@
+id: C-017
+lane: briefing
+story: P3-Q5
+persona: P3 Brand Director (Diana)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-08-03 to 2026-08-31, Southeast: What should I do, and who should I loop in?'
+review_note: null
+period: weeks of 2026-08-03 to 2026-08-31, Southeast
+anchor: Southeast coverage gap, Aug 2026
+story_text: As Diana, I want next steps and the right function named, so that implications for sales, access and finance are not left implicit.
+given: a territory coverage gap shown only at aggregate level.
+when: the brief writes next steps.
+then: it says "involve sales leadership on Southeast coverage" and stays at territory level.
+reference_answer: Southeast BXA TRx fell 24.8% (639 to 481 a week) while other territories rose 6.5%. Over the same five weeks aggregated rep calls there fell to 19 a week from about 50, digital impressions halved, and the aggregated vacancy count was 1. When calls returned in September, the gap narrowed to about 8 points.
+must_not_say:
+  text: any line that points to one rep.
+  phrases: []
+  semantic: []
+action: Diana asks sales leadership for a coverage plan and takes the finding into budget talks with P4.
+eval_items:
+- EV-7.3
+- EV-9.1
+facts:
+- id: southeast_bxa_trx_july_avg
+  value: 639
+  sql: select avg(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-07-06' and DATE '2026-07-27' group by 1)
+- id: southeast_bxa_trx_august_avg
+  value: 481
+  sql: select avg(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-08-03' and DATE '2026-08-31' group by 1)
+- id: southeast_rep_calls_august_avg
+  value: 19
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-08-03' and DATE '2026-08-31'
+source: docs/planning/user-stories.md#P3-Q5

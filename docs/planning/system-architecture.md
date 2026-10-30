@@ -1,4 +1,4 @@
-<!-- Markdown copy of the Google Doc "PharmAgentics — System Architecture (SoT)" (Consolidated 10/22 folder), taken 2026-10-23. The Google Doc is the master; update it first. Diagram: PharmAgentics_System_Architecture.png in the same Drive folder. -->
+<!-- Markdown copy of the Google Doc "PharmAgentics — System Architecture (SoT)" (Consolidated 10/22 folder), taken 2026-10-23, checked against the master on 2026-10-29. The Google Doc is the master; update it first. Diagram: PharmAgentics_System_Architecture.png in the same Drive folder. -->
 
 # PharmAgentics — System Architecture (SoT)
 
@@ -111,7 +111,9 @@ One harness is the only component that reads the answer key, which sits in a sep
 
 ## 4. The spine, lane by lane
 
-Stages 1 and 2 are shared outright, and stage 6 shares its rules. Stages 3 to 7 run once per lane, and stage 4 is the only agentic stage in each.
+Stages 1 and 2 are shared outright, and stage 6 shares its rules. Stages 3 to 7 run once per lane, and stage 4 is the only agentic stage in each. The detailed diagram below is the draw.io source drawn out.
+
+*(Diagram in the Google Doc; not reproduced here.)*
 
 | Stage | Scope | Briefing lane (B) | Forecast lane (F; 4b Proposed) |
 | :- | :- | :- | :- |

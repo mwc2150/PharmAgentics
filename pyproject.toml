@@ -1,0 +1,48 @@
+[project]
+name = "pharmagentics"
+version = "0.1.0"
+description = "Multi-agent first-pass forensic analyst for pharma brand performance (IEOR4573E capstone)."
+readme = "README.md"
+# Shared stack base (constitution): Python 3.11 or newer and DuckDB. Development pins 3.12 in .python-version.
+requires-python = ">=3.11"
+dependencies = [
+    "duckdb==1.5.6",
+]
+
+[dependency-groups]
+dev = [
+    "pypdf>=6.21.4",
+    "pytest>=8",
+]
+# The Briefing lane's fresh scripted baseline and, later, the agent.
+agent = [
+    "google-genai>=1.0",
+    "pydantic>=2.7",
+    "pyyaml>=6",
+]
+# eval/: MLflow runs, traces and dashboard; RAGAS judges served by a local model.
+eval = [
+    "mlflow[genai]>=3.17,<4",
+    "pydantic>=2.7",
+    "pyyaml>=6",
+    "ragas>=0.4.3,<0.5",
+]
+
+[tool.uv]
+# `uv sync` installs every group, so each machine gets the same environment from uv.lock.
+default-groups = ["dev", "agent", "eval"]
+required-version = ">=0.12"
+constraint-dependencies = [
+    # ragas 0.4.3 imports langchain_community.chat_models.vertexai, which langchain-community 0.4 removed.
+    "langchain-community<0.4",
+    # cryptography 49+ ships macOS wheels for Apple Silicon only; Intel Macs stay on 48 so nothing builds from source.
+    "cryptography<49; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "eval/tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13"]
+build-backend = "uv_build"

@@ -1,0 +1,36 @@
+id: C-013
+lane: briefing
+story: P3-Q1
+persona: P3 Brand Director (Diana)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-04-27: What changed this week that I need to know about?'
+review_note: null
+period: week of 2026-04-27
+anchor: Metacora at 8 weeks, 2026-04-27
+story_text: As Diana, I want the two or three changes that matter at the top, so that I don't dig through a long report.
+given: a competitor launch eight weeks old and still gaining.
+when: the brief runs.
+then: the first story is Metacora's share gain and BXA's share loss, with both figures and the launch date.
+reference_answer: Eight weeks after launch, competitor Metacora (BXE) held 9.3% of the four-brand basket. BXA's share was 33.2%, down 2.6 points from 35.8% in the last week before launch (2026-02-23). No access, promotion or supply table shows a new event that week.
+must_not_say:
+  text: a list of territory moves with the competitor story buried below them.
+  phrases: []
+  semantic: []
+action: Diana raises competitive response at the leadership meeting. The brief tells her to loop in sales and marketing.
+eval_items:
+- EV-3.1
+- EV-3.3
+facts:
+- id: metacora_share_pct
+  value: 9.3
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-04-27'
+- id: bxa_share_pct
+  value: 33.2
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXA') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-04-27'
+- id: bxa_share_pre_launch_pct
+  value: 35.8
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXA') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-02-23'
+source: docs/planning/user-stories.md#P3-Q1

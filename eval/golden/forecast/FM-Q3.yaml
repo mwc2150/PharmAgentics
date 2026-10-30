@@ -1,0 +1,28 @@
+id: F-015
+lane: forecast
+story: FM-Q3
+persona: FM Forecasting Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-08-31 to 2026-09-28, South Central: What portion remains unexplained?'
+review_note: null
+period: weeks of 2026-08-31 to 2026-09-28, South Central
+anchor: South Central gap, Sep 2026
+story_text: As the Forecasting Manager, I want the unexplained part kept visible, so that a fully allocated miss does not imply false certainty.
+given: a territory gap with no visible driver.
+when: the report attributes.
+then: the −249 stays an unexplained residual and the report says so.
+reference_answer: 'South Central missed by −701 over five weeks (−19.8%) while other territories missed by 12.8%: about −249 TRx beyond the broad rate. No context table offers a driver: rep calls normal, no vacancy, no access restriction, inventory fill at or above 0.968, feeds clean.'
+must_not_say:
+  text: a split that allocates the −249 to Metacora or anything else.
+  phrases: []
+  semantic: []
+action: The Forecasting Manager carries the residual into the monthly review as an open item.
+eval_items:
+- FE-16
+- FE-17
+- FE-18
+facts: []
+source: docs/planning/user-stories.md#FM-Q3
