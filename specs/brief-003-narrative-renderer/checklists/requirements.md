@@ -35,7 +35,7 @@
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] Constitution Check in plan.md cites the shared constitution v2.0.0 and, where relevant, the Briefing lane constitution v1.0.0
+- [ ] Constitution Check in plan.md (no plan since 2026-10-29; redo when the lane is re-planned) cites the shared constitution v2.0.0 and, where relevant, the Briefing lane constitution v1.0.0
 
 ## Notes
 

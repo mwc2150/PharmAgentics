@@ -2,6 +2,8 @@
 
 One Spec Kit feature per component. Specs say WHAT and WHY. Each `plan.md` says HOW. Each `tasks.md` is the work list. Updated 2026-10-23 to the Oct 21–22 sources; the Oct 16 numbering (001 to 010) is retired.
 
+**2026-10-29:** the project moved to eval-driven development. Only the five `brief-###` specs (`brief-001` to `brief-005`, the Briefing lane's own) keep their `spec.md` but have no `plan.md` or `tasks.md`; those were scrapped and will be re-planned against the golden set in [`eval/`](../eval/README.md). The `core-*` specs, which serve both lanes, keep their plans, and so do any future `fcst-*` specs.
+
 **Sources, in order of precedence** (all in [`docs/planning/`](../docs/planning/README.md)): the Proposal; each lane's personas and evaluation pack; the [System Architecture](../docs/planning/system-architecture.md); each lane's architecture doc ([Briefing](../docs/planning/briefing-architecture.md)). The [user stories](../docs/planning/user-stories.md) supply the acceptance scenarios.
 
 **Constitutions:** shared [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) v2.0.0 and Briefing lane [`.specify/memory/constitution-briefing.md`](../.specify/memory/constitution-briefing.md) v1.0.0.
@@ -31,7 +33,6 @@ A `core` spec records what each lane needs from the shared part. It does not spe
 | [brief-003](brief-003-narrative-renderer/spec.md) | Narrative and renderer | 5 | EV-1.1 to EV-1.3, EV-7.1 to EV-7.5, EV-8.5 | P1-Q6, P3-Q3, P3-Q5, P3-Q6, P4-Q3, P4-Q6 | brief-002 | 007-narrative-renderer |
 | [brief-004](brief-004-verifier/spec.md) | Verifier | 6 | EV-1.1, EV-5.3, EV-6.1, EV-9.1, EV-9.2 | P1-Q1, P1-Q4, P2-Q5, P3-Q6 | brief-003 | 008-verifier |
 | [brief-005](brief-005-review-signoff/spec.md) | Review, sign-off and feedback | 7 | EV-6.2, EV-6.3, EV-8.1 | P1-Q1, P1-Q4, P1-Q6, P2-Q5 | brief-004, core-005 | 009 (review part) |
-| [brief-006](brief-006-agent-demo-ui/spec.md) | Agent demo and question-answer UI (prototype). **Unfinished**: foundation modules only; see its [build status](brief-006-agent-demo-ui/tasks.md#build-status-review-of-2026-10-23) | 1 to 7 (prototype) | none (not scored yet) | P1-Q2, P1-Q3, P1-Q5, P2-Q1 to P2-Q3, P3-Q1 to P3-Q3, P4-Q2 | core-001 | none |
 
 **Build order** (Briefing Architecture §14, three builds): scripted baseline first (core-001 to core-005, brief-001, a fixed-order brief-002, then brief-003 to brief-005), then low-code, then the Magentic agent. core-006 starts early so every build is scored on the same cases.
 
@@ -110,27 +111,21 @@ Spec Kit finds the active spec from `.specify/feature.json` (git-ignored) or the
 
 New specs: run `/speckit-specify` and then rename the created folder into its namespace (`core-`, `brief-` or `fcst-`), and update `feature.json` to match.
 
-## Source layout shared by all plans
+## Source layout
 
 ```text
 data/agent_visible/            the 14-table release; agent tools read only this (via DuckDB)
 local/pharmagentics.duckdb     built by the loader; git-ignored
 sql/                           reporting views (v0 gate)
 semantic_layer/                versioned YAML (core-002)
-src/pharmagentics/
+src/pharmagentics/             shared data layer and orchestration (core-001 to core-005)
   data/          loader and checker (core-001, built)
-  semantic/      (core-002)
-  validation/    (core-003)
-  contracts/  tools/            (core-004)
-  orchestrator/  (core-005)
-  evalharness/  tracing/        (core-006)
-  ci/            (brief-001)
-  triage/        (brief-002)
-  narrative/     (brief-003)
-  verifier/      (brief-004)
-  review/        (brief-005)
-prompts/                       versioned prompt files, pinned per run
-tests/  unit/  contract/  integration/  eval/
+agents/
+  brand-briefing/              Briefing lane (Michael, Meghna)
+  forecast-explanation/        Forecast lane (Alvin, Sienna)
+eval/                          eval harness, golden set and MLflow store (core-006)
+SoT/                           dated Drive exports of the source docs; drops git-ignored
+tests/                         data-foundation tests
 ```
 
-Outside the repository, never committed: the generator, the answer key, the pre-artifact true data, the counterfactual components and the sealed held-out parameters. Only `evalharness` reads them, through a path set in an environment variable (core-006).
+Outside the repository, never committed: the generator, the answer key, the pre-artifact true data, the counterfactual components and the sealed held-out parameters. Only `eval/harness/store.py` reads them, through a path set in an environment variable (core-006).

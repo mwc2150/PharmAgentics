@@ -1,7 +1,0 @@
-# Demo-only dependencies for brief-006 (agent demo and UI).
-# The shared base stays in requirements.txt (constitution: Python + DuckDB only).
--r requirements.txt
-pydantic>=2.7
-fastapi>=0.115
-uvicorn>=0.30
-google-genai>=1.0

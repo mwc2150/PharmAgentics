@@ -1,6 +1,6 @@
 # Planning sources
 
-The Google Docs in the Drive folder **Consolidated 10/22** are the masters. The Markdown files here are copies taken on 2026-10-23 so that coding agents (Antigravity, Claude Code) can read them. When a master changes, update it first, then refresh its copy here, then the specs that cite it.
+The Google Docs in the Drive folder **Consolidated 10/22** are the masters. The Markdown files here are copies taken on 2026-10-23, checked against the masters on 2026-10-29 (only the System Architecture caption had changed), so that coding agents (Antigravity, Claude Code) can read them. When a master changes, update it first, then refresh its copy here, then the specs that cite it.
 
 ## Precedence
 
