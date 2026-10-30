@@ -1,0 +1,31 @@
+id: C-020
+lane: briefing
+story: P4-Q2
+persona: P4 Marketer (Magdalena)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: Which geographies, segments and channels responded, and which did not?
+review_note: The story states no period; add the weeks to the question before freezing.
+period: null
+anchor: Great Lakes and Southeast splits
+story_text: As Magdalena, I want the effect broken down by geography and channel, so that I can compare a campaign's area with the rest.
+given: two territories with promotion lapses.
+when: the brief reports them.
+then: it shows each territory by channel and specialty against the rest of the country, and flags small cells (cash is 36 to 49 TRx a week) as noisy.
+reference_answer: |-
+  Both coverage gaps hit broadly rather than in one channel.
+  Great Lakes (2026-02-02 to 2026-02-23, against January): cash −31%, Medicaid −25%, commercial −14%, Medicare Part D −12%; cardiology and internal medicine −20%, primary care −17%, endocrinology +3%. Other territories rose 1.1%.
+  Southeast (2026-08-03 to 2026-08-31, against July): commercial −30%, cash −26%, Medicaid and Medicare Part D −21%; endocrinology −30%, internal medicine −29%, cardiology −26%, primary care −20%. Other territories rose 6.5%.
+must_not_say:
+  text: '"cash patients respond most to promotion" from a 49-prescription base.'
+  phrases: []
+  semantic:
+  - cash patients respond most to promotion
+action: Magdalena notes that responses are broad, so she plans by territory, not by channel.
+eval_items:
+- EV-4.3
+- EV-7.5
+facts: []
+source: docs/planning/user-stories.md#P4-Q2

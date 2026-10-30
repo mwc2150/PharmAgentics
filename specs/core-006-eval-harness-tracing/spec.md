@@ -3,7 +3,7 @@
 **Spec ID**: `core-006-eval-harness-tracing` (shared; owners: both teams. Briefing owns EV scoring; Forecast owns FE scoring)
 **Feature Branch**: `speckit-briefing`
 **Created**: 2026-10-16 | **Updated**: 2026-10-23
-**Status**: Draft v2. Not started.
+**Status**: Draft v3. In progress: golden set, code checks, controls and MLflow logging built 2026-10-29 (see `eval/README.md`).
 **Replaces**: `010-eval-harness-tracing` (Oct 16)
 **Input**: System Architecture §3.5, §3.6, §9, S10; Briefing Architecture §11, §12, §14; Evaluation Pack (all sections, 37 items); Forecast Personas & Eval Design §3 (FE-01 to FE-31, TC-01 to TC-12; cited by ID); User stories (all 42, as dev anchor cases)
 
@@ -39,7 +39,7 @@ Only the harness reads the ground-truth store, through `PHARMAGENTICS_EVAL_STORE
 
 **Acceptance Scenarios**:
 
-1. **Given** the codebase, **When** the scan runs, **Then** only `evalharness` reads `PHARMAGENTICS_EVAL_STORE`, and no committed file matches the ground-truth patterns.
+1. **Given** the codebase, **When** the scan runs, **Then** only `eval/harness/store.py` reads `PHARMAGENTICS_EVAL_STORE`, and no committed file matches the ground-truth patterns.
 2. **Given** any tool or agent path, **When** the probe tries the store, **Then** access is refused (core-004).
 3. **Given** a planted reader or a committed answer-key file, **When** the scan runs, **Then** the test fails.
 
@@ -63,7 +63,7 @@ Every Briefing stage, tool call, agent turn and model call emits a span with run
 
 ### User Story 4 - Dev anchor cases from the user stories (Priority: P1)
 
-Each of the 42 user stories becomes a dev case on its anchor week: its Given / When / Then is the case, its "must not say" is the fail phrase, its eval items are the items scored. Briefing cases get `C-###` IDs; Forecast cases get `TC-##` IDs and are confirmed by Alvin and Sienna.
+Each of the 42 user stories becomes a dev case on its anchor week: its Given / When / Then is the case, its "must not say" is the fail phrase, its eval items are the items scored. Briefing cases get `C-###` IDs; Forecast cases get `F-###` IDs (TC-01 to TC-12 stay the Forecast scenario classes), are confirmed by Alvin and Sienna, and are mapped by them to a TC scenario.
 
 **Why this priority**: The stories are already written on real weeks of the release. They are the fastest route to a scored dev set, and the user stories doc says to do exactly this.
 
@@ -125,12 +125,12 @@ Every failed item and every analyst edit gets one failure tag from its lane's li
 - **FR-003**: Each case MUST run the configured number of times, with mean and spread reported. [NEEDS CLARIFICATION: rerun count, weighed against cost (Evaluation Pack open item 15); proposal: five]
 - **FR-004**: The harness MUST implement the 37 Briefing items (EV-1.1 to EV-9.4) with their methods. It MUST provide the hooks for the Forecast team to implement FE-01 to FE-31.
 - **FR-005**: The five parallel pairs (EV-2.1 / FE-01, EV-6.2 / FE-20, EV-8.4 / FE-28, EV-9.3 / FE-30, EV-9.4 / FE-31) MUST share one scoring function; each lane reports its own number.
-- **FR-006**: Only `evalharness` MAY read the ground-truth store, through `PHARMAGENTICS_EVAL_STORE`. A scan MUST fail on any other reader and on any committed ground-truth file.
+- **FR-006**: Only `eval/harness/store.py` MAY read the ground-truth store, through `PHARMAGENTICS_EVAL_STORE`. A scan MUST fail on any other reader and on any committed ground-truth file.
 - **FR-007**: The harness MUST build dev cases from the user stories (anchor week, Given/When/Then, must-not-say, eval items) and from the generator's scenario requests (core-001), and MUST assign each case to dev or held-out.
 - **FR-008**: The harness MUST manage dev and held-out splits. Held-out MUST open only on request, every opening MUST be logged, and scores MUST be logged before any change.
 - **FR-009**: The harness MUST run the ten-week back-test through the orchestrator's replay trigger and produce the four course-floor outputs.
 - **FR-010**: Briefing runs MUST emit spans for every stage, tool call, agent turn and model call with the attributes in User Story 3. Claim provenance MUST run from token to tool record to span.
-- **FR-011**: Experiments MUST log to the trace viewer so versions compare on the same cases.
+- **FR-011**: Runs, reruns, traces and spans MUST log to MLflow (local store in `eval/mlflow/`), so versions compare on the same cases in one dashboard.
 - **FR-012**: The harness MUST keep a failure catalog per lane, one tag per failure, counted by tag and version. [NEEDS CLARIFICATION: shared vocabulary for tags, confidence, driver labels and answer-key format (System S10; Evaluation Pack open items 8, 9, 12)]
 - **FR-013**: The harness MUST support human rubric scoring with anchors per item. [NEEDS CLARIFICATION: rubric scale and anchors (Evaluation Pack open item 13)]
 - **FR-014**: The harness MUST compute judge-human agreement and report it against the bar before any judge-scored item is used.

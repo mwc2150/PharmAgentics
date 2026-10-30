@@ -1,0 +1,28 @@
+id: F-018
+lane: forecast
+story: FM-Q6
+persona: FM Forecasting Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: Is the explanation auditable and reconciled?'
+review_note: null
+period: week of 2026-08-24
+anchor: Reconciliation, 2026-08-24
+story_text: As the Forecasting Manager, I want arithmetic Finance can check line by line, so that the review rests on source-linked numbers.
+given: a report with driver contributions and a residual.
+when: Finance checks it.
+then: contributions plus residual equal V within the stated tolerance, and each figure opens its tool record.
+reference_answer: 'For 2026-08-24 the split in BM-Q3 reconciles: −32 − 655 − 204 − 145 = −1,036. In all 104 weeks, territory forecasts and actuals sum exactly to NATIONAL.'
+must_not_say:
+  text: a contribution with no tool record behind it.
+  phrases: []
+  semantic: []
+action: The Forecasting Manager forwards the reconciled report to Finance.
+eval_items:
+- FE-16
+- FE-20
+- FE-06
+facts: []
+source: docs/planning/user-stories.md#FM-Q6

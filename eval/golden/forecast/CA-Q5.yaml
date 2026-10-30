@@ -1,0 +1,30 @@
+id: F-005
+lane: forecast
+story: CA-Q5
+persona: CA Commercial Analytics Analyst
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic: How much can credibly be attributed to each driver?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic
+anchor: Mid-Atlantic access, Aug to Oct 2025
+story_text: As the analyst, I want contributions estimated only where the data can identify them, so that point estimates do not mislead.
+given: an access change on one plan in one territory, with clean controls.
+when: the agent attributes.
+then: 'it reports about −693 for access, the residual, the method and its assumption: no other Mid-Atlantic-only shock in those weeks.'
+reference_answer: Mid-Atlantic missed by −730 over 13 weeks (−7.4%) while other territories ran −0.4%. Comparing Mid-Atlantic (exposed) with the other seven (control, no access change in that window), about −693 TRx is specific to Mid-Atlantic. Plan-level Rx places it on the one Medicare Part D plan that restricted BXA. The remaining −37 is what the control rate predicts.
+must_not_say:
+  text: '"access explains the full −730."'
+  phrases:
+  - access explains the full −730
+  semantic: []
+action: The analyst includes the estimate with its assumption stated.
+eval_items:
+- FE-13
+- FE-14
+- FE-16
+- FE-18
+facts: []
+source: docs/planning/user-stories.md#CA-Q5

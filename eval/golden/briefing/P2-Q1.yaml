@@ -1,0 +1,47 @@
+id: C-007
+lane: briefing
+story: P2-Q1
+persona: P2 Insights Manager (Marcus)
+category: data_artifact
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-04-06, today''s snapshot: Is this change real, or a data or calendar artifact?'
+review_note: null
+period: week of 2026-04-06, today's snapshot
+anchor: Mid-Atlantic cut withheld, 2026-04-06
+story_text: As Marcus, I want data artifacts separated from business change before any explanation, so that I never send leadership a story that unravels.
+given: a week where one territory's cut is withheld for restatement review.
+when: the brief re-runs on the current snapshot.
+then: the national dip is labelled a data artifact, the like-for-like change on 7 territories is stated, and no business story opens unless that like-for-like change clears the materiality thresholds.
+reference_answer: 'Summed over reportable cuts, national BXA TRx is 3,860, down 18.4% from 4,729 the week before. But Mid-Atlantic is withheld: all 32 of its BXA cells for that week were restated on 2026-07-13. On the 7 territories that report both weeks, BXA went from 4,005 to 3,860, a 3.6% dip.'
+must_not_say:
+  text: '"BXA fell 18% nationally."'
+  phrases:
+  - BXA fell 18% nationally
+  semantic: []
+action: Marcus approves the "data artifact" label and raises the restatement with the data vendor. The brief tells him which cut to re-check.
+eval_items:
+- EV-2.2
+- EV-2.1
+- EV-3.2
+facts:
+- id: national_bxa_trx
+  value: 3860
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-04-06'
+- id: national_prior_week
+  value: 4729
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-03-30'
+- id: national_change_pct
+  value: -18.4
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-04-06') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-03-30') - 1)
+- id: mid_atlantic_flag
+  value: RESTATEMENT_REVIEW
+  sql: select flag_reasons from reporting.v_feed_health where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'
+- id: seven_territory_prior_week
+  value: 4005
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-03-30' and territory_id <> 'MID_ATLANTIC'
+- id: seven_territory_change_pct
+  value: -3.6
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-04-06') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-03-30' and territory_id <> 'MID_ATLANTIC') - 1)
+source: docs/planning/user-stories.md#P2-Q1

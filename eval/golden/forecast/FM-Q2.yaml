@@ -1,0 +1,28 @@
+id: F-014
+lane: forecast
+story: FM-Q2
+persona: FM Forecasting Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'March to October 2026: Which commercial drivers plausibly contributed?'
+review_note: null
+period: March to October 2026
+anchor: Mar to Oct 2026
+story_text: As the Forecasting Manager, I want the competing explanations for the 2026 misses laid out, so that one forecast error is not pinned on one cause.
+given: a period with overlapping broad and local events.
+when: the report lists drivers.
+then: each has a scope (national or territory), dates and a verdict.
+reference_answer: 'One broad driver and three local ones. Broad: Metacora''s launch on 2026-03-02, which the forecast leaves out by design (the data README says it excludes unplanned launch, payer, promotion and inventory shocks). Local: the Great Lakes coverage gap (February to April), the Pacific supply shortfall (June) and the Southeast coverage gap (August).'
+must_not_say:
+  text: '"the forecast was wrong" without separating planned assumptions from unplanned shocks.'
+  phrases: []
+  semantic:
+  - the forecast was wrong
+action: The Forecasting Manager separates the broad driver (an assumption question) from local shocks (not forecastable).
+eval_items:
+- FE-07
+- FE-10
+facts: []
+source: docs/planning/user-stories.md#FM-Q2

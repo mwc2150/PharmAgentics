@@ -1,0 +1,29 @@
+id: C-009
+lane: briefing
+story: P2-Q3
+persona: P2 Insights Manager (Marcus)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-08-31 to 2026-09-28, South Central: How confident are we, and where should we say we don''t know yet?'
+review_note: null
+period: weeks of 2026-08-31 to 2026-09-28, South Central
+anchor: South Central gap, Sep 2026
+story_text: As Marcus, I want an honest "not enough evidence yet," so that I never overclaim in front of leadership.
+given: a sustained regional gap with no driver visible in access, promotion, supply, competitor or feed data.
+when: the brief investigates.
+then: the story closes at Low confidence as "unresolved, investigate next," lists the checks run, and names no driver.
+reference_answer: 'South Central BXA TRx slipped 4.2% from July while the other territories rose 11.1%, a gap of about 15 points. Nothing in the context tables explains it: rep calls averaged 47 a week (normal is about 46) with no vacancy, no South Central plan put BXA or its older competitors under prior authorization or step therapy, inventory fill stayed at or above 0.968, and every feed passed. Metacora''s share there (16.0%) is only slightly above other territories (13.8% to 15.8%).'
+must_not_say:
+  text: '"South Central is down because of Metacora."'
+  phrases:
+  - South Central is down because of Metacora
+  semantic: []
+action: 'Marcus presents it as "still investigating." The brief tells him what to check next: plan and specialty splits, and local context from sales leadership.'
+eval_items:
+- EV-5.1
+- EV-5.2
+- EV-5.3
+facts: []
+source: docs/planning/user-stories.md#P2-Q3

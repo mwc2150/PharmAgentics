@@ -1,0 +1,50 @@
+id: C-001
+lane: briefing
+story: P1-Q1
+persona: P1 Commercial Analyst (Ace)
+category: data_artifact
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-07-06: Do the numbers tie out to the source tables?'
+review_note: null
+period: week of 2026-07-06
+anchor: Great Lakes duplicates, 2026-07-06
+story_text: As Ace, I want every figure in the draft to match the pinned data, so that I review the brief instead of rebuilding it.
+given: the snapshot pinned for 2026-07-06 holds 15 duplicate Rx keys in Great Lakes.
+when: the brief runs.
+then: every KPI figure matches the gated view on that snapshot, Great Lakes shows as withheld, and national figures carry the label "7 of 8 territories."
+reference_answer: 'The Great Lakes feed has 143 rows against 128 expected: 15 duplicate keys. Summed raw, Great Lakes BXA TRx is 670; with duplicates removed it is 624, so a naive sum overstates it by 46 TRx (7.4%). The gate withholds the whole Great Lakes cut, so national BXA TRx from reportable cuts is 3,665 across 7 of 8 territories.'
+must_not_say:
+  text: '"Great Lakes BXA TRx was 670," or quote 3,665 as a full national total.'
+  phrases:
+  - Great Lakes BXA TRx was 670
+  semantic: []
+action: Ace opens two claim links at random, confirms the withheld cut, and asks P2 to request a clean reload. No table is rebuilt.
+eval_items:
+- EV-1.1
+- EV-2.1
+- EV-2.3
+facts:
+- id: gl_rows_observed
+  value: 143
+  sql: select observed_rows from reporting.v_feed_health where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES'
+- id: gl_rows_expected
+  value: 128
+  sql: select expected_key_count from reporting.v_feed_health where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES'
+- id: gl_duplicate_keys
+  value: 15
+  sql: select duplicate_key_count from reporting.v_feed_health where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES'
+- id: gl_bxa_trx_naive_sum
+  value: 670
+  sql: select sum(trx) from raw.rx_weekly where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES' and product_id = 'BXA'
+- id: gl_bxa_trx_deduplicated
+  value: 624
+  sql: select sum(t) from (select any_value(trx) t from raw.rx_weekly where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES' and product_id = 'BXA' group by plan_id, hcp_specialty)
+- id: national_bxa_trx_reportable
+  value: 3665
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-07-06'
+- id: territories_reporting
+  value: 7
+  sql: select count(distinct territory_id) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-07-06'
+source: docs/planning/user-stories.md#P1-Q1

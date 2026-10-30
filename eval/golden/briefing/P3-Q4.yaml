@@ -1,0 +1,33 @@
+id: C-016
+lane: briefing
+story: P3-Q4
+persona: P3 Brand Director (Diana)
+category: multi_week
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-09-28: Is this new or the same issue as last week, and is it getting better or worse?'
+review_note: null
+period: week of 2026-09-28
+anchor: Metacora at 31 weeks, 2026-09-28
+story_text: As Diana, I want continuing stories marked with their trend, so that repeated alarms don't erode attention.
+given: a story that has run for months.
+when: the brief runs.
+then: it is marked "continuing," states the direction (worse, now flat), and is not rediscovered as new.
+reference_answer: The Metacora story is in its 31st week. Its share of the basket, averaged over 4-week blocks, went 2.2%, 6.7%, 9.8%, 12.1%, 13.1%, 13.8%, 15.3% and 15.2%. It is worse than at launch but has flattened for the last 8 weeks. That week BXA held 32.1% and Metacora 15.2%.
+must_not_say:
+  text: '"New: competitor gaining share."'
+  phrases:
+  - 'New: competitor gaining share'
+  semantic: []
+action: Diana moves from alarm to monitoring. The brief tells her to ask marketing for its defense plan.
+eval_items:
+- EV-7.2
+facts:
+- id: bxa_share_pct
+  value: 32.1
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXA') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-09-28'
+- id: metacora_share_pct
+  value: 15.2
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-09-28'
+source: docs/planning/user-stories.md#P3-Q4

@@ -1,0 +1,29 @@
+id: C-006
+lane: briefing
+story: P1-Q6
+persona: P1 Commercial Analyst (Ace)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: How much do I have to rewrite before this goes to my manager?'
+review_note: null
+period: week of 2026-08-24
+anchor: Draft for 2026-08-24
+story_text: As Ace, I want a draft in our Monday format that needs only wording fixes, so that the agent saves real time.
+given: the 2026-08-24 snapshot.
+when: the draft reaches Ace.
+then: it follows the team template, every figure is a filled claim token, and "new patients" appears only for NBRx.
+reference_answer: 'The data cannot measure rewriting; review does. What the data fixes is the content: for the week of 2026-08-24, a correct draft carries a Southeast story (rep coverage gap, below) and a continuing Metacora line, and nothing about a national "collapse."'
+must_not_say:
+  text: '"new patients" for NRx, or any figure typed outside a claim token.'
+  phrases: []
+  semantic:
+  - new patients
+action: Ace edits wording only. Each edit gets a failure tag; a fix repeated in two weeks becomes a new eval case.
+eval_items:
+- EV-8.1
+- EV-7.4
+- EV-9.2
+facts: []
+source: docs/planning/user-stories.md#P1-Q6

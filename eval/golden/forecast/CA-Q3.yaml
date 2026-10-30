@@ -1,0 +1,29 @@
+id: F-003
+lane: forecast
+story: CA-Q3
+persona: CA Commercial Analytics Analyst
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Within two weeks of 2026-08-24: Which candidate drivers merit investigation first?'
+review_note: null
+period: within two weeks of 2026-08-24
+anchor: Candidates around 2026-08-24
+story_text: As the analyst, I want candidate events ranked, so that coinciding events are not all treated as causes.
+given: two live events and three absent ones.
+when: the agent lists candidates.
+then: it ranks the coverage gap first for Southeast and Metacora first for the broad miss, and lists the absent ones as checked.
+reference_answer: 'Two events are live: a Southeast coverage gap (aggregated rep calls about 19 a week from 2026-08-03 to 2026-08-31, against about 50) and Metacora at 15% of the basket. Three are absent: no BXA access change anywhere, no territory with BXA inventory fill below 0.956, and Labor Day falls two weeks later.'
+must_not_say:
+  text: '"access and inventory may also have contributed."'
+  phrases:
+  - access and inventory may also have contributed
+  semantic: []
+action: The analyst approves the order. The report tells the analyst which comparison runs next.
+eval_items:
+- FE-07
+- FE-09
+- FE-08
+facts: []
+source: docs/planning/user-stories.md#CA-Q3

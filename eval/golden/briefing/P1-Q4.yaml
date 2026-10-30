@@ -1,0 +1,28 @@
+id: C-004
+lane: briefing
+story: P1-Q4
+persona: P1 Commercial Analyst (Ace)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27: Where did this number come from?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27
+anchor: Mid-Atlantic access change, Aug to Oct 2025
+story_text: As Ace, I want one click from any figure to the query behind it, so that tracing takes seconds, not an afternoon.
+given: a story that cites a plan-level NBRx change and an access change.
+when: Ace clicks either number.
+then: it opens an evidence item naming the tool, its parameters (plan, product, weeks), the pinned snapshot and the trace span.
+reference_answer: 'Take the claim "BXA new-to-brand prescriptions on one Mid-Atlantic Medicare Part D plan fell 37%." It comes from the gated Rx view for plan SYN_MID_ATLANTIC_MEDICARE_PART_D_1: 15.0 NBRx a week over 13 weeks, against 23.8 a week over the 9 weeks before. The cause cited beside it comes from access_status_monthly: that plan moved BXA from tier 2 to tier 3 and added prior authorization and step therapy, effective 2025-08-01.'
+must_not_say:
+  text: a figure with no evidence link.
+  phrases: []
+  semantic: []
+action: Ace checks the link instead of re-querying. Reviewer minutes to trace are logged against the manual baseline.
+eval_items:
+- EV-6.1
+- EV-6.2
+- EV-6.3
+facts: []
+source: docs/planning/user-stories.md#P1-Q4

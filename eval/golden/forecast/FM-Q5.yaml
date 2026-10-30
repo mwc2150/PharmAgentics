@@ -1,0 +1,28 @@
+id: F-017
+lane: forecast
+story: FM-Q5
+persona: FM Forecasting Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Mar to Oct 2026: Should any forecast assumptions be reviewed?'
+review_note: null
+period: Mar to Oct 2026
+anchor: Post-launch bias, Mar to Oct 2026
+story_text: As the Forecasting Manager, I want a review trigger, not an automatic edit, so that systematic errors are separated from one-off shocks.
+given: a persistent, broad miss that starts with a launch the forecast leaves out.
+when: the report concludes.
+then: it recommends reviewing the competitor assumption, with the evidence, and changes no forecast itself.
+reference_answer: Yes, the competitor assumption. Before launch the national forecast ran 0.6% high over 72 weeks. After launch it ran 5.4% high in March and April, 12.7% in May and June, 13.7% in July and August, and 12.4% from September to October 5. The gap is persistent, broad and matches BXA's share loss to Metacora.
+must_not_say:
+  text: a revised forecast figure, or "the forecast has been updated."
+  phrases:
+  - the forecast has been updated
+  semantic: []
+action: The Forecasting Manager puts the competitor assumption on the next forecast review agenda with Finance.
+eval_items:
+- FE-23
+- FE-22
+facts: []
+source: docs/planning/user-stories.md#FM-Q5

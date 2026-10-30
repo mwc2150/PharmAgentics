@@ -1,0 +1,49 @@
+id: C-014
+lane: briefing
+story: P3-Q2
+persona: P3 Brand Director (Diana)
+category: calendar_effect
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-12-22 and 2025-12-29: Does this matter for the brand, or can I ignore it?'
+review_note: null
+period: weeks of 2025-12-22 and 2025-12-29
+anchor: Holiday weeks, Dec 2025
+story_text: As Diana, I want expected seasonal dips labelled, so that I am not pulled into false alarms.
+given: two holiday weeks with lower business days.
+when: the brief runs.
+then: it labels the drop a calendar effect, cites last year's same weeks, and opens no story.
+reference_answer: National BXA TRx was 4,309 and 4,188, 16.1% and 19.0% below the 4-week average. Both weeks had 4 business days, and the second was the plan-year reset. The same two weeks a year earlier fell 18.9% and 18.2%. The next week rebounded to 4,861, up 16.1%.
+must_not_say:
+  text: '"BXA fell 19%."'
+  phrases:
+  - BXA fell 19%
+  semantic: []
+action: Diana ignores it. The brief tells her to expect the rebound the next week.
+eval_items:
+- EV-3.4
+- EV-3.2
+facts:
+- id: national_bxa_trx_christmas
+  value: 4309
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-22'
+- id: christmas_vs_4wk_avg_pct
+  value: -16.1
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-22'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-12-22' - 28 and DATE '2025-12-22' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+- id: national_bxa_trx_new_year
+  value: 4188
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-29'
+- id: new_year_vs_4wk_avg_pct
+  value: -19.0
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-29'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-12-29' - 28 and DATE '2025-12-29' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+- id: national_bxa_trx_rebound
+  value: 4861
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-01-05'
+- id: business_days_new_year
+  value: 4
+  sql: select business_days from raw.calendar where week_start = DATE '2025-12-29'
+- id: plan_year_reset_new_year
+  value: 1
+  sql: select plan_year_reset from raw.calendar where week_start = DATE '2025-12-29'
+source: docs/planning/user-stories.md#P3-Q2

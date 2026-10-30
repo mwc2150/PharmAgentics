@@ -1,0 +1,27 @@
+id: C-024
+lane: briefing
+story: P4-Q6
+persona: P4 Marketer (Magdalena)
+category: stress
+scenario: null
+split: dev
+status: draft
+question: Where should the next dollar go?
+review_note: The story states no period; add the weeks to the question before freezing.
+period: null
+anchor: Great Lakes and Southeast together
+story_text: As Magdalena, I want budget arguments grounded in evidence, so that shifts are not argued from anecdote.
+given: two lapses where calls and digital fell together.
+when: the brief writes next steps.
+then: it recommends discussing backfill for open coverage with sales operations, at territory level, and says the rep and digital effects cannot be separated.
+reference_answer: 'The data supports one conclusion: keep promotion running in a territory when coverage lapses. Both gaps cost about 120 to 200 BXA TRx a week relative to other territories and largely recovered when coverage returned. It cannot rank channels or price a dollar, because digital impressions fell along with calls and there is no spend data.'
+must_not_say:
+  text: a cost per incremental prescription, or any rep-level line.
+  phrases: []
+  semantic: []
+action: Magdalena takes the coverage finding into the budget talk with P3 and asks for a digital-only test during the next gap.
+eval_items:
+- EV-7.3
+- EV-9.1
+facts: []
+source: docs/planning/user-stories.md#P4-Q6

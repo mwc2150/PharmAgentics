@@ -1,0 +1,28 @@
+id: F-010
+lane: forecast
+story: BM-Q4
+persona: BM Brand Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: How confident are we, and what remains unknown?'
+review_note: null
+period: week of 2026-08-24
+anchor: 2026-08-24 and South Central
+story_text: As the Brand Manager, I want findings separated from hypotheses, so that leadership hears the right level of certainty.
+given: drivers of different strength.
+when: the report states confidence.
+then: it labels each driver's confidence and lists the open unknowns.
+reference_answer: 'Metacora: medium. The share loss is measured, but turning it into TRx assumes basket volume held to forecast. Southeast: medium to high. The comparison territories are clean, and the gap narrowed sharply when coverage returned in September. Unknown: the −145 residual, and a separate South Central gap in September (−249 TRx beyond other territories) with no visible driver.'
+must_not_say:
+  text: one confidence level for the whole explanation.
+  phrases: []
+  semantic: []
+action: The Brand Manager reports two findings and one open question.
+eval_items:
+- FE-17
+- FE-18
+- FE-25
+facts: []
+source: docs/planning/user-stories.md#BM-Q4

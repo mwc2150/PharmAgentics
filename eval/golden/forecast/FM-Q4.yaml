@@ -1,0 +1,31 @@
+id: F-016
+lane: forecast
+story: FM-Q4
+persona: FM Forecasting Manager
+category: null
+scenario: null
+split: dev
+status: draft
+question: Are contributions supported by suitable comparisons?
+review_note: The story states no period; add the weeks to the question before freezing.
+period: null
+anchor: Great Lakes overlap; New England in June
+story_text: As the Forecasting Manager, I want every estimate to name its comparison group and why it is valid, so that weak controls don't produce spurious numbers.
+given: a comparison window where one control territory had its own shock.
+when: the agent picks controls.
+then: it drops that territory, says why, and lowers confidence if too few controls remain.
+reference_answer: |-
+  A valid control despite overlap. The Great Lakes coverage gap overlaps Metacora's launch from 2026-03-02. Because Metacora reached 8.8% to 10.0% of the basket in every territory, the other seven still make a fair control. Great Lakes ran about −644 TRx beyond them before launch (four weeks) and −911 after it (six weeks).
+  A contaminated control. In June 2026, New England missed by 11.0%. Against other territories including Pacific (−15.4%, pulled down by Pacific's supply shortfall), New England looks 4.4 points better than its peers. Against a control without Pacific (−10.2%) it is in line.
+must_not_say:
+  text: '"New England outperformed peers in June."'
+  phrases:
+  - New England outperformed peers in June
+  semantic: []
+action: The Forecasting Manager accepts estimates only where the control is named and justified.
+eval_items:
+- FE-12
+- FE-10
+- FE-15
+facts: []
+source: docs/planning/user-stories.md#FM-Q4

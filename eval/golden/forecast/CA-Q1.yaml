@@ -1,0 +1,44 @@
+id: F-001
+lane: forecast
+story: CA-Q1
+persona: CA Commercial Analytics Analyst
+category: null
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-05-04, New England: Is the deviation reliable, or a data issue?'
+review_note: null
+period: week of 2026-05-04, New England
+anchor: New England 2026-05-04; Great Lakes 2026-07-06
+story_text: As the analyst, I want invalid actuals caught before any driver is named, so that I never explain a miss the data invented.
+given: an InvestigationRequest for a week whose actual is provisional.
+when: the agent validates input.
+then: it pauses or qualifies the case, names the feed reasons, and makes no driver claim.
+reference_answer: 'The forecast was 440 and the actual 267: V = −173, or −39.3%. But the forecast table marks the actual provisional, and the feed shows why: 44 missing keys, coverage 0.656, late delivery. The national miss that week (−608, −12.3%) is provisional too. A second case: Great Lakes on 2026-07-06 shows an actual of 670 that includes 46 duplicated TRx; without them it is 624.'
+must_not_say:
+  text: '"New England missed forecast by 39%."'
+  phrases:
+  - New England missed forecast by 39%
+  semantic: []
+action: The analyst re-queues the case for after the reload. The report tells the analyst which feed to wait for.
+eval_items:
+- FE-01
+- FE-03
+- FE-02
+facts:
+- id: ne_forecast_trx
+  value: 440
+  sql: select forecast_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NEW_ENGLAND' and week_start = DATE '2026-05-04'
+- id: ne_actual_trx
+  value: 267
+  sql: select actual_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NEW_ENGLAND' and week_start = DATE '2026-05-04'
+- id: ne_variance_trx
+  value: -173
+  sql: select variance_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NEW_ENGLAND' and week_start = DATE '2026-05-04'
+- id: ne_variance_pct
+  value: -39.3
+  sql: select 100 * variance_trx / forecast_trx from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NEW_ENGLAND' and week_start = DATE '2026-05-04'
+- id: ne_actual_is_provisional
+  value: 1
+  sql: select actual_is_provisional from raw.forecast_vs_actual_weekly where product_id = 'BXA' and territory_id = 'NEW_ENGLAND' and week_start = DATE '2026-05-04'
+source: docs/planning/user-stories.md#CA-Q1

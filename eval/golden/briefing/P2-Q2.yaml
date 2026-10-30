@@ -1,0 +1,48 @@
+id: C-008
+lane: briefing
+story: P2-Q2
+persona: P2 Insights Manager (Marcus)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic: What explanations were considered, and why were the others ruled out?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic
+anchor: Mid-Atlantic access change
+story_text: As Marcus, I want competing explanations tested and recorded, so that "what about the competitor?" has an answer on the spot.
+given: a regional weakness with one access change and stable promotion, supply and feeds.
+when: the brief investigates.
+then: the story names access as the leading driver and lists each alternative with its verdict and evidence link.
+reference_answer: |-
+  Access, supported. Plan SYN_MID_ATLANTIC_MEDICARE_PART_D_1 moved BXA to tier 3 with prior authorization and step therapy from 2025-08-01 to 2025-10-31. On that plan BXA TRx fell 22.5% (183 to 142 a week) while competitors Lipidara and Vascriva each gained about 20%.
+  Promotion, ruled out. Mid-Atlantic BXA rep calls held at 50 a week against 53 before.
+  Supply, ruled out. BXA inventory fill in Mid-Atlantic averaged 0.98.
+  Competitor launch, ruled out. Metacora did not launch until 2026-03-02.
+  Data artifact, ruled out. Every Mid-Atlantic cut in those weeks passes the feed gate.
+must_not_say:
+  text: a single cause with no alternatives on record.
+  phrases: []
+  semantic: []
+action: Marcus walks into the brand meeting with the ruled-out list. The brief tells him to involve market access.
+eval_items:
+- EV-4.1
+- EV-4.2
+- EV-5.1
+facts:
+- id: plan_tier_jul_2025
+  value: 2
+  sql: select formulary_tier from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-07-01'
+- id: plan_tier_aug_2025
+  value: 3
+  sql: select formulary_tier from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-08-01'
+- id: plan_prior_auth_aug_2025
+  value: 1
+  sql: select prior_authorization from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-08-01'
+- id: plan_step_therapy_aug_2025
+  value: 1
+  sql: select step_therapy from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-08-01'
+- id: plan_tier_nov_2025
+  value: 2
+  sql: select formulary_tier from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-11-01'
+source: docs/planning/user-stories.md#P2-Q2
