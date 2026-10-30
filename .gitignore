@@ -1,4 +1,4 @@
-# ---- Evaluation ground truth: NEVER commit (constitution XI) ----
+# ---- Evaluation ground truth: NEVER commit (constitution Principle III) ----
 # Answer key, true pre-artifact data, counterfactual components, evaluator notes.
 # Share these with teammates outside git.
 eval_private/
@@ -12,6 +12,8 @@ eval_private/
 # Sealed held-out parameters and generator seeds for held-out worlds
 heldout_sealed/
 **/heldout_params*
+# Source-of-truth drops (Drive exports) stay local; SoT/README.md and SoT/check.py are committed
+SoT/*/
 
 # ---- Secrets and local config ----
 .env
@@ -57,6 +59,10 @@ local/
 .phoenix/
 traces/
 experiments/
+# MLflow stores created outside eval/mlflow/ by default
+mlruns/
+mlartifacts/
+mlflow.db
 
 # ---- Editors and OS ----
 .vscode/*
