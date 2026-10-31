@@ -61,7 +61,6 @@ A must-not-say phrase followed by a qualifier ("… without the plan", "… as i
 | :- | :- | :- | :- | :- | :- | :- | :- |
 | `reference` (golden answers) | 42 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 on 3 |
 | `naive_llm` (`gemma3:4b`, no data) | 42 | 0.556 | 0.064 | 1.000 | 1.000 | 1.000 | 0.297 on 3 |
-
 | `briefing_scripted` | 24 | 0.184 | 0.364 | 1.000 | 1.000 | 1.000 | n/a |
 | `forecast_scripted` | 18 | 0.189 | 0.293 | 1.000 | 1.000 | 1.000 | n/a |
 
