@@ -7,9 +7,11 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from feagent import writer
 from pharmagentics.api import forecast
 from pharmagentics.api.app import app
+
+forecast._pipeline()  # puts the Forecast engine on the import path, as the API does (unittest discovery has no pytest paths)
+from feagent import writer  # noqa: E402
 
 CLIENT = TestClient(app)
 NATIONAL = {"territory_id": "NATIONAL", "week_start": "2026-08-24"}
