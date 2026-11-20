@@ -8,4 +8,5 @@ Slice A follows memo PR #13. Both engines build the affected sections in `tools/
 - [X] T004 [FR-009] Show coverage and lateness against their thresholds for withheld cuts, the focus territory's feed figures, and the comparison-week range for projected or estimated territories.
 - [X] T005 [FR-012] Add the Assumptions block to §6 and a one-line scope summary at the top of §2 for leaders.
 - [X] T006 Run the focused tests and the full suite. On 2026-11-20, the two focused files passed (32 tests), the feed-week regression and P2-Q4 anchor passed on the final code, and the full suite passed (646 tests, 10 subtests).
-- [ ] T007 Gate both engines (scripted; agent on Haiku, 4 workers) against the rebased memo runs; record recall on the 24 single-turn cases
+- [X] T007 Gate the scripted engine against the rebased memo run. On 2026-11-20, `0c466ccaf8864b35b336f6baa0e4b8cc` (`023a200`, 30 cases) passed against `a4df1c30339f4cafabd292bcae83a052` with all seven gated checks at 1.000 and zero run errors. Report-only golden-number recall across the 24 single-turn cases rose from 0.406 to 0.498.
+  - [ ] Haiku gate deferred. The rebased memo baseline is `ae4c68b6ff154458b652fdce04367224`.
