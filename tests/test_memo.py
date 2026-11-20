@@ -95,7 +95,8 @@ def test_bottom_line_order_on_the_withheld_week():
     bottom = section(brief(WITHHELD)["answer"], "Bottom line")
     assert bottom[0].startswith("Data warning: New England's feed for 2026-05-04 is incomplete")
     assert bottom[1] == "Projected national BXA TRx is 4,491 for the week of 2026-05-04."
-    assert bottom[2] == "Like for like on 6 of 8 territories, BXA TRx is down 5.2% against the four weeks before."
+    assert bottom[2] == ("Like for like on 6 of 8 territories, BXA TRx is down 5.2% against the four weeks before "
+                         "(2026-04-06 to 2026-04-27).")  # brief-007 FR-004: the comparison weeks are named
     assert bottom[3].startswith("BXA held ") and bottom[3].endswith("of the four-brand market basket.")
     assert bottom[4] == "Least sure: New England's TRx of 407 is an assumption, projected from panel coverage of 0.656."
 
@@ -117,8 +118,11 @@ def test_least_sure_falls_to_the_lowest_confidence_story_then_the_smallest_chang
     assert restated[-1] == "Least sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories."
     routine = section(brief(ROUTINE)["answer"], "Bottom line")
     assert routine[-1].startswith("Least sure: the week-over-week change")
-    rows = [x for x in section(brief(ROUTINE)["answer"], "The numbers") if x.startswith("- ")]
+    numbers = section(brief(ROUTINE)["answer"], "The numbers")
+    rows = [x for x in numbers if x.startswith("- ") and "on the week before" not in x]  # the level table only
     assert len(rows) == 8 and not any("(projected" in x or "(estimated" in x for x in rows)  # nothing marked
+    changes = [x for x in numbers if x.startswith("- ") and "on the week before" in x]  # brief-007 FR-007
+    assert len(changes) == 8  # one change line per territory
 
 
 @needs_db
@@ -152,3 +156,51 @@ def test_leaders_get_bottom_line_numbers_stories_without_checks_and_next_checks(
 def test_a_brief_from_before_the_memo_is_cut_as_before():
     old = "Brief.\nKPIs: x.\nStory one: P.\nChecked, in this order:\n- Supply: supported.\nConfidence: High.\nConsidered and dropped: y."
     assert executive_summary(old) == "Brief.\nKPIs: x.\nStory one: P.\nConfidence: High."
+
+
+# --- brief-007 slice A: windows named, per-territory changes, feed figures, Assumptions block ---------------
+
+SOUTHEAST_GAP = "Weeks of 2026-08-03 to 2026-08-31, Southeast: What should I do, and who should I loop in?"
+
+
+@needs_db
+def test_a_multi_week_window_compares_with_the_four_weeks_before():
+    """FR-001, SC-005: the P3-Q5 window is compared with 2026-07-06 to 2026-07-27, so Southeast's baseline is 639."""
+    from briefing_baseline import answer
+
+    text = answer(SOUTHEAST_GAP)["answer"]
+    assert "Southeast. BXA TRx averaged 481 a week against 639 before (down 24.8%)" in text
+    assert "against the four weeks before (2026-07-06 to 2026-07-27)." in section(text, "Bottom line")[1]
+
+
+@needs_db
+def test_scope_line_and_assumptions_name_the_comparison_weeks():
+    """FR-004, FR-012: leaders keep the scope line; the Assumptions block closes the Appendix."""
+    text = brief(WITHHELD)["answer"]
+    numbers = section(text, "The numbers")
+    assert numbers[0] == ("Scope: week of 2026-05-04, compared with the four weeks before (2026-04-06 to 2026-04-27). "
+                          "Levels marked projected or estimated are assumptions.")
+    appendix = section(text, "Appendix")
+    i = appendix.index("Assumptions:")
+    assert appendix[i + 1].startswith("- Comparison weeks: the four weeks before (2026-04-06 to 2026-04-27).")
+    assert any(x.startswith("- Not observed: New England is projected or estimated") for x in appendix[i:])
+    assert not digits_outside_tokens("\n".join(appendix[i:]).replace("2026-04-06", "").replace("2026-04-27", ""))
+
+
+@needs_db
+def test_territory_changes_match_the_golden_swings():
+    """FR-007 (P1-Q3): each territory's week-over-week change, with its direction."""
+    numbers = section(brief(ROUTINE)["answer"], "The numbers")
+    assert "- Pacific: up 24.8% on the week before; up 8.4% on the comparison weeks." in numbers
+    assert "- Southeast: down 10.8% on the week before; down 16.0% on the comparison weeks." in numbers
+
+
+@needs_db
+def test_feed_figures_carry_the_floor_target_and_comparison_range():
+    """FR-009 (P1-Q2): coverage against the gate floor, lateness against its target, and the comparison range."""
+    limits = section(brief(WITHHELD)["answer"], "What the data can't tell us")
+    joined = "\n".join(limits)
+    assert "panel coverage 0.656 against a 0.98 floor, 10.29 days after week end against a target of 7 days" in joined
+    assert "New England's observed BXA TRx ranged from 397 to 422 a week in the comparison weeks" in joined
+    focus = section(brief(WITHHELD, "New England")["answer"], "What the data can't tell us")
+    assert any(x.startswith("Feed for New England in these weeks: 84 rows received against 128 expected") for x in focus)

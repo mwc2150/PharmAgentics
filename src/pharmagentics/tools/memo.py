@@ -173,8 +173,17 @@ def _like_for_like(reg: Registry, p) -> str:
                   f"and {q._in('territory_id', ok)}", "int")
     total = reg.claim("get_metric", "select count(*) from raw.dim_territory", "int")
     pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope="like-for-like national")
-    span = f"the {_WORDS[len(B)]} weeks before" if len(W) == 1 and len(B) in _WORDS else "the weeks before"
-    return f"Like for like on {n} of {total} territories, BXA TRx is {stages.word(change)} {pct} against {span}."
+    return f"Like for like on {n} of {total} territories, BXA TRx is {stages.word(change)} {pct} against {comparison_text(p)}."
+
+
+def comparison_text(p) -> str:
+    """The comparison weeks in words and dates, with no other digit (brief-007 FR-004)."""
+    B = p.baseline
+    if not B:
+        return "no earlier weeks, because the release starts with this period"
+    if len(B) == 1:
+        return f"the week of {B[0]}"
+    return f"the {_WORDS.get(len(B), 'several')} weeks before ({B[0]} to {B[-1]})"
 
 
 def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str | None:
@@ -236,24 +245,79 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
     return lines
 
 
-def limits(p, proj: Projection, health: str) -> list[str]:
+def limits(p, proj: Projection, health: str, reg: Registry | None = None) -> list[str]:
     """§4: data health with the gate detail (`stages.data_health`, already claimed), the withheld focus
-    territory, how the projection was built, and calendar weeks left out."""
+    territory, how the projection was built, and calendar weeks left out. With `reg` (brief-007 FR-009): the
+    focus territory's feed figures, and the comparison-week range of a projected or estimated territory."""
     lines = [health]
     if p.focus in p.terrs and p.focus not in p.ok:
         lines.append(f"{q.name(p.focus)} has withheld cuts in these weeks, so no like-for-like story is given for it.")
+    if reg is not None:
+        lines += _feed_figures(reg, p, proj)
     lines += method_lines(proj)
     if p.calendar_note:
         lines.append(p.calendar_note)
     return lines
 
 
-def appendix(reg: Registry) -> list[str]:
-    return ["Method: like-for-like figures use only territories whose feed passed the gate in every week compared. "
-            "The projected national divides each territory's observed TRx by its panel coverage, and estimates a "
-            "territory that cannot be read from its recent share of national. Changes, stories and drivers use "
-            "like-for-like cuts only.",
-            f"Data version {reg.data_version}. Product: BXA (Cardiovela), synthetic data."]
+def _feed_figures(reg: Registry, p, proj: Projection) -> list[str]:
+    lines, W = [], p.requested
+    if p.focus in p.terrs:
+        where = f"from reporting.v_feed_health where territory_id = '{p.focus}' and week_start in {q._dates(W)}"
+        got = reg.claim("validate_feed", f"select sum(received_rows) {where}", "int", territory=p.focus)
+        want = reg.claim("validate_feed", f"select sum(expected_rows) {where}", "int", territory=p.focus)
+        cov = reg.claim("validate_feed", f"select min(panel_coverage_ratio) {where}", "dec3", territory=p.focus)
+        lines.append(f"Feed for {q.name(p.focus)} in these weeks: {got} rows received against {want} expected; "
+                     f"lowest panel coverage {cov}.")
+    if len(proj.weeks) == 1 and p.baseline:
+        for basis in ("projected", "estimated"):
+            for t in proj.territories(basis):
+                weekly = (f"select week_start, sum(trx) s from {q.RX} where product_id = 'BXA' and territory_id = '{t}' "
+                          f"and week_start in {q._dates(p.baseline)} group by 1")
+                if not reg.scalar(f"select count(*) from ({weekly})"):
+                    continue
+                low = reg.claim("get_metric", f"select min(s) from ({weekly})", "int", territory=t, scope="comparison weeks")
+                high = reg.claim("get_metric", f"select max(s) from ({weekly})", "int", territory=t, scope="comparison weeks")
+                lines.append(f"{q.name(t)}'s observed BXA TRx ranged from {low} to {high} a week in the comparison weeks, "
+                             f"which is what its {basis} level stands in for.")
+    return lines
+
+
+def appendix(reg: Registry, p=None, proj: Projection | None = None) -> list[str]:
+    lines = ["Method: like-for-like figures use only territories whose feed passed the gate in every week compared. "
+             "The projected national divides each territory's observed TRx by its panel coverage, and estimates a "
+             "territory that cannot be read from its recent share of national. Changes, stories and drivers use "
+             "like-for-like cuts only.",
+             f"Data version {reg.data_version}. Product: BXA (Cardiovela), synthetic data."]
+    return lines + (assumptions(p, proj) if p is not None else [])
+
+
+def assumptions(p, proj: Projection | None) -> list[str]:
+    """The Assumptions block (brief-007 FR-012; the Week 6 assumption book): each assumption with its source."""
+    lines = ["Assumptions:",
+             f"- Comparison weeks: {comparison_text(p)}. Source: the brief's default rule, the four weeks before "
+             "the period."]
+    if p.baseline and len(p.baseline) < stages.BASELINE_WEEKS:
+        lines.append(f"- Fewer comparison weeks exist, because the release starts on {p.first}.")
+    lines.append("- Like for like: changes use only territories whose feed passed the gate in every week compared. "
+                 "Source: the feed gate.")
+    marked = [r.territory for r in proj.rows if r.basis != "observed"] if proj else []
+    if marked:
+        lines.append(f"- Not observed: {', '.join(q.name(t) for t in marked)} "
+                     f"{'is' if len(marked) == 1 else 'are'} projected or estimated, not counted. Source: panel coverage "
+                     "and each territory's recent share of national.")
+    lines.append("- Exclusions: withheld cuts are left out of every change and story, and never read as zero demand."
+                 + (" Calendar weeks are left out of the stories." if p.calendar_note else ""))
+    lines.append("- Drivers: each check compares the same weeks as the change; no delay between a driver and TRx is "
+                 "assumed.")
+    return lines
+
+
+def scope_line(p, proj: Projection | None = None) -> str:
+    """The one line leaders see about the period and its comparison (brief-007 FR-012)."""
+    marked = proj is not None and any(r.basis != "observed" for r in proj.rows)
+    return (f"Scope: {stages.describe(p)}, compared with {comparison_text(p)}."
+            + (" Levels marked projected or estimated are assumptions." if marked else ""))
 
 
 def _line(subject: str, action: str, owner: str, decision: str) -> str:
@@ -287,7 +351,7 @@ def without_next(closing: str) -> str:
     return re.sub(r"\s*Next: [^.]*\.", "", closing).rstrip()
 
 
-def numbers(proj: Projection, kpi_lines: list[str], restatement_lines: list[str]) -> list[str]:
-    """§2: the projection table, the KPI lines (like for like, week over week, calendar) and restatements,
-    which sit here so leaders see them (research R7)."""
-    return table_lines(proj) + kpi_lines + restatement_lines
+def numbers(proj: Projection, kpi_lines: list[str], restatement_lines: list[str], p=None) -> list[str]:
+    """§2: the scope line (with `p`), the projection table, the KPI lines (like for like, week over week,
+    territory changes, calendar) and restatements, which sit here so leaders see them (research R7)."""
+    return ([scope_line(p, proj)] if p is not None else []) + table_lines(proj) + kpi_lines + restatement_lines

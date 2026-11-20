@@ -16,6 +16,8 @@ from .registry import Registry
 from .window import parse
 
 MATERIAL_CHANGE, MATERIAL_GAP, NOISE_Z = 0.10, 0.08, 2.5
+BASELINE_WEEKS = 4  # comparison weeks: the four weeks before the requested window, any length (brief-007 FR-001)
+COVERAGE_FLOOR = 0.98  # the feed gate's panel coverage floor, as in sql/001_reporting_views.sql (LOW_OR_INVALID_COVERAGE)
 
 
 def word(change: float) -> str:
@@ -52,8 +54,7 @@ def resolve(reg: Registry, question: str) -> Period:
     p = Period(question=question, first=first, latest=latest, requested=W, baseline=[], focus=ask["territory"], note=ask["note"])
     if not W:
         return p
-    n_b = 4 if len(W) == 1 else min(len(W), 13)
-    p.baseline = [w for w in (q.shift(W[0], -i) for i in range(n_b, 0, -1)) if w >= first]
+    p.baseline = [w for w in (q.shift(W[0], -i) for i in range(BASELINE_WEEKS, 0, -1)) if w >= first]
     weeks = sorted(set(W) | set(p.baseline))
     health = reg.rows(f"select week_start::varchar, territory_id, health_status, flag_reasons "
                       f"from reporting.v_feed_health where week_start in {q._dates(weeks)}")
@@ -108,9 +109,13 @@ def data_health(reg: Registry, p: Period) -> str:
         if "MISSING_RX_KEYS" in reasons:
             detail.append(f"{reg.claim('validate_feed', q.feed(w, t, 'missing_key_count'), 'int', week=w, territory=t)} missing keys")
         if "LOW_OR_INVALID_COVERAGE" in reasons:
-            detail.append(f"panel coverage {reg.claim('validate_feed', q.feed(w, t, 'panel_coverage_ratio'), 'dec3', week=w, territory=t)}")
+            floor = reg.claim("validate_feed", f"select {COVERAGE_FLOOR} from reporting.v_feed_health limit 1", "dec2",
+                              scope="feed gate coverage floor, the LOW_OR_INVALID_COVERAGE rule in sql/001_reporting_views.sql")
+            detail.append(f"panel coverage {reg.claim('validate_feed', q.feed(w, t, 'panel_coverage_ratio'), 'dec3', week=w, territory=t)} against a {floor} floor")
         if "LATE_OR_UNKNOWN_DELIVERY" in reasons:
-            detail.append(f"{reg.claim('validate_feed', q.feed(w, t, 'actual_lag_days'), 'dec2', week=w, territory=t)} days after week end")
+            target = reg.claim("validate_feed", q.feed(w, t, "expected_lag_days"), "int", week=w, territory=t, scope="delivery target")
+            detail.append(f"{reg.claim('validate_feed', q.feed(w, t, 'actual_lag_days'), 'dec2', week=w, territory=t)} days after week end "
+                          f"against a target of {target} days")
         lines.append(f"- {q.name(t)}, week of {w}: not reportable ({names})" + (f"; {', '.join(detail)}." if detail else "."))
     if len(flagged) > 5 and len(W) > 1:
         lines.append("- More withheld cuts exist; see the evidence list.")
@@ -157,6 +162,7 @@ def kpis(reg: Registry, p: Period) -> list[str]:
             lines.append(f"The headline total of reportable cuts is {word(naive)} {p2}, but that move comes mostly from withheld cuts, so it is a data artifact, not a business change.")
     if len(W) == 1 and B:
         lines += week_over_week(reg, p)
+    lines += territory_changes(reg, p)
     if calendar:
         for w, holiday, bd, reset in calendar[:3]:
             days = reg.claim("lookup_calendar", q.calendar(w, "business_days"), "int", week=w)
@@ -192,6 +198,28 @@ def week_over_week(reg: Registry, p: Period) -> list[str]:
                      f"{reg.claim('get_metric', prev_b, 'int', week=prev, scope='like for like')} to "
                      f"{reg.claim('get_metric', now_b, 'int', week=w, scope='like for like')} "
                      f"({word(ch)} {reg.claim('get_metric', q.pct_change(now_b, prev_b), 'pct1', scope='week over week, like for like')}).")
+    return lines
+
+
+def territory_changes(reg: Registry, p: Period) -> list[str]:
+    """§2 (brief-007 FR-007): each territory's latest week on the week before and its period on the comparison
+    weeks. Only like-for-like territories get a change; a territory with a withheld week is named without one."""
+    W, B = p.weeks, p.baseline
+    if not W or not B or not p.terrs:
+        return []
+    last, prev = W[-1], q.shift(W[-1], -1)
+    lines = [f"Change by territory, like for like: the week of {last} on the week before, and the period on the "
+             "comparison weeks:"]
+    for t in sorted(p.terrs, key=q.name):
+        if t not in p.ok:
+            lines.append(f"- {q.name(t)}: no change is given, because a week compared failed the feed gate.")
+            continue
+        wow_sql = q.pct_change(q.trx_sum([last], terrs=[t]), q.trx_sum([prev], terrs=[t]))
+        base_sql = q.pct_change(q.mean_weekly(W, terrs=[t]), q.mean_weekly(B, terrs=[t]))
+        wow = reg.claim("get_metric", wow_sql, "pct1", territory=t, scope="week over week")
+        base = reg.claim("get_metric", base_sql, "pct1", territory=t, scope="against the comparison weeks")
+        lines.append(f"- {q.name(t)}: {word(reg.scalar(wow_sql) or 0)} {wow} on the week before; "
+                     f"{word(reg.scalar(base_sql) or 0)} {base} on the comparison weeks.")
     return lines
 
 
