@@ -38,6 +38,7 @@ A `core` spec records what each lane needs from the shared part. It does not spe
 | [brief-004](brief-004-verifier/spec.md) | Verifier | 6 | EV-1.1, EV-5.3, EV-6.1, EV-9.1, EV-9.2 | P1-Q1, P1-Q4, P2-Q5, P3-Q6 | brief-003 | 008-verifier |
 | [brief-005](brief-005-review-signoff/spec.md) | Review, sign-off and feedback | 7 | EV-6.2, EV-6.3, EV-8.1 | P1-Q1, P1-Q4, P1-Q6, P2-Q5 | brief-004, core-005 | 009 (review part) |
 | [brief-006](brief-006-follow-ups/spec.md) | Follow-ups and threads: the bottom message bar, section-referenced follow-ups, saved and shared threads | 5–7 | EV-1.1, EV-9.1 | P1, P3 | brief-003 v3, core-007, core-008 | new (2026-11-19) |
+| [brief-007](brief-007-windows-and-evidence/spec.md) | Windows, assumptions and evidence: 4-week default baseline and a comparison picker, a release-wide Promotion review, per-territory and split tables, feed-quality counts, lag-tested drivers, an Assumptions block | 3–6 | EV-1.2, EV-2.1, EV-3.2, EV-3.4, EV-4.3, EV-4.5, EV-7.3, EV-7.5 | P1-Q2, P1-Q3, P2-Q4, P2-Q5, P3-Q5, P4-Q1 to P4-Q6 | brief-002, brief-003 v3, brief-006 | new (2026-11-20) |
 
 **Build order** (Briefing Architecture §14, three builds): scripted baseline first (core-001 to core-005, brief-001, a fixed-order brief-002, then brief-003 to brief-005), then low-code, then the Magentic agent. core-006 starts early so every build is scored on the same cases.
 

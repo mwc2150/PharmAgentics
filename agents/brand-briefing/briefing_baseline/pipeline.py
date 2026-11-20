@@ -181,10 +181,10 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
         parts = memo.MemoParts(
             title=memo.title_lines(p),
             bottom_line=memo.bottom_line(reg, p, f.proj, told, restated=bool(f.restated)),
-            numbers=memo.numbers(f.proj, f.kpis, f.restated),
-            limits=memo.limits(p, f.proj, f.health),
+            numbers=memo.numbers(f.proj, f.kpis, f.restated, p),
+            limits=memo.limits(p, f.proj, f.health, reg),
             next_checks=memo.next_checks(p, told, competitor),
-            appendix=memo.appendix(reg, brand_id=p.brand_id),
+            appendix=memo.appendix(reg, p=p, proj=f.proj),
             stories=blocks, story_notes=notes,
             charts={"2": charts.trend(reg, p), "4": charts.coverage(reg, p)})  # brief-003 FR-024
         template, sections = memo.compose(parts)

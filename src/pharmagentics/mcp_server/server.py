@@ -216,8 +216,8 @@ class RunSession:
         restated = stages.restatements(reg, p)
         kpis = stages.kpis(reg, p)
         self.proj, self.restated = projection.build(reg, p), bool(restated)
-        return {"title": memo.title_lines(p), "numbers": memo.numbers(self.proj, kpis, restated),
-                "limits": memo.limits(p, self.proj, health), "appendix": memo.appendix(reg),
+        return {"title": memo.title_lines(p), "numbers": memo.numbers(self.proj, kpis, restated, p),
+                "limits": memo.limits(p, self.proj, health, reg), "appendix": memo.appendix(reg, p=p, proj=self.proj),
                 "calendar": bool(p.calendar)}
 
     def memo_close(self, competitor: bool) -> dict:
