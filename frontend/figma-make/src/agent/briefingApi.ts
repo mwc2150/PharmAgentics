@@ -86,6 +86,7 @@ export type StoryCard = {
   time: string
 }
 export type TriagePlan = {
+  promotion_review?: boolean
   plan_id: string
   question: string
   data_version: string
@@ -173,11 +174,17 @@ export type Me = { name: string; auth_mode: "oidc" | "dev"; brand_ids: string[];
 // Data classification per tab and view (core-009): labels only, from src/pharmagentics/api/classification.json.
 export type ClassLevel = { id: string; label: string; description: string }
 export type Classification = { version: string; levels: ClassLevel[]; tabs: Record<string, string>; clearance: Record<string, string> }
+export type Comparison =
+  | { kind: "previous"; weeks: number }
+  | { kind: "last_year" }
+  | { kind: "custom"; start: string; end: string }
+
 export type BriefingQuery = {
-  intent: "weekly_brief"
+  intent: "weekly_brief" | "promotion_review"
   brand_id: string
   territory_id: string
   week_start: string
+  comparison?: Comparison | null
   question: string
 }
 

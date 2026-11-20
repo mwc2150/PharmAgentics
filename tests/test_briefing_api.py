@@ -88,6 +88,73 @@ def test_out_of_release_returns_400():
     assert response.status_code == 400
 
 
+def test_invalid_comparison_is_rejected_before_brief_or_worker_submission():
+    context = ReleaseContext(first_week=date(2026, 6, 1), latest_week=date(2026, 6, 8),
+                             territory_ids=["PACIFIC"], available_weeks=[date(2026, 6, 1), date(2026, 6, 8)])
+    request = {**VALID, "comparison": {"kind": "last_year"}}
+    with patch.object(service, "release_context", return_value=context):
+        for url, body in (("/api/briefing/triage", request), ("/api/briefing/query", request),
+                          ("/api/agent/jobs", {"kind": "triage", "query": request})):
+            response = CLIENT.post(url, json=body)
+            assert response.status_code == 400, response.text
+            assert "outside the data release" in response.json()["detail"]
+
+
+def test_leader_cannot_request_a_comparison():
+    with TestClient(app) as director:
+        director.post("/auth/dev-login", data={"username": "dev-director"}, follow_redirects=False)
+        response = director.post("/api/briefing/query", json={**VALID, "comparison": {"kind": "previous", "weeks": 1}})
+    assert response.status_code == 403
+
+
+def test_multibrand_scripted_request_passes_its_brand_and_window():
+    choices = [date(2026, 6, 1), date(2026, 6, 8)]
+    context = ReleaseContext(first_week=choices[0], latest_week=choices[-1],
+                             territory_ids=["PACIFIC"], available_weeks=choices,
+                             product_ids=["BXA", "BXC"])
+    request = BriefingQuery.model_validate({**VALID, "brand_id": "BXC",
+                                           "comparison": {"kind": "previous", "weeks": 1}})
+    package = types.ModuleType("briefing_baseline")
+    package.__path__ = []
+    pipeline = types.ModuleType("briefing_baseline.pipeline")
+
+    def answer(question, db, brand_id, *, comparison):
+        assert brand_id == "BXC" and comparison == request.comparison
+        return {"system": "briefing_scripted", "answer": "Lipidara", "brand_id": brand_id}
+
+    pipeline.answer = answer
+    with patch.object(service, "release_context", return_value=context), patch.dict(
+        sys.modules, {"briefing_baseline": package, "briefing_baseline.pipeline": pipeline}
+    ):
+        result = service.run_briefing(request)
+        assert result.brand_id == "BXC" and result.comparison == request.comparison
+        analyst = TestClient(app)
+        analyst.post("/auth/dev-login", data={"username": "dev-analyst-multibrand"}, follow_redirects=False)
+        response = analyst.post("/api/briefing/query",
+                                json={**VALID, "brand_id": "BXC", "intent": "promotion_review"})
+        assert response.status_code == 400
+        assert "available for BXA" in response.json()["detail"]
+
+
+def test_a_changed_window_gets_a_new_saved_brief_for_each_brand():
+    from pharmagentics.api.store import brief_id
+
+    base = sample_result()
+    first = {"kind": "previous", "weeks": 1}
+    second = {"kind": "previous", "weeks": 2}
+    ids = {brief_id({**base, "brand_id": brand, "comparison": choice})
+           for brand in ("BXA", "BXC") for choice in (None, first, second)}
+    assert len(ids) == 6
+    assert brief_id(base) == brief_id({**base, "comparison": None})
+
+
+def test_worker_cannot_submit_a_default_result_for_an_explicit_window():
+    request = BriefingQuery.model_validate({**VALID, "comparison": {"kind": "previous", "weeks": 2}})
+    with pytest.raises(RuntimeError, match="different comparison window"):
+        service._matching_comparison(request.comparison, {})
+    service._matching_comparison(request.comparison, {"comparison": {"kind": "previous", "weeks": 2}})
+
+
 def test_no_server_traceback_leaks_to_browser():
     with patch.object(service, "run_briefing", side_effect=RuntimeError("private detail")):
         response = CLIENT.post("/api/briefing/query", json=VALID)

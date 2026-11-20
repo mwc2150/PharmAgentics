@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .schemas import BriefingQuery, BriefingResult, ReleaseContext
 from pharmagentics.tools.brands import BRIEFING_ENGINES, PRODUCTS
+from pharmagentics.tools.window import Comparison, comparison_weeks
 
 ROOT = Path(__file__).resolve().parents[3]
 BRIEFING_DIR = ROOT / "agents" / "brand-briefing"
@@ -91,6 +92,8 @@ def normalize_question(request: BriefingQuery) -> str:
     not rely on the LLM or the free-text question to choose its data scope.
     """
     label = TERRITORIES[request.territory_id]
+    if request.intent == "promotion_review":
+        return f"Promotion review in {label}: {request.question.strip()}"
     return f"Week of {request.week_start.isoformat()} in {label}: {request.question.strip()}"
 
 
@@ -113,6 +116,16 @@ def _check_scope(request: BriefingQuery) -> None:
         )
     if request.territory_id not in bounds.territory_ids:
         raise OutsideRelease("Territory not present in the supported synthetic data release.")
+    if request.intent == "promotion_review" and request.brand_id != "BXA":
+        raise OutsideRelease("The release-wide Promotion review is available for BXA.")
+    if request.comparison is not None:
+        if request.intent == "promotion_review":
+            raise OutsideRelease("The release-wide Promotion review uses its own lapse comparison.")
+        try:
+            comparison_weeks(request.comparison, [request.week_start.isoformat()],
+                             {week.isoformat() for week in bounds.available_weeks})
+        except ValueError as exc:
+            raise OutsideRelease(str(exc)) from exc
     # Import the existing lane directly, exactly as eval/harness/systems.py does.
     # Do not import eval/ from runtime code or reconstruct KPI logic here.
     path = str(BRIEFING_DIR)
@@ -136,12 +149,20 @@ def _matching_brand(expected: str, result: dict) -> None:
         raise RuntimeError("The engine returned a different brand from the request.")
 
 
+def _matching_comparison(expected: Comparison | None, result: dict) -> None:
+    raw = result.get("comparison")
+    actual = Comparison.model_validate(raw) if raw is not None else None
+    if actual != expected:
+        raise RuntimeError("The worker returned a different comparison window from the request.")
+
+
 def run_triage(request: BriefingQuery) -> dict:
     """Stages 1 to 3 and the code triage plan for P1 (brief-002 US8)."""
     _check_scope(request)
     from briefing_baseline.pipeline import triage
 
-    plan = triage(normalize_question(request), db=DB, brand_id=request.brand_id)
+    options = {"comparison": request.comparison} if request.comparison is not None else {}
+    plan = triage(normalize_question(request), db=DB, brand_id=request.brand_id, **options)
     _matching_brand(request.brand_id, plan)
     _traceable(plan["claims"], plan["evidence"])
     plan.update(brand_id=request.brand_id, territory_id=request.territory_id, week_start=request.week_start.isoformat())
@@ -151,16 +172,17 @@ def run_triage(request: BriefingQuery) -> dict:
 def run_briefing(request: BriefingQuery) -> BriefingResult:
     _check_scope(request)
     question = normalize_question(request)
+    options = {"comparison": request.comparison} if request.comparison is not None else {}
     extra = {}
     if request.triage is None:
         from briefing_baseline.pipeline import answer
 
-        raw = answer(question, db=DB, brand_id=request.brand_id)
+        raw = answer(question, db=DB, brand_id=request.brand_id, **options)
     else:
         from briefing_baseline import pipeline
 
         try:
-            out = pipeline.run_with_plan(question, request.triage.model_dump(), db=DB, brand_id=request.brand_id)
+            out = pipeline.run_with_plan(question, request.triage.model_dump(), db=DB, brand_id=request.brand_id, **options)
         except pipeline.StalePlan as exc:
             raise StalePlan(str(exc)) from exc
         except ValueError as exc:
@@ -173,7 +195,7 @@ def run_briefing(request: BriefingQuery) -> BriefingResult:
     return BriefingResult(
         system=raw["system"], question=question,
         brand_id=request.brand_id, territory_id=request.territory_id,
-        week_start=request.week_start,
+        week_start=request.week_start, comparison=request.comparison,
         answer=raw["answer"], claims=claims, evidence=evidence,
         data_version=_traceable(claims, evidence),
         abstained=bool(raw.get("abstained", False)), citations=raw.get("citations"), sections=raw.get("sections"), **extra,
@@ -181,7 +203,7 @@ def run_briefing(request: BriefingQuery) -> BriefingResult:
 
 
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-_NUMBER = re.compile(r"(?<![\w.-])\d[\d,.]*%?")
+_NUMBER = re.compile(r"(?<![\w.-])-?\d[\d,.]*%?")
 
 
 def untraced_numbers(answer: str, claims: list[dict], data_version: str | None) -> list[str]:
@@ -199,6 +221,7 @@ def accept_agent_brief(query: BriefingQuery, posted: dict) -> BriefingResult:
     require_engine(query.brand_id, "agent")
     env = posted.get("envelope") or {}
     _matching_brand(query.brand_id, env)
+    _matching_comparison(query.comparison, env)
     claims, evidence = env.get("claims") or [], env.get("evidence") or []
     version = _traceable(claims, evidence)
     if version != current_data_version():
@@ -209,7 +232,7 @@ def accept_agent_brief(query: BriefingQuery, posted: dict) -> BriefingResult:
         raise RuntimeError(f"Numbers with no claim behind them: {', '.join(bad[:5])}.")
     return BriefingResult(
         engine="agent", system=str(env.get("system", "briefing_agent")), question=normalize_question(query),
-        brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start,
+        brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start, comparison=query.comparison,
         answer=env.get("answer", ""), claims=claims, evidence=evidence, data_version=version,
         abstained=bool(env.get("abstained", False)), triage=posted.get("triage"), flow=posted.get("flow"),
         sections=env.get("sections"),

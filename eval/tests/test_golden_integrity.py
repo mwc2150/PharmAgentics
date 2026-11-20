@@ -9,12 +9,13 @@ CASES = load_cases()
 
 
 def test_one_case_per_persona_question():
-    """42 persona questions plus the six two-turn Briefing cases (brief-006 FR-013), one case each."""
-    assert len(CASES) == 48
+    """The persona questions, six two-turn cases, and two draft comparison cases."""
+    assert len(CASES) == 50
     assert {c.story for c in CASES if c.lane == "briefing"} == BRIEFING_STORIES
     assert {c.story for c in CASES if c.lane == "forecast"} == FORECAST_STORIES
-    assert len({c.id for c in CASES}) == 48
+    assert len({c.id for c in CASES}) == 50
     assert {c.story for c in CASES if c.follow_up} == {f"FU-{n}" for n in range(1, 7)}
+    assert {c.story for c in CASES if c.comparison} == {"WIN-1", "WIN-2"}
 
 
 def test_eval_items_exist_in_their_lane():

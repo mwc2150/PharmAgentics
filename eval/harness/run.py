@@ -51,13 +51,15 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
     errors: list[str] = []
 
     @mlflow.trace(name=f"{system}.predict", span_type="AGENT")
-    def predict_fn(question: str, follow_up: str | None = None, section: str | None = None) -> dict:
+    def predict_fn(question: str, follow_up: str | None = None, section: str | None = None,
+                   comparison: dict | None = None) -> dict:
         try:
             started = time.perf_counter()
+            options = {"comparison": comparison} if comparison and system in ("briefing_scripted", "briefing_agent") else {}
             if follow_up and hasattr(sut, "predict_follow_up"):
-                out = sut.predict_follow_up(question, follow_up, section)
+                out = sut.predict_follow_up(question, follow_up, section, **options)
             else:
-                out = sut.predict(question)
+                out = sut.predict(question, **options)
             timed = (out.get("latency") if isinstance(out, dict) else None) or {"brief": time.perf_counter() - started}
             for kind, secs in timed.items():
                 if kind in latency and secs is not None:

@@ -7,6 +7,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel
 
+from pharmagentics.tools.window import Comparison
+
 from .paths import GOLDEN_DIR
 
 Lane = Literal["briefing", "forecast"]
@@ -58,12 +60,14 @@ class Case(BaseModel):
     eval_items: list[str]
     facts: list[Fact] = []
     follow_up: FollowUp | None = None  # two-turn cases (brief-006 FR-013)
+    comparison: Comparison | None = None
     source: str
 
     def inputs(self) -> dict:
         """What the system under test receives: the question, and the follow-up for a two-turn case."""
         return {"question": self.question, "follow_up": self.follow_up.question if self.follow_up else None,
-                "section": self.follow_up.section if self.follow_up else None}
+                "section": self.follow_up.section if self.follow_up else None,
+                **({"comparison": self.comparison.model_dump(mode="json", exclude_none=True)} if self.comparison else {})}
 
     def expectations(self) -> dict:
         """What the scorers compare against. Only `expected_response` reaches an LLM judge."""

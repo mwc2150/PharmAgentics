@@ -85,11 +85,13 @@ def _dump(data: dict) -> str:
 
 
 def brief_id(result: dict) -> str:
-    """Same engine, data version, week, territory and question give the same brief, so a rerun
-    keeps its review state instead of creating a duplicate."""
+    """A rerun of the same scope and decision keeps its review state."""
     key = "|".join(str(result.get(k)) for k in ("system", "data_version", "week_start", "territory_id", "question"))
     if result.get("brand_id", "BXA") != "BXA":
         key += "|brand:" + result["brand_id"]  # preserve legacy BXA IDs and shared links
+    if comparison := result.get("comparison"):
+        choice = {k: v for k, v in comparison.items() if v is not None}
+        key += "|comparison:" + json.dumps(choice, sort_keys=True, separators=(",", ":"))
     triage = result.get("triage") or {}
     if triage and not triage.get("default", True):  # P1 changed the plan: a different brief (brief-002 R6)
         key += "|triage:" + ",".join(triage.get("order", []))

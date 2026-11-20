@@ -38,7 +38,7 @@ def untraced(turn: dict) -> list[str]:
     text = re.sub(r"§\s*\d(?:\.\d+)?", " ", turn["answer"])  # section references are identifiers
     text = re.sub(r"\b\d{4}-\d{2}-\d{2}\b|\b\w*[A-Za-z_]\w*\d\w*\b", " ", text)
     values = {c["value"] for c in turn["claims"]}
-    return [n for n in re.findall(r"\d[\d,.]*%?", text) if n.rstrip(".,") not in values]
+    return [n for n in re.findall(r"-?\d[\d,.]*%?", text) if n.rstrip(".,") not in values]
 
 
 @needs_db
@@ -59,9 +59,17 @@ def test_a_section_reference_in_the_text_is_followed(pacific):
 
 @needs_db
 def test_a_number_the_brief_does_not_hold_is_never_invented(pacific):
-    turn = answer(pacific, "Split this by plan", section="3.1")
+    turn = answer(pacific, "Split this by product", section="3.1")
     assert turn["kind"] == "not_in_brief" and turn["offer"] == {"agent": True} and not turn["claims"]
     assert not re.search(r"\d", re.sub(r"§\s*\d(?:\.\d+)?", "", turn["answer"]))
+
+
+@needs_db
+def test_a_split_in_the_story_is_available_in_a_followup(pacific):
+    turn = answer(pacific, "Split this by plan", section="3.1")
+    assert turn["kind"] == "restate" and "Cuts of the change by plan" in turn["answer"]
+    assert turn["claims"] and not untraced(turn)
+    assert {e["params"]["by"] for e in turn["evidence"]} == {"plan"}
 
 
 @needs_db

@@ -4,6 +4,7 @@ import { BrandMark, Icon, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
 import { Overview } from "./Overview"
 import { Memo } from "./Memo"
+import { ComparisonPicker, comparisonError } from "./ComparisonPicker"
 import { FeedbackReview } from "./FeedbackReview"
 import { MessageBar, type Chip } from "./MessageBar"
 import { sharedFromLocation } from "./agent/threadApi"
@@ -16,7 +17,7 @@ import {
   getContext, getBriefing, getMe, getTriage, listPublished, markInsight, openBrief, reviewBrief, NotSignedIn,
   getAgentStatus, submitAgentJob, waitAgentJob, agentPlan, agentBrief, getClassification, setViewAs,
   type AgentStatus, type AgentJob, type Classification,
-  type BriefingResult, type Claim, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext,
+  type BriefingResult, type Claim, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext,
   type Stage, type TriageDecision, type TriagePlan, type TriageRecord,
 } from "./agent/briefingApi"
 import {
@@ -621,7 +622,7 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
       </div>}
     </div>
     {plan.state==="OUT_OF_SCOPE" ? <div className="rounded-xl bg-amberbg px-6 py-5 text-sm text-amber ring-1 ring-amberline"><p className="font-medium">The data cannot answer this question as asked.</p><p className="mt-1">{plan.scope}</p><p className="mt-2 text-ink">The brief will state this and give the scripted brief for the week. No investigation runs.</p></div> :
-    plan.state!=="TRIAGE_REVIEW" ? <div className="rounded-xl bg-sheet px-6 py-5 text-sm border border-rule">{plan.state==="CALENDAR" ? "Calendar week: lower volume is expected, so code opens no story." : "Routine week: code found no material change, so there is no story to triage."}</div> :
+    plan.state!=="TRIAGE_REVIEW" ? <div className="rounded-xl bg-sheet px-6 py-5 text-sm border border-rule">{plan.promotion_review ? "The review will compare coverage lapses and recoveries across the release." : plan.state==="CALENDAR" ? "Calendar week: lower volume is expected, so code opens no story." : "Routine week: code found no material change, so there is no story to triage."}</div> :
     <ol className="space-y-3">{order.map((id, i)=>{ const c=byId.get(id)!; const on=kept.has(id); return <li key={id} className={`rounded-xl bg-sheet p-5 ring-1 transition ${on?"ring-rule":"opacity-60 ring-rule"}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0"><div className="text-[11px] uppercase tracking-widest text-muted">{on ? `Story ${decision.stories.indexOf(id)+1}` : "Left out"} · code rank {c.rank}</div><h3 className="mt-1 text-base font-semibold">{c.title}</h3></div>
@@ -698,7 +699,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
     <article className={`${PANEL} overflow-hidden`}>
       <div className="border-b border-rule px-6 py-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted"><span>{result.engine==="agent" ? "Agent team · experimental" : "Scripted"}</span><ClassLabel tab="briefing.view.analyst"/></div>
-        <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)}, week of {labelWeek(result.week_start)}</h2>
+        <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : `week of ${labelWeek(result.week_start)}`}</h2>
         <p className="mt-1.5 text-sm text-muted">{result.brand_id}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <span className={`${chip} bg-amberbg text-amber`}>Unresolved findings</span>}</div>
       </div>
@@ -728,7 +729,12 @@ function AnalystApp({me}: {me: Me}) {
   const [result,setResult] = useState<BriefingResult | null>(null)
   const [runError,setRunError] = useState<string | null>(null)
   const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved">("overview")
-  const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string} | null>(null)
+  const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,promotion:boolean,question:string,
+    comparison:Comparison | null} | null>(null)
+  const [promotion,setPromotion] = useState(false)
+  const [comparison,setComparison] = useState<NonNullable<typeof requestScope>["comparison"]>(null)
+  const reviewPromotion = brand === "BXA" && promotion
+  const invalidComparison = reviewPromotion ? null : comparisonError(comparison, week, context?.available_weeks ?? [])
   const [plan,setPlan] = useState<TriagePlan | null>(null)
   // Agent engine (core-007 FR-028/FR-031): jobs run on teammate or cloud CPU hosts; the app only queues them.
   const [engine,setEngine] = useState<"scripted" | "agent">("scripted")
@@ -750,7 +756,7 @@ function AnalystApp({me}: {me: Me}) {
     setEngine(e=>supported.includes(e) ? e : "scripted")
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
     setTriageJob(null); setJobNote(null); setJobState(null); setPending(false)
-    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false)
+    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(null)
     setView(v=>v==="triage" || v==="result" ? "home" : v)
   }
 
@@ -791,8 +797,11 @@ function AnalystApp({me}: {me: Me}) {
 
   const submit = async (event?: React.FormEvent) => {
     event?.preventDefault()
-    if(pending || !context || !context.product_ids.includes(brand) || !context.territory_ids.includes(territory) || !context.available_weeks.includes(week)) return
-    const selected={brand,territory,week}, token=++generation.current
+    if(pending || invalidComparison || !context || !context.product_ids.includes(brand) || !context.territory_ids.includes(territory) || !context.available_weeks.includes(week)) return
+    const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparison,
+      question:ask.trim().length>=3 ? ask.trim().slice(0,300) : reviewPromotion ? "Review promotion across the release." : "Generate the weekly brand-performance briefing."}
+    // Plan review is always on in UAT (brief-002 FR-019): stages 1 to 3 and the code triage first.
+    const token=++generation.current
     const active=()=>token===generation.current
     setPending(true);setRunError(null);setResult(null);setPlan(null);setRequestScope(selected);setView("triage");setJobNote(null)
     try {
@@ -811,8 +820,8 @@ function AnalystApp({me}: {me: Me}) {
     } catch(e) {if(active()) setRunError(message(e))}
     finally {if(active()){setPending(false);setJobNote(null);setJobState(null)}}
   }
-  const query = (s: {brand:string,territory:string,week:string}) => ({intent:"weekly_brief" as const,brand_id:s.brand,territory_id:s.territory,week_start:s.week,
-    question: engine==="agent" && ask.trim().length>=3 ? ask.trim().slice(0,300) : "Generate the weekly brand-performance briefing."})
+  const query = (s: NonNullable<typeof requestScope>) => ({intent:s.promotion ? "promotion_review" as const : "weekly_brief" as const,
+    brand_id:s.brand,territory_id:s.territory,week_start:s.week,question:s.question,comparison:s.comparison})
   const approvePlan = async (decision: TriageDecision) => {
     if(!requestScope) return
     const token=++generation.current, active=()=>token===generation.current
@@ -857,28 +866,30 @@ function AnalystApp({me}: {me: Me}) {
             <select className={FIELD} value={territory} onChange={e=>setTerritory(e.target.value)} disabled={!selectable}>{context?.territory_ids.map(id=><option key={id} value={id}>{labelTerritory(id)}</option>)}</select>
           </label>
           <label className={LABEL}>Reporting week
-            <select className={FIELD} value={week} onChange={e=>setWeek(e.target.value)} disabled={!selectable}>{[...(context?.available_weeks??[])].reverse().map(w=><option key={w} value={w}>{labelWeek(w)}</option>)}</select>
+            <select className={FIELD} value={week} onChange={e=>setWeek(e.target.value)} disabled={!selectable || reviewPromotion}>{[...(context?.available_weeks??[])].reverse().map(w=><option key={w} value={w}>{labelWeek(w)}</option>)}</select>
           </label>
         </div>
+        {brand === "BXA" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promotion} onChange={e=>setPromotion(e.target.checked)} /> Promotion review across the release</label>}
+        {!reviewPromotion && <ComparisonPicker value={comparison} onChange={setComparison} week={week} weeks={context?.available_weeks ?? []} disabled={!selectable} labelWeek={labelWeek}/>}
         <fieldset><legend className="mb-1.5 text-xs font-medium text-muted">Engine</legend>
           <div className="divide-y divide-rule rounded-lg border border-rule">
             <label className="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-paper/50"><input type="radio" name="engine" checked={engine==="scripted"} onChange={()=>setEngine("scripted")} className="mt-1"/><span><span className={`block text-sm ${engine==="scripted" ? "text-ink" : "text-muted"}`}>Scripted</span><span className="block text-xs text-muted">Instant. Runs the standard checks in a fixed order.</span></span></label>
             {agentSupported && <label className={`flex items-start gap-3 px-4 py-3 transition-colors ${!agentSupported || agent?.configured===false ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-paper/50"}`}><input type="radio" name="engine" checked={engine==="agent"} disabled={!agentSupported || agent?.configured===false} onChange={()=>setEngine("agent")} className="mt-1"/><span title={agent?.model ? `Model: ${agent.model}` : undefined}><span className={`block text-sm ${engine==="agent" ? "text-ink" : "text-muted"}`}>Agent team <span className="text-xs text-muted">· experimental</span></span><span className="block text-xs text-muted">A manager and two specialist agents investigate the week. {agent?.builtin ? "Usually a minute or two." : agent?.online ? "A few minutes per step." : agent?.cloud?.enabled && agent.cloud.seconds_left>0 ? `About ${agent.cloud.eta_minutes ?? 15} minutes for a brief.` : "Waits until an agent host is available."}</span></span></label>}
           </div>
         </fieldset>
-        {engine==="agent" && <label className={LABEL}>Your question (optional)
+        {(engine==="agent" || reviewPromotion) && <label className={LABEL}>Your question (optional)
           <textarea value={ask} onChange={e=>setAsk(e.target.value)} maxLength={300} rows={2} placeholder="For example: why did Pacific drop, and is anything else going on?" className={FIELD}/>
         </label>}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">
           <span className="text-xs text-muted">{loadingContext ? "Loading the data release…" : engine==="agent" ? "You review the agents' plan before they investigate." : "You review the plan before the checks run."}</span>
-          <button type="submit" disabled={!selectable} className={BTN}>Generate briefing</button>
+          <button type="submit" disabled={!selectable || !!invalidComparison} className={BTN}>Generate briefing</button>
         </div>
       </form>
     </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
-        {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · week of {labelWeek(requestScope.week)}</span>}
+        {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · {requestScope.promotion ? "release-wide Promotion review" : `week of ${labelWeek(requestScope.week)}`}</span>}
       </div>
       {pending && (jobState
         ? <JobProgress kind={jobState.kind} status={jobState.status} note={jobNote}/>
@@ -890,7 +901,7 @@ function AnalystApp({me}: {me: Me}) {
     </div>}
     {brand && view!=="approved" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
-      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week) setWeek(o.week); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
+      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week) setWeek(o.week); setPromotion(false); setComparison(o.comparison ?? null); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
 }
 

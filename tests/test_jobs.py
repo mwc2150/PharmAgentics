@@ -127,6 +127,25 @@ def test_untraced_numbers_ignore_dates_versions_and_plan_ids():
     assert service.untraced_numbers(text, [], "06bcba77fbe1") == ["22.5%"]
 
 
+def test_agent_brief_job_cannot_change_the_comparison_from_triage():
+    analyst = signed_in("dev-analyst")
+    chosen = {**Q, "comparison": {"kind": "previous", "weeks": 2}}
+    triage = analyst.post("/api/agent/jobs", json={"kind": "triage", "query": chosen}).json()
+    taken = worker().post("/api/worker/next", json={}, headers=W).json()
+    assert taken["payload"]["query"]["comparison"]["weeks"] == 2
+    plan = service.run_triage(service.BriefingQuery.model_validate(chosen))
+    posted = worker().post(f"/api/worker/jobs/{triage['id']}",
+                           json={"ok": True, "result": plan}, headers=W)
+    assert posted.json()["status"] == "done"
+    decision = {"plan_id": plan["plan_id"], "stories": []}
+    request = {"kind": "brief", "query": chosen, "triage_job": triage["id"], "decision": decision}
+    changed = {**chosen, "comparison": {"kind": "previous", "weeks": 1}}
+    response = analyst.post("/api/agent/jobs", json={**request, "query": changed})
+    assert response.status_code == 409
+    assert "scope changed" in response.json()["detail"]
+    assert analyst.post("/api/agent/jobs", json=request).status_code == 200
+
+
 # --- core-007 FR-031: heartbeat, stale jobs, and the cloud CPU host ---------------------------------
 
 def _running_job_on(worker_name: str):

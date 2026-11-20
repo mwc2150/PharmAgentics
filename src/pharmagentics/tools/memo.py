@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from . import queries as q
 from . import stages
 from .checks import DECISION, OWNER
+from .lag_checks import LAG_LABELS
 from .projection import Projection, method_lines, table_lines
 from .registry import Registry
 from .brands import PRODUCTS, briefing_brand
@@ -184,6 +185,10 @@ def comparison_text(p) -> str:
         return "no earlier weeks, because the release starts with this period"
     if len(B) == 1:
         return f"the week of {B[0]}"
+    if p.comparison is not None:
+        if p.comparison.kind == "last_year":
+            return f"the same weeks last year ({', '.join(B)})"
+        return f"the weeks from {B[0]} to {B[-1]}"
     return f"the {_WORDS.get(len(B), 'several')} weeks before ({B[0]} to {B[-1]})"
 
 
@@ -213,7 +218,8 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
         return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}); its confidence, {s['confidence']}, "
                 "is the lowest of this brief's stories.")
     if len(p.weeks) == 1 and p.baseline:
-        w, prev = p.weeks[0], p.baseline[-1]
+        w = p.weeks[0]
+        prev = q.shift(w, -1)
         sql = q.pct_change(q.trx_sum([w], product=p.brand_id), q.trx_sum([prev], product=p.brand_id))
         change = reg.scalar(sql) or 0
         pct = reg.claim("get_metric", sql, "pct1", scope="week over week, reportable cuts")
@@ -296,10 +302,9 @@ def appendix(reg: Registry, brand_id: str = "BXA", *, p=None, proj: Projection |
 
 def assumptions(p, proj: Projection | None) -> list[str]:
     """The Assumptions block (brief-007 FR-012; the Week 6 assumption book): each assumption with its source."""
-    lines = ["Assumptions:",
-             f"- Comparison weeks: {comparison_text(p)}. Source: the brief's default rule, the four weeks before "
-             "the period."]
-    if p.baseline and len(p.baseline) < stages.BASELINE_WEEKS:
+    source = "the brief's default rule, the four weeks before the period" if p.comparison is None else p.baseline_source
+    lines = ["Assumptions:", f"- Comparison weeks: {comparison_text(p)}. Source: {source}."]
+    if p.comparison is None and p.baseline and len(p.baseline) < stages.BASELINE_WEEKS:
         lines.append(f"- Fewer comparison weeks exist, because the release starts on {p.first}.")
     lines.append("- Like for like: changes use only territories whose feed passed the gate in every week compared. "
                  "Source: the feed gate.")
@@ -310,8 +315,9 @@ def assumptions(p, proj: Projection | None) -> list[str]:
                      "and each territory's recent share of national.")
     lines.append("- Exclusions: withheld cuts are left out of every change and story, and never read as zero demand."
                  + (" Calendar weeks are left out of the stories." if p.calendar_note else ""))
-    lines.append("- Drivers: each check compares the same weeks as the change; no delay between a driver and TRx is "
-                 "assumed.")
+    if p.brand_id == "BXA":
+        lines.append("- Drivers: the checks evaluate the same week and delays of one and two weeks. "
+                     "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.")
     return lines
 
 
@@ -320,6 +326,15 @@ def scope_line(p, proj: Projection | None = None) -> str:
     marked = proj is not None and any(r.basis != "observed" for r in proj.rows)
     return (f"Scope: {stages.describe(p)}, compared with {comparison_text(p)}."
             + (" Levels marked projected or estimated are assumptions." if marked else ""))
+
+
+def driver_timing(stories: list[dict]) -> list[str]:
+    lines = []
+    for story in stories:
+        if timing := story.get("lags"):
+            labels = ", ".join(f"{driver}, {LAG_LABELS[lag]}" for driver, lag in timing.items())
+            lines.append(f"- Driver timing in {q.name(story['territory'])}: {labels}. Source: recorded activity and reportable TRx.")
+    return lines
 
 
 def _line(subject: str, action: str, owner: str, decision: str) -> str:

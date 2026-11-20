@@ -15,7 +15,8 @@ What each number measures (written by code from the data; describe a comparison 
 Rules:
 - Every number must be a claim token copied exactly from the sections. Never write a digit yourself. Dates such as 2026-04-06 may stay.
 - A story's sentence may use only tokens from that story's own section. A chart line may use only tokens from that chart. The answer may use tokens from any section.
-- Never call a comparison "the week before", "last week" or "week over week" unless the list says that number is a week-over-week comparison. Never mention last year.
+- Use "last week" and "last year" only with a token whose glossary states that exact comparison.
+- Leave noisy small-cell figures in the code-built cuts of the change. Do not use them to interpret a story.
 - Use only what the sections say. Do not add causes, numbers or advice. Causal words ("because", "caused", "drove") only for a story whose confidence is High.
 - If the data health section withholds cuts or a restatement is listed, say so in the answer.
 - Short sentences. Say "competitive intelligence", never "surveillance". Say "new patients" only for NBRx. Never name or number an individual rep.

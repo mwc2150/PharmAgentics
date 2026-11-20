@@ -94,13 +94,16 @@ def launch_date(reg: Registry) -> str | None:
     return reg.scalar("select min(effective_start)::varchar from raw.market_basket where product_id = 'BXE'")
 
 
-def check_competitor(reg: Registry, terr: str, W, B, brand_id: str = "BXA") -> Check:
+def check_competitor(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, exact_comparison: bool = False) -> Check:
     """Was Metacora already stronger here before the change? Shares inside the affected weeks are not
     compared: when {brand_id} volume drops, competitor share rises mechanically."""
     launched = launch_date(reg)
     if launched is None or launched > W[-1]:
         return Check("competitor", "ruled_out", f"Competitor launch: ruled out. Metacora did not launch until {launched}.")
-    ref = [w for w in B if w >= launched] or list(W)
+    if exact_comparison and (not B or B[-1] < launched):
+        return Check("competitor", "insufficient",
+                     f"Competitor launch: inconclusive. The chosen comparison ends before Metacora launched on {launched}.")
+    ref = B if exact_comparison else [w for w in B if w >= launched] or list(W)
     here, elsewhere = q.share(ref, "BXE", terrs=[terr]), q.share(ref, "BXE", exclude=terr)
     gap = (reg.scalar(here) or 0) - (reg.scalar(elsewhere) or 0)
     h = reg.claim("compare_competitors", here, "pct1", territory=terr, weeks="before the change")
@@ -142,7 +145,9 @@ def context_baseline(W, B) -> list[str]:
     return B if len(B) >= 13 else [q.shift(W[0], -i) for i in range(13, 0, -1)]
 
 
-def run_checks(reg: Registry, terr: str, W, B, brand_id: str = "BXA") -> list[Check]:
-    ref = context_baseline(W, B)
+def run_checks(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *,
+               use_selected_baseline: bool = False) -> list[Check]:
+    ref = B if use_selected_baseline else context_baseline(W, B)
     return [check_data(reg, terr, W, B, brand_id), check_access(reg, terr, W, B, brand_id), check_promotion(reg, terr, W, ref, brand_id),
-            check_supply(reg, terr, W, B, brand_id), check_competitor(reg, terr, W, ref, brand_id)]
+            check_supply(reg, terr, W, B, brand_id),
+            check_competitor(reg, terr, W, ref, brand_id, exact_comparison=use_selected_baseline)]

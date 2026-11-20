@@ -1,9 +1,9 @@
 # Feature Specification: Windows, Assumptions and Evidence in the Brief
 
 **Spec ID**: `brief-007-windows-and-evidence` (Briefing lane; owners: Michael, Meghna)
-**Feature Branch**: `feature/brief-007-slice-a`
+**Feature Branch**: `feature/brief-007-slices-b-c-pr`
 **Created**: 2026-11-20 | **Updated**: 2026-11-20
-**Status**: Slice A implemented. Slices B and C are tracked separately.
+**Status**: Slice A merged. Slices B and C are implemented for review.
 **Input**: Recall analysis of the rebased scripted run `e2599995` (2026-11-20); decisions taken with Michael on 2026-11-20; course slides Weeks 1–7 (Applied Data Science and AI in Pharma Commercial, Fall 2026); brief-003 v3 (memo outline and section numbers); brief-002 (baseline weeks); brief-006 (`split_change`); Briefing constitution B-I, B-III, B-VI and the Promotion constraint.
 
 ## Why
@@ -38,6 +38,15 @@ Settled while writing the spec (recommended defaults; Michael may change them in
 - P2-Q6 ("Is this freeing my team's time…") asks for the version scorecard (EV-8.2 to EV-8.5), not a campaign read. It is out of scope for brief-007.
 - A question is a promotion question when code finds a campaign, promotion, reach, response, lift or spend term in it; the question parser decides, not the model (B-II).
 - The driver lag test covers 0, 1 and 2 weeks. The data shows at most a weak one-week lag (Great Lakes: association 0.46 at one week against 0.42 at zero; Southeast strongest at zero), so the lag is tested and stated, never assumed.
+
+### Implementation decisions for slices B and C
+
+- An analyst can request the release-wide Promotion review explicitly in New briefing. Text-only callers also use deterministic promotion phrases. A dated promotion question retains its period and adds the relevant territory's lapse evidence when available.
+- A lag supports a driver only when reportable TRx moves in the expected direction and the source records a material driver change. Test the same week first, then one and two weeks, and use the shortest supported lag. A monthly access event can align with a TRx change, but its source cannot establish a distinct weekly lag.
+- The default follows Slice A’s materiality screen. When the analyst picks a comparison, screening and reported changes use that choice. A driver check marks a comparison that cannot support its claim as inconclusive.
+- Cardiovela and Lipidara scripted briefings use their own brand's data for windows and story cuts. The release-wide Promotion review, the lag-tested driver checks and the agent engine are scoped to BXA. Lipidara uses the standard scripted driver checks and core-010 brand grants.
+- An explicit comparison is pinned at triage and reused in the final brief, its numeric evidence and the trace. Same weeks last year means the corresponding Monday-start weeks 52 weeks earlier. Custom dates are release Mondays.
+- Each split dimension uses the same reportable territory and windows as the story. Contributions are absolute TRx per week. Display a remainder when grouping omitted cuts and mark noisy cells without making claims about them.
 
 ## User Scenarios & Testing *(mandatory)*
 

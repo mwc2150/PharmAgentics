@@ -88,7 +88,8 @@ async def _agent_turn(brief: dict, question: str, section: str | None, spec: str
     base = server()
     params = base.model_copy(update={"env": {**(base.env or {}), "PHARMAGENTICS_MCP_FOLLOW_UP": "1"}})  # no story-so-far status
     async with Client(params) as mcp, AsyncExitStack() as stack:
-        await _call(mcp, "open_run", question=_scope_question(brief, question))
+        options = {"comparison": brief["comparison"]} if brief.get("comparison") else {}
+        await _call(mcp, "open_run", question=_scope_question(brief, question), **options)
         tools = MCPStdioTool(name="pharmagentics_follow_up", mcp_client=mcp, load_prompts=False,
                              allowed_tools=AGENT_TOOLS["data_forensics"] + AGENT_TOOLS["driver_investigator"]
                              + AGENT_TOOLS["follow_up"])

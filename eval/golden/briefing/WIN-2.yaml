@@ -1,0 +1,34 @@
+id: C-032
+lane: briefing
+story: WIN-2
+persona: P1 Commercial Analyst (Ace)
+status: draft
+question: 'Week of 2026-08-24, Southeast: How did BXA TRx compare with the selected July weeks?'
+period: week of 2026-08-24, Southeast
+review_note: Draft for Michael to label.
+comparison:
+  kind: custom
+  start: '2026-07-06'
+  end: '2026-07-27'
+story_text: An analyst compares a late-August week with four July weeks.
+given: Southeast BXA TRx for the week of 2026-08-24 and a custom July comparison.
+when: The analyst runs the brief with those dates.
+then: The territory story names the July window in its assumptions and shows reconciled cuts of the weekly change.
+reference_answer: Southeast averaged 639 TRx a week between 2026-07-06 and 2026-07-27. It counted 469 TRx on 2026-08-24, a decline of 170 TRx or 26.6%.
+must_not_say:
+  text: The baseline was selected by the model.
+  phrases: []
+eval_items: [EV-1.1]
+facts:
+  - id: southeast_july_weekly_trx
+    value: 639
+    sql: |
+      select sum(trx) / 4.0 from reporting.v_reportable_rx
+      where product_id = 'BXA' and territory_id = 'SOUTHEAST'
+        and week_start between date '2026-07-06' and date '2026-07-27'
+  - id: southeast_august_trx
+    value: 469
+    sql: |
+      select sum(trx) from reporting.v_reportable_rx
+      where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = date '2026-08-24'
+source: specs/brief-007-windows-and-evidence/spec.md#FR-014
