@@ -1,9 +1,9 @@
 # Feature Specification: Windows, Assumptions and Evidence in the Brief
 
 **Spec ID**: `brief-007-windows-and-evidence` (Briefing lane; owners: Michael, Meghna)
-**Feature Branch**: next branch after `feature/brief-memo-follow-ups` merges (not started)
+**Feature Branch**: `feature/brief-007-slice-a`
 **Created**: 2026-11-20 | **Updated**: 2026-11-20
-**Status**: Draft v1. Not planned or built.
+**Status**: Slice A implemented. Slices B and C are tracked separately.
 **Input**: Recall analysis of the rebased scripted run `e2599995` (2026-11-20); decisions taken with Michael on 2026-11-20; course slides Weeks 1–7 (Applied Data Science and AI in Pharma Commercial, Fall 2026); brief-003 v3 (memo outline and section numbers); brief-002 (baseline weeks); brief-006 (`split_change`); Briefing constitution B-I, B-III, B-VI and the Promotion constraint.
 
 ## Why
@@ -24,11 +24,12 @@ The slides set the standard this spec follows: compare mature weeks with mature 
 
 Decided by Michael; do not reopen.
 
-- Q: Which comparison window does the brief use by default? → A: **The 4 weeks immediately before the requested window**, for one-week and multi-week windows alike. This replaces the brief-002 rule (a baseline as long as the window, up to 13 weeks). The length is a semantic-layer setting (B-I).
+- Q: Which comparison window does the brief use by default? → A: **The 4 weeks immediately before the requested window**, for one-week and multi-week windows alike. This is the default for the changes the brief reports. The length is a semantic-layer setting (B-I).
+- Q: How does the brief decide which changes warrant a story with the default comparison? → A: The multi-week materiality screen compares with as many weeks immediately before the requested window, up to 13. It uses weeks available in the release that pass the feed gate for every territory being compared. The one-week screen uses the default comparison. This keeps the Mid-Atlantic access story in the national 13-week brief (P2-Q4). The brief reports changes against its four-week default.
 - Q: Can the analyst choose the window? → A: **Yes.** A comparison picker next to the week and territory pickers: previous N weeks, the same weeks last year, or custom dates. Code applies the choice; the model never chooses it. The brief states the window it used as an assumption.
 - Q: How are campaign and return-on-investment questions answered, given no spend data? → A: **A release-wide Promotion review**, not a model of return. It says whether a sustained push happened, compares each promotion lapse and return with the other territories as an association, says why return cannot be priced, and names the experiment that would settle it (a territory holdout).
 
-- Q: How much of brief-007 goes into the memo pull request? → A: **Slice A only**: the 4-week default baseline, the window named in the brief, the per-territory change table, the feed-quality figures and the Assumptions block (User Stories 1 code side, 3 table, 4, 6). Slice B (Promotion review, lag test) and slice C (window picker, story splits) follow in a later pull request.
+- Q: What ships in slice A? → A: It follows the memo pull request and includes the 4-week default baseline, the window named in the brief, the per-territory change table, the feed-quality figures and the Assumptions block (User Stories 1 code side, 3 table, 4, 6). Slice B (Promotion review, lag test) and slice C (window picker, story splits) follow separately.
 
 Planned with the decisions above, not objected to: the per-territory change table, the splits of a story's change, the feed-quality table, the lag test on driver checks and the Assumptions block.
 
@@ -148,7 +149,7 @@ The Appendix ends with an Assumptions block in the form of the Week 6 assumption
 
 ### Functional Requirements
 
-- **FR-001**: The default comparison window MUST be the 4 weeks immediately before the requested window, set in the semantic layer, for every window length.
+- **FR-001**: The default comparison window for reported changes MUST be the 4 weeks immediately before the requested window, set in the semantic layer, for every window length. The default materiality screen for a multi-week request MUST use the preceding weeks, matching the requested length up to 13 weeks, and include only weeks that pass the feed gate for all territories being compared.
 - **FR-002**: Analysts MUST be able to choose the comparison window (previous N weeks, same weeks last year, custom dates) before a brief is built; invalid choices MUST be refused with the reason. Leaders MUST NOT get the picker.
 - **FR-003**: The window MUST be applied by code; no model output may set or change it.
 - **FR-004**: Every brief MUST name its comparison weeks beside the first comparison and in the Assumptions block, with the source (default or analyst's choice).

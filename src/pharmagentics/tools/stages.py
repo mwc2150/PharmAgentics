@@ -235,10 +235,12 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
     """Territories whose change is beyond their own normal noise and beyond their peers' change.
     `details`, when given, receives each screened territory's change, gap and threshold."""
     W, ok, focus = p.weeks, p.ok, p.focus
-    # Materiality uses a comparison as long as the window (up to 13 weeks), so a long window keeps the stories it
-    # had before brief-007; the stated changes keep the four-week comparison weeks (Michael, 2026-11-20).
-    B = p.baseline if len(W) == 1 else [w for w in (q.shift(W[0], -i) for i in range(min(len(W), 13), 0, -1)) if w >= p.first]
     series = _series(reg)
+    B = p.baseline
+    if len(p.requested) > 1:
+        # The materiality screen compares every territory over the same reportable weeks.
+        preceding = (q.shift(p.requested[0], -i) for i in range(min(len(p.requested), 13), 0, -1))
+        B = [w for w in preceding if w >= p.first and all(w in series[t] for t in ok)]
     flagged_cal = {w for (w,) in reg.rows("select week_start::varchar from raw.calendar where holiday_flag = 1 or plan_year_reset = 1")}
     found, quiet = [], []
     for t in ok:

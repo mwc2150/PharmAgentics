@@ -174,6 +174,28 @@ def test_a_multi_week_window_compares_with_the_four_weeks_before():
 
 
 @needs_db
+def test_screening_uses_common_reportable_weeks_in_the_longer_comparison():
+    from pharmagentics.tools import queries, stages
+    from pharmagentics.tools.registry import Registry
+
+    reg = Registry()
+    try:
+        p = stages.resolve(reg, "What changed from 2026-06-08 to 2026-07-13?")
+        details = {}
+        stages.screen(reg, p, details)
+
+        # New England is withheld on May 4, so every territory's screening comparison drops that week.
+        expected_weeks = ["2026-04-27", *p.baseline]
+        for territory in ("NEW_ENGLAND", "PACIFIC"):
+            actual = queries.mean_weekly(p.weeks, terrs=[territory])
+            baseline = queries.mean_weekly(expected_weeks, terrs=[territory])
+            expected = reg.scalar(queries.pct_change(actual, baseline)) / 100
+            assert details[territory]["change"] == pytest.approx(expected)
+    finally:
+        reg.close()
+
+
+@needs_db
 def test_scope_line_and_assumptions_name_the_comparison_weeks():
     """FR-004, FR-012: leaders keep the scope line; the Assumptions block closes the Appendix."""
     text = brief(WITHHELD)["answer"]

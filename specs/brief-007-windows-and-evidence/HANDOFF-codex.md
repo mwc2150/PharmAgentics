@@ -4,10 +4,10 @@ Written 2026-11-20 for a coding agent that has not seen this work. Read this fil
 
 ## Status when you start
 
-- Slice A of brief-007 (4-week default baseline, window named in the brief, per-territory change table, feed figures, Assumptions block) ships in the memo pull request from `feature/brief-memo-follow-ups`, together with brief-003 v3 and brief-006.
-- **Start from `main` after that pull request has merged.** Slices B and C edit the same files as slice A (`src/pharmagentics/tools/memo.py`, `stages.py`, `checks.py`); branching earlier means conflicts. Create `feature/brief-007-slice-b` (then `-slice-c`, or one branch for both).
-- After checking out: `uv sync`, then `uv run python src/pharmagentics/data/load_duckdb.py` (the memo work added the view `reporting.v_rx_projection`).
-- Gate baselines (runs to compare against): the slice A runs recorded in `tasks.md` T007 of this spec. Copy the MLflow store from the memo worktree if your checkout has none, or re-run the scripted and agent runs on `main` first and gate against those.
+- The memo changes (brief-003 v3 and brief-006) merged in PR #13. Slice A follows on `feature/brief-007-slice-a` with the four-week reporting baseline, the longer materiality screen for multi-week requests, the per-territory change table, feed figures and the Assumptions block.
+- Use the verified Slice A commit as the base for Slices B and C. The coordination log at `local/brief-007-coordination.md` tracks the active isolated checkouts and the Slice A verification run. The screening rule is in brief-007 FR-001 and the 2026-11-20 clarification.
+- In a fresh checkout, run `uv sync`, then `uv run python src/pharmagentics/data/load_duckdb.py` to build `reporting.v_rx_projection`.
+- Use the scripted Slice A run in `tasks.md` T007 as the scripted baseline. The Haiku gate is deferred.
 
 ## Rules that are easy to break
 
