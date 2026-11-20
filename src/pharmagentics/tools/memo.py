@@ -17,6 +17,7 @@ from . import stages
 from .checks import DECISION, OWNER
 from .projection import Projection, method_lines, table_lines
 from .registry import Registry
+from .brands import PRODUCTS, briefing_brand
 
 HEADINGS = [("1", "Bottom line"), ("2", "The numbers"), ("3", "What changed and why"),
             ("4", "What the data can't tell us"), ("5", "Next checks"), ("6", "Appendix")]
@@ -129,7 +130,7 @@ def render_sections(sections: list[dict], claims: list[dict], index: dict[int, i
 # Code-built sections -----------------------------------------------------------------------------
 
 def title_lines(p) -> list[str]:
-    return [f"Brief for {stages.describe(p)}. Product: BXA."] + ([p.note] if p.note else [])
+    return [f"Brief for {stages.describe(p)}. Product: {p.brand_id}."] + ([p.note] if p.note else [])
 
 
 def withheld(p) -> list[tuple[str, str]]:
@@ -167,13 +168,13 @@ def _like_for_like(reg: Registry, p) -> str:
         return "No like-for-like change is given: no territory passes the feed gate in every week compared."
     if not B:
         return "No like-for-like change is given: the release has no earlier weeks to compare with."
-    cur, base = q.mean_weekly(W, terrs=ok), q.mean_weekly(B, terrs=ok)
+    cur, base = q.mean_weekly(W, terrs=ok, product=p.brand_id), q.mean_weekly(B, terrs=ok, product=p.brand_id)
     change = reg.scalar(q.pct_change(cur, base)) or 0
     n = reg.claim("get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(W)} "
                   f"and {q._in('territory_id', ok)}", "int")
     total = reg.claim("get_metric", "select count(*) from raw.dim_territory", "int")
     pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope="like-for-like national")
-    return f"Like for like on {n} of {total} territories, BXA TRx is {stages.word(change)} {pct} against {comparison_text(p)}."
+    return f"Like for like on {n} of {total} territories, {p.brand_id} TRx is {stages.word(change)} {pct} against {comparison_text(p)}."
 
 
 def comparison_text(p) -> str:
@@ -206,14 +207,14 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
     if stories:
         s = min(stories, key=lambda s: _RANK.get(s["confidence"], 0))
         t = s["territory"]
-        x, b = q.mean_weekly(p.weeks, terrs=[t]), q.mean_weekly(p.baseline, terrs=[t])
+        x, b = q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id), q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id)
         change = reg.scalar(q.pct_change(x, b)) or 0
         pct = reg.claim("get_metric", q.pct_change(x, b), "pct1", territory=t)
         return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}); its confidence, {s['confidence']}, "
                 "is the lowest of this brief's stories.")
     if len(p.weeks) == 1 and p.baseline:
         w, prev = p.weeks[0], p.baseline[-1]
-        sql = q.pct_change(q.trx_sum([w]), q.trx_sum([prev]))
+        sql = q.pct_change(q.trx_sum([w], product=p.brand_id), q.trx_sum([prev], product=p.brand_id))
         change = reg.scalar(sql) or 0
         pct = reg.claim("get_metric", sql, "pct1", scope="week over week, reportable cuts")
         return (f"Least sure: the week-over-week change ({stages.word(change)} {pct}), "
@@ -233,12 +234,12 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
     if proj.national is None:
         lines.append("This period cannot be reported nationally: no territory's feed can be read.")
     elif len(W) == 1:
-        lines.append(f"Projected national BXA TRx is {proj.national} for the week of {W[0]}.")
+        lines.append(f"Projected national {p.brand_id} TRx is {proj.national} for the week of {W[0]}.")
     else:
-        lines.append(f"Projected national BXA TRx averaged {proj.national} a week from {W[0]} to {W[-1]}.")
+        lines.append(f"Projected national {p.brand_id} TRx averaged {proj.national} a week from {W[0]} to {W[-1]}.")
     lines.append(_like_for_like(reg, p))
-    share = reg.claim("compare_competitors", q.share(W, "BXA"), "pct1", product="BXA")
-    lines.append(f"BXA held {share} of the four-brand market basket.")
+    share = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct1", product=p.brand_id)
+    lines.append(f"{p.brand_id} held {share} of the four-brand market basket.")
     least = _least_sure(reg, p, proj, stories)
     if least:
         lines.append(least)
@@ -272,23 +273,24 @@ def _feed_figures(reg: Registry, p, proj: Projection) -> list[str]:
     if len(proj.weeks) == 1 and p.baseline:
         for basis in ("projected", "estimated"):
             for t in proj.territories(basis):
-                weekly = (f"select week_start, sum(trx) s from {q.RX} where product_id = 'BXA' and territory_id = '{t}' "
+                weekly = (f"select week_start, sum(trx) s from {q.RX} where product_id = '{p.brand_id}' and territory_id = '{t}' "
                           f"and week_start in {q._dates(p.baseline)} group by 1")
                 if not reg.scalar(f"select count(*) from ({weekly})"):
                     continue
                 low = reg.claim("get_metric", f"select min(s) from ({weekly})", "int", territory=t, scope="comparison weeks")
                 high = reg.claim("get_metric", f"select max(s) from ({weekly})", "int", territory=t, scope="comparison weeks")
-                lines.append(f"{q.name(t)}'s observed BXA TRx ranged from {low} to {high} a week in the comparison weeks, "
+                lines.append(f"{q.name(t)}'s observed {p.brand_id} TRx ranged from {low} to {high} a week in the comparison weeks, "
                              f"which is what its {basis} level stands in for.")
     return lines
 
 
-def appendix(reg: Registry, p=None, proj: Projection | None = None) -> list[str]:
+def appendix(reg: Registry, brand_id: str = "BXA", *, p=None, proj: Projection | None = None) -> list[str]:
+    brand_id = briefing_brand(p.brand_id if p is not None else brand_id)
     lines = ["Method: like-for-like figures use only territories whose feed passed the gate in every week compared. "
              "The projected national divides each territory's observed TRx by its panel coverage, and estimates a "
              "territory that cannot be read from its recent share of national. Changes, stories and drivers use "
              "like-for-like cuts only.",
-             f"Data version {reg.data_version}. Product: BXA (Cardiovela), synthetic data."]
+             f"Data version {reg.data_version}. Product: {brand_id} ({PRODUCTS[brand_id]}), synthetic data."]
     return lines + (assumptions(p, proj) if p is not None else [])
 
 

@@ -174,21 +174,22 @@ def test_a_multi_week_window_compares_with_the_four_weeks_before():
 
 
 @needs_db
-def test_screening_uses_common_reportable_weeks_in_the_longer_comparison():
+@pytest.mark.parametrize("brand_id", ["BXA", "BXC"])
+def test_screening_uses_common_reportable_weeks_in_the_longer_comparison(brand_id):
     from pharmagentics.tools import queries, stages
     from pharmagentics.tools.registry import Registry
 
     reg = Registry()
     try:
-        p = stages.resolve(reg, "What changed from 2026-06-08 to 2026-07-13?")
+        p = stages.resolve(reg, "What changed from 2026-06-08 to 2026-07-13?", brand_id=brand_id)
         details = {}
         stages.screen(reg, p, details)
 
         # New England is withheld on May 4, so every territory's screening comparison drops that week.
         expected_weeks = ["2026-04-27", *p.baseline]
         for territory in ("NEW_ENGLAND", "PACIFIC"):
-            actual = queries.mean_weekly(p.weeks, terrs=[territory])
-            baseline = queries.mean_weekly(expected_weeks, terrs=[territory])
+            actual = queries.mean_weekly(p.weeks, terrs=[territory], product=brand_id)
+            baseline = queries.mean_weekly(expected_weeks, terrs=[territory], product=brand_id)
             expected = reg.scalar(queries.pct_change(actual, baseline)) / 100
             assert details[territory]["change"] == pytest.approx(expected)
     finally:
@@ -226,3 +227,14 @@ def test_feed_figures_carry_the_floor_target_and_comparison_range():
     assert "New England's observed BXA TRx ranged from 397 to 422 a week in the comparison weeks" in joined
     focus = section(brief(WITHHELD, "New England")["answer"], "What the data can't tell us")
     assert any(x.startswith("Feed for New England in these weeks: 84 rows received against 128 expected") for x in focus)
+
+
+@needs_db
+def test_bxc_memo_uses_the_selected_brand_for_withheld_cut_evidence():
+    from briefing_baseline import answer
+
+    result = answer(f"Week of {WITHHELD} in New England: What changed?", brand_id="BXC")
+    assert "New England's observed BXC TRx ranged from" in result["answer"]
+    assert "Product: BXC (Lipidara), synthetic data." in result["answer"]
+    assert any("product_id = 'BXC'" in e["query"] and "select min(s)" in e["query"] for e in result["evidence"])
+    assert not any("product_id = 'BXA'" in e["query"] for e in result["evidence"])
