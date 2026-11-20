@@ -196,7 +196,7 @@ function SuggestModal({ onClose, onSurvey, surveyDone }: { onClose: () => void; 
     finally { setBusy(false) }
   }
   return <div className="pa-fade fixed inset-0 z-50 grid place-items-center overscroll-contain bg-black/60 px-4">
-    <div role="dialog" aria-modal="true" aria-labelledby="suggest-title" className="pa-rise w-full max-w-lg rounded-xl border border-rule bg-sheet shadow-2xl shadow-black/50">
+    <div role="dialog" aria-modal="true" aria-labelledby="suggest-title" className="pa-rise w-full max-w-lg rounded-xl border border-rule bg-sheet shadow-overlay">
       <div className="flex items-start justify-between gap-3 border-b border-rule px-6 py-4">
         <div><h2 id="suggest-title" className="text-lg">Suggest an improvement</h2><p className="mt-1 text-sm text-muted">What should we work on next? Anything goes, big or small.</p></div>
         <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg px-2 py-1 text-lg leading-none text-muted hover:bg-paper">×</button>
@@ -290,7 +290,7 @@ function SurveyModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitte
   }
 
   return <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain bg-black/60 px-3 py-6 backdrop-blur-sm">
-    <div role="dialog" aria-modal="true" aria-labelledby="survey-title" className="h-fit w-full max-w-2xl rounded-xl bg-sheet shadow-xl border border-rule pa-rise">
+    <div role="dialog" aria-modal="true" aria-labelledby="survey-title" className="h-fit w-full max-w-2xl rounded-xl border border-rule bg-sheet shadow-overlay pa-rise">
       <div className="flex items-start justify-between gap-3 border-b border-rule px-6 py-4">
         <div><h2 id="survey-title" className="text-lg font-semibold">{q?.title ?? "Platform questionnaire"}</h2>{q && <p className="mt-1 text-sm text-muted">{q.intro}</p>}</div>
         <button type="button" onClick={onClose} aria-label="Close questionnaire" className="rounded-lg px-2 py-1 text-lg leading-none text-muted hover:bg-paper">×</button>

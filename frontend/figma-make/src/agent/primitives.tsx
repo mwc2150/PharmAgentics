@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+
 /* Visual identity and SVG icon geometry. One icon set, outline style, stroke 1.6 next to 14px text.
    Always pass a size class (h-4 w-4, h-5 w-5): a className without one lets the SVG grow to fill its row. */
 const PATHS={
@@ -24,4 +26,14 @@ export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string
 const MARK={sm:"h-9 w-9",lg:"h-14 w-14"} as const
 export function BrandMark({size="sm"}:{size?:keyof typeof MARK}){
   return <img src="/pa-mark.png" alt="" width={64} height={64} draggable={false} className={`shrink-0 select-none ${MARK[size]}`}/>
+}
+
+export function WorkspaceHeading({ title, detail, action }: { title: string, detail?: string, action?: ReactNode }) {
+  return <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+    <div className="min-w-0">
+      <h2 className="text-4xl leading-[1.06] font-semibold tracking-tight sm:text-5xl">{title}</h2>
+      {detail && <p className="mt-3 max-w-[62ch] text-base leading-relaxed text-muted sm:text-lg">{detail}</p>}
+    </div>
+    {action}
+  </header>
 }

@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
-import { BrandMark, Icon, type IconName } from "./agent/primitives"
+import { BrandMark, Icon, WorkspaceHeading, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
 import { Overview } from "./Overview"
 import { Memo } from "./Memo"
@@ -43,9 +43,9 @@ function dataText(input: unknown): string {
 const message = (e: unknown) => e instanceof Error ? e.message : String(e)
 const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
 // One vocabulary for every screen: the primary action, a secondary action, a field, its label, a panel.
-const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-medium text-onaccent shadow-sm shadow-black/30 transition-[background-color,transform] duration-150 hover:bg-navyhover active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted"
-const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-rule px-4 py-2 text-sm font-medium text-ink transition-[background-color,transform] duration-150 hover:bg-paper active:scale-[0.98] disabled:cursor-not-allowed disabled:text-muted"
-const FIELD = "w-full min-w-0 rounded-lg border border-rule bg-paper px-3 py-2.5 text-sm text-ink disabled:opacity-60"
+const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-onaccent transition-[background-color,transform] duration-150 hover:bg-navyhover active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted"
+const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-control bg-sheet px-4 py-2 text-sm font-medium text-ink transition-[background-color,transform] duration-150 hover:bg-paper active:scale-[0.98] disabled:cursor-not-allowed disabled:border-rule disabled:text-muted"
+const FIELD = "w-full min-w-0 rounded-lg border border-control bg-sheet px-3 py-2.5 text-sm text-ink placeholder:text-muted disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
 const PANEL = "rounded-xl border border-rule bg-sheet"
 const REVIEW_CHIP = {
@@ -66,7 +66,7 @@ function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, 
   const selected = result.evidence.find(e=>e.id===id)
   return <div className="fixed inset-0 z-40 flex justify-end">
     <button className="absolute inset-0 bg-black/60" aria-label="Close evidence" onClick={onClose}/>
-    <aside role="dialog" aria-modal="true" aria-label="Source evidence" className="relative z-10 flex h-full w-full max-w-xl flex-col bg-sheet shadow-2xl pa-slide">
+    <aside role="dialog" aria-modal="true" aria-label="Source evidence" className="relative z-10 flex h-full w-full max-w-xl flex-col bg-sheet shadow-overlay pa-slide">
       <div className="flex items-start justify-between border-b border-rule p-5">
         <div><div className="text-[11px] tracking-widest uppercase text-muted">Governed evidence</div><h2 className="mt-1 text-lg font-semibold">Source records</h2><p className="mt-1 text-xs text-muted">{result.evidence.length} evidence records · pinned version {result.data_version ?? "unavailable"}</p></div>
         <button onClick={onClose} aria-label="Close evidence panel" className="rounded-lg p-2 hover:bg-paper"><Icon name="close"/></button>
@@ -123,9 +123,10 @@ function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
   const role = roleLabel(me)
   return <DropdownMenu>
-    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${role}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink outline-none transition hover:bg-paper">
-      {me.tester && <span className="hidden text-xs text-muted sm:inline">Test view ·</span>}
-      <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{role}</span>
+    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${role}`} className="flex shrink-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-paper data-[state=open]:bg-agentbg">
+      <span className="grid size-7 place-items-center rounded-full bg-agentbg text-agentdeep"><Icon name="user"/></span>
+      {me.tester && <span className="hidden text-xs font-normal text-muted lg:inline">Test view</span>}
+      <span className="hidden max-w-[240px] truncate sm:inline">{role}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-72">
@@ -273,20 +274,13 @@ function ForecastQuestionReport({run, onFollowup, onOpen}: {run: ForecastRun, on
 // The third item of an option is its classification key (core-009); the current tab's label sits at the row's end.
 function SubTabs<T extends string>({label, value, options, onChange}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void}) {
   const current = options.find(o => o[0] === value)
-  const list = useRef<HTMLDivElement>(null)
-  const [bar,setBar] = useState<{left: number, width: number} | null>(null)
-  useLayoutEffect(()=>{  // the underline slides to the selected tab
-    const el = list.current?.querySelector<HTMLElement>('[aria-selected="true"]')
-    if (el) setBar({left: el.offsetLeft, width: el.offsetWidth})
-  },[value, options.length])
-  return <div className="flex items-end justify-between gap-4 border-b border-rule">
-    <div ref={list} role="tablist" aria-label={label} className="relative -mb-px flex min-w-0 gap-6 overflow-x-auto">
+  return <div className="flex flex-wrap items-baseline justify-between gap-x-5 border-b border-rule">
+    <div role="tablist" aria-label={label} className="-mb-px flex min-w-0 max-w-full flex-wrap gap-x-4 sm:gap-x-7">
       {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} onClick={() => onChange(key)}
-        className={`whitespace-nowrap pb-3 pt-1 text-sm font-medium transition-colors duration-200 ${value === key ? "text-ink" : "text-muted hover:text-ink"}`}>{text}</button>)}
-      {bar && <span aria-hidden="true" className="pa-tabbar absolute bottom-0 h-0.5 rounded-full bg-agent" style={{left: bar.left, width: bar.width}}/>}
+        className={`whitespace-nowrap border-b-2 px-0.5 pt-2 pb-3 text-sm font-semibold transition-colors ${value === key ? "border-agent text-agentdeep" : "border-transparent text-muted hover:text-ink"}`}>{text}</button>)}
     </div>
     {current?.[2] && (
-      <div className="shrink-0 pb-3">
+      <div className="shrink-0 py-2">
         <ClassLabel tab={current[2]}/>
       </div>
     )}
@@ -297,7 +291,7 @@ function SubTabs<T extends string>({label, value, options, onChange}: {label: st
 function ViewToggle({value, busy=false, onChange}: {value: "analyst" | "leadership", busy?: boolean, onChange: (v: "analyst" | "leadership") => void}) {
   return <div role="tablist" aria-label="View" aria-busy={busy} className="inline-flex rounded-lg border border-rule p-0.5">
     {(["analyst", "leadership"] as const).map(v => <button key={v} type="button" role="tab" aria-selected={value === v} disabled={busy || value === v} onClick={() => onChange(v)}
-      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-paper text-ink" : "text-muted hover:text-ink"}`}>
+      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-agentbg text-agentdeep" : "text-muted hover:text-ink"}`}>
       {v === "analyst" ? "Analyst view" : "Leadership preview"}</button>)}
   </div>
 }
@@ -363,8 +357,9 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
   }
   const submit = async () => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await submitForecast(selected.forecast_run_id)); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const decide = async (decision: "approved" | "rejected" | "returned") => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await reviewForecast(selected.forecast_run_id, decision, note)); setNote(""); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
-  return <div className="workspace-content space-y-6 py-8 sm:py-10 pa-rise">
-    {!selected && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
+  const heading = section === "approved" ? "Approved explanations" : analyst ? "Investigate a forecast" : "Explanations to review"
+  return <div className="workspace-content space-y-6 py-8 sm:py-12 pa-rise">
+    {!selected && <WorkspaceHeading title={heading} detail={context ? `Forecast versus actual TRx through ${labelWeek(context.latest_week)}.` : undefined}/>}
     <SubTabs label="Forecast explanation" value={section} onChange={onSection} options={[["workbench", analyst ? "New explanation" : "To review", analyst ? "forecast.new" : "forecast.review"], ["approved", "Approved explanations", "forecast.approved"]] as const}/>
     {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
     {selected ? <>
@@ -416,28 +411,33 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
   </div>
 }
 
-// The sidebar is a narrow rail of icons; a toggle in the header (or Ctrl+B) opens it to full width, and the page
-// re-centres beside it. The choice is remembered in this browser. On phones the same toggle opens a slide-out menu.
+// The header toggle and Ctrl+B collapse or expand the sidebar. The choice is remembered in this browser.
 // Every icon has an explicit size: a className without one lets the SVG grow to fill its row.
 const OPEN_KEY = "pa_sidebar_open"
-const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
+const readOpen = () => {
+  try {
+    const saved = window.localStorage.getItem(OPEN_KEY)
+    if (saved !== null) return saved === "1"
+  } catch { /* Storage can be unavailable. */ }
+  return window.matchMedia("(min-width: 1024px)").matches
+}
 
 function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onTelemetry, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onAnyClick?: () => void}) {
-  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-paper text-ink" : "text-muted hover:bg-paper/60 hover:text-ink"}`
+  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm font-medium transition-colors duration-150 ${active ? "bg-agentbg text-agentdeep" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   const item = (icon: IconName, text: string, active: boolean, go: () => void) =>
     <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-agent" : "group-hover:text-agent"}`}/>{label(text)}</button>
   return <div className="flex h-full flex-col">
-    <div className="flex h-16 items-center gap-3 px-[14px]">
+    <div className="flex h-16 shrink-0 items-center gap-2 border-b border-rule px-[14px]">
       <BrandMark/>
-      {expanded && <span className="pa-fade flex-1 truncate whitespace-nowrap font-serif text-[18px] font-medium">PharmAgentics</span>}
+      {expanded && <span className="pa-fade flex-1 truncate whitespace-nowrap font-serif text-xl font-semibold tracking-tight">PharmAgentics</span>}
     </div>
-    <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
+    <nav className="mt-3 space-y-1 px-3" aria-label="Workspaces">
       {onBriefing && item("briefings", "Weekly briefing", !forecast && !telemetry, onBriefing)}
       {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast)}
       {item("layers", "Evaluation", telemetry, onTelemetry)}
     </nav>
-    <div className="mt-auto space-y-2 px-3 pb-4">
+    <div className="mt-auto space-y-2 border-t border-rule px-3 py-3">
       {me.auth_mode==="dev" && expanded && <p className="rounded-lg bg-amberbg px-2.5 py-1 text-[11px] text-amber">Development sign-in</p>}
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
     </div>
@@ -463,25 +463,27 @@ function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, o
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
   // --rail is the width the sidebar occupies; .workspace-content uses it to centre on the whole page (0 on phones).
   return <FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
-    <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
+    <aside id="workspace-sidebar" aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:block ${open ? "w-[248px]" : "w-16"}`}>
       <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
     </aside>
     {mobileNav && <div className="fixed inset-0 z-40 flex md:hidden"><button aria-label="Close navigation" className="pa-fade absolute inset-0 bg-black/60" onClick={()=>setMobileNav(false)}/>
-      <div className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide"><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></div></div>}
+      <div id="mobile-workspaces" className="relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule bg-sheet shadow-overlay pa-slide"><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></div></div>}
     <main className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule bg-sheet px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
-          <button type="button" onClick={toggleNav} aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
-            className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="panel" className="h-5 w-5"/></button>
-          <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-base sm:text-lg">{telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"}</h1>
+          <button type="button" onClick={toggle} aria-controls="workspace-sidebar" aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
+            className="hidden size-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink md:grid"><Icon name="panel" className="size-5"/></button>
+          <button type="button" onClick={()=>setMobileNav(true)} aria-controls={mobileNav ? "mobile-workspaces" : undefined} aria-expanded={mobileNav} aria-label="Open navigation"
+            className="grid size-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink md:hidden"><Icon name="menu" className="size-5"/></button>
+          <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate font-sans text-sm font-semibold tracking-normal">{telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"}</h1>
           {telemetry && <ClassLabel tab="evaluation.overview"/>}
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section className="min-h-0 flex-1 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecast && !telemetry && <ForecastWorkspace key={forecastSection} me={me} section={forecastSection} onSection={setForecastSection}/>}</section>
-      <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
+      <section className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecast && !telemetry && <ForecastWorkspace key={forecastSection} me={me} section={forecastSection} onSection={setForecastSection}/>}</section>
+      <footer className="shrink-0 border-t border-rule bg-sheet px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
-    <Toaster theme="dark" position="bottom-right" toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
+    <Toaster theme="light" position="bottom-right" toastOptions={{className: "!bg-sheet !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
   </div></FeedbackProvider>
 }
 
@@ -517,13 +519,6 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
     <div className="border-t border-rule px-6 py-4 text-xs text-muted">Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst.</div>
   </article>
   <AnswerFeedback lane="briefing" refId={brief.brief_id} view="leadership" agent={brief.engine==="agent"}/></>
-}
-
-// A short, warm start to each workspace, from the viewer's own clock.
-function Greeting({detail}: {detail?: string}) {
-  const h = new Date().getHours()
-  const part = h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"
-  return <div className="pa-fade mb-7"><h2 className="text-[1.75rem] leading-tight">{part}.</h2>{detail && <p className="mt-1 text-sm text-muted">{detail}</p>}</div>
 }
 
 // An agent job's real progress: the server reports queued, then running; the result arrives when it is done and
@@ -851,15 +846,25 @@ function AnalystApp({me}: {me: Me}) {
     } catch(e) {if(active()) setRunError(message(e))} finally {if(active()) setPending(false)}
   }
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
+  const heading = view === "overview" ? "Brand performance" : view === "approved" ? "Approved briefings" : "Prepare a briefing"
+  const detail = view === "overview"
+    ? context && `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.`
+    : view === "approved"
+      ? "Briefings the Brand Director can open on the current data release."
+      : "Generate the weekly briefing, check its evidence, and approve it for the Brand Director."
+  const brandPicker = <label className="flex max-w-full flex-col gap-1.5 text-xs font-medium text-muted">Brand
+    <select className={`${FIELD} max-w-full`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
+      {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
+    </select>
+  </label>
+  const landing = view === "home" || view === "approved" || view === "overview"
   return <Shell me={me} onBriefingHome={()=>setView("overview")}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || view==="approved" || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
-      <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
-        {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label></div><SubTabs label="Weekly briefing" value={view==="approved" ? "approved" : view==="overview" ? "overview" : "new"} onChange={t=>setView(t==="approved" ? "approved" : t==="overview" ? "overview" : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} space-y-6 pt-8 sm:pt-12`}>
+      {landing ? <WorkspaceHeading title={heading} detail={detail ?? undefined} action={brandPicker}/> : <div className="flex justify-end">{brandPicker}</div>}
+      <SubTabs label="Weekly briefing" value={view==="approved" ? "approved" : view==="overview" ? "overview" : "new"} onChange={t=>setView(t==="approved" ? "approved" : t==="overview" ? "overview" : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/>
+    </div>
     {contextError && <div role="alert" className="workspace-content py-4 text-sm text-amber">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></div>}
     {context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <Overview key={brand} brand={brand} week={week} onWeek={setWeek} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setView("home")}}/> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
-      <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
-
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={LABEL}>Territory
@@ -885,7 +890,7 @@ function AnalystApp({me}: {me: Me}) {
           <button type="submit" disabled={!selectable || !!invalidComparison} className={BTN}>Generate briefing</button>
         </div>
       </form>
-    </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
+    </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade py-8"><PublishedList onOpen={id=>void openApproved(id)}/></div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
@@ -914,13 +919,16 @@ function LeaderApp({me}: {me: Me}) {
     try { setBrief(await openBrief(id, "leadership")) } catch(e) { setError(message(e)) } finally { setLoading(false) }
   }
   return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}}>
-    <div className="workspace-content space-y-6 py-8 sm:py-10">
+    <div className="workspace-content space-y-6 py-8 sm:py-12">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-agentdeep hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
         {brief && <><SummaryCard brief={brief}/><InsightButton briefId={brief.brief_id} view="leadership"/></>}
-      </> : <><Greeting detail="Executive summaries the Commercial Analyst has reviewed and approved."/><div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule pb-3"><h2 className="text-xl">Approved briefings</h2><ClassLabel tab="briefing.approved"/></div><PublishedList onOpen={id=>void open(id)}/></>}
+      </> : <>
+        <WorkspaceHeading title="Approved briefings" detail="Executive summaries the Commercial Analyst has reviewed and approved." action={<ClassLabel tab="briefing.approved"/>}/>
+        <PublishedList onOpen={id=>void open(id)}/>
+      </>}
     </div>
   </Shell>
 }

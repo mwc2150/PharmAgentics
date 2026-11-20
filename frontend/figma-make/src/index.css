@@ -13,52 +13,43 @@
   --font-serif: "Source Serif 4", Georgia, serif;
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  /* Dark only. Restrained: neutrals carry the page; the logo's sage teal marks the one primary action,
-     the current selection and focus. Every text pair below clears WCAG AA 4.5:1 on paper and sheet. */
-  --color-paper: #0b100f;      /* the page, input wells: near-black, leaning sage */
-  --color-sheet: #131a18;      /* panels and the sidebar: one flat, solid layer */
-  --color-ink: #e9efe9;        /* body text, a touch warm */
-  --color-muted: #94a39d;      /* secondary text */
-  --color-rule: #232c29;       /* the one border and divider colour */
-  --color-warn: #c3cac6;
-  --color-warnbg: #1a2220;
-  /* Primary action: sage teal from the mark (#487871). White text on both */
-  --color-navy: #3f6d66;
-  --color-navyhover: #487871;
+  --color-paper: #f5f8fb;
+  --color-sheet: #ffffff;
+  --color-ink: #142433;
+  --color-muted: #516375;
+  --color-rule: #dce5ed;
+  --color-control: #788da2;
+  --color-warn: #4b5d6e;
+  --color-warnbg: #edf2f6;
+  --color-navy: #256499;
+  --color-navyhover: #194e7c;
   --color-onaccent: #ffffff;
-  /* Leaders, human review */
-  --color-human: #c4b5fd;
-  --color-humanbg: #211c38;
-  /* Accent on dark: current selection, links, icons that carry state */
-  --color-agent: #8fc2b8;
-  --color-agentdeep: #a9d3ca;
-  --color-agentbg: #15211f;
-  /* Verified and successful states: soft blue, always with a word or a check mark */
-  --color-ok: #8ab4f8;
-  --color-okbg: #13213a;
-  /* Data-health alerts, uncertainty, review required */
-  --color-amber: #fbbf24;
-  --color-amberbg: #2a1f08;
-  --color-amberline: #5c4513;
-  --color-neg: #f87171;
+  --color-human: #704779;
+  --color-humanbg: #f4edf6;
+  --color-agent: #286da5;
+  --color-agentdeep: #1b5685;
+  --color-agentbg: #eaf3fb;
+  --color-ok: #226353;
+  --color-okbg: #e9f5f0;
+  --color-amber: #81510e;
+  --color-amberbg: #fff5e1;
+  --color-amberline: #e4c58e;
+  --color-neg: #a33143;
+  --shadow-overlay: 0 16px 48px rgb(20 36 51 / 0.16), 0 2px 8px rgb(20 36 51 / 0.08);
 }
 
 :root {
-  color-scheme: dark;                   /* native selects, scrollbars and pickers render dark */
-  accent-color: var(--color-agent);     /* radios and checkboxes */
+  color-scheme: light;
+  accent-color: var(--color-agent);
   caret-color: var(--color-agent);
-  scrollbar-color: #2c3633 transparent;
+  scrollbar-color: var(--color-control) transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 @layer base {
   body {
-    background:
-      radial-gradient(60rem 40rem at 92% -14%, rgb(72 120 113 / 0.14), transparent 60%),
-      radial-gradient(44rem 30rem at 4% 112%, rgb(72 120 113 / 0.07), transparent 60%),
-      var(--color-paper);
-    background-attachment: fixed;
+    background: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
     font-size: 0.9375rem;
@@ -70,7 +61,7 @@
     text-wrap: balance;
   }
   p { text-wrap: pretty; }
-  ::selection { background: rgb(143 194 184 / 0.28); color: var(--color-ink); }
+  ::selection { background: #cce2f4; color: var(--color-ink); }
   :focus-visible { outline: 2px solid var(--color-agent); outline-offset: 2px; }
   a { text-underline-offset: 0.2em; }
 }
@@ -83,7 +74,7 @@
     max-width: 52rem;
     margin-left: max(0px, calc((100% - 52rem) / 2 - var(--shift, 0px) / 2));
     margin-right: auto;
-    padding-inline: 1.25rem;
+    padding-inline: clamp(1rem, 3vw, 2rem);
     /* re-centres smoothly, in step with the sidebar's own width change */
     transition: margin-left 300ms cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -92,12 +83,11 @@
     max-width: 72rem;
     margin-left: max(0px, calc((100% - 72rem) / 2 - var(--shift, 0px) / 2));
     margin-right: auto;
-    padding-inline: 1.25rem;
+    padding-inline: clamp(1rem, 3vw, 2rem);
     transition: margin-left 300ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   /* Motion: state only, 150-300 ms, exponential ease-out from a visible default. */
   .pa-fade { animation: pa-fade 220ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .pa-tabbar { transition: left 280ms cubic-bezier(0.16, 1, 0.3, 1), width 280ms cubic-bezier(0.16, 1, 0.3, 1); }
   .pa-stagger > * { animation: pa-rise 260ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-stagger > *:nth-child(2) { animation-delay: 40ms; }
   .pa-stagger > *:nth-child(3) { animation-delay: 80ms; }
@@ -105,30 +95,18 @@
   .pa-stagger > *:nth-child(n+5) { animation-delay: 160ms; }
   /* Loading placeholder: a slow sheen across a neutral block, never a spinner in the content. */
   .pa-skeleton {
-    background: linear-gradient(90deg, var(--color-rule) 0%, #2c3833 50%, var(--color-rule) 100%) 0 0 / 200% 100%;
+    background: linear-gradient(90deg, var(--color-rule), var(--color-sheet), var(--color-rule)) 0 0 / 200% 100%;
     animation: pa-sheen 1.4s ease-in-out infinite;
     border-radius: 0.375rem;
   }
   .pa-draw path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: pa-draw 420ms 80ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  /* Frosted glass only where something floats over the page: the sidebar while it hovers open, menus,
-     the phone drawer and toasts. Without backdrop-filter the 92%-opaque fill still reads. */
-  .glass {
-    background: rgb(18 24 22 / 0.92);
-  }
-  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .glass {
-      background: rgb(18 24 22 / 0.78);
-      -webkit-backdrop-filter: blur(16px) saturate(130%);
-      backdrop-filter: blur(16px) saturate(130%);
-    }
-  }
   .pa-rise { animation: pa-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-slide { animation: pa-slide 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-pulse { animation: pa-pulse 1.2s ease-in-out infinite; }
   @media (prefers-reduced-motion: reduce) {
     .pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-stagger > *, .pa-skeleton { animation: none; }
     .pa-draw path { animation: none; stroke-dashoffset: 0; }
-    .workspace-content, .workspace-wide, .pa-tabbar { transition: none; }
+    .workspace-content, .workspace-wide { transition: none; }
   }
 }
 

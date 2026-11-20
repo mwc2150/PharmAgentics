@@ -21,7 +21,7 @@ function Drawer({ title, kicker, onClose, children }: { title: string, kicker: s
   }, [onClose])
   return <div className="fixed inset-0 z-40 flex justify-end">
     <button className="absolute inset-0 bg-black/60" aria-label="Close panel" tabIndex={-1} onClick={onClose}/>
-    <aside role="dialog" aria-modal="true" aria-labelledby="overview-drawer-title" className="pa-slide relative z-10 flex h-full w-full max-w-lg flex-col border-l border-rule bg-sheet">
+    <aside role="dialog" aria-modal="true" aria-labelledby="overview-drawer-title" className="pa-slide relative z-10 flex h-full w-full max-w-lg flex-col border-l border-rule bg-sheet shadow-overlay">
       <div className="flex items-start justify-between gap-3 border-b border-rule p-5">
         <div><div className="text-[11px] uppercase tracking-[0.06em] text-muted">{kicker}</div><h2 id="overview-drawer-title" className="mt-1 font-serif text-xl">{title}</h2></div>
         <button ref={close} onClick={onClose} aria-label="Close panel" className="rounded-lg p-2 hover:bg-paper"><Icon name="close" className="h-4 w-4"/></button>
@@ -112,17 +112,17 @@ function TerritoryPanel({ t, o, onClose, onGenerate }: { t: TerritoryRow, o: O, 
 }
 
 function StatBar({ stats, onOpen }: { stats: Stat[], onOpen: (s: Stat) => void }) {
-  return <section aria-label="This week" className={`${PANEL} grid grid-cols-2 lg:grid-cols-4`}>
-    {stats.map((s, i) => <button key={s.key} onClick={() => onOpen(s)}
-      className={`group p-5 text-left transition-colors hover:bg-paper/60 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
-      <div className="text-xs text-muted">{s.label}</div>
-      <div className="mt-2 font-serif text-3xl tabular-nums">{s.value}</div>
+  return <section aria-label="This week" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {stats.map(s => <button key={s.key} onClick={() => onOpen(s)}
+      className={`${PANEL} group flex min-w-0 flex-col items-start p-3.5 text-left transition-colors hover:border-agent hover:bg-agentbg focus-visible:border-agent sm:p-5`}>
+      <div className="text-xs font-semibold text-muted">{s.label}</div>
+      <div className="mt-2 max-w-full break-words font-serif text-2xl font-semibold tabular-nums sm:text-3xl">{s.value}</div>
       <div className={`mt-1.5 text-xs tabular-nums ${s.adverse ? "text-amber" : "text-muted"}`}>
         {s.key === "material" ? `of ${s.change?.value ?? "–"} like-for-like territories`
           : s.key === "health" ? (s.raw ? "flagged feeds this week" : "every feed passed")
           : s.change ? `${s.adverse ? "Down " : s.change.raw && s.change.raw >= 0.05 ? "Up " : ""}${s.change.value.replace("-", "")} on the prior week` : "no prior week"}
       </div>
-      <div className="mt-2 text-[11px] text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Show the query</div>
+      <div className="mt-auto flex items-center gap-1 pt-3 text-xs font-medium text-agentdeep">Show the query<Icon name="chevronRight" className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5"/></div>
     </button>)}
   </section>
 }
@@ -148,20 +148,20 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
     return Math.ceil(m * 1.1 * 10) / 10
   }, [o])
   const ticks = [-domain, -domain / 2, 0, domain / 2, domain]
-  const cols = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 md:grid-cols-[11rem_96px_minmax(0,1fr)_4.5rem_4.5rem]"
-  return <section className={PANEL} aria-labelledby="territories-title">
+  const cols = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 @min-[42rem]:grid-cols-[11rem_96px_minmax(0,1fr)_4.5rem_4.5rem]"
+  return <section className={`${PANEL} @container`} aria-labelledby="territories-title">
     <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
-      <h3 id="territories-title" className="text-sm font-semibold">Territories to look at</h3>
+      <h3 id="territories-title" className="font-serif text-xl font-semibold">Territories to look at</h3>
       <p className="text-xs text-muted"><span aria-hidden className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-agent align-middle"/>material change
         <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-2.5 rounded-full border-2 border-agent align-middle"/>within normal range
         <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-5 rounded bg-rule align-middle"/>the territory's normal range</p>
     </div>
     <p className="px-5 pt-1 text-xs leading-relaxed text-muted">Week of {day(o.week)} against the 4 weeks before. A change is material when it is past the territory's own normal range (at least {pct(o.rule.material_change, false)}, wider where weekly volume is noisy) and at least {(o.rule.material_gap * 100).toFixed(0)} points apart from the other territories: the rule the brief's triage uses.</p>
-    <div className={`${cols} mt-4 border-b border-rule px-5 pb-2 text-[11px] text-muted`}>
-      <span>Territory</span><span className="hidden md:block">13 weeks of TRx</span>
-      <span className="relative hidden h-4 md:block">{ticks.map((v, i) => <span key={v} style={{ left: `${50 + (v / domain) * 50}%` }}
+    <div className={`${cols} mt-4 border-y border-rule bg-paper px-5 py-2 text-xs font-medium text-muted`}>
+      <span>Territory</span><span className="hidden @min-[42rem]:block">13 weeks of TRx</span>
+      <span className="relative hidden h-4 @min-[42rem]:block">{ticks.map((v, i) => <span key={v} style={{ left: `${50 + (v / domain) * 50}%` }}
         className={`absolute tabular-nums ${i === 0 ? "" : i === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2"}`}>{v > 0 ? "+" : ""}{Math.round(v * 100)}%</span>)}</span>
-      <span className="hidden text-right md:block">TRx</span><span className="text-right">Change</span>
+      <span className="hidden text-right @min-[42rem]:block">TRx</span><span className="text-right">Change</span>
     </div>
     <ul className="divide-y divide-rule">
       {o.territories.map(t => <li key={t.id} className={`${cols} px-5 py-3`}>
@@ -169,10 +169,10 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
           <span className="block truncate text-sm hover:underline">{t.label}</span>
           <span className={`block text-xs ${t.status === "material" ? "text-ink" : "text-muted"}`}>{STATUS[t.status]}</span>
         </button>
-        <span className="hidden md:block"><Sparkline points={t.series.map(p => p.trx)} label={`${t.label} TRx over ${t.series.length} weeks`}/></span>
-        <span className="col-span-2 row-start-2 mt-2 md:col-span-1 md:row-start-auto md:mt-0"><Strip t={t} domain={domain} onOpen={() => onOpen(t)}/></span>
-        <span className="hidden text-right text-sm tabular-nums md:block">{int(t.trx)}</span>
-        <span className="col-start-2 row-start-1 text-right text-sm tabular-nums md:col-start-auto md:row-start-auto">{pct(t.change)}</span>
+        <span className="hidden @min-[42rem]:block"><Sparkline points={t.series.map(p => p.trx)} label={`${t.label} TRx over ${t.series.length} weeks`}/></span>
+        <span className="col-span-2 row-start-2 mt-2 @min-[42rem]:col-span-1 @min-[42rem]:row-start-auto @min-[42rem]:mt-0"><Strip t={t} domain={domain} onOpen={() => onOpen(t)}/></span>
+        <span className="hidden text-right text-sm tabular-nums @min-[42rem]:block">{int(t.trx)}</span>
+        <span className="col-start-2 row-start-1 text-right text-sm tabular-nums @min-[42rem]:col-start-auto @min-[42rem]:row-start-auto">{pct(t.change)}</span>
       </li>)}
     </ul>
   </section>
@@ -190,11 +190,14 @@ export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: st
   }, [week, brand])
   const stat = open?.kind === "stat" ? open.s : null
   const statEvidence = stat && o ? o.evidence.filter(e => e.id === stat.evidence_id || e.id === stat.change?.evidence_id) : []
-  return <><div className="workspace-wide pa-stagger space-y-6 py-8">
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <p className="text-sm text-muted">{o ? `${o.product_name} (${o.product}), week of ${day(o.week)}. Every figure is computed from the governed data; select one to see its query.` : "Loading the week…"}</p>
-      <label className="flex items-center gap-2 text-xs text-muted">Week
-        <select value={week} onChange={e => onWeek(e.target.value)} className="rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink">
+  return <><div className="workspace-wide pa-stagger space-y-6 py-6 sm:pb-10">
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h3 className="font-serif text-2xl font-semibold">Weekly snapshot</h3>
+        <p className="mt-1 text-sm text-muted">{o ? `Week of ${day(o.week)}. Select a figure to see its source query.` : error ? "The week’s figures are unavailable." : "Loading the week…"}</p>
+      </div>
+      <label className="flex items-center gap-2 text-xs font-medium text-muted">Week
+        <select value={week} onChange={e => onWeek(e.target.value)} className="rounded-lg border border-control bg-sheet px-3 py-2 text-sm text-ink">
           {[...weeks].reverse().map(w => <option key={w} value={w}>{day(w)}</option>)}
         </select>
       </label>

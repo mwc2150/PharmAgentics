@@ -9,7 +9,7 @@ export const DropdownMenuTrigger = Menu.Trigger
 export function DropdownMenuContent({ className = "", sideOffset = 8, ...props }: ComponentPropsWithoutRef<typeof Menu.Content>) {
   return <Menu.Portal>
     <Menu.Content sideOffset={sideOffset} collisionPadding={12}
-      className={`z-50 min-w-[16rem] overscroll-contain glass rounded-xl p-1.5 text-ink shadow-2xl shadow-black/50 border border-rule pa-rise ${className}`} {...props} />
+      className={`z-50 min-w-[16rem] overscroll-contain rounded-xl border border-rule bg-sheet p-1.5 text-ink shadow-overlay pa-rise ${className}`} {...props} />
   </Menu.Portal>
 }
 

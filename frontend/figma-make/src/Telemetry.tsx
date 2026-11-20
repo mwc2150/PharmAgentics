@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
+import { WorkspaceHeading } from "./agent/primitives"
 import { getTelemetry, getUsage, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
@@ -21,9 +22,9 @@ function Heading({ title, note }: { title: string, note?: ReactNode }) {
 }
 
 function Figures({ items }: { items: [string, string, string][] }) {
-  return <section aria-label="Headline figures" className={`${PANEL} grid grid-cols-2 lg:grid-cols-4`}>
-    {items.map(([k, v, sub], i) => <div key={k} className={`p-5 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
-      <div className="text-xs text-muted">{k}</div><div className="mt-2 font-serif text-3xl tabular-nums">{v}</div><div className="mt-1.5 text-xs text-muted">{sub}</div>
+  return <section aria-label="Headline figures" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {items.map(([k, v, sub]) => <div key={k} className={`${PANEL} min-w-0 p-3.5 sm:p-5`}>
+      <div className="text-xs font-semibold text-muted">{k}</div><div className="mt-2 break-words font-serif text-2xl font-semibold tabular-nums sm:text-3xl">{v}</div><div className="mt-1.5 text-xs text-muted">{sub}</div>
     </div>)}
   </section>
 }
@@ -102,9 +103,8 @@ export function TelemetryWorkspace() {
   const reviewed = b ? Object.values(b.decisions).reduce((x, y) => x + y, 0) : 0
   const approved = b ? (b.decisions.approved ?? b.decisions.approve ?? 0) : 0
   const lead = t?.latest.find(r => !r.control)
-  return <div className="workspace-wide pa-stagger space-y-6 pb-12 pt-8 sm:pt-10">
-    <header><h2 className="font-serif text-2xl font-medium">Evaluation</h2>
-      <p className="mt-1.5 text-sm text-muted">How PharmAgentics is used, and how each version scored on the golden questions.</p></header>
+  return <div className="workspace-wide pa-stagger space-y-6 py-8 sm:py-12">
+    <WorkspaceHeading title="Platform evaluation" detail="How PharmAgentics is used, and how each version scored on the golden questions."/>
     {err.map(e => <div key={e} role="alert" className="rounded-xl bg-amberbg p-4 text-sm text-amber">{e}</div>)}
     {!t && !u && !err.length && <div className="pa-skeleton h-32 rounded-xl"/>}
     {u && b && <Figures items={[
