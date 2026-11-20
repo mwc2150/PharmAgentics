@@ -447,7 +447,6 @@ def compose(case: Case, mode: str, trajectory: dict | None = None, writer_model:
     sections, made = [], {}
     for key in order:
         if key == "screen":
-            import re
             m = re.search(r"\b(?:top|largest|biggest)\s+(\d+)", case.scope.question, re.I)
             text = w.screen(int(m.group(1)) if m else 5)
         elif key == "checks":

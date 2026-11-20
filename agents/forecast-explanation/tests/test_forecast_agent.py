@@ -169,6 +169,16 @@ def test_with_a_model_the_rules_still_investigate_by_default(no_language_model):
     assert out["report"]["summary_by"] == "code" and out["trajectory"]["writer_status"] == "model_error"
 
 
+def test_a_model_written_summary_is_kept_when_the_check_accepts_it(monkeypatch, no_language_model):
+    """Regression: a function-local `import re` in compose() made `re` unbound here, so every accepted model summary
+    on a non-screen question failed the run with UnboundLocalError."""
+    import forecast_agent.prose as prose
+
+    monkeypatch.setattr(prose, "write_summary", lambda w, parts, spec: ("The verified drivers explain most of the miss.", "ok"))
+    out = answer("Week of 2026-08-24: How much of the miss does each driver explain?", model="ollama:none")
+    assert out["report"]["summary_by"] == "model" and out["trajectory"]["writer_status"] == "ok"
+
+
 def test_a_confirmed_scope_skips_reading(no_language_model):
     out = answer("Why did we miss?", model="ollama:none", territory="PACIFIC", weeks=["2026-06-01", "2026-06-08"],
                  intent="drivers")
