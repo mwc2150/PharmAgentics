@@ -1,7 +1,7 @@
 // brief-006: follow-up threads on a brief. Analysts only; the server answers 404 to anyone else.
-import { api, post, type Claim, type Evidence } from "./briefingApi"
+import { api, post, type Claim, type Comparison, type Evidence } from "./briefingApi"
 
-export type Offer = { brand?: string; territory?: string; week?: string; agent?: boolean } | null
+export type Offer = { brand?: string; territory?: string; week?: string; agent?: boolean; choose_comparison?: boolean; comparison?: Comparison } | null
 export type Turn = {
   n: number
   question: string

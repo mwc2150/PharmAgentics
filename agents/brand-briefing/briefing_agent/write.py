@@ -37,17 +37,22 @@ def gloss(claim: dict, evidence: dict | None) -> dict:
         weeks = sorted(set(_ISO.findall(group)))
         if weeks and (not sets or sets[-1] != weeks):
             sets.append(weeks)
-    params = ", ".join(f"{k} {v}" for k, v in ((evidence or {}).get("params") or {}).items())
-    single = False
+    scope = (evidence or {}).get("params") or {}
+    params = ", ".join(f"{k} {v}" for k, v in scope.items())
+    single, last_year = False, False
     if len(sets) >= 2 and claim["value"].endswith("%"):
         new, old = sets[0], sets[1]
         single = len(old) == 1 and len(new) == 1 and date.fromisoformat(old[0]) == date.fromisoformat(new[0]) - timedelta(days=7)
         text = f"a change: {_span(new)} against {_span(old)}" + (" (a week-over-week comparison)" if single else " (not week over week)")
+        last_year = old == [(date.fromisoformat(w) - timedelta(weeks=52)).isoformat() for w in new]
+        if last_year:
+            text += " (same reporting weeks last year)"
     elif sets:
         text = f"a value for {_span(sets[0])}"
     else:
         text = "a value taken from the data"
-    return {"text": text + (f" [{params}]" if params else ""), "base_single": single}
+    return {"text": text + (f" [{params}]" if params else ""), "base_single": single,
+            "last_year": last_year, "small_cell": scope.get("small_cell", False)}
 
 
 def glossary(shown: str, claims: list[dict], evidence: list[dict]) -> tuple[str, dict[str, dict]]:
@@ -78,8 +83,10 @@ def problems(piece: str, allowed: set[str], n_claims: int, glosses: dict[str, di
         if RELATIVE_WEEK.search(piece or "") and not any(glosses.get(t, {}).get("base_single") for t in used):
             out.append('compares with "the week before", but none of its numbers is a week-over-week comparison '
                        "(describe it as the glossary does)")
-        if YEAR_BACK.search(piece or ""):
+        if YEAR_BACK.search(piece or "") and not any(glosses.get(t, {}).get("last_year") for t in used):
             out.append("compares with last year, but no number in this brief does")
+        if any(glosses.get(t, {}).get("small_cell") for t in used):
+            out.append("uses a noisy small-cell figure in a summary sentence")
     return out
 
 
@@ -194,8 +201,10 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
             notes.append("Routine week. No material change was found, and territory swings stayed in their normal range.")
         elif dropped_line:
             notes.append(dropped_line)
+    blocks.extend(memo.StoryBlock(**story) for story in sections.get("promotion_stories", []))
     parts = memo.MemoParts(title=sections["title"], bottom_line=close["bottom_line"], numbers=sections["numbers"],
-                           limits=sections["limits"], next_checks=close["next_checks"], appendix=sections["appendix"],
+                           limits=sections["limits"], next_checks=close["next_checks"],
+                           appendix=sections["appendix"] + close.get("driver_timing", []),
                            stories=blocks, story_notes=notes, answer=answer,
                            charts={k: targets[k] for k in ("2", "4") if k in targets})
     return memo.compose(parts)

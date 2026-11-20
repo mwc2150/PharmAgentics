@@ -23,6 +23,7 @@ from mcp.client.client import Client
 from pharmagentics.llm import chat_client, chat_options, model_spec
 from pharmagentics.tools.memo import render_sections as memo_sections_rendered
 from pharmagentics.tools.registry import digits_outside_tokens
+from pharmagentics.tools.window import Comparison
 from pharmagentics.tracing import finish, span
 
 from briefing_baseline import pipeline as scripted
@@ -50,15 +51,15 @@ def config_version() -> str:
     return h.hexdigest()[:12]
 
 
-def answer(question: str, model: str | None = None) -> dict:
+def answer(question: str, model: str | None = None, *, comparison: Comparison | None = None) -> dict:
     """Eval entry point: question in, AnswerEnvelope dict out."""
-    return asyncio.run(_answer(question, model))
+    return asyncio.run(_answer(question, model, comparison))
 
 
-def triage(question: str, model: str | None = None) -> dict:
+def triage(question: str, model: str | None = None, *, comparison: Comparison | None = None) -> dict:
     """UAT: the plan P1 reviews (code plan plus the manager's calls)."""
     cfg = load_config()
-    return asyncio.run(_triage(question, model_spec(model or cfg.get("model")), RunLog()))
+    return asyncio.run(_triage(question, model_spec(model or cfg.get("model")), RunLog(), comparison))
 
 
 def run_with_plan(question: str, decision: dict, plan: dict, model: str | None = None) -> dict:
@@ -78,9 +79,11 @@ async def _ask(spec: str, prompt: str, log: RunLog, name: str) -> str:
     return (await agent.run(prompt)).text or ""
 
 
-async def _triage(question: str, spec: str, log: RunLog) -> dict:
+async def _triage(question: str, spec: str, log: RunLog, comparison: Comparison | None = None) -> dict:
     cfg = load_config()
-    code_plan = scripted.triage(question)  # ValueError outside the release
+    code_plan = scripted.triage(question, comparison=comparison) if comparison else scripted.triage(question)
+    if code_plan["promotion_review"]:
+        return dict(planmod.apply(code_plan, '{"order": []}', question), model=spec)
     scope = out_of_scope(question)
     if scope:
         return dict(code_plan, engine="agent", state="OUT_OF_SCOPE", scope=scope, stories=[], flagged=False, flags=[],
@@ -155,15 +158,27 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
 async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed: bool, log: RunLog) -> dict:
     cfg = load_config()
     started = time.time()
+    if plan.get("promotion_review"):
+        async with Client(server()) as mcp:
+            with span("1_load_and_pin", inputs={"question": question}, model=spec) as sp:
+                pinned = await _call(mcp, "open_run", question=question)
+                finish(sp, {"run_context": pinned})
+            env = json.loads(await _call(mcp, "promotion_review"))
+        env.update(system=f"{NAME}:{spec}", trajectory={"llm_calls": 0, "model": spec, "scope": "promotion_review"})
+        record = planmod.record(plan, [], reviewed)
+        return {"envelope": env, "triage": record, "flow": stage_flow(plan, record, verified=True)}
     if plan.get("state") == "OUT_OF_SCOPE":
-        env = scripted.answer(question)
+        choice = Comparison.model_validate(plan["comparison"]) if plan.get("comparison") else None
+        env = scripted.answer(question, comparison=choice) if choice else scripted.answer(question)
         env.update(system=f"{NAME}:{spec}", answer=plan["scope"] + "\n" + env["answer"],
+                   comparison=plan.get("comparison"),
                    trajectory={"scope": "out", "tools": [], "llm_calls": 0, "capped": None, "model": spec,
                                "config_version": config_version(), "seconds": round(time.time() - started, 1)})
         return {"envelope": env, "triage": None, "flow": None}
     async with Client(server()) as mcp:
         with span("1_load_and_pin", inputs={"question": question}, model=spec, config_version=config_version()) as sp:
-            pinned = await _call(mcp, "open_run", question=question)
+            args = {"comparison": plan["comparison"]} if plan.get("comparison") else {}
+            pinned = await _call(mcp, "open_run", question=question, **args)
             sections = json.loads(await _call(mcp, "brief_sections"))
             finish(sp, {"run_context": pinned})
         with span("4a_investigation", inputs={"order": order}) as sp:
@@ -187,7 +202,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
     flow = write.flow(stage_flow(plan, flow_record, verified=True), plan, record, log.tools, revised, spec)
     capped = next((n["capped"] for n in notes if n["capped"]), None)
     envelope = {
-        "system": f"{NAME}:{spec}", "answer": text, "claims": used,
+        "system": f"{NAME}:{spec}", "answer": text, "claims": used, "comparison": plan.get("comparison"),
         "evidence": [e for e in run["evidence"] if e["id"] in keep],
         "abstained": bool(run["abstained"]), "citations": citations,
         "sections": memo_sections_rendered(memo_sections, claims, index),
@@ -200,13 +215,15 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
     return {"envelope": envelope, "triage": record, "flow": flow}
 
 
-async def _answer(question: str, model: str | None) -> dict:
+async def _answer(question: str, model: str | None, comparison: Comparison | None = None) -> dict:
     cfg = load_config()
     spec = model_spec(model or cfg.get("model"))
     log = RunLog()
     try:
-        plan = await _triage(question, spec, log)
+        plan = await _triage(question, spec, log, comparison) if comparison else await _triage(question, spec, log)
     except ValueError:  # outside the release: the scripted engine says so, with no model
+        if comparison is not None:
+            raise
         return dict(scripted.answer(question), system=f"{NAME}:{spec}")
     result = await _run(question, plan, plan.get("manager_order", []), spec, reviewed=False, log=log)
     return result["envelope"]

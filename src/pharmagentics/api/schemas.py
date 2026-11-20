@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from pharmagentics.tools.window import Comparison
+
 
 Territory = Literal[
     "GREAT_LAKES", "MID_ATLANTIC", "MOUNTAIN", "NEW_ENGLAND",
@@ -31,11 +33,12 @@ class TriageDecision(BaseModel):
 class BriefingQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    intent: Literal["weekly_brief"] = "weekly_brief"
+    intent: Literal["weekly_brief", "promotion_review"] = "weekly_brief"
     brand_id: Brand = "BXA"
     territory_id: Territory = "PACIFIC"
     week_start: date
     question: str = Field(default="What changed this week?", min_length=3, max_length=300)
+    comparison: Comparison | None = None
     triage: TriageDecision | None = None  # brief-002: absent = the code plan, unchanged behavior
 
     @field_validator("week_start")
@@ -70,6 +73,7 @@ class BriefingResult(BaseModel):
     brand_id: Brand = "BXA"
     territory_id: Territory
     week_start: date
+    comparison: Comparison | None = None
     answer: str
     claims: list[Claim] = Field(default_factory=list)
     evidence: list[Evidence] = Field(default_factory=list)

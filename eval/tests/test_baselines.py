@@ -1,4 +1,4 @@
-"""The scripted baselines: anchor behaviours, and the invariants that must hold on all 42 cases."""
+"""The scripted baselines: anchor behaviours and invariants across the golden set."""
 import inspect
 
 import pytest
@@ -81,7 +81,8 @@ def test_forecast_attribution_reconciles_and_keeps_the_residual(systems):
 def test_every_case_runs_and_every_claim_checks_out(systems, name, cases):
     """The gated invariants: no crash, every claim reconciles, traces and links, and no banned wording."""
     for c in (x for x in CASES if x.lane == cases):
-        out = systems[name].predict(c.question)
+        options = {"comparison": c.inputs()["comparison"]} if c.comparison else {}
+        out = systems[name].predict(c.question, **options)
         for s in EVIDENCE + [d for d in DETERMINISTIC if d.name in ("must_not_say", "governed_terms", "no_individual_rep")]:
             fb = scored(s, outputs=out, expectations=c.expectations())
             assert fb.value in (True, 1.0), f"{c.story} {s.name}: {fb.rationale}"

@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import asdict
 from typing import Literal
 
 from mcp.server.mcpserver import MCPServer
@@ -21,12 +22,14 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from pharmagentics.tools import DEFAULT_DB, Registry
 from pharmagentics.tools import queries as q
-from pharmagentics.tools import charts, memo, projection, stages
-from pharmagentics.tools.checks import (DRIVERS, OWNER, Check, check_access, check_competitor, check_data,
-                                        check_promotion, check_supply, confidence, context_baseline)
+from pharmagentics.tools import charts, memo, projection, promotion, splits, stages
+from pharmagentics.tools.checks import (DRIVERS, OWNER, Check, check_competitor, check_data,
+                                        confidence, context_baseline)
+from pharmagentics.tools.lag_checks import check_access, check_promotion, check_supply
+from pharmagentics.tools.window import Comparison
 
 ADMIN_TOOLS = ("open_run", "export_run", "brief_sections", "story_section", "competitor_section", "dropped_line",
-               "memo_close")
+               "memo_close", "promotion_review")
 _ORD = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
 AGENT_TOOLS = {
     # Briefing Data Forensics: is the data wrong, and what is the like-for-like change?
@@ -37,8 +40,6 @@ AGENT_TOOLS = {
     # Follow-ups (brief-006 slice 4): a new governed query an analyst may ask for.
     "follow_up": ("split_change",),
 }
-SPLITS = {"plan": "plan_id", "specialty": "hcp_specialty", "channel": "payer_channel"}
-SMALL_CELL = 50  # weekly BXA TRx below which a split cell is noisy (brief-003 FR-015; cash cells of 36 to 49)
 _TERRITORIES = {k: v for k, v in q.TERRITORY_NAMES.items() if k != "NATIONAL"}
 _TOKEN = re.compile(r"\{c(\d+)\}")
 
@@ -64,15 +65,14 @@ class RunSession:
         self.restated = False
 
     # admin -------------------------------------------------------------------------------------
-    def open_run(self, question: str) -> str:
+    def open_run(self, question: str, comparison: Comparison | None = None) -> str:
         self.close()
         self.reg = Registry(self.db)
-        self.p = stages.resolve(self.reg, question)
+        self.p = stages.resolve(self.reg, question, comparison=comparison)
         self.checks, self.stories, self.calls, self.seen = {}, {}, [], {}
         if not self.p.requested:
             return stages.outside_release(self.p)
-        lines = [f"Period: {stages.describe(self.p)}, compared with the {len(self.p.baseline)} weeks before "
-                 f"({self.p.baseline[0]} to {self.p.baseline[-1]}).",
+        lines = [f"Period: {stages.describe(self.p)}. Comparison: {memo.comparison_text(self.p)}. Source: {self.p.baseline_source}.",
                  f"Data version {self.reg.data_version}. Product: BXA (Cardiovela)."]
         if self.p.note:
             lines.append(self.p.note)
@@ -204,7 +204,13 @@ class RunSession:
             return msg
         if (again := self._repeat(name, t)):
             return again
-        B = context_baseline(self.p.weeks, self.p.baseline) if reference else self.p.baseline
+        B = context_baseline(self.p.weeks, self.p.baseline) if reference and self.p.comparison is None else self.p.baseline
+        if fn is check_promotion:
+            return self._remember(name, t, self._record(
+                t, check_promotion(self.reg, t, self.p.weeks, self.p.baseline, source_baseline=B)))
+        if fn is check_competitor and self.p.comparison is not None:
+            return self._remember(name, t, self._record(
+                t, check_competitor(self.reg, t, self.p.weeks, B, exact_comparison=True)))
         return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B)))
 
     # Admin: the brief's code-built sections (build 3, brief-002 FR-026) --------------------------
@@ -218,7 +224,8 @@ class RunSession:
         self.proj, self.restated = projection.build(reg, p), bool(restated)
         return {"title": memo.title_lines(p), "numbers": memo.numbers(self.proj, kpis, restated, p),
                 "limits": memo.limits(p, self.proj, health, reg), "appendix": memo.appendix(reg, p=p, proj=self.proj),
-                "calendar": bool(p.calendar)}
+                "calendar": bool(p.calendar),
+                "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 
     def memo_close(self, competitor: bool) -> dict:
         """§1 and §5 once the stories are closed (contracts/mcp-admin-tools.md): the bottom line in FR-021 order
@@ -227,7 +234,8 @@ class RunSession:
         if self.proj is None:
             raise ToolError("brief_sections must run before memo_close")
         told = [{"territory": t, "confidence": st["confidence"],
-                 "drivers": [d for d, v in st["verdicts"].items() if v == "supported"]}
+                 "drivers": [d for d, v in st["verdicts"].items() if v == "supported"],
+                 "lags": {d: c.detail["lag"] for d, c in self.checks.get(t, {}).items() if c.detail and "lag" in c.detail}}
                 for t, st in self.stories.items() if st["closed"]]
         story_charts = {}
         for s in told:  # brief-003 FR-024: same builders as the scripted brief
@@ -237,6 +245,7 @@ class RunSession:
             story_charts[s["territory"]] = charts.story(reg, p, s["territory"], drivers, plan)
         return {"bottom_line": memo.bottom_line(reg, p, self.proj, told, self.restated),
                 "next_checks": memo.next_checks(p, told, competitor),
+                "driver_timing": memo.driver_timing(told),
                 "charts": {"2": charts.trend(reg, p), "4": charts.coverage(reg, p), "stories": story_charts,
                            "competitor": charts.competitor(reg, p) if competitor else None}}
 
@@ -245,10 +254,13 @@ class RunSession:
         t = self._territory(territory)
         if t is None:
             raise ToolError(self._bad_territory(territory))
+        if self.p.promotion and t == self.p.focus and "promotion" not in self.checks.get(t, {}):
+            self.check_promotion(t)
         head = f"Story {_ORD.get(n, str(n))}: {stages.territory_change(self._reg(), self.p, t)}"
         done = list(self.checks.get(t, {}).values())
         lines = [head] + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
         lines.append(memo.without_next(self._status(t, closing=True)))  # its next check goes to §5
+        lines.extend(splits.story_lines(self._reg(), self.p, t))
         return "\n".join(lines)
 
     def competitor_section(self, lead: str) -> str:
@@ -274,32 +286,11 @@ class RunSession:
         t = self._territory(territory)
         if t is None:
             return self._bad_territory(territory)
-        if by not in SPLITS:
-            return f"Unknown split {by!r}. Use one of: {', '.join(SPLITS)}."
+        if by not in splits.SPLITS:
+            return f"Unknown split {by!r}. Use one of: {', '.join(splits.SPLITS)}."
         if (withheld := self._withheld(t)):
             return withheld
-        reg, W, B, col = self.reg, self.p.weeks, self.p.baseline, SPLITS[by]
-        if not B:
-            return "The release has no earlier weeks to compare with."
-        rows = reg.rows(f"select {col}, sum(trx) filter (where week_start in {q._dates(W)}) / {len(W)}.0, "
-                        f"sum(trx) filter (where week_start in {q._dates(B)}) / {len(B)}.0 from {q.RX} "
-                        f"where product_id = 'BXA' and territory_id = '{t}' and week_start in {q._dates(sorted(set(W) | set(B)))} "
-                        f"group by 1")
-        rows = sorted((r for r in rows if r[0] is not None), key=lambda r: -abs((r[1] or 0) - (r[2] or 0)))[:6]
-        lines = [f"{q.name(t)} BXA TRx by {by}, a week in these weeks against the weeks before (largest moves first):"]
-        for g, x, b in rows:
-            g = str(g).replace("'", "")
-            base = f"from {q.RX} where product_id = 'BXA' and territory_id = '{t}' and {col} = '{g}'"
-            now_sql = f"select coalesce(sum(trx), 0) / {len(W)}.0 {base} and week_start in {q._dates(W)}"
-            then_sql = f"select coalesce(sum(trx), 0) / {len(B)}.0 {base} and week_start in {q._dates(B)}"
-            now, then = (reg.claim("split_change", now_sql, "int", territory=t, by=by, cut=g),
-                         reg.claim("split_change", then_sql, "int", territory=t, by=by, cut=g))
-            change = reg.scalar(q.pct_change(now_sql, then_sql))
-            moved = (f", {stages.word(change)} {reg.claim('split_change', q.pct_change(now_sql, then_sql), 'pct1', territory=t, by=by, cut=g)}"
-                     if change is not None else "")
-            noisy = " (small cell: noisy, do not generalize from it)" if (b or 0) < SMALL_CELL else ""
-            lines.append(f"- {g}: {now} a week against {then} before{moved}{noisy}")
-        return self._out("\n".join(lines))
+        return self._out("\n".join(splits.split_change(self._reg(), self.p, t, by)))
 
     def check_access(self, territory: str) -> str:
         return self._driver("check_access", territory, check_access, reference=False)
@@ -363,9 +354,9 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
     text = dict(structured_output=False)
 
     @server.tool(**text)
-    async def open_run(question: str) -> str:
+    async def open_run(question: str, comparison: Comparison | None = None) -> str:
         """Admin: start a run for one question. Pins the period and the data version. Callers only, not agents."""
-        return s.open_run(question)
+        return s.open_run(question, comparison)
 
     @server.tool(**text)
     async def export_run() -> str:
@@ -376,6 +367,14 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
     async def brief_sections() -> str:
         """Admin: the memo's code-built title, numbers, limits and appendix as JSON. Callers only."""
         return json.dumps(s.brief_sections())
+
+    @server.tool(**text)
+    async def promotion_review() -> str:
+        """Admin: render the code-built review for a run pinned to release-wide promotion."""
+        reg = s._reg()
+        if not s.p.promotion_review:
+            raise ToolError("This run is pinned to a dated briefing.")
+        return json.dumps(promotion.render_review(reg, s.p), default=str)
 
     @server.tool(**text)
     async def memo_close(competitor: bool) -> str:

@@ -17,6 +17,8 @@ from pathlib import Path
 
 import httpx
 
+from pharmagentics.tools.window import Comparison
+
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -38,6 +40,8 @@ def run_job(job: dict, model: str | None) -> dict:
     if (payload.get("query") or {}).get("brand_id", "BXA") != "BXA":
         raise ValueError("The agent worker supports BXA only; use scripted Briefing for BXC.")
     if job["kind"] == "triage":
+        if comparison := (payload.get("query") or {}).get("comparison"):
+            return agent.triage(payload["question"], model, comparison=Comparison.model_validate(comparison))
         return agent.triage(payload["question"], model)
     return agent.run_with_plan(payload["question"], payload["decision"], payload["plan"], model)
 

@@ -23,7 +23,7 @@ function TurnView({turn, briefId, mine, onCite, onOpenEvidence, onOfferScope}: {
         <span className="ml-auto text-muted">{turn.engine === "scripted" ? "Scripted, from this brief only" : "Agent"}</span>
       </div>
       {offer && offer.week && onOfferScope && <button type="button" onClick={() => onOfferScope(offer)} className="mt-2 text-xs font-medium text-agentdeep hover:underline">
-        Generate a brief for {offer.brand} · {(offer.territory ?? "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} · week of {offer.week}</button>}
+        {offer.choose_comparison ? "Set up a brief with a new comparison" : <>Generate a brief for {offer.brand} · {(offer.territory ?? "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} · week of {offer.week}</>}</button>}
     </div>
     {mine && <AnswerFeedback lane="briefing" refId={`${briefId}:t${turn.n}`} view="analyst" agent={turn.n === 3}/>}
   </li>

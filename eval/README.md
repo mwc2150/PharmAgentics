@@ -10,7 +10,7 @@ All from the repository root, after `uv sync` and building the database (`uv run
 
 | Command | Does |
 | :- | :- |
-| `uv run python -m eval check` | Validates the 42 cases and recomputes every fact from the data |
+| `uv run python -m eval check` | Validates the 50 cases and recomputes every fact from the data |
 | `uv run python -m eval run --system reference` | Scores the golden answers (positive control) |
 | `uv run python -m eval run --system naive_llm` | Scores a local model with no data (negative control); needs Ollama |
 | `uv run python -m eval run --system briefing_scripted --lane briefing` | The Briefing scripted baseline (`agents/brand-briefing/briefing_baseline/`) |
@@ -29,6 +29,8 @@ All from the repository root, after `uv sync` and building the database (`uv run
 | `uv run pytest tests/test_tools.py eval/tests` | The shared-tools and harness tests |
 
 Each `run` is one MLflow parent run with a child run per rerun. Every case becomes a trace with its spans (for the baselines: one per pipeline stage and one per tool call, with the SQL as input), its check results and its expectations, all kept in `eval/mlflow/` (git-ignored).
+
+When gating brief-007 Slice C against Slice B, select the same 30 Briefing stories for both runs. Score the two draft comparison picker cases separately with `--stories WIN-1,WIN-2`. Their labels are pending review.
 
 ## Layout
 

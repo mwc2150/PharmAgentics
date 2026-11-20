@@ -14,7 +14,7 @@ from . import queries as q
 from .brands import briefing_brand
 from .checks import access_events, launch_date
 from .registry import Registry
-from .window import parse
+from .window import Comparison, comparison_weeks, parse
 
 MATERIAL_CHANGE, MATERIAL_GAP, NOISE_Z = 0.10, 0.08, 2.5
 BASELINE_WEEKS = 4  # comparison weeks: the four weeks before the requested window, any length (brief-007 FR-001)
@@ -47,20 +47,36 @@ class Period:
     calendar: list = field(default_factory=list)  # calendar rows when the period is in calendar mode
     brand_id: str = "BXA"
     calendar_note: str | None = None  # set when calendar weeks were left out of the stories
+    promotion: bool = False
+    promotion_review: bool = False
+    comparison: Comparison | None = None
+    baseline_source: str = "default"
 
 
-def resolve(reg: Registry, question: str, brand_id: str = "BXA") -> Period:
+def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> Period:
     brand_id = briefing_brand(brand_id)
     first, latest = reg.rows("select min(week_start)::varchar, max(week_start)::varchar from raw.calendar")[0]
-    ask = parse(question, first, latest)
+    ask = parse(question, first, latest, briefing=brand_id == "BXA")
     W = ask["weeks"]
     p = Period(brand_id=brand_id, question=question, first=first, latest=latest, requested=W, baseline=[], focus=ask["territory"], note=ask["note"])
+    p.promotion = ask.get("promotion", False)
+    p.promotion_review = p.promotion and not ask["explicit_week"]
+    p.comparison = comparison
+    if comparison is not None:
+        if p.promotion_review:
+            raise ValueError("The release-wide Promotion review uses its own lapse comparison.")
+        available = {r[0] for r in reg.rows("select week_start::varchar from raw.calendar")}
+        p.baseline = comparison_weeks(comparison, W, available)
+        p.baseline_source = "analyst's choice"
     if not W:
         return p
-    p.baseline = [w for w in (q.shift(W[0], -i) for i in range(BASELINE_WEEKS, 0, -1)) if w >= first]
+    if comparison is None:
+        p.baseline = [w for w in (q.shift(W[0], -i) for i in range(BASELINE_WEEKS, 0, -1)) if w >= first]
     weeks = sorted(set(W) | set(p.baseline))
+    previous = q.shift(W[-1], -1)
+    health_weeks = sorted(set(weeks) | ({previous} if previous >= first else set()))
     health = reg.rows(f"select week_start::varchar, territory_id, health_status, flag_reasons "
-                      f"from reporting.v_feed_health where week_start in {q._dates(weeks)}")
+                      f"from reporting.v_feed_health where week_start in {q._dates(health_weeks)}")
     p.status = {(w, t): (h, r) for w, t, h, r in health}
     p.terrs = sorted({t for _, t in p.status})
     p.ok = [t for t in p.terrs if all(p.status.get((w, t), ("FLAG", ""))[0] == "PASS" for w in weeks)]
@@ -70,7 +86,7 @@ def resolve(reg: Registry, question: str, brand_id: str = "BXA") -> Period:
     # Calendar mode when calendar weeks make up half or more of the period; otherwise screen the other weeks.
     p.calendar = cal_rows if len(cal_weeks) * 2 >= len(W) else []
     p.weeks = list(W)
-    if cal_weeks and not p.calendar:
+    if cal_weeks and not p.calendar and not p.promotion_review:
         p.weeks = [w for w in W if w not in cal_weeks]
         p.calendar_note = "Calendar weeks in this period are left out of the stories below, because lower volume there is expected."
     return p
@@ -156,7 +172,7 @@ def kpis(reg: Registry, p: Period) -> list[str]:
         change = reg.scalar(q.pct_change(cur, base)) or 0
         pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope="like-for-like national")
         lines.append(f"KPIs: {p.brand_id} TRx averaged {avg} a week across {n} of {total} territories (like for like), "
-                     f"{word(change)} {pct} against the weeks before.")
+                     f"{word(change)} {pct} against the comparison weeks.")
         # headline total over every reportable cut, which a withheld cut distorts
         all_cur, all_base = q.mean_weekly(W, product=p.brand_id), q.mean_weekly(B, product=p.brand_id)
         naive = reg.scalar(q.pct_change(all_cur, all_base)) or 0
@@ -171,8 +187,9 @@ def kpis(reg: Registry, p: Period) -> list[str]:
             days = reg.claim("lookup_calendar", q.calendar(w, "business_days"), "int", week=w)
             tag = "plan-year reset" if reset and holiday == "NONE" else holiday.lower().replace("_", " ")
             lines.append(f"Calendar effect: the week of {w} is {tag} with {days} business days, so a lower volume is expected.")
-        ly_cur, ly_base = q.mean_weekly([q.shift(w, -52) for w in W], terrs=ok, product=p.brand_id), q.mean_weekly([q.shift(w, -52) for w in B], terrs=ok, product=p.brand_id) if B else None
-        if ly_base:
+        earlier_w, earlier_b = [q.shift(w, -52) for w in W], [q.shift(w, -52) for w in B]
+        if earlier_b and min(earlier_w + earlier_b) >= p.first and p.comparison is None:
+            ly_cur, ly_base = q.mean_weekly(earlier_w, terrs=ok, product=p.brand_id), q.mean_weekly(earlier_b, terrs=ok, product=p.brand_id)
             ly = reg.scalar(q.pct_change(ly_cur, ly_base)) or 0
             lines.append(f"The same weeks a year earlier were {word(ly)} {reg.claim('get_metric', q.pct_change(ly_cur, ly_base), 'pct1', scope='same weeks last year')}. This is a calendar effect, not a business event.")
     return lines
@@ -181,7 +198,10 @@ def kpis(reg: Registry, p: Period) -> list[str]:
 def week_over_week(reg: Registry, p: Period) -> list[str]:
     """A one-week period against the week before (§5.3): every reportable cut, then like for like on the
     territories that report both weeks, so a withheld cut cannot pass for a drop in demand."""
-    w, prev = p.weeks[0], p.baseline[-1]
+    w = p.weeks[0]
+    prev = q.shift(w, -1)
+    if prev < p.first:
+        return []
 
     def passes(week, t):
         return p.status.get((week, t), ("FLAG", ""))[0] == "PASS"
@@ -217,14 +237,15 @@ def territory_changes(reg: Registry, p: Period) -> list[str]:
         if t not in p.ok:
             lines.append(f"- {q.name(t)}: no change is given, because a week compared failed the feed gate.")
             continue
-        wow_sql = q.pct_change(q.trx_sum([last], terrs=[t], product=p.brand_id),
-                               q.trx_sum([prev], terrs=[t], product=p.brand_id))
-        base_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id),
-                                q.mean_weekly(B, terrs=[t], product=p.brand_id))
-        wow = reg.claim("get_metric", wow_sql, "pct1", territory=t, scope="week over week")
+        base_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id), q.mean_weekly(B, terrs=[t], product=p.brand_id))
         base = reg.claim("get_metric", base_sql, "pct1", territory=t, scope="against the comparison weeks")
-        lines.append(f"- {q.name(t)}: {word(reg.scalar(wow_sql) or 0)} {wow} on the week before; "
-                     f"{word(reg.scalar(base_sql) or 0)} {base} on the comparison weeks.")
+        weekly = "week-over-week change withheld"
+        if all(p.status.get((w, t), ("FLAG", ""))[0] == "PASS" for w in (last, prev)):
+            wow_sql = q.pct_change(q.trx_sum([last], terrs=[t], product=p.brand_id),
+                                   q.trx_sum([prev], terrs=[t], product=p.brand_id))
+            wow = reg.claim("get_metric", wow_sql, "pct1", territory=t, scope="week over week")
+            weekly = f"{word(reg.scalar(wow_sql) or 0)} {wow} on the week before"
+        lines.append(f"- {q.name(t)}: {weekly}; {word(reg.scalar(base_sql) or 0)} {base} on the comparison weeks.")
     return lines
 
 
@@ -242,7 +263,7 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
     W, ok, focus = p.weeks, p.ok, p.focus
     series = _series(reg, p.brand_id)
     B = p.baseline
-    if len(p.requested) > 1:
+    if p.comparison is None and len(p.requested) > 1:
         # The materiality screen compares every territory over the same reportable weeks.
         preceding = (q.shift(p.requested[0], -i) for i in range(min(len(p.requested), 13), 0, -1))
         B = [w for w in preceding if w >= p.first and all(w in series[t] for t in ok)]

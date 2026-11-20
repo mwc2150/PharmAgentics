@@ -1,0 +1,28 @@
+id: C-031
+lane: briefing
+story: WIN-1
+persona: P1 Commercial Analyst (Ace)
+status: draft
+question: 'Weeks of 2025-12-22 and 2025-12-29: Compare the holiday weeks with the same reporting weeks last year.'
+period: 2025-12-22 and 2025-12-29
+review_note: Draft for Michael to label.
+comparison:
+  kind: last_year
+story_text: An analyst compares holiday weeks with the corresponding reporting weeks one year earlier.
+given: The holiday weeks of December 2025 and the same reporting weeks last year.
+when: The analyst selects the same weeks last year.
+then: The brief names both comparison weeks, attributes the choice to the analyst and uses those weeks in the like-for-like result.
+reference_answer: BXA national TRx was up 9.8% on the same reporting weeks last year, 2024-12-23 and 2024-12-30.
+must_not_say:
+  text: The four weeks before were the comparison.
+  phrases: []
+eval_items: [EV-1.1]
+facts:
+  - id: reported_trx_change_vs_last_year
+    value: 9.8
+    sql: |
+      select round(100.0 * (
+        sum(trx) filter (where week_start in (date '2025-12-22', date '2025-12-29')) /
+        sum(trx) filter (where week_start in (date '2024-12-23', date '2024-12-30')) - 1), 1)
+      from reporting.v_reportable_rx where product_id = 'BXA'
+source: specs/brief-007-windows-and-evidence/spec.md#FR-014

@@ -290,6 +290,8 @@ async def agent_submit(req: AgentJobRequest, response: Response, who=Briefing) -
         plan = plan_job["result"]
         if req.decision is None or req.decision.plan_id != plan["plan_id"]:
             raise HTTPException(status_code=409, detail="The decision is not for that triage plan; review it again.")
+        if req.query.model_dump(exclude={"triage"}) != original.model_dump(exclude={"triage"}):
+            raise HTTPException(status_code=409, detail="The briefing scope changed. Review a new triage plan.")
         allowed = {c["id"] for c in plan["stories"] if c["proposed"] == "investigate"}
         if (bad := [s for s in req.decision.stories if s not in allowed]):
             raise HTTPException(status_code=400, detail=f"Not a story this plan proposes: {', '.join(bad)}")
@@ -356,6 +358,7 @@ def accept_result(job_id: str, ok: bool, result: dict | None, error: str | None)
         if job["kind"] == "triage":
             plan = result or {}
             service._matching_brand(query.brand_id, plan)
+            service._matching_comparison(query.comparison, plan)
             if plan.get("state") != "OUT_OF_SCOPE":
                 service._traceable(plan.get("claims", []), plan.get("evidence", []))
             plan.update(brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start.isoformat())

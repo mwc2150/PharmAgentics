@@ -66,7 +66,7 @@ def _card(reg, f: Front, s: dict | None, rank: int, proposed: str) -> dict:
         moved = stages.territory_change(reg, p, t)
         why = ("The question names this territory, so code always proposes it." if t == p.focus else
                "Its change is beyond its own normal range and beyond the other territories' change (code screen).")
-        grain = f"Territory: {qy.name(t)}. Plan and specialty splits are not run yet."  # contribution decomposition is Phase B
+        grain = f"Territory: {qy.name(t)}. Cuts of the change by plan, specialty and channel."
     return {
         "id": story_id(s), "kind": s["kind"], "territory": t, "title": qy.name(t) if s["kind"] == "territory" else f"{qy.name(t)}, plan {s['plan']}",
         "rank": rank, "proposed": proposed, "what_moved": moved,
@@ -80,7 +80,7 @@ def build_plan(reg, f: Front) -> dict:
     """The triage plan for P1 (data-model.md TriagePlan), rendered, with this run's claims and evidence."""
     p = f.p
     cards: list[dict] = []
-    if not p.calendar:
+    if not p.calendar and not p.promotion_review:
         for i, s in enumerate(f.found):
             cards.append(_card(reg, f, s, len(cards) + 1, "investigate" if i < MAX_STORIES else "over_cap"))
         if stages.competitor_status(reg, p) is not None:
@@ -98,13 +98,19 @@ def build_plan(reg, f: Front) -> dict:
                         "layer": "code"})
     state = "CALENDAR" if p.calendar else ("TRIAGE_REVIEW" if cards else "ROUTINE")
     proposed_ids = [c["id"] for c in cards if c["proposed"] == "investigate"]
-    plan_id = "t-" + hashlib.sha256("|".join([p.question, reg.data_version, *proposed_ids, *([p.brand_id] if p.brand_id != "BXA" else [])]).encode()).hexdigest()[:12]
+    pinned = [p.comparison.model_dump_json(), *p.baseline] if p.comparison is not None else []
+    if p.brand_id != "BXA":
+        pinned.append(p.brand_id)
+    plan_id = "t-" + hashlib.sha256("|".join([p.question, reg.data_version, *pinned, *proposed_ids]).encode()).hexdigest()[:12]
     for c in cards:
         for k in ("what_moved", "decision", "population", "granularity", "time"):
             c[k] = reg.render(c[k])
     return {
         "plan_id": plan_id, "brand_id": p.brand_id, "question": p.question, "data_version": reg.data_version, "state": state,
         "weeks": list(p.weeks), "baseline": list(p.baseline), "focus": p.focus,
+        "promotion_review": p.promotion_review,
+        "comparison": p.comparison.model_dump(mode="json") if p.comparison is not None else None,
+        "baseline_source": p.baseline_source,
         "context": reg.render("\n".join(x for x in f.out if x)),  # stages 1 to 3 as the brief will state them
         "stories": cards, "dropped": dropped, "withheld": withheld, "candidates": len(f.found),
         "claims": reg.claims, "evidence": reg.evidence,
