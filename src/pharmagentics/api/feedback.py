@@ -323,10 +323,20 @@ def _answer(p: rbac.Principal, lane: str, ref: str, view: str) -> dict:
     report, narrative = record["result"]["report"], record.get("narrative") or {}
     if view == "leadership":
         narrative = {k: v for k, v in narrative.items() if k != "analyst_notes"}
-    return {"scope": {k: record["request"].get(k) for k in ("territory_id", "week_start", "window_weeks")},
-            "engine": report.get("investigator_mode"), "system": record.get("report_model"),
+    request, shown = record["request"], {"headline": report.get("headline"), "narrative": narrative or None}
+    if record.get("kind") == "question":
+        # A question run keeps the typed question and the confirmed weeks, not week_start and window_weeks. The summary
+        # is on the leadership allow-list; the full answer text is what only the analyst view shows.
+        scope = {"territory_id": request.get("territory_id"), "question": request.get("question"),
+                 "weeks": request.get("weeks"), "intent": report.get("intent")}
+        shown["summary"] = report.get("summary")
+        if view == "analyst":
+            shown["answer"] = record["result"].get("answer")
+    else:
+        scope = {k: request.get(k) for k in ("territory_id", "week_start", "window_weeks")}
+    return {"scope": scope, "engine": report.get("investigator_mode"), "system": record.get("report_model"),
             "data_version": record["result"].get("dataset_release"), "review_status": record["review_status"],
-            "shown": {"headline": report.get("headline"), "narrative": narrative or None}}
+            "shown": shown}
 
 
 def _vote_key(lane: str, ref: str, user: str, view: str) -> str:

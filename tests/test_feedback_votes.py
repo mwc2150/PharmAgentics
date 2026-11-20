@@ -105,6 +105,46 @@ def test_forecast_votes_follow_the_run_visibility(tmp_path):
     assert docs["analyst"]["scope"] == {"territory_id": "SOUTHEAST", "week_start": "2026-08-31", "window_weeks": 4}
 
 
+def a_question_run(submitted: bool = False) -> str:
+    request = {"question": "Why did national TRx miss in the week of 24 August?", "territory_id": "NATIONAL",
+               "weeks": ["2026-08-24", "2026-08-31"]}
+    forecast_store.start_question("f-aaaaaaaaaaaa", request, by="u-test", engine="rules")
+    result = {"dataset_release": "rel-1", "answer": "FULL ANSWER with the data forensics.",
+              "report": {"headline": "BXA was 16% below forecast.", "investigator_mode": "rules", "intent": "attribution",
+                         "summary": "A plain summary for a leader.", "variance_trx": -10, "abstained": False, "drivers": []}}
+    forecast_store.update("f-aaaaaaaaaaaa", result=result, job_status="done")
+    if submitted:
+        forecast_store.submit("f-aaaaaaaaaaaa", by="u-test", role="forecast-analyst")
+    return "f-aaaaaaaaaaaa"
+
+
+def test_a_vote_on_a_question_run_keeps_the_question_and_the_weeks(tmp_path):
+    """Regression: the vote read week_start and window_weeks, which a question run does not have, so it saved
+    nulls and lost the typed question and the confirmed weeks."""
+    rid = a_question_run(submitted=True)
+    body = {"lane": "forecast", "ref": rid, "vote": "down", "comment": "Too vague."}
+    assert signed_in("dev-forecast-analyst").post("/api/feedback/vote", json={**body, "view": "analyst"}).status_code == 200
+    assert signed_in("dev-forecast-manager").post("/api/feedback/vote", json={**body, "view": "leadership"}).status_code == 200
+    docs = {d["view"]: d for d in stored(tmp_path)}
+    for doc in docs.values():
+        assert doc["scope"] == {"territory_id": "NATIONAL", "question": "Why did national TRx miss in the week of 24 August?",
+                                "weeks": ["2026-08-24", "2026-08-31"], "intent": "attribution"}
+        assert doc["shown"]["summary"] == "A plain summary for a leader."
+    assert docs["analyst"]["shown"]["answer"].startswith("FULL ANSWER")
+    assert "answer" not in docs["leadership"]["shown"]  # the full text is the analyst's view only
+
+
+def test_a_question_run_draft_is_titled_with_the_typed_question(tmp_path):
+    from eval.harness import candidates
+    rid = a_question_run(submitted=True)
+    signed_in("dev-forecast-manager").post("/api/feedback/vote", json={"lane": "forecast", "ref": rid, "view": "leadership", "vote": "down"})
+    out = tmp_path / "candidates"
+    candidates.run(tmp_path, out_dir=out)
+    draft = yaml.safe_load((out / "forecast" / f"{rid}.yaml").read_text(encoding="utf-8"))
+    assert draft["question"] == "Why did national TRx miss in the week of 24 August?"
+    assert draft["scope"]["weeks"] == ["2026-08-24", "2026-08-31"] and "None" not in draft["question"]
+
+
 def test_a_vote_in_a_lane_without_a_role_is_refused():
     bid = a_brief("approved")
     c = signed_in("dev-forecast-manager")

@@ -37,6 +37,8 @@ def _question(lane: str, scope: dict) -> str:
     if lane == "briefing":
         return scope.get("question") or (f"Weekly briefing for {scope.get('brand_id')}, {scope.get('territory_id')}, "
                                          f"week of {scope.get('week_start')}")
+    if scope.get("question"):  # a question-driven run: what the analyst typed
+        return scope["question"]
     weeks = scope.get("window_weeks")
     return (f"Forecast explanation for BXA TRx, {scope.get('territory_id')}, week of {scope.get('week_start')}, "
             f"{weeks}-week window")
