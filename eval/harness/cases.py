@@ -114,7 +114,7 @@ def fact_percent(fact_id: str, value: float, reference: str) -> bool | None:
     states the value at the fact's own precision in one unit; otherwise an id ending in `_pct` is a percent and
     anything else is unknown (matches either)."""
     target = as_numbers([value])[0]
-    kinds = {n.percent for n in extract(reference) if n.decimals >= target.decimals and same(n, target)}
+    kinds = {n.percent for n in extract(reference) if n.decimals == target.decimals and same(n, target)}
     if len(kinds) == 1:
         return kinds.pop()
     return True if fact_id.endswith("_pct") else None
@@ -173,7 +173,7 @@ class Case(BaseModel):
             "must_not_say": self.must_not_say.phrases + later,
             "golden_numbers": [f.value for f in self.facts if isinstance(f.value, (int, float))],
             "key_facts": [{"id": f.id, "value": f.value, "tolerance": f.tolerance,
-                           "percent": fact_percent(f.id, f.value, self.reference_answer)} for f in self.facts
+                           "percent": fact_percent(f.id, f.value, self.reference_answer), "reviewed": f.reviewed} for f in self.facts
                           if f.role == "must" and isinstance(f.value, (int, float))],
             "findings": [f.model_dump() for f in self.findings],
             "must_say": self.must_say.phrases if self.must_say else [],

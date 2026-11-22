@@ -203,6 +203,18 @@ def test_fact_units_come_from_the_reference_then_the_id():
     assert fact_percent("plan_trx_before_per_week", 158, "Plan TRx averaged 158 a week.") is False
     assert fact_percent("pacific_fill_rate_june", 0.7, "about 1% of orders") is None  # coarser text is no evidence
     assert fact_percent("gl_change_pct", -17.9, "no number here") is True
+    # A coarser percent in the reference is no evidence about a count: the integer 23 is not tagged by "22.5%".
+    assert fact_percent("backorder_orders", 23, "Backorders reached 22.5% of orders.") is None
+    assert fact_percent("backorder_orders", 23, "Backorders reached 22.5% of orders, 23 orders.") is False
     for case in load_cases():  # every must fact the reference states gets a unit it agrees with
         for f in case.expectations()["key_facts"]:
             assert f["percent"] in (True, False, None)
+
+
+def test_expectations_carry_reviewed_on_each_key_fact_and_finding():
+    from eval.harness.cases import load_cases
+
+    case = next(c for c in load_cases() if c.facts and any(f.role == "must" for f in c.facts))
+    assert all("reviewed" in k for k in case.expectations()["key_facts"])
+    case = next(c for c in load_cases("briefing") if c.findings)
+    assert all("reviewed" in f for f in case.expectations()["findings"])
