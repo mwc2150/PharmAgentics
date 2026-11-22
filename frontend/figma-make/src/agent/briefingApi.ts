@@ -60,6 +60,28 @@ export type ChartSpec = {
   table?: DataTable | null  // analyst view only
   explanation_citations?: Span[]  // analyst view only
 }
+// brief-008: structured blocks beside a section's text. Every value is a string the server already filled from a
+// claim token (the UI shows it as given); the *_citations fields are analyst view only and use the Span form.
+export type KpiTile = {
+  label: string
+  value: string
+  detail?: string | null
+  direction?: "up" | "down" | "flat" | null
+  value_citation?: Span[]
+}
+export type TerritoryBasis = "observed" | "projected" | "estimated" | "withheld"
+export type TerritoryRow = {
+  cells: string[]
+  basis: TerritoryBasis
+  cell_citations?: Span[][]    // one list of spans per cell, offsets within that cell's string
+}
+export type TerritoryTable = { columns: string[], rows: TerritoryRow[], note?: string | null }
+export type StoryCardBlock = {
+  headline: string
+  confidence: "High" | "Medium" | "Low"
+  drivers_checked: string[]
+  headline_citations?: Span[]
+}
 export type MemoSection = {
   number: string
   title: string
@@ -69,6 +91,11 @@ export type MemoSection = {
   text_citations?: Span[]      // analyst view only
   prose_citations?: Span[]     // analyst view only
   chart?: ChartSpec | null
+  kpis?: KpiTile[] | null                 // brief-008: §1
+  territory_table?: TerritoryTable | null // brief-008: §2
+  card?: StoryCardBlock | null            // brief-008: each story section
+  detail?: string | null                  // brief-008: analyst view only, folded under "Show detail"
+  detail_citations?: Span[]               // analyst view only
 }
 // brief-002 Phase A: the code triage plan P1 reviews, and how a brief was made.
 export type StoryCard = {

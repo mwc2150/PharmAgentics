@@ -1,7 +1,7 @@
 // brief-003: the weekly brief as a memo. Sections, charts and the data behind them come from the server;
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
 import { useState, type ReactNode } from "react"
-import type { ChartPoint, ChartSpec, Claim, DataTable, Evidence, MemoSection, Span } from "./agent/briefingApi"
+import type { ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
 const COLORS = ["var(--color-agent)", "var(--color-human)"]
 const PANEL_COLOR = "var(--color-amber)"
@@ -16,7 +16,7 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     if (!claim || sp.start < pos || text.slice(sp.start, sp.end) !== claim.value) return
     parts.push(text.slice(pos, sp.start))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
-      className="rounded-sm font-medium underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-agentdeep">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-agentdeep">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(text.slice(pos))
@@ -103,9 +103,9 @@ function CoverageStrip({chart}: {chart: ChartSpec}) {
   </svg>
 }
 
-function ChartBlock({chart, onOpen, claims, explanationSpans}: {chart: ChartSpec, onOpen?: (id: string) => void, claims?: Claim[], explanationSpans?: Span[]}) {
+function ChartBlock({chart, onOpen, claims, explanationSpans, bare = false}: {chart: ChartSpec, onOpen?: (id: string) => void, claims?: Claim[], explanationSpans?: Span[], bare?: boolean}) {
   const series = (chart.series ?? []).map((s, i) => ({...s, color: COLORS[i % COLORS.length]}))
-  return <figure className="my-4 rounded-xl border border-rule bg-paper/40 p-4">
+  return <figure className={`break-inside-avoid ${bare ? "my-3" : "my-4 rounded-xl border border-rule bg-paper/40 p-4"}`}>
     {chart.kind === "coverage" ? <CoverageStrip chart={chart}/> : <>
       <LineChart weeks={chart.weeks} series={series} band={chart.band} unit={chart.kind === "share" ? "percent" : "count"} label={chart.caption}/>
       <Legend items={series.map((s): {label: string, color: string, hollow?: boolean} => ({label: s.name, color: s.color})).concat(series.some(s => s.points.some(p => p.basis && p.basis !== "observed")) ? [{label: "projected or estimated (an assumption)", color: "var(--color-muted)", hollow: true}] : [])}/>
@@ -164,7 +164,7 @@ function DataBehind({section, claims, evidence, briefId}: {section: MemoSection,
     columns: ["value", "evidence_id", "tool", "query"],
     rows: used.map(c => [c.value, c.evidence_id, byId.get(c.evidence_id)?.tool ?? "", byId.get(c.evidence_id)?.query ?? ""]),
   } : null
-  return <details className="mt-3 rounded-xl bg-paper/60 px-4 py-3 text-sm">
+  return <details className="pa-fold mt-3 rounded-xl bg-paper/60 px-4 py-3 text-sm">
     <summary className="cursor-pointer text-xs font-medium text-agentdeep">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
     <div className="mt-3 space-y-3">
       {claimTable && <TableView table={claimTable} name={`brief-${briefId}-section-${section.number}-claims.csv`}/>}
@@ -173,29 +173,168 @@ function DataBehind({section, claims, evidence, briefId}: {section: MemoSection,
   </details>
 }
 
+// brief-008: paragraphs and blocks. Every string below is the server's, shown as given; spans are cut to the
+// piece of text they sit in, and Cited drops any span whose text no longer matches its claim.
+type Chunk = {start: number, end: number}
+const BULLET = /^\s*[-•*]\s+/
+
+function chunks(text: string): Chunk[] {
+  const out: Chunk[] = []
+  let pos = 0, cur: Chunk | null = null, curBullet = false
+  for (const line of text.split("\n")) {
+    const at = pos
+    pos += line.length + 1
+    if (!line.trim()) { if (cur) out.push(cur); cur = null; continue }
+    // a run of "- " lines is its own block, even with no blank line before or after it
+    if (cur && BULLET.test(line) !== curBullet) { out.push(cur); cur = null }
+    if (cur) cur.end = at + line.length
+    else { cur = {start: at, end: at + line.length}; curBullet = BULLET.test(line) }
+  }
+  if (cur) out.push(cur)
+  return out
+}
+
+function within(spans: Span[] | undefined, start: number, end: number): Span[] {
+  return (spans ?? []).filter(sp => sp.start >= start && sp.end <= end).map(sp => ({...sp, start: sp.start - start, end: sp.end - start}))
+}
+
+const PROSE = "pa-prose max-w-[68ch] break-words font-serif text-[16px] leading-[1.7] text-ink"
+
+function Paragraphs({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+  return <>{chunks(text).map((c, i) => {
+    const raw = text.slice(c.start, c.end)
+    const lines = raw.split("\n")
+    if (lines.every(l => BULLET.test(l))) {
+      let off = 0
+      return <ul key={i} className={`${PROSE} mt-3 list-disc space-y-1 pl-5 first:mt-2`}>{lines.map((l, k) => {
+        const m = BULLET.exec(l)![0].length, from = c.start + off + m, to = c.start + off + l.length
+        off += l.length + 1
+        return <li key={k}><Cited text={l.slice(m)} spans={within(spans, from, to)} claims={claims} onOpen={onOpen}/></li>
+      })}</ul>
+    }
+    return <p key={i} className={`${PROSE} mt-3 whitespace-pre-line first:mt-2`}><Cited text={raw} spans={within(spans, c.start, c.end)} claims={claims} onOpen={onOpen}/></p>
+  })}</>
+}
+
+const DIRECTION = {
+  up: {word: "up", color: "text-agentdeep", d: "M12 5l7 9H5z"},
+  down: {word: "down", color: "text-neg", d: "M12 19l-7-9h14z"},
+  flat: {word: "unchanged", color: "text-muted", d: "M5 11h14v2H5z"},
+} as const
+
+function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+  return <dl aria-label="Key figures" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    {kpis.map((k, i) => {
+      const dir = k.direction ? DIRECTION[k.direction] : null
+      return <div key={i} className="break-inside-avoid rounded-xl border border-rule bg-sheet/60 px-3.5 py-3">
+        <dt className="font-sans text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</dt>
+        <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-sans text-[26px] font-semibold leading-none tabular-nums text-ink">
+          <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
+          {dir && <><svg viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 ${dir.color}`} fill="currentColor" aria-hidden="true"><path d={dir.d}/></svg><span className="sr-only">, {dir.word}</span></>}
+        </dd>
+        {k.detail && <dd className="mt-1.5 font-sans text-[12px] leading-snug text-muted">{k.detail}</dd>}
+      </div>
+    })}
+  </dl>
+}
+
+function BasisLabel({row, text}: {row: TerritoryRow, text: string}) {
+  const assumed = row.basis === "projected" || row.basis === "estimated"
+  return <span className={`text-[11px] ${assumed ? "text-amber" : "text-muted"}`}>{text}</span>
+}
+
+function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+  const basisAt = table.columns.findIndex(c => c.trim().toLowerCase() === "basis")
+  const lastData = basisAt > 0 ? basisAt - 1 : table.columns.length - 1
+  const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
+  return <div className="my-4 overflow-x-auto">
+    <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
+      <caption className="sr-only">Territory figures{table.note ? `. ${table.note}` : ""}</caption>
+      <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
+        <th key={j} scope="col" className={`px-2.5 py-1.5 text-[11px] font-medium text-muted ${align(j)}`}>{c}</th>)}</tr></thead>
+      <tbody>{table.rows.map((r, i) => {
+        const withheld = r.basis === "withheld"
+        return <tr key={i} className="break-inside-avoid border-b border-rule/60 align-baseline">
+          {table.columns.map((_, j) => {
+            const cell = r.cells[j] ?? ""
+            if (j === 0) return <th key={j} scope="row" className="px-2.5 py-1.5 text-left font-medium text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></th>
+            if (withheld && j >= 1 && j <= lastData) return j === 1 ? <td key={j} colSpan={lastData} className="px-2.5 py-1.5 text-right italic text-muted">withheld</td> : null
+            if (j === basisAt) return <td key={j} className="px-2.5 py-1.5 text-left">{withheld ? <span aria-hidden="true" className="text-muted">—</span> : <BasisLabel row={r} text={cell || r.basis}/>}</td>
+            return <td key={j} className="px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></td>
+          })}
+        </tr>
+      })}</tbody>
+    </table>
+    {table.note && <p className="mt-2 font-sans text-[12px] leading-snug text-muted">{table.note}</p>}
+  </div>
+}
+
+const CONFIDENCE = {
+  High: "bg-okbg text-ok",
+  Medium: "bg-amberbg text-amber",
+  Low: "bg-warnbg text-neg",
+} as const
+
+function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+  return <>
+    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+      <p className="max-w-[56ch] font-sans text-[16px] font-semibold leading-snug text-ink"><Cited text={card.headline} spans={card.headline_citations} claims={claims} onOpen={onOpen}/></p>
+      <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 font-sans text-[11px] font-medium ${CONFIDENCE[card.confidence] ?? "bg-warnbg text-muted"}`}>{card.confidence} confidence</span>
+    </div>
+    {card.drivers_checked.length > 0 && <p className="mt-1 font-sans text-[12px] text-muted">Checked: {card.drivers_checked.join(", ")}</p>}
+  </>
+}
+
+function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+  const [open, setOpen] = useState(false)
+  return <details className="pa-fold mt-3 rounded-xl bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
+    <summary className="cursor-pointer font-sans text-xs font-medium text-agentdeep">{open ? "Hide detail" : "Show detail"}</summary>
+    <div className="mt-2"><Paragraphs text={text} spans={spans} claims={claims} onOpen={onOpen}/></div>
+  </details>
+}
+
 // The memo: numbered sections in order. Analysts get inline citations and the data behind each section;
 // leaders get the server's cut (no claims, tables or queries) through the same component.
 export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void}) {
-  // A section with subsections (§3 and its stories) shows its own lines (left out, considered and dropped) after
-  // them, in the order the memo's text gives them.
-  const body = (s: MemoSection) => <>
-    {s.text && <div className="mt-2 max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><Cited text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/></div>}
+  // A brief stored before brief-008 has none of the new fields and renders as it always did: each section's text
+  // as one pre-wrapped block. A brief with any of them reads as paragraphs throughout. Only analysts (who get the
+  // claims) can unfold `detail`; the leader cut never carries it.
+  const modern = sections.some(s => s.kpis || s.territory_table || s.card || s.detail)
+  const analyst = !!claims
+  const text = (s: MemoSection) => !s.text ? null : modern
+    ? <Paragraphs text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/>
+    : <div className="mt-2 max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><Cited text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/></div>
+  const rest = (s: MemoSection) => <>
     {s.prose && <p className="mt-2 max-w-[68ch] font-serif text-[16px] italic leading-[1.7] text-ink"><Cited text={s.prose} spans={s.prose_citations} claims={claims} onOpen={onOpen}/></p>}
-    {s.chart && <ChartBlock chart={s.chart} claims={claims} onOpen={onOpen} explanationSpans={s.chart.explanation_citations}/>}
+    {s.chart && <ChartBlock chart={s.chart} claims={claims} onOpen={onOpen} explanationSpans={s.chart.explanation_citations} bare={!!s.card}/>}
+    {analyst && s.detail && <Detail text={s.detail} spans={s.detail_citations} claims={claims} onOpen={onOpen}/>}
     {claims && evidence && <DataBehind section={s} claims={claims} evidence={evidence} briefId={briefId}/>}
   </>
+  // A section with subsections (§3 and its stories) shows its own lines (left out, considered and dropped) after
+  // them, in the order the memo's text gives them.
+  const body = (s: MemoSection) => s.card
+    ? <div className="pa-card mt-2 break-inside-avoid-page rounded-xl border border-rule bg-sheet/40 p-4 sm:p-5">
+        <CardHead card={s.card} claims={claims} onOpen={onOpen}/>
+        {text(s)}{rest(s)}
+      </div>
+    : <>
+        {s.kpis && s.kpis.length > 0 && <KpiStrip kpis={s.kpis} claims={claims} onOpen={onOpen}/>}
+        {text(s)}
+        {s.territory_table && <TerritoryTableView table={s.territory_table} claims={claims} onOpen={onOpen}/>}
+        {rest(s)}
+      </>
   const heading = (s: MemoSection, sub: boolean) => <div className="flex items-baseline justify-between gap-3">
-    <h3 id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 ${sub ? "text-base font-semibold" : "text-lg font-semibold"}`}>
+    <h3 id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-lg font-semibold"}`}>
       <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{s.title}</h3>
-    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="shrink-0 text-xs text-agentdeep hover:underline">Ask about this</button>}
+    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-agentdeep hover:underline">Ask about this</button>}
   </div>
-  return <div className="space-y-7">
+  return <div className="pa-memo space-y-7">
     {sections.filter(s => !s.number.includes(".")).map(s => {
       const children = sections.filter(c => c.number.startsWith(`${s.number}.`))
       return <section key={s.number} aria-labelledby={`memo-${briefId}-${s.number}`}>
         {heading(s, false)}
         {children.length > 0 && <div className="mt-4 space-y-6">{children.map(c =>
-          <section key={c.number} aria-labelledby={`memo-${briefId}-${c.number}`} className="border-l-2 border-rule pl-4">{heading(c, true)}{body(c)}</section>)}</div>}
+          <section key={c.number} aria-labelledby={`memo-${briefId}-${c.number}`} className={c.card ? "" : "border-l-2 border-rule pl-4"}>{heading(c, true)}{body(c)}</section>)}</div>}
         <div className={children.length ? "mt-4" : ""}>{body(s)}</div>
       </section>
     })}
