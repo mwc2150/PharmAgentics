@@ -83,6 +83,8 @@ def test_sections_match_the_scripted_brief():
     for number in ("3.1", "3.2", "3.3"):
         assert agent[number]["card"]["headline"] == ours[number]["card"]["headline"]
         assert agent[number]["card"]["drivers_checked"] == ours[number]["card"]["drivers_checked"]
+        for field in ("territory", "direction", "drivers_supported", "drivers_ruled_out"):  # core-011: same verdicts, same ids
+            assert agent[number]["card"][field] == ours[number]["card"][field], (number, field)
         assert agent[number].get("detail") == ours[number].get("detail")
     s.close()
 

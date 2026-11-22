@@ -81,3 +81,43 @@ def test_numbers_traced_counts_an_unfilled_claim_token():
     left = numbers_traced.run(outputs={"answer": "Down 19.5%. {c8} calendar effects are present.", "claims": claims, "evidence": []})
     assert clean.value == 1.0
     assert left.value == 0.5 and "{c8}" in left.rationale
+
+
+def test_every_scorer_has_a_kind_and_the_kinds_are_the_four_agreed():
+    from mlflow.genai.scorers import Scorer
+
+    from eval.harness import scorers as module
+
+    defined = {v.name for v in vars(module).values() if isinstance(v, Scorer)}
+    listed = {s.name for group in (module.DETERMINISTIC, module.REPORT_ONLY, module.EVIDENCE, module.TRAJECTORY) for s in group}
+    assert defined >= listed and "scope_match" in defined
+    assert (defined | listed | set(module.GATED)) <= set(module.KIND)
+    assert set(module.KIND.values()) == {"code", "agent", "safety", "ops"}
+    assert set(module.KIND) <= defined | {"judge_factual_correctness"}  # no stale name
+    assert module.kind_of("judge_anything") == "agent"
+    assert {module.KIND[k] for k in module.GATED} == {"code", "safety"}  # the gate is untouched
+
+
+def test_a_percent_matches_only_a_percent():
+    p = numbers.parse_token
+    assert not numbers.matches(p("22.5%"), p("23"))  # "23 TRx" does not state 22.5%
+    assert not numbers.matches(p("42"), p("42%"))
+    assert numbers.matches(p("37%"), p("37.1%")) and numbers.matches(p("4,309"), p("4,309"))
+    assert numbers.matches(p("-18.4%"), p("18%"))  # sign and coarser precision still match
+    assert numbers.matches(numbers.as_numbers([22.5])[0], p("23%")) and numbers.matches(numbers.as_numbers([22.5])[0], p("23"))  # fact values carry no unit
+
+
+def test_golden_number_recall_is_unit_aware_and_counts_a_repeated_golden_number_once():
+    from eval.harness.scorers import golden_number_recall
+
+    expect = {"expected_response": "Share was 22.5% on 4,309 TRx; 16.1% here, and again 16.1% there."}
+    miss = golden_number_recall(outputs=answer("Share was 23 on 4,309 TRx; 16.1% overall."), expectations=expect)
+    assert miss.value == round(2 / 3, 4) and "22.5%" in miss.rationale  # 3 distinct golden numbers, the % one missed
+    full = golden_number_recall(outputs=answer("Share was 22.5% on 4,309 TRx; 16.1% overall."), expectations=expect)
+    assert full.value == 1.0 and "3 of 3" in full.rationale
+
+
+def test_numbers_match_golden_uses_the_same_unit_rule():
+    expect = {"expected_response": "Share was 22.5% on 4,309 TRx.", "golden_numbers": [22.5, 4309]}
+    fb = numbers_match_golden(outputs=answer("Share was 23 TRx on 4,309 TRx."), expectations=expect)
+    assert fb.value == 0.5 and "23" in fb.rationale  # 22.5 is a percent in the text, so "23" is not a match

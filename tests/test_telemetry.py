@@ -107,3 +107,40 @@ def test_eval_endpoint_filters_runs_by_lane():
         {"lane": "briefing", "system": "a"}, {"lane": "forecast", "system": "b"}, {"lane": "all", "system": "c"}]}))
     latest = signed_in("dev-forecast-analyst").get("/api/telemetry").json()["latest"]
     assert [r["system"] for r in latest] == ["b", "c"]
+
+
+CASES = {"generated": "2026-11-22T10:00:00+00:00", "systems": [
+    {"system": "briefing_scripted", "lane": "briefing", "rows": [{"case": "P1-Q1", "story": "US-1", "scores": {"claims_reconcile": 1.0}}]},
+    {"system": "forecast_scripted", "lane": "forecast", "rows": [{"case": "BM-Q1", "story": "FE-1", "scores": {"claims_reconcile": None}}]}]}
+
+
+def _with_cases():
+    store.backend().write(telemetry.BUCKET_KEY, json.dumps({**telemetry.EMPTY, "cases": CASES}))
+
+
+def test_cases_go_to_analysts_in_their_lane_and_to_the_tester_only():
+    _with_cases()
+    briefing = signed_in("dev-analyst").get("/api/telemetry").json()
+    assert [s["lane"] for s in briefing["cases"]["systems"]] == ["briefing"]
+    assert [s["lane"] for s in signed_in("dev-forecast-analyst").get("/api/telemetry").json()["cases"]["systems"]] == ["forecast"]
+    tester = signed_in("dev-tester").get("/api/telemetry").json()
+    assert {s["lane"] for s in tester["cases"]["systems"]} == {"briefing", "forecast"}
+
+
+def test_leadership_roles_get_no_cases_block():
+    _with_cases()
+    for user in ("dev-director", "dev-forecast-manager"):
+        body = signed_in(user).get("/api/telemetry").json()
+        assert "cases" not in body and "P1-Q1" not in json.dumps(body) and "BM-Q1" not in json.dumps(body)
+
+
+def test_the_tester_keeps_the_per_case_table_in_the_leadership_view():
+    _with_cases()
+    c = signed_in("dev-tester")
+    assert c.post("/api/me/view-as", json={"view": "leadership"}).status_code == 200
+    assert {s["lane"] for s in c.get("/api/telemetry").json()["cases"]["systems"]} == {"briefing", "forecast"}
+
+
+def test_for_lanes_drops_cases_without_case_lanes():
+    out = telemetry.for_lanes({"latest": [], "runs": [], "cases": CASES}, {"briefing"})
+    assert "cases" not in out

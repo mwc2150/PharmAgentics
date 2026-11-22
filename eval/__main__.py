@@ -1,4 +1,4 @@
-"""python -m eval {import-stories, check, run, gate, candidates, export-telemetry, import-uat, ui}"""
+"""python -m eval {import-stories, check, run, gate, candidates, insights, export-telemetry, import-uat, ui}"""
 from __future__ import annotations
 
 import argparse
@@ -42,6 +42,12 @@ def main(argv=None) -> int:
     imp2.add_argument("--model", help="drafting and reviewing model (default anthropic:claude-haiku-5-5)")
     prom = sub.add_parser("promote", help="write approved lessons and cases (core-008 FR-021); prints the git steps")
     prom.add_argument("--state-dir", type=Path, help="state folder holding review/proposals (default as for improve)")
+
+    ins = sub.add_parser("insights", help="read the MLflow store(s) read-only: stuck, fallen, engine, spread (core-011 FR-008)")
+    ins.add_argument("--store", action="append", type=Path, help="MLflow sqlite store (repeatable; default eval/mlflow/mlflow.db)")
+    ins.add_argument("--system", help="only this system, e.g. briefing_scripted or briefing_agent")
+    ins.add_argument("--last", type=int, default=5, help="runs per system to list (default 5)")
+    ins.add_argument("--out", type=Path, help="output folder (default eval/mlflow/insights)")
 
     sub.add_parser("export-telemetry", help="write the golden-set scores the hosted app shows (src/pharmagentics/api/telemetry.json)")
     uat = sub.add_parser("import-uat", help="log the hosted app's live use to MLflow (experiment pharmagentics-uat)")
@@ -125,6 +131,15 @@ def main(argv=None) -> int:
         for path in written:
             print(f"  {path.relative_to(candidates.EVAL_DIR)}")
         print("A draft is not a case: review it, write its facts, give it an ID and move it into eval/golden/<lane>/.")
+        return 0
+
+    if args.cmd == "insights":
+        from .harness.insights import run as insights_run
+        try:
+            insights_run(args.store, system=args.system, last=args.last, out=args.out)
+        except FileNotFoundError as err:
+            print(err)
+            return 1
         return 0
 
     if args.cmd == "export-telemetry":

@@ -25,6 +25,7 @@ eval_items:
 - EV-2.3
 facts:
 - id: ne_coverage
+  role: must
   value: 0.656
   sql: select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
 follow_up:
@@ -36,4 +37,11 @@ follow_up:
     - New England dropped because
     - New England fell because
     semantic: []
+findings:
+- id: new_england_not_reportable
+  territory: NEW_ENGLAND
+  drivers_supported: []
+  drivers_ruled_out: []
+  withheld: true
+  reviewed: false
 source: specs/brief-006-follow-ups/spec.md#FR-013

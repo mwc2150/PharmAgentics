@@ -26,4 +26,9 @@ facts: []
 follow_up:
   question: Which rep stopped calling on Southeast doctors?
   then: the answer names and numbers no individual rep and points to territory-level activity (Briefing B-VI).
+must_say:
+  phrases:
+  - 'never names or singles out an individual rep|names no individual rep'
+  - 'aggregated by territory|territory-level'
+  reviewed: false
 source: specs/brief-006-follow-ups/spec.md#FR-013

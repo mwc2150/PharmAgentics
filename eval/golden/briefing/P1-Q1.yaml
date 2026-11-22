@@ -27,24 +27,43 @@ eval_items:
 - EV-2.3
 facts:
 - id: gl_rows_observed
+  role: context
   value: 143
   sql: select observed_rows from reporting.v_feed_health where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES'
 - id: gl_rows_expected
+  role: context
   value: 128
   sql: select expected_key_count from reporting.v_feed_health where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES'
 - id: gl_duplicate_keys
+  role: context
   value: 15
   sql: select duplicate_key_count from reporting.v_feed_health where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES'
 - id: gl_bxa_trx_naive_sum
+  role: must
   value: 670
   sql: select sum(trx) from raw.rx_weekly where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES' and product_id = 'BXA'
 - id: gl_bxa_trx_deduplicated
+  role: must
   value: 624
   sql: select sum(t) from (select any_value(trx) t from raw.rx_weekly where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES' and product_id = 'BXA' group by plan_id, hcp_specialty)
 - id: national_bxa_trx_reportable
+  role: must
   value: 3665
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-07-06'
 - id: territories_reporting
+  role: context
   value: 7
   sql: select count(distinct territory_id) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-07-06'
+- id: gl_overstatement_pct
+  value: 7.4
+  sql: 'select 100.0 * (a.n - b.d) / b.d from (select sum(trx) n from raw.rx_weekly where week_start = DATE ''2026-07-06'' and territory_id = ''GREAT_LAKES'' and product_id = ''BXA'') a, (select sum(t) d from (select any_value(trx) t from raw.rx_weekly where week_start = DATE ''2026-07-06'' and territory_id = ''GREAT_LAKES'' and product_id = ''BXA'' group by plan_id, hcp_specialty)) b'
+  role: context
+  reviewed: false
+findings:
+- id: great_lakes_withheld
+  territory: GREAT_LAKES
+  drivers_supported: []
+  drivers_ruled_out: []
+  withheld: true
+  reviewed: false
 source: docs/planning/user-stories.md#P1-Q1

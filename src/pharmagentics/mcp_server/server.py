@@ -253,7 +253,8 @@ class RunSession:
         top: dict = {}
         bottom = memo.bottom_line(reg, p, self.proj, told, self.restated, facts=top)
         cards = {s["territory"]: memo.story_card(q.name(s["territory"]), self.story_facts[s["territory"]], s["confidence"],
-                                                 list(self.checks.get(s["territory"], {})))
+                                                 list(self.checks.get(s["territory"], {})), territory=s["territory"],
+                                                 checks=list(self.checks.get(s["territory"], {}).values()))
                  for s in told if s["territory"] in self.story_facts}
         if competitor and self.competitor_facts:
             cards["competitor"] = memo.competitor_card(p, self.competitor_facts)

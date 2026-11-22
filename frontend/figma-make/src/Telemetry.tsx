@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
-import { getTelemetry, getUsage, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
+import { getTelemetry, getUsage, type CaseTable, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
 const NAMES: Record<string, string> = {
@@ -10,6 +10,9 @@ const NAMES: Record<string, string> = {
 }
 const label = (k: string) => k.replace(/[_.]/g, " ").replace(/^./, c => c.toUpperCase())
 const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toFixed(2))
+// A score as people read it: a share as a percent, a count as a whole number, a flag as Yes/No; no unit means a share.
+const fmt = (v: number, unit?: "share" | "count" | "flag") =>
+  unit === "count" ? String(Math.round(v)) : unit === "flag" ? (v >= 0.5 ? "Yes" : "No") : pct(v)
 const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 const name = (r: TelemetryRun) => NAMES[r.system] ?? r.system
 const list = (o: Record<string, number> | undefined) => Object.entries(o ?? {}).map(([k, v]) => `${v} ${k}`).join(", ") || "none"
@@ -62,6 +65,76 @@ function InUse({ u }: { u: Usage }) {
         ...(u.cloud_seconds ? [["Cloud agent time this month", `${u.cloud_seconds.used.toLocaleString()} of ${u.cloud_seconds.limit.toLocaleString()} s`] as [string, ReactNode]] : []),
       ]}/></div></div>
     </section>
+  </>
+}
+
+const SCORERS: Record<string, string> = {
+  claims_reconcile: "Claims reconcile", golden_number_recall: "Number recall", key_fact_recall: "Key facts found",
+  finding_recall: "Findings found", numbers_lost: "Numbers lost",
+}
+const HEADER_TITLES: Record<string, string> = {
+  numbers_lost: "Key-fact recall of the scripted brief minus this agent's, on the same golden version. Positive: the agent stated fewer of the facts code already gets.",
+}
+const KIND_GROUPS = [["code", "Code checks"], ["agent", "Agent checks"], ["safety", "Safety"]] as const
+// Score columns under Code checks, Agent checks and Safety; a snapshot with no kinds keeps one flat header.
+function grouped(t: CaseTable) {
+  const kinds = t.kinds
+  if (!kinds) return null
+  const groups = KIND_GROUPS.map(([kind, title]) => ({ kind, title, cols: t.scorers.filter(k => (kinds[k] ?? "agent") === kind) })).filter(g => g.cols.length)
+  return groups.length ? groups : null
+}
+const scorerName = (k: string) => SCORERS[k] ?? label(k)
+const LANES: Record<string, string> = { briefing: "Briefing", forecast: "Forecast" }
+const MARK = "ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
+
+function CaseScore({ v, stuck, fell, lost, unit }: { v: number | null | undefined, stuck: boolean, fell?: { previous: number; latest: number }, lost?: boolean, unit?: "share" | "count" | "flag" }) {
+  if (v == null) return <span className="text-muted" title="Not scored in this run">{"—"}<span className="sr-only">not scored</span></span>
+  return <>{lost ? `${Math.round(v * 100)}%` : fmt(v, unit)}
+    {stuck && <span className={`${MARK} bg-amberbg text-amber`} title="Zero in every listed run">stuck</span>}
+    {fell && <span className={`${MARK} bg-amberbg text-amber`} title={`Was ${fmt(fell.previous, unit)} in the run before`}>{fell.latest > fell.previous ? "up" : "fell"} from {fmt(fell.previous, unit)}</span>}
+  </>
+}
+
+function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
+  const stuck = t.rows.reduce((n, r) => n + r.stuck.length, 0)
+  const fallen = t.rows.reduce((n, r) => n + r.fallen.length, 0)
+  const groups = grouped(t)
+  const cols = groups ? groups.flatMap(g => g.cols) : t.scorers
+  const edge = (k: string) => (groups?.some(g => g.cols[0] === k && g !== groups[0]) ? " border-l border-rule" : "")
+  const head = (k: string) => <th key={k} scope="col" title={HEADER_TITLES[k]} className={`px-3 py-2 text-right font-medium${edge(k)}`}>{scorerName(k)}{t.report_only.includes(k) && <span className="block font-normal">report only</span>}</th>
+  return <details open={open} className={PANEL}>
+    <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60">
+      <span className="text-sm font-semibold">{NAMES[t.system.split(":")[0]] ?? t.system}</span>
+      <span className="text-xs text-muted">{LANES[t.lane] ?? t.lane} · run {t.run_id} · {when(t.started)} · {t.rows.length} cases · {stuck} stuck · {fallen} fallen</span>
+    </summary>
+    <div className="overflow-x-auto border-t border-rule">
+      <table className="w-full min-w-[32rem] text-left text-sm">
+        <thead className="text-xs text-muted">
+          {groups && <tr>
+            <th scope="col" rowSpan={2} className="px-5 py-2 align-bottom font-medium">Case</th>
+            {groups.map((g, i) => <th key={g.kind} scope="colgroup" colSpan={g.cols.length} className={`px-3 pt-2 text-center font-medium${i ? " border-l border-rule" : ""}`}>{g.title}</th>)}
+          </tr>}
+          <tr>
+            {!groups && <th scope="col" className="px-5 py-2 font-medium">Case</th>}
+            {cols.map(head)}
+          </tr>
+        </thead>
+        <tbody>{t.rows.map(r => <tr key={r.case} className="border-t border-rule">
+          <th scope="row" className="px-5 py-2 text-left font-normal"><span className="tabular-nums">{r.case}</span><span className="block text-xs text-muted">{r.story}{r.persona ? ` · ${r.persona}` : ""}</span></th>
+          {cols.map(k => <td key={k} className={`px-3 py-2 text-right tabular-nums${edge(k)}`}><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} fell={r.fallen.find(f => f.scorer === k)} lost={k === "numbers_lost"} unit={t.units?.[k]}/></td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </details>
+}
+
+function PerCase({ tables }: { tables: CaseTable[] }) {
+  const real = tables.filter(t => !t.control)
+  return <>
+    <Heading title="Per-case results" note="Latest run of each system, one row per golden question. Stuck: zero in every listed run. Fell: lower than the run before. A dash means the case was not scored."/>
+    <div className="space-y-3">
+      {[...real, ...tables.filter(t => t.control)].map((t, i) => <CaseTableView key={`${t.system}|${t.lane}`} t={t} open={i === 0}/>)}
+    </div>
   </>
 }
 
@@ -118,6 +191,7 @@ export function TelemetryWorkspace() {
       <Heading title="Golden-set scores" note={<>{t.exported ? `Exported ${when(t.exported)}. ` : ""}{t.note}{lead ? ` Latest: ${name(lead)}, ${when(lead.started)}.` : ""} Select a row for every score.</>}/>
       <Scores runs={t.latest.filter(r => !r.control)}/>
       {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)}/></>}
+      {!!t.cases?.systems.length && <PerCase tables={t.cases.systems}/>}
       {!!t.runs.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">All runs ({t.runs.length})</summary>
         <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
           <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Number recall</th><th className="font-medium">Claims reconcile</th></tr></thead>

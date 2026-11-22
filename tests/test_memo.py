@@ -319,6 +319,8 @@ def test_blocks_follow_the_schema_for_a_one_week_brief():
     story = by_number(env)["3.1"]
     assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"] == []  # the competitor story
     assert "Metacora holds 15.9%" in story["card"]["headline"] and story["card"]["headline_citations"]
+    card = story["card"]  # core-011: not one territory, so a scorer skips it
+    assert (card["territory"], card["direction"], card["drivers_supported"], card["drivers_ruled_out"]) == (None, None, [], [])
     assert "detail" in by_number(env)["6"] and "Glossary" in by_number(env)["6"]["detail"]
 
 
@@ -331,6 +333,9 @@ def test_a_multi_week_brief_quotes_no_single_week_change():
     card = by_number(env)["3.1"]["card"]
     assert card["headline"].startswith("Southeast fell 24.8% on the comparison weeks, while the other territories were up 2.8%")
     assert card["drivers_checked"] == ["data quality", "access", "promotion", "supply", "competitor"]
+    # core-011: territory id, own direction and the drivers the checks supported and ruled out, in the eval's ids
+    assert (card["territory"], card["direction"]) == ("SOUTHEAST", "down")
+    assert card["drivers_supported"] == ["promotion"] and card["drivers_ruled_out"] == ["data", "access", "supply", "competitor"]
 
 
 @needs_db
@@ -364,3 +369,29 @@ def test_old_sections_without_blocks_render_as_before():
     old = [{"number": "1", "title": "Bottom line", "lines": ["A {c1}."], "prose": ""}]
     out = render_sections(old, [{"value": "5", "evidence_id": "e1"}])
     assert out[0]["text"] == "A 5." and not {"kpis", "territory_table", "card", "detail"} & set(out[0])
+
+
+@needs_db
+def test_a_supply_story_card_names_the_supported_driver_and_what_was_ruled_out():
+    from briefing_baseline import answer
+
+    env = answer("Weeks of 2026-06-01 to 2026-06-29, Pacific: Why did BXA prescriptions fall?")
+    card = by_number(env)["3.1"]["card"]
+    assert (card["territory"], card["direction"]) == ("PACIFIC", "down")
+    assert card["drivers_supported"] == ["supply"] and card["drivers_ruled_out"] == ["data", "access", "promotion", "competitor"]
+
+
+def test_card_driver_lists_use_the_evals_ids_and_leave_inconclusive_checks_out():
+    from pharmagentics.tools.checks import Check
+    from pharmagentics.tools.memo import competitor_card, story_card
+
+    facts = {"pct": "{c1}", "word": "down", "peer_pct": "{c2}", "peer_word": "up"}
+    checks = [Check("data", "ruled_out", ""), Check("access", "supported", ""), Check("promotion", "insufficient", ""),
+              Check("supply", "ruled_out", ""), Check("competitor", "insufficient", "")]
+    card = story_card("Pacific", facts, "High", [c.driver for c in checks], territory="PACIFIC", checks=checks)
+    assert card["drivers_checked"] == ["data quality", "access", "promotion", "supply", "competitor"]  # display names, unchanged
+    assert card["territory"] == "PACIFIC" and card["direction"] == "down"
+    assert card["drivers_supported"] == ["access"] and card["drivers_ruled_out"] == ["data", "supply"]
+    assert not re.search(r"\d", repr({k: card[k] for k in ("territory", "direction", "drivers_supported", "drivers_ruled_out")}))
+    bare = competitor_card(type("P", (), {"brand_id": "BXA"})(), {"bxe": "{c3}", "bxa": "{c4}"})
+    assert bare["territory"] is None and bare["drivers_supported"] == [] and bare["drivers_ruled_out"] == []

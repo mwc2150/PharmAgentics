@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 import hashlib
+import re
+from datetime import date, timedelta
 from typing import Literal
 
 import yaml
 from pydantic import BaseModel
 
-from pharmagentics.tools.window import Comparison
+from pharmagentics.tools.queries import TERRITORY_NAMES
+from pharmagentics.tools.window import Comparison, parse
 
+from .numbers import as_numbers, extract, same
 from .paths import GOLDEN_DIR
 
 Lane = Literal["briefing", "forecast"]
@@ -20,6 +24,73 @@ class Fact(BaseModel):
     id: str
     value: int | float | str
     sql: str
+    role: Literal["must", "context"] = "context"  # core-011: must-state facts feed key_fact_recall
+    tolerance: float | None = None  # relative, for values the source states roughly; None = stated precision
+    reviewed: bool = True  # agent drafts write false until a person reviews them
+
+
+Driver = Literal["access", "promotion", "supply", "competitor", "data", "holiday", "none"]
+
+
+class Finding(BaseModel):
+    """A conclusion a first-pass analyst should reach on the case (core-011 FR-002), scored on the story cards."""
+
+    id: str
+    territory: str  # territory ID or NATIONAL
+    direction: Literal["up", "down", "flat"] | None = None
+    drivers_supported: list[Driver] = []
+    drivers_ruled_out: list[Driver] = []
+    withheld: bool = False  # the cut must be withheld, with no story for it
+    reviewed: bool = True
+
+
+class MustSay(BaseModel):
+    """Key terms a decision or trust answer must carry (core-011, Q3 of the 2026-11-22 review). Each entry is one
+    phrase, or alternatives separated by "|"; matched like must-not-say phrases (words in order, a little slack)."""
+
+    phrases: list[str] = []
+    reviewed: bool = True
+
+
+class Scope(BaseModel):
+    """What the agent should decide a question is about (core-011 packet F). A field left None is not checked.
+    `territory` is an ID such as SOUTHEAST, or ALL for every territory; `comparison` is the case's comparison dict,
+    None meaning the default; `intent` is "brief" or "promotion_review"."""
+
+    territory: str | None = None
+    week_start: str | None = None
+    week_end: str | None = None
+    comparison: dict | None = None
+    intent: Literal["brief", "promotion_review"] | None = None
+
+
+_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+_PREFIX = re.compile(r"^(?:Weeks? of|Brief of)\s+\d{4}-\d{2}-\d{2}")
+_ANCHOR = "2025-01-06"  # any Monday: parse() only needs one to decide whether a question is a promotion question
+
+
+def _monday(text: str) -> str:
+    d = date.fromisoformat(text)
+    return (d - timedelta(days=d.weekday())).isoformat()
+
+
+def derive_scope(question: str, comparison: dict | None = None) -> Scope:
+    """The scope a question's own prefix states: "Week of D[, Territory]:", "Weeks of A to B[, Territory]:",
+    "Weeks of A and B:", "Brief of D:". A question with no such prefix states no week and no territory, so those
+    stay None (not checked). Intent is "brief" when the prefix names a week, "promotion_review" when it names none
+    and the shared parser reads a promotion question (the same rule the stages use), and None otherwise."""
+    head = question.split(":", 1)[0] if ":" in question else ""
+    dates = _DATE.findall(head) if _PREFIX.match(head) else []
+    territory = week_start = week_end = intent = None
+    if dates:
+        mondays = sorted(_monday(d) for d in dates)
+        week_start, week_end = mondays[0], mondays[-1]
+        territory = next((tid for tid, label in TERRITORY_NAMES.items()
+                          if tid != "NATIONAL" and re.search(rf"\b{re.escape(label)}\b", head, re.I)), "ALL")
+        intent = "brief"
+    elif parse(question, _ANCHOR, _ANCHOR, briefing=True)["promotion"]:
+        intent = "promotion_review"
+    return Scope(territory=territory, week_start=week_start, week_end=week_end, comparison=comparison, intent=intent)
 
 
 class MustNotSay(BaseModel):
@@ -35,6 +106,18 @@ class FollowUp(BaseModel):
     section: str | None = None  # the section an analyst pinned ("3.1"), if any
     then: str
     must_not_say: MustNotSay | None = None
+
+
+
+def fact_percent(fact_id: str, value: float, reference: str) -> bool | None:
+    """A fact's unit, so "42 TRx" never states a 42% fact (core-011 Q10). The reference answer decides when it
+    states the value at the fact's own precision in one unit; otherwise an id ending in `_pct` is a percent and
+    anything else is unknown (matches either)."""
+    target = as_numbers([value])[0]
+    kinds = {n.percent for n in extract(reference) if n.decimals == target.decimals and same(n, target)}
+    if len(kinds) == 1:
+        return kinds.pop()
+    return True if fact_id.endswith("_pct") else None
 
 
 class Case(BaseModel):
@@ -56,11 +139,14 @@ class Case(BaseModel):
     then: str
     reference_answer: str
     must_not_say: MustNotSay
+    must_say: MustSay | None = None
     action: str | None = None
     eval_items: list[str]
     facts: list[Fact] = []
+    findings: list[Finding] = []
     follow_up: FollowUp | None = None  # two-turn cases (brief-006 FR-013)
     comparison: Comparison | None = None
+    scope: Scope | None = None  # explicit expected scope; absent, expectations() derives it from the question prefix
     source: str
 
     def inputs(self) -> dict:
@@ -68,6 +154,13 @@ class Case(BaseModel):
         return {"question": self.question, "follow_up": self.follow_up.question if self.follow_up else None,
                 "section": self.follow_up.section if self.follow_up else None,
                 **({"comparison": self.comparison.model_dump(mode="json", exclude_none=True)} if self.comparison else {})}
+
+    def expected_scope(self) -> Scope:
+        comparison = self.comparison.model_dump(mode="json", exclude_none=True) if self.comparison else None
+        if self.scope is None:
+            return derive_scope(self.question, comparison)
+        return self.scope if self.scope.comparison is not None or comparison is None else self.scope.model_copy(
+            update={"comparison": comparison})
 
     def expectations(self) -> dict:
         """What the scorers compare against. Only `expected_response` reaches an LLM judge."""
@@ -79,6 +172,12 @@ class Case(BaseModel):
             "lane": self.lane,
             "must_not_say": self.must_not_say.phrases + later,
             "golden_numbers": [f.value for f in self.facts if isinstance(f.value, (int, float))],
+            "key_facts": [{"id": f.id, "value": f.value, "tolerance": f.tolerance,
+                           "percent": fact_percent(f.id, f.value, self.reference_answer), "reviewed": f.reviewed} for f in self.facts
+                          if f.role == "must" and isinstance(f.value, (int, float))],
+            "findings": [f.model_dump() for f in self.findings],
+            "must_say": self.must_say.phrases if self.must_say else [],
+            "scope": self.expected_scope().model_dump(),
             "eval_items": self.eval_items,
         }
 
