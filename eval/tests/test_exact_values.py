@@ -59,3 +59,11 @@ def test_golden_prose_number_no_fact_backs_keeps_the_old_match():
 def test_numbers_match_golden_accepts_the_exact_value_once_rounded():
     fb = numbers_match_golden(outputs=text("Metacora held 15% of the basket."), expectations=SHARE)
     assert fb.value == 1.0
+
+
+def test_a_coarser_fact_does_not_back_a_finer_golden_number():
+    """A flag fact written "1" must not back the golden "coverage 0.656" (same() rounds to the coarser figure)."""
+    expectations = {"expected_response": "Coverage was 0.656 and the actual is provisional.",
+                    "fact_exact": [{"value": 1, "exact": 1.0}]}
+    fb = golden_number_recall(outputs=text("Coverage was 0.656."), expectations=expectations)
+    assert fb.value == 1.0, fb.rationale
