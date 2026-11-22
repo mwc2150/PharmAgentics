@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from pharmagentics.tools import DEFAULT_DB, Registry
-from pharmagentics.tools import charts, memo, projection, promotion, splits, stages
+from pharmagentics.tools import charts, memo, projection, promotion, stages
 from pharmagentics.tools.checks import confidence
 from pharmagentics.tools.lag_checks import run_checks
 from pharmagentics.tools.queries import name
@@ -44,6 +44,7 @@ class Front:
     restated: list[str] = field(default_factory=list)
     kpis: list[str] = field(default_factory=list)
     proj: projection.Projection | None = None
+    facts: dict = field(default_factory=dict)  # stage 3's claims by name, for the memo's blocks (brief-008)
 
 
 def answer(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> dict:
@@ -136,13 +137,14 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
     with span("3a_competitive_intelligence") as sp:
         if p.calendar_note:
             out.append(p.calendar_note)
-        kpis = stages.kpis(reg, p)
+        facts: dict = {}
+        kpis = stages.kpis(reg, p, facts)
         out += kpis
         proj = projection.build(reg, p)  # a level for the memo; never a story (ADR 0001)
         found, quiet = ([], []) if p.calendar else stages.screen(reg, p)
         finish(sp, {"calendar_mode": bool(p.calendar), "candidates": [f["territory"] for f in found],
                     "projected": proj.territories("projected"), "estimated": proj.territories("estimated")})
-    return Front(p, out, found, quiet, health, restated, kpis, proj)
+    return Front(p, out, found, quiet, health, restated, kpis, proj, facts)
 
 
 def _brief(reg: Registry, question: str, order: list[str] | None = None, left_out: list[str] = (),
@@ -157,6 +159,7 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
     blocks: list[memo.StoryBlock] = []
     told: list[dict] = []  # territory stories for §1 and §5: {territory, confidence, drivers}
     notes: list[str] = []
+    dropped: list[str] = []  # folded under §3's detail
 
     with span("4a_investigation") as sp:
         if p.calendar:
@@ -165,10 +168,11 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             by_id = {story_id(s): s for s in f.found}
             for sid in (default_order(f.found) if order is None else order):
                 if sid == COMPETITOR:
-                    comp = stages.competitor_status(reg, p, lead=f"Story {_ord(len(blocks) + 1)}: competitor Metacora")
+                    comp_facts: dict = {}
+                    comp = stages.competitor_status(reg, p, lead=f"Story {_ord(len(blocks) + 1)}: competitor Metacora", facts=comp_facts)
                     if comp:
                         blocks.append(memo.StoryBlock(COMPETITOR, "Competitor Metacora", [memo.without_next(comp)],
-                                                      chart=charts.competitor(reg, p)))
+                                                      chart=charts.competitor(reg, p), card=memo.competitor_card(p, comp_facts)))
                         competitor = True
                     continue
                 s = by_id[sid]
@@ -183,20 +187,24 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             if not blocks and not left_out:
                 notes.append("Routine week. No material change was found, and territory swings stayed in their normal range.")
             elif f.quiet:
-                notes.append(f"Considered and dropped: {stages.dropped_count(reg, p, f.quiet)} territories moved within their normal range.")
+                dropped.append(stages.dropped_line(reg, p, f.quiet))
         finish(sp, {"abstained": abstained})
 
     with span("5_narrative") as sp:
         blocks.extend(promotion.story_blocks(reg, p))
+        top: dict = {}
+        bottom = memo.bottom_line(reg, p, f.proj, told, restated=bool(f.restated), facts=top)
+        nums = memo.numbers(f.proj, f.facts, f.restated, p)
+        lim = memo.limits(p, f.proj, f.health, reg)
         parts = memo.MemoParts(
             title=memo.title_lines(p),
-            bottom_line=memo.bottom_line(reg, p, f.proj, told, restated=bool(f.restated)),
-            numbers=memo.numbers(f.proj, f.kpis, f.restated, p),
-            limits=memo.limits(p, f.proj, f.health, reg),
+            bottom_line=bottom, numbers=nums["lines"], limits=lim["lines"],
             next_checks=memo.next_checks(p, told, competitor),
             appendix=memo.appendix(reg, p=p, proj=f.proj) + memo.driver_timing(told),
             stories=blocks, story_notes=notes,
-            charts={"2": charts.trend(reg, p), "4": charts.coverage(reg, p)})  # brief-003 FR-024
+            charts={"2": charts.trend(reg, p), "4": charts.coverage(reg, p)},  # brief-003 FR-024
+            kpis=memo.kpis(p, f.proj, top), territory_table=nums["territory_table"],
+            details={"1": memo.bottom_detail(top), "2": nums["detail"], "3": dropped, "4": lim["detail"]})
         template, sections = memo.compose(parts)
         finish(sp, {"template_chars": len(template), "claims": len(reg.claims), "sections": [s["number"] for s in sections]})
 
@@ -215,7 +223,8 @@ def _story(reg, n, s, p) -> tuple[memo.StoryBlock, dict]:
     t = s["territory"]
     checks = run_checks(reg, t, p.weeks, p.baseline, brand_id=p.brand_id, use_selected_baseline=p.comparison is not None)
     level, lead = confidence(checks)
-    head = f"Story {_ord(n)}: {stages.territory_change(reg, p, t)}"
+    facts: dict = {}
+    head = f"Story {_ord(n)}: {stages.territory_change(reg, p, t, facts)}"
     lines = [head, "Checked, in this order:"] + [f"- {c.text}" for c in checks]
     supported = [c.driver for c in checks if c.verdict == "supported"]
     lags = {c.driver: c.detail["lag"] for c in checks if c.detail and "lag" in c.detail}
@@ -224,10 +233,12 @@ def _story(reg, n, s, p) -> tuple[memo.StoryBlock, dict]:
     else:
         verb = "Leading driver" if level == "High" else "Candidate drivers"
         lines.append(f"Confidence: {level}. {verb}: {lead}.")
-    lines.extend(splits.story_lines(reg, p, t))
     plan = next((c.detail["plan"] for c in checks if c.driver == "access" and c.detail), None)
     chart = charts.story(reg, p, t, supported if level != "Low" else [], plan)
-    return memo.StoryBlock(story_id(s), name(t), lines, chart=chart), {
+    detail = memo.story_detail(reg, p, t)
+    block = memo.StoryBlock(story_id(s), name(t), lines, chart=chart, detail=detail,
+                            card=memo.story_card(name(t), facts, level, [c.driver for c in checks]))
+    return block, {
         "territory": t, "confidence": level, "drivers": supported, "lags": lags}
 
 

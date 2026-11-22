@@ -315,7 +315,7 @@ def _answer(p: rbac.Principal, lane: str, ref: str, view: str) -> dict:
         return {"scope": {k: r.get(k) for k in ("brand_id", "territory_id", "week_start", "question")},
                 "engine": r.get("engine"), "system": r.get("system"), "data_version": r.get("data_version"),
                 "review_status": record["review_status"],
-                "shown": views.executive_summary(shown) if view == "leadership" else shown}
+                "shown": views.executive_summary(shown, r.get("sections")) if view == "leadership" else shown}
     brand_access.require_brand(p, "BXA")
     record = forecast_store.get(ref)
     if record is None or ("run" not in role.actions and record["review_status"] == forecast_store.NOT_SUBMITTED):
