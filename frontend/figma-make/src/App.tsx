@@ -37,6 +37,9 @@ function labelWeek(iso: string): string {
   const [y,m,d] = iso.split("-").map(Number)
   return new Date(Date.UTC(y,m-1,d)).toLocaleDateString("en-US", {year:"numeric",month:"short",day:"numeric",timeZone:"UTC"})
 }
+function periodLabel(start: string, end?: string | null): string {
+  return end && end > start ? `weeks ${labelWeek(start)} to ${labelWeek(end)}` : `week of ${labelWeek(start)}`
+}
 function labelTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—"
 }
@@ -647,7 +650,7 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
         <span>{preview ? "Leadership preview" : "Executive summary"}</span>
         <ClassLabel tab="briefing.view.leadership"/>
       </div>
-      <h2 className="mt-2 text-2xl">{labelTerritory(brief.territory_id)}, week of {labelWeek(brief.week_start)}</h2>
+      <h2 className="mt-2 text-2xl">{labelTerritory(brief.territory_id)}, {periodLabel(brief.week_start, brief.week_end)}</h2>
       <p className="mt-1.5 text-sm text-muted">{brief.brand_id} · data version {brief.data_version ?? "unavailable"}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {brief.review_status==="approved" ? <span className={`${chip} inline-flex items-center gap-1 bg-okbg text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Approved by the Commercial Analyst · {labelTime(brief.reviewed_at)}</span> : <span className={REVIEW_CHIP[brief.review_status][0]}>{REVIEW_CHIP[brief.review_status][1]}</span>}
@@ -703,7 +706,7 @@ function PublishedList({onOpen}: {onOpen: (id: string) => void}) {
   if (!items) return <ListSkeleton/>
   if (!items.length) return <p className="text-sm text-muted">No approved briefings yet. A briefing appears here once the Commercial Analyst approves it.</p>
   return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={()=>onOpen(b.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
-    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, week of {labelWeek(b.week_start)}</span><span className="mt-0.5 block text-xs text-muted">Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
+    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
     <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-agent"/></button></li>)}</ul>
 }
 

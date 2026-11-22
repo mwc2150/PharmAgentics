@@ -56,7 +56,7 @@ def executive_summary(answer: str, sections: list[dict] | None = None) -> str:
     return "\n".join(keep)
 
 
-LEADERSHIP_FIELDS = ("brief_id", "engine", "system", "brand_id", "territory_id", "week_start",
+LEADERSHIP_FIELDS = ("brief_id", "engine", "system", "brand_id", "territory_id", "week_start", "week_end",
                      "data_version", "abstained", "review_status", "reviewed_at")
 LEADERSHIP_SECTIONS = ("1", "2", "3", "4", "5", "6")  # §4 in short, §6 as the Assumptions; story subsections follow §3
 SECTION_FIELDS = ("number", "title", "text", "prose")  # allow-list: no claims, citations or evidence

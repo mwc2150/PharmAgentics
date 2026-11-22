@@ -172,6 +172,7 @@ export type LeadershipBrief = {
   brand_id: string
   territory_id: string
   week_start: string
+  week_end?: string | null  // brief-008: set for a multi-week period
   data_version: string | null
   abstained: boolean
   review_status: ReviewStatus
@@ -183,6 +184,7 @@ export type PublishedBrief = {
   brief_id: string
   brand_id: string
   week_start: string
+  week_end?: string | null
   territory_id: string
   engine: string
   reviewed_at: string | null

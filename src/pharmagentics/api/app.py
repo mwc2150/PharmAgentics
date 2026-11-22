@@ -219,7 +219,7 @@ async def published(response: Response, who=Briefing) -> list[dict]:
     rbac.allow(role, "read")
     _no_store(response)
     version = await run_in_threadpool(service.current_data_version)
-    return [{k: views.leadership(r)[k] for k in ("brief_id", "brand_id", "week_start", "territory_id", "engine", "reviewed_at", "abstained")}
+    return [{k: views.leadership(r)[k] for k in ("brief_id", "brand_id", "week_start", "week_end", "territory_id", "engine", "reviewed_at", "abstained")}
             for r in store.approved(version, brand_access.allowed_brands(p))]
 
 
