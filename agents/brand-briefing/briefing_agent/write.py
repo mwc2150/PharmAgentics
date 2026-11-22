@@ -109,8 +109,8 @@ def answer_high(text: str, confidences: dict[str, str | None], mentions: dict[st
 
 
 def link_verb(high: bool) -> str:
-    """The causal verb code writes for a story: "drove" only for High confidence, else "is linked with"."""
-    return "drove" if high else "is linked with"
+    """The causal verb code writes for a story: "drove" only for High confidence, else "moved with"."""
+    return "drove" if high else "moved with"
 
 
 def confidence(section: str) -> str | None:

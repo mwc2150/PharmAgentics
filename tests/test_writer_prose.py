@@ -270,7 +270,7 @@ def test_a_comparison_the_model_words_itself_is_revised_then_dropped(monkeypatch
 def test_link_verb_follows_confidence_and_the_answer_follows_the_stories_it_names():
     from briefing_agent import write
 
-    assert write.link_verb(True) == "drove" and write.link_verb(False) == "is linked with"
+    assert write.link_verb(True) == "drove" and write.link_verb(False) == "moved with"
     conf = {"territory:SOUTHEAST": "High", "competitor:BXE": "Medium"}
     who = {"territory:SOUTHEAST": "Southeast", "competitor:BXE": "Metacora"}
     assert write.answer_high("Southeast fell.", conf, who) is True  # names only the High story
@@ -278,7 +278,7 @@ def test_link_verb_follows_confidence_and_the_answer_follows_the_stories_it_name
     assert write.answer_high("Southeast fell and Metacora gained.", conf, who) is False
     assert write.answer_high("The brief is quiet.", conf, who) is False  # names none: every story counts
     assert write.answer_high("Anything.", {}, {}) is False  # no story, nothing to be sure of
-    assert write.fill("Calls {link} the fall in {c1}.", None, write.link_verb(False)) == "Calls is linked with the fall in {c1}."
+    assert write.fill("Calls {link} the fall in {c1}.", None, write.link_verb(False)) == "Calls moved with the fall in {c1}."
 
 
 def test_the_causal_rule_in_the_answer_covers_only_the_stories_it_names():
@@ -301,7 +301,7 @@ def test_the_link_token_is_filled_with_the_verb_the_story_confidence_allows(monk
                         "stories": {"territory:SOUTHEAST": "Southeast fell. Calls {link} the fall."}, "charts": {}})
     (answer, sentences, _charts, revised, dropped), _seen = _run_write(monkeypatch, brief, [reply])
     high = write.confidence(brief[3][0]["section"]) == "High"
-    verb = "drove" if high else "is linked with"
+    verb = "drove" if high else "moved with"
     assert revised is False and dropped == [] and "{link}" not in answer and "{link}" not in sentences["territory:SOUTHEAST"]
     assert f"Calls {verb} the fall." in sentences["territory:SOUTHEAST"]
     assert f"Calls {verb} the fall there." in answer  # the answer names only Southeast, so its confidence decides

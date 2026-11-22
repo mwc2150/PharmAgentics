@@ -5,6 +5,7 @@ The model is always stubbed here: no test calls a real model, and the eval harne
 """
 from __future__ import annotations
 
+import re
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -282,6 +283,9 @@ def test_no_eval_or_agent_path_calls_the_scope_reader():
         if path.name == "reader.py" and path.parent.name == "briefing_agent":
             continue
         assert "briefing_agent.reader" not in text and "read_briefing_scope" not in text and "api/briefing/scope" not in text, path
+    # The one allowed use (FR-017): the agent's entry asks for a proposal to score, and calls nothing else on the reader.
+    entry = (ROOT / "agents" / "brand-briefing" / "briefing_agent" / "__init__.py").read_text(encoding="utf-8")
+    assert set(re.findall(r"\breader\.(\w+)", entry)) == {"scope_proposal"}
 
 
 def test_reader_makes_one_tool_call_and_returns_its_fields(monkeypatch):
