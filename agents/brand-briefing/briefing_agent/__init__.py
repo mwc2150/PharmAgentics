@@ -32,7 +32,7 @@ from briefing_lowcode.team import RunLog, _call
 
 from . import lessons
 from . import plan as planmod
-from . import write
+from . import reader, write
 from .investigate import investigate, server
 from .scope import out_of_scope
 
@@ -231,6 +231,31 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
     return {"envelope": envelope, "triage": record, "flow": flow}
 
 
+def _release_bounds() -> tuple[str, str, list[str]]:
+    """The release's first and latest week and its territory IDs, for the scope reader."""
+    from pharmagentics.tools import DEFAULT_DB, Registry
+    from pharmagentics.tools.queries import TERRITORY_NAMES
+
+    reg = Registry(DEFAULT_DB)
+    try:
+        first, latest = reg.rows("select min(week_start)::varchar, max(week_start)::varchar from raw.calendar")[0]
+    finally:
+        reg.close()
+    return first, latest, [t for t in TERRITORY_NAMES if t != "NATIONAL"]
+
+
+async def _scope_proposal(question: str, spec: str, log: RunLog) -> dict | None:
+    """The scope the model reads from the question text (brief-008 FR-017), recorded for scoring only: the brief
+    has already run on the prefix scope and nothing here changes it. One reader call; any failure records nothing."""
+    try:
+        first, latest, territories = _release_bounds()
+        log.llm_calls += 1  # the reader is one model call, made even when its answer is unusable
+        return await asyncio.to_thread(reader.scope_proposal, question, spec=spec, first=first, latest=latest,
+                                       territories=territories)
+    except Exception:  # noqa: BLE001 - no usable reading: no scope_proposal, and the scorer says so
+        return None
+
+
 async def _answer(question: str, model: str | None, comparison: Comparison | None = None) -> dict:
     cfg = load_config()
     spec = model_spec(model or cfg.get("model"))
@@ -242,4 +267,9 @@ async def _answer(question: str, model: str | None, comparison: Comparison | Non
             raise
         return dict(scripted.answer(question), system=f"{NAME}:{spec}")
     result = await _run(question, plan, plan.get("manager_order", []), spec, reviewed=False, log=log)
-    return result["envelope"]
+    envelope = result["envelope"]
+    if load_config().get("scope_proposal", True) and (proposal := await _scope_proposal(question, spec, log)):
+        envelope["trajectory"]["scope_proposal"] = proposal
+    if isinstance(envelope.get("trajectory"), dict):
+        envelope["trajectory"]["llm_calls"] = log.llm_calls  # the reader's call is counted
+    return envelope

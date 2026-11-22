@@ -274,7 +274,9 @@ def test_a_model_needs_an_anthropic_spec_and_a_key(monkeypatch):
 
 
 def test_no_eval_or_agent_path_calls_the_scope_reader():
-    """The harness sets scope with window.parse through the pipeline; only the API route reads a question with a model."""
+    """The harness sets scope with window.parse through the pipeline; only the API route reads a question with a model.
+    (The agent's eval entry also asks the reader for a proposal to score, brief-008 FR-017, through a relative import;
+    the brief never follows it. tests/test_scope_proposal.py covers that.)"""
     for path in sorted((ROOT / "eval" / "harness").glob("*.py")) + sorted((ROOT / "agents").rglob("*.py")):
         text = path.read_text(encoding="utf-8")
         if path.name == "reader.py" and path.parent.name == "briefing_agent":
@@ -295,7 +297,7 @@ def test_reader_makes_one_tool_call_and_returns_its_fields(monkeypatch):
     got = reader.propose("How did the Southeast do in August?", spec=HAIKU, first="2024-10-14", latest="2026-10-05",
                          territories=TERRITORIES)
     assert got == {"period_start": "2026-08-01", "period_end": "2026-08-31", "territory": "SOUTHEAST",
-                   "comparison_weeks": 6, "promotion_review": False}
+                   "comparison_weeks": 6, "promotion_review": False, "comparison_kind": "previous"}
     assert "2024-10-14" in seen["system"] and "SOUTHEAST" in seen["system"] and "{first}" not in seen["system"]
     assert seen["question"] == "How did the Southeast do in August?"
 
