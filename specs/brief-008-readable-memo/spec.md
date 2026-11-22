@@ -130,6 +130,15 @@ Every account sees its name in the top-right menu, with sign-out, the survey and
 - **FR-012**: The account menu MUST NOT show a lane or role list for any account.
 - **FR-013**: Every gated check MUST stay at 1.000 on both engines (B-VII).
 
+**Follow-up (2026-11-22 night, deterministic first; branch `feature/brief-008-polish`):**
+
+- **FR-014**: The writer MUST name the comparison only through a code-filled phrase token (`{cmp}`), filled from the window the analyst chose ("the previous four weeks", "the same weeks last year", "the week of 2026-08-24"); the check rejects comparison wording the model writes itself ("the week before", "last week", "the prior weeks").
+- **FR-015**: Each story's causal verb MUST be a code-filled token chosen from the story's confidence ("drove" for High, "is linked with" otherwise); the causal-word rule covers the answer paragraph too; the writer prompt gives no free comparison example.
+- **FR-016**: Briefing percentages MUST print as whole numbers at 10% and above and with one decimal below 10%; the shared `pct1` format (Forecast) is unchanged.
+- **FR-017**: The agent MUST record the scope it proposes (`trajectory.scope_proposal`: territory, first and last week, comparison, intent) so core-011's `scope_match` scores it.
+- **FR-018**: §1 and §2 MUST read as paragraphs, not one sentence per line, on screen and in print.
+- **SC-006**: On a Haiku run, `needed_revision` is at most 15% (56% on 2026-11-22), with every gated check at 1.000 on both engines.
+
 ### Key Entities
 
 - **KPI tile**: label, claim value, optional change and its direction, optional reference ("against 35.4% before launch").
