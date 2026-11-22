@@ -2,6 +2,9 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-22 (evening), core-011 eval revamp planned (Michael, Claude)._
+- `golden_number_recall` is 0.682 per case but 0.593 over all 167 golden numbers; about 12 misses are approximate golden wording and about 45 are analyses the system does not do. Decided: tag golden facts (must or context, exact values, SQL), score `key_fact_recall` and `finding_recall`, add `eval insights` and a per-case Evaluation view; 0.95 recall dropped as a goal; the missing analyses go to brief-010. Spec: `specs/core-011-eval-revamp/`. Packets A (Sonnet) and D, B (Haiku) start now; C and E wait for the brief-008 merge.
+
 _2026-11-22, Briefing: state after brief-007, and the plan for brief-008 and brief-009 (Michael, Claude)._
 - `main` at `c704632` holds the memo brief (PR #13), brief-007 slice A (#16), slices B and C (#17, Codex) and core-010 multi-brand access (#15).
 - Slices B and C merged without a scored run. They were checked afterwards on `8ddd84e`:
