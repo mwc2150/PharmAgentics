@@ -314,3 +314,12 @@ def test_nonrelease_week_is_refused_before_engine_is_called():
     with patch.object(service, "release_context", return_value=bounds):
         with pytest.raises(service.OutsideRelease):
             service.run_briefing(BriefingQuery.model_validate(VALID))
+
+
+@pytest.mark.skipif(not service.DB.is_file(), reason="Build local/pharmagentics.duckdb first")
+def test_the_default_comparison_runs_for_the_releases_first_week():
+    """brief-008 review: the form sends no comparison, so a brief for a week with no earlier week must still run
+    (the server shortens its default baseline), and the result records no explicit comparison."""
+    response = CLIENT.post("/api/briefing/query", json={**VALID, "week_start": "2024-10-14", "question": "What changed?"})
+    assert response.status_code == 200, response.text
+    assert response.json().get("comparison") is None
