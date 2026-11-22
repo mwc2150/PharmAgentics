@@ -56,7 +56,7 @@ findings:
   territory: SOUTH_CENTRAL
   direction: down
   drivers_supported: []
-  drivers_ruled_out: [access, promotion, supply, competitor, data]
+  drivers_ruled_out: [access, promotion, supply, data]
   withheld: false
   reviewed: false
 source: docs/planning/user-stories.md#P2-Q3
