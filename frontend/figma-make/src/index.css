@@ -156,3 +156,34 @@
   0%, 100% { opacity: 0.35; }
   50% { opacity: 1; }
 }
+
+/* brief-008: print. The memo prints on A4 as a plain light page: the app's chrome and buttons are gone, folded
+   details stay folded, and tiles, table rows, figures and story cards are not split across pages. */
+@media print {
+  @page { size: A4; margin: 14mm 14mm 16mm; }
+  :root {
+    color-scheme: light;
+    --color-paper: #ffffff; --color-sheet: #ffffff; --color-ink: #151a18; --color-muted: #4b5652;
+    --color-rule: #c8cfcc; --color-warn: #444444; --color-warnbg: #f3f4f4;
+    --color-agent: #1f6055; --color-agentdeep: #1f6055; --color-agentbg: #edf4f2;
+    --color-ok: #1d4f9a; --color-okbg: #e8f0fb; --color-amber: #85540a; --color-amberbg: #fbf2de;
+    --color-amberline: #d9b36a; --color-neg: #b02323; --color-human: #5a3fb0; --color-humanbg: #efeafa;
+  }
+  * { animation: none !important; transition: none !important; box-shadow: none !important; }
+  html, body { height: auto !important; overflow: visible !important; background: #ffffff !important; color: var(--color-ink); font-size: 10.5pt; }
+  .h-dvh, main, main > section { display: block !important; height: auto !important; overflow: visible !important; }
+  /* app chrome and anything you press */
+  aside, header, footer, nav, form, textarea, select, dialog, [role="dialog"], [data-sonner-toaster],
+  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]) { display: none !important; }
+  /* the memo */
+  .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pa-memo > * { break-inside: auto; }
+  .pa-memo h3 { break-after: avoid; }
+  .pa-memo .pa-prose { max-width: none; font-size: 10.5pt; line-height: 1.5; orphans: 3; widows: 3; }
+  .pa-memo .pa-kpi-value { font-size: 17pt; }
+  .pa-memo .pa-card, .pa-memo figure, .pa-memo tr, .pa-memo dl > div { break-inside: avoid; }
+  .pa-memo table { font-size: 9.5pt; }
+  .pa-memo svg { max-width: 100%; }
+  .pa-cite { text-decoration: none; }
+  .pa-cite sup { display: none; }
+}
