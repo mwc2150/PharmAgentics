@@ -201,23 +201,25 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
         pct = reg.claim("get_metric", q.pct_change(x, b), "pct1", **fields)
         peer_pct = reg.claim("get_metric", q.pct_change(px, pb), "pct1", scope="other territories", **fields)
         gap_sql = f"select {q.sub(x)} - {q.sub(b)} * (1 + {q.sub(q.pct_change(px, pb))} / 100)"
-        gap_value = reg.scalar(gap_sql) or 0
+        gap_value = reg.scalar(gap_sql)  # None when the gap cannot be computed: promotion is then inconclusive
+        below = gap_value is not None and gap_value < 0
         gap = reg.claim("get_metric", f"select abs({q.sub(gap_sql)})", "int", metric="weekly TRx gap vs peer trend", **fields)
         lines.append(f"{brand} TRx averaged {trx} a week during the lapse against {base} before ({stages.word(change)} {pct}), "
                      f"while the other territories were {stages.word(peer)} {peer_pct}. TRx ran {gap} a week "
-                     f"{_direction(gap_value, 'above', 'below')} the other territories' trend. This is an association.")
-        if gap_value < 0:
+                     f"{_direction(gap_value or 0, 'above', 'below')} the other territories' trend. This is an association.")
+        if below:
             gaps.append((gap, abs(gap_value)))
         verb = {"up": "rose", "down": "fell"}.get(stages.word(change), "held flat at")
         card.update(headline=f"{name}: aggregated calls fell from {before} to {during} a week, and {brand} TRx {verb} {pct}.",
                     confidence="Medium", direction=stages.word(change),  # the territory's own TRx move
                     # TRx below the other territories' trend is the association the brief tells (the gap it carries to the
                     # bottom line); TRx that kept pace with them rules the lapse out as the cause of a TRx move.
-                    drivers_supported=["promotion"] if gap_value < 0 else [],
-                    drivers_ruled_out=[] if gap_value < 0 else ["promotion"])
+                    drivers_supported=["promotion"] if below else [],
+                    drivers_ruled_out=["promotion"] if gap_value is not None and gap_value >= 0 else [])
         detail = splits.readable_lines(reg, period, t)
     else:
         lines.append("The feed gate leaves too little like-for-like TRx for this lapse.")
+        card["direction"] = None  # no TRx claim was made, so the card names no direction
     if lapse.resumed:
         weeks = [lapse.end, lapse.resumed]
         ok = _reportable(reg, weeks)

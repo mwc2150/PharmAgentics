@@ -145,3 +145,44 @@ def test_lapse_count_query_matches_the_lapse_rule():
         assert k["w"] == max(len(q.mondays(e.start, e.end)) for e in found)
     finally:
         reg.close()
+
+
+GREAT_LAKES = "Weeks of 2026-02-02 to 2026-04-06, Great Lakes: Did my campaign move brand sales, and by how much?"
+
+
+def _great_lakes_card(monkeypatch, *, reportable=None, scalar=None):
+    """The Great Lakes lapse card, with the feed gate or the gap query forced."""
+    from pharmagentics.tools import stages
+
+    if not DEFAULT_DB.exists():
+        pytest.skip("Build the synthetic database first")
+    reg = Registry()
+    try:
+        p = stages.resolve(reg, GREAT_LAKES, "BXA")
+        lapse = next(e for e in promotion.lapses(reg, "GREAT_LAKES") if e.territory == "GREAT_LAKES")
+        if reportable is not None:
+            monkeypatch.setattr(promotion, "_reportable", lambda reg_, weeks: reportable)
+        if scalar is not None:
+            real = reg.scalar
+            monkeypatch.setattr(reg, "scalar", lambda sql: None if scalar(sql) else real(sql))
+        gaps = []
+        block = promotion._lapse_story(reg, p, lapse, gaps)
+        return block, gaps
+    finally:
+        reg.close()
+
+
+def test_a_lapse_the_feed_gate_blocks_names_no_trx_direction(monkeypatch):
+    block, gaps = _great_lakes_card(monkeypatch, reportable=[])
+    assert "too little like-for-like TRx" in " ".join(block.lines)
+    assert block.card["direction"] is None and block.card["territory"] == "GREAT_LAKES"
+    assert block.card["drivers_supported"] == [] and block.card["drivers_ruled_out"] == [] and gaps == []
+
+
+def test_an_unknown_gap_is_inconclusive_not_ruled_out(monkeypatch):
+    is_gap = lambda sql: "* (1 +" in sql and "abs(" not in sql  # the gap against peer trend, not its claim
+    block, gaps = _great_lakes_card(monkeypatch, scalar=is_gap)
+    assert block.card["drivers_supported"] == [] and block.card["drivers_ruled_out"] == [] and gaps == []
+    assert block.card["direction"] in ("up", "down", "flat")  # the territory's own TRx move is still known
+    known, known_gaps = _great_lakes_card(monkeypatch)
+    assert known.card["drivers_supported"] == ["promotion"] and known_gaps
