@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_host, auth, brand_access, classification, cloud, feedback, forecast, jobs, overview, rbac, service, store, telemetry, views
-from .schemas import (AgentJobRequest, BriefingQuery, InsightMark, ReleaseContext, ReviewRequest, ViewAs, WorkerPoll,
+from .schemas import (AgentJobRequest, BriefingQuery, BriefingScope, BriefingScopeRequest, InsightMark, ReleaseContext, ReviewRequest, ViewAs, WorkerPoll,
                       WorkerResult)
 
 logger = logging.getLogger(__name__)
@@ -160,6 +160,28 @@ async def briefing_triage(payload: BriefingQuery, response: Response, who=Briefi
     store.record_event("triaged", **_who(p, role), plan_id=plan["plan_id"], cards=len(plan["stories"]),
                        latency_ms=round((time.perf_counter() - started) * 1000), state=plan["state"])
     return plan
+
+
+@app.post("/api/briefing/scope", tags=["briefing"], response_model=BriefingScope)
+async def briefing_scope(payload: BriefingScopeRequest, response: Response, who=Briefing) -> BriefingScope:
+    """Read a typed question into a proposed scope for the form (brief-008 FR-008). Analysts only. Nothing runs: the
+    analyst confirms the form. A configured Anthropic model proposes it and code validates every field; otherwise,
+    and after any failure, the code parser reads it."""
+    p, role = who
+    rbac.allow(role, "run")
+    brand_access.require_brand(p, payload.brand_id)
+    _no_store(response)
+    try:
+        scope = await run_in_threadpool(service.read_briefing_scope, payload.question, payload.brand_id)
+    except service.MissingDatabase as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except service.OutsideRelease as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Scope reading failed")
+        raise HTTPException(status_code=500, detail="Could not read the question. Set the scope by hand.") from exc
+    store.record_event("scope_read", **_who(p, role), read_by=scope["read_by"])
+    return BriefingScope.model_validate(scope)
 
 
 @app.post("/api/briefing/query", tags=["briefing"])

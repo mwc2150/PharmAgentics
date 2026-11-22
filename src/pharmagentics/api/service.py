@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from .schemas import BriefingQuery, BriefingResult, ReleaseContext
@@ -94,7 +94,16 @@ def normalize_question(request: BriefingQuery) -> str:
     label = TERRITORIES[request.territory_id]
     if request.intent == "promotion_review":
         return f"Promotion review in {label}: {request.question.strip()}"
+    if request.week_end is not None and request.week_end > request.week_start:
+        # window.parse reads "Weeks of A to B" as every Monday from A to B (brief-008 FR-007)
+        return f"Weeks of {request.week_start.isoformat()} to {request.week_end.isoformat()} in {label}: {request.question.strip()}"
     return f"Week of {request.week_start.isoformat()} in {label}: {request.question.strip()}"
+
+
+def period_weeks(request: BriefingQuery) -> list[str]:
+    """The reporting weeks of the request, first to last, as ISO dates (one week unless week_end is later)."""
+    last = request.week_end or request.week_start
+    return [(request.week_start + timedelta(weeks=i)).isoformat() for i in range((last - request.week_start).days // 7 + 1)]
 
 
 class StalePlan(ValueError):
@@ -109,7 +118,7 @@ def _check_scope(request: BriefingQuery) -> None:
     bounds = release_context()
     if request.brand_id not in bounds.product_ids:
         raise OutsideRelease("Brand not present in the supported synthetic data release.")
-    if request.week_start not in bounds.available_weeks:
+    if request.week_start not in bounds.available_weeks or (request.week_end or request.week_start) not in bounds.available_weeks:
         raise OutsideRelease(
             f"Requested week is outside the synthetic data release "
             f"({bounds.first_week.isoformat()} to {bounds.latest_week.isoformat()})."
@@ -122,7 +131,7 @@ def _check_scope(request: BriefingQuery) -> None:
         if request.intent == "promotion_review":
             raise OutsideRelease("The release-wide Promotion review uses its own lapse comparison.")
         try:
-            comparison_weeks(request.comparison, [request.week_start.isoformat()],
+            comparison_weeks(request.comparison, period_weeks(request),
                              {week.isoformat() for week in bounds.available_weeks})
         except ValueError as exc:
             raise OutsideRelease(str(exc)) from exc
@@ -166,6 +175,8 @@ def run_triage(request: BriefingQuery) -> dict:
     _matching_brand(request.brand_id, plan)
     _traceable(plan["claims"], plan["evidence"])
     plan.update(brand_id=request.brand_id, territory_id=request.territory_id, week_start=request.week_start.isoformat())
+    if request.week_end is not None:
+        plan["week_end"] = request.week_end.isoformat()
     return plan
 
 
@@ -195,7 +206,7 @@ def run_briefing(request: BriefingQuery) -> BriefingResult:
     return BriefingResult(
         system=raw["system"], question=question,
         brand_id=request.brand_id, territory_id=request.territory_id,
-        week_start=request.week_start, comparison=request.comparison,
+        week_start=request.week_start, week_end=request.week_end, comparison=request.comparison,
         answer=raw["answer"], claims=claims, evidence=evidence,
         data_version=_traceable(claims, evidence),
         abstained=bool(raw.get("abstained", False)), citations=raw.get("citations"), sections=raw.get("sections"), **extra,
@@ -232,8 +243,8 @@ def accept_agent_brief(query: BriefingQuery, posted: dict) -> BriefingResult:
         raise RuntimeError(f"Numbers with no claim behind them: {', '.join(bad[:5])}.")
     return BriefingResult(
         engine="agent", system=str(env.get("system", "briefing_agent")), question=normalize_question(query),
-        brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start, comparison=query.comparison,
-        answer=env.get("answer", ""), claims=claims, evidence=evidence, data_version=version,
+        brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start, week_end=query.week_end,
+        comparison=query.comparison, answer=env.get("answer", ""), claims=claims, evidence=evidence, data_version=version,
         abstained=bool(env.get("abstained", False)), triage=posted.get("triage"), flow=posted.get("flow"),
         sections=env.get("sections"),
         citations=_valid_citations(env.get("answer", ""), claims, env.get("citations")),
@@ -245,3 +256,134 @@ def _valid_citations(answer: str, claims: list[dict], spans) -> list[dict] | Non
     ok = [s for s in spans or [] if isinstance(s, dict) and 0 <= s.get("claim", -1) < len(claims)
           and answer[s.get("start", 0):s.get("end", 0)] == claims[s["claim"]]["value"]]
     return ok or None
+
+
+# ---- Reading a typed question into a proposed scope (brief-008 FR-008, constitution B-II v1.1.0) ---------------
+# A model may propose the weeks, territory, comparison length and promotion flag. Code validates every field
+# against the release; any failure, and every run without a configured Anthropic model, falls back to the code
+# parser (tools/window.parse). Nothing runs on a proposal: the analyst confirms the form, then builds as usual.
+
+DEFAULT_COMPARISON_WEEKS = 4
+SCOPE_SECONDS = 25.0
+AGENTS_DIR = ROOT / "agents" / "brand-briefing"
+
+
+def scope_model() -> str | None:
+    """The Anthropic model that may propose a scope, or None: PHARMAGENTICS_AGENT_MODEL must be an anthropic: model
+    and ANTHROPIC_API_KEY must be set. Evals never reach this (they do not call the route)."""
+    import os
+
+    from pharmagentics.llm import load_env
+
+    load_env()
+    spec = os.environ.get("PHARMAGENTICS_AGENT_MODEL", "").strip()
+    return spec if spec.startswith("anthropic:") and spec.partition(":")[2] and os.environ.get("ANTHROPIC_API_KEY") else None
+
+
+def _monday(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
+def calendar_to_weeks(start: str, end: str) -> list[str]:
+    """Calendar dates to Monday weeks: a span under a week is the week holding it; a longer span is every week
+    whose Monday falls inside it. Raises ValueError for anything that is not an ordered pair of dates."""
+    a, b = date.fromisoformat(start), date.fromisoformat(end)
+    if b < a:
+        raise ValueError("The last week comes before the first week.")
+    if (b - a).days < 7:
+        return [_monday(a).isoformat()]
+    a, b = a + timedelta(days=(7 - a.weekday()) % 7), _monday(b)
+    return [(a + timedelta(weeks=i)).isoformat() for i in range((b - a).days // 7 + 1)] if a <= b else []
+
+
+def _clamp_weeks(count: int, first: str, available: set[str]) -> int:
+    """The longest comparison up to `count` weeks that lies inside the release before `first` (at least 1)."""
+    day = date.fromisoformat(first)
+    fit = 0
+    while fit < count and (day - timedelta(weeks=fit + 1)).isoformat() in available:
+        fit += 1
+    return max(fit, 1)
+
+
+def validate_scope(proposal: dict, release: ReleaseContext, brand_id: str) -> dict:
+    """Check a model's proposal against the release and return the form values. Raises ValueError on anything
+    unusable: dates that are not dates, weeks outside the release, an unknown territory, a comparison that is not a
+    whole number from 1 to 13 or reaches before the release, a promotion flag that is not a boolean."""
+    available = {w.isoformat() for w in release.available_weeks}
+    weeks = calendar_to_weeks(str(proposal.get("period_start", "")), str(proposal.get("period_end", "")))
+    if not weeks or any(w not in available for w in weeks):
+        raise ValueError("The proposed weeks are outside the release.")
+    territory = str(proposal.get("territory") or "").strip().upper().replace(" ", "_").replace("-", "_")
+    if territory in ("", "NATIONAL"):
+        territory = ""
+    elif territory not in release.territory_ids:
+        raise ValueError("The proposed territory is not in the release.")
+    count = proposal.get("comparison_weeks", DEFAULT_COMPARISON_WEEKS)
+    if count is None:
+        count = DEFAULT_COMPARISON_WEEKS
+    if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= 13:
+        raise ValueError("The comparison must be a whole number of weeks from 1 to 13.")
+    if any((date.fromisoformat(weeks[0]) - timedelta(weeks=i)).isoformat() not in available for i in range(1, count + 1)):
+        raise ValueError("The proposed comparison reaches before the release.")
+    promotion = proposal.get("promotion_review", False)
+    if not isinstance(promotion, bool) or (promotion and brand_id != "BXA"):
+        raise ValueError("The proposed promotion flag is not usable.")
+    return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": territory or None,
+            "comparison_weeks": count, "promotion_review": promotion}
+
+
+def rules_scope(question: str, release: ReleaseContext, brand_id: str) -> dict:
+    """The code parser's reading of the question (tools/window.parse): the whole text is read, colons included."""
+    from pharmagentics.tools.window import parse
+
+    first, latest = release.first_week.isoformat(), release.latest_week.isoformat()
+    got = parse(question.replace(":", " ,"), first, latest, briefing=True)
+    notes = [got["note"]] if got["note"] else []
+    promotion = bool(got["promotion"]) and brand_id == "BXA"
+    weeks = got["weeks"]
+    if not weeks or (promotion and not got["explicit_week"]):
+        weeks = [latest]
+        if got["requested"] and not got["weeks"]:
+            notes.append(f"The weeks in the question are outside the release, so this uses the latest closed week, {latest}.")
+    available = {w.isoformat() for w in release.available_weeks}
+    count = _clamp_weeks(DEFAULT_COMPARISON_WEEKS, weeks[0], available)
+    if count < DEFAULT_COMPARISON_WEEKS:
+        notes.append(f"Only {count} earlier week{'' if count == 1 else 's'} exist before {weeks[0]}, so the comparison is shortened.")
+    else:
+        notes.append(f"The comparison is the previous {count} weeks unless you change it.")
+    if not got["territory"]:
+        notes.append("No territory was named, so the form keeps the territory you chose.")
+    if got["promotion"] and not promotion:
+        notes.append("The Promotion review is available for BXA only.")
+    return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": got["territory"],
+            "comparison_weeks": count, "promotion_review": promotion, "notes": notes}
+
+
+def _ask_model(spec: str, question: str, release: ReleaseContext, brand_id: str) -> dict:
+    """One tool call to the model, through briefing_agent.reader. Returns its raw proposal (unchecked)."""
+    if str(AGENTS_DIR) not in sys.path:
+        sys.path.insert(0, str(AGENTS_DIR))
+    from briefing_agent.reader import propose
+
+    return propose(question, spec=spec, first=release.first_week.isoformat(), latest=release.latest_week.isoformat(),
+                   territories=list(release.territory_ids), brand_id=brand_id, seconds=SCOPE_SECONDS)
+
+
+def read_briefing_scope(question: str, brand_id: str) -> dict:
+    """The proposed scope for a typed question: the model's when one is configured and its proposal passes every
+    check, else the code parser's. The reply names who read it."""
+    release = release_context()
+    if brand_id not in release.product_ids:
+        raise OutsideRelease("Brand not present in the supported synthetic data release.")
+    question = " ".join(question.split())
+    spec = scope_model()
+    if spec:
+        try:
+            checked = validate_scope(_ask_model(spec, question, release, brand_id), release, brand_id)
+        except Exception:  # noqa: BLE001 - no usable reading from the model: the rules read it
+            checked = None
+        if checked:
+            span = checked["week_start"] if checked["week_start"] == checked["week_end"] else f"{checked['week_start']} to {checked['week_end']}"
+            return {"question": question, **checked, "read_by": "model", "model": spec.partition(":")[2],
+                    "notes": [f"Read by the model as {span}; code checked every field."]}
+    return {"question": question, **rules_scope(question, release, brand_id), "read_by": "rules", "model": None}
