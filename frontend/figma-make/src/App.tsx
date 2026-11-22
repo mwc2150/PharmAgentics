@@ -5,7 +5,8 @@ import { TelemetryWorkspace } from "./Telemetry"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
 import { Memo } from "./Memo"
-import { ComparisonPicker, comparisonError } from "./ComparisonPicker"
+import { ComparisonPicker, DEFAULT_COMPARISON, comparisonError } from "./ComparisonPicker"
+import { PeriodPicker, QuestionReader, periodError, periodWeeks } from "./BriefingScope"
 import { FeedbackReview } from "./FeedbackReview"
 import { MessageBar, type Chip } from "./MessageBar"
 import { sharedFromLocation } from "./agent/threadApi"
@@ -94,13 +95,6 @@ function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, 
   </div>
 }
 
-// Accounts show the role, not the test account's name: "UAT …" names and persona codes (P1, CA) are ours, not the user's.
-function roleLabel(me: Me): string {
-  const labels = [me.lanes.briefing?.label, me.lanes.forecast?.label].filter((l): l is string => !!l)
-  return [...new Set(labels)].join(" · ") || "No role"
-}
-const LANES = [["briefing","Weekly briefing"],["forecast","Forecast explanation"]] as const
-
 // The test login switches between the analyst roles (P1, CA) and the leadership roles (P3, BM) of both lanes.
 // The page reloads after a switch: which app and which Forecast view to show are decided once, from /api/me.
 function ViewAsSwitch({me}: {me: Me}) {
@@ -123,19 +117,15 @@ function ViewAsSwitch({me}: {me: Me}) {
 
 function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
-  const role = roleLabel(me)
+  const name = me.name.trim() || "Account"  // brief-008 FR-012: the name only, never a lane or role list
   return <DropdownMenu>
-    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${role}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink outline-none transition hover:bg-paper">
+    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink outline-none transition hover:bg-paper">
       {me.tester && <span className="hidden text-xs text-muted sm:inline">Test view ·</span>}
-      <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{role}</span>
+      <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{name}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-72">
-      <DropdownMenuLabel><span className="block truncate text-sm font-medium">{role}</span><span className="block text-xs font-normal text-muted">{me.auth_mode==="dev" ? "Development sign-in" : "Signed in"}</span></DropdownMenuLabel>
-      <div className="space-y-2 px-3 pb-2 pt-1">{LANES.map(([lane,label])=>{ const r = me.lanes[lane]; return <div key={lane} className="text-xs">
-        <p className="font-medium text-ink">{label}</p>
-        <p className="text-muted">{r ? `${r.label}${r.available ? "" : " · coming soon"}` : "No access"}</p>
-      </div>})}</div>
+      <DropdownMenuLabel><span className="block truncate text-sm font-medium">{name}</span><span className="block text-xs font-normal text-muted">{me.auth_mode==="dev" ? "Development sign-in" : "Signed in"}</span></DropdownMenuLabel>
       {me.tester && <ViewAsSwitch me={me}/>}
       <DropdownMenuSeparator/>
       <DropdownMenuItem onSelect={openSuggest}>Suggest an improvement</DropdownMenuItem>
@@ -850,7 +840,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
     <article className={`${PANEL} overflow-hidden`}>
       <div className="border-b border-rule px-6 py-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted"><span>{result.engine==="agent" ? "Agent team · experimental" : "Scripted"}</span><ClassLabel tab="briefing.view.analyst"/></div>
-        <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : `week of ${labelWeek(result.week_start)}`}</h2>
+        <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : result.week_end && result.week_end > result.week_start ? `weeks ${labelWeek(result.week_start)} to ${labelWeek(result.week_end)}` : `week of ${labelWeek(result.week_start)}`}</h2>
         <p className="mt-1.5 text-sm text-muted">{result.brand_id}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <span className={`${chip} bg-amberbg text-amber`}>Unresolved findings</span>}</div>
       </div>
@@ -876,16 +866,20 @@ function AnalystApp({me}: {me: Me}) {
   const [brand,setBrand] = useState("")
   const [territory,setTerritory] = useState("")
   const [week,setWeek] = useState("")
+  const [weekEnd,setWeekEnd] = useState("")  // brief-008: the last week of the period; equal to `week` for one week
   const [pending,setPending] = useState(false)
   const [result,setResult] = useState<BriefingResult | null>(null)
   const [runError,setRunError] = useState<string | null>(null)
   const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved">("overview")
-  const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,promotion:boolean,question:string,
+  const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,weekEnd:string,promotion:boolean,question:string,
     comparison:Comparison | null} | null>(null)
   const [promotion,setPromotion] = useState(false)
-  const [comparison,setComparison] = useState<NonNullable<typeof requestScope>["comparison"]>(null)
+  const [comparison,setComparison] = useState<Comparison>(DEFAULT_COMPARISON)
   const reviewPromotion = brand === "BXA" && promotion
-  const invalidComparison = reviewPromotion ? null : comparisonError(comparison, week, context?.available_weeks ?? [])
+  const releaseWeeks = context?.available_weeks ?? []
+  const invalidPeriod = reviewPromotion ? null : periodError(week, weekEnd, releaseWeeks)
+  const period = reviewPromotion ? [] : periodWeeks(week, weekEnd, releaseWeeks)
+  const invalidComparison = reviewPromotion ? null : invalidPeriod ?? comparisonError(comparison, period, releaseWeeks)
   const [plan,setPlan] = useState<TriagePlan | null>(null)
   // Agent engine (core-007 FR-028/FR-031): jobs run on teammate or cloud CPU hosts; the app only queues them.
   const [engine,setEngine] = useState<"scripted" | "agent">("scripted")
@@ -907,7 +901,7 @@ function AnalystApp({me}: {me: Me}) {
     setEngine(e=>supported.includes(e) ? e : "scripted")
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
     setTriageJob(null); setJobNote(null); setJobState(null); setPending(false)
-    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(null)
+    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(DEFAULT_COMPARISON)
     setView(v=>v==="triage" || v==="result" ? "home" : v)
   }
 
@@ -939,17 +933,19 @@ function AnalystApp({me}: {me: Me}) {
       setBrand(b=>c.product_ids.includes(b)?b:(c.product_ids[0] ?? ""))
       setTerritory(t=>c.territory_ids.includes(t)?t:c.territory_ids[0])
       setWeek(w=>c.available_weeks.includes(w)?w:c.latest_week)
+      setWeekEnd(w=>c.available_weeks.includes(w)?w:c.latest_week)
     } catch(e) {setContext(null);setContextError(message(e))}
     finally {setLoadingContext(false)}
   }
   useEffect(()=>{void refresh()},[])
+  useEffect(()=>{ setWeekEnd(e=>e < week ? week : e) },[week])  // the Overview and the message bar also set the first week
   useEffect(()=>{ const s=sharedFromLocation(); if(s) void openApproved(s.briefId) },[])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{ if(autoAsk && engine==="agent"){ setAutoAsk(false); void submit() } },[autoAsk,engine,ask])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (event?: React.FormEvent) => {
     event?.preventDefault()
     if(pending || invalidComparison || !context || !context.product_ids.includes(brand) || !context.territory_ids.includes(territory) || !context.available_weeks.includes(week)) return
-    const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparison,
+    const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,weekEnd:reviewPromotion ? context.latest_week : weekEnd,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparison,
       question:ask.trim().length>=3 ? ask.trim().slice(0,300) : reviewPromotion ? "Review promotion across the release." : "Generate the weekly brand-performance briefing."}
     // Plan review is always on in UAT (brief-002 FR-019): stages 1 to 3 and the code triage first.
     const token=++generation.current
@@ -972,7 +968,7 @@ function AnalystApp({me}: {me: Me}) {
     finally {if(active()){setPending(false);setJobNote(null);setJobState(null)}}
   }
   const query = (s: NonNullable<typeof requestScope>) => ({intent:s.promotion ? "promotion_review" as const : "weekly_brief" as const,
-    brand_id:s.brand,territory_id:s.territory,week_start:s.week,question:s.question,comparison:s.comparison})
+    brand_id:s.brand,territory_id:s.territory,week_start:s.week,week_end:s.weekEnd > s.week ? s.weekEnd : null,question:s.question,comparison:s.comparison})
   const approvePlan = async (decision: TriageDecision) => {
     if(!requestScope) return
     const token=++generation.current, active=()=>token===generation.current
@@ -1008,39 +1004,34 @@ function AnalystApp({me}: {me: Me}) {
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
       </select></label></div><SubTabs label="Weekly briefing" value={view==="approved" ? "approved" : view==="overview" ? "overview" : "new"} onChange={t=>setView(t==="approved" ? "approved" : t==="overview" ? "overview" : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
     {contextError && <div role="alert" className="workspace-content py-4 text-sm text-amber">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></div>}
-    {context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <Overview key={brand} brand={brand} week={week} onWeek={setWeek} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setView("home")}}/> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
+    {context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className={LABEL}>Territory
-            <select className={FIELD} value={territory} onChange={e=>setTerritory(e.target.value)} disabled={!selectable}>{context?.territory_ids.map(id=><option key={id} value={id}>{labelTerritory(id)}</option>)}</select>
-          </label>
-          <label className={LABEL}>Reporting week
-            <select className={FIELD} value={week} onChange={e=>setWeek(e.target.value)} disabled={!selectable || reviewPromotion}>{[...(context?.available_weeks??[])].reverse().map(w=><option key={w} value={w}>{labelWeek(w)}</option>)}</select>
-          </label>
-        </div>
+        <QuestionReader question={ask} onQuestion={setAsk} brand={brand} context={context} disabled={!selectable}
+          onApply={v=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparison(v.comparison) }}/>
+        <label className={LABEL}>Territory
+          <select className={FIELD} value={territory} onChange={e=>setTerritory(e.target.value)} disabled={!selectable}>{context?.territory_ids.map(id=><option key={id} value={id}>{labelTerritory(id)}</option>)}</select>
+        </label>
+        <PeriodPicker first={week} last={weekEnd} weeks={releaseWeeks} disabled={!selectable || reviewPromotion} onFirst={w=>{ if(weekEnd===week) setWeekEnd(w); setWeek(w) }} onLast={setWeekEnd} labelWeek={labelWeek}/>
         {brand === "BXA" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promotion} onChange={e=>setPromotion(e.target.checked)} /> Promotion review across the release</label>}
-        {!reviewPromotion && <ComparisonPicker value={comparison} onChange={setComparison} week={week} weeks={context?.available_weeks ?? []} disabled={!selectable} labelWeek={labelWeek}/>}
+        {!reviewPromotion && <ComparisonPicker value={comparison} onChange={setComparison} period={period} weeks={releaseWeeks} disabled={!selectable} labelWeek={labelWeek}/>}
         <fieldset><legend className="mb-1.5 text-xs font-medium text-muted">Engine</legend>
           <div className="divide-y divide-rule rounded-lg border border-rule">
             <label className="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-paper/50"><input type="radio" name="engine" checked={engine==="scripted"} onChange={()=>setEngine("scripted")} className="mt-1"/><span><span className={`block text-sm ${engine==="scripted" ? "text-ink" : "text-muted"}`}>Scripted</span><span className="block text-xs text-muted">Instant. Runs the standard checks in a fixed order.</span></span></label>
             {agentSupported && <label className={`flex items-start gap-3 px-4 py-3 transition-colors ${!agentSupported || agent?.configured===false ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-paper/50"}`}><input type="radio" name="engine" checked={engine==="agent"} disabled={!agentSupported || agent?.configured===false} onChange={()=>setEngine("agent")} className="mt-1"/><span title={agent?.model ? `Model: ${agent.model}` : undefined}><span className={`block text-sm ${engine==="agent" ? "text-ink" : "text-muted"}`}>Agent team <span className="text-xs text-muted">· experimental</span></span><span className="block text-xs text-muted">A manager and two specialist agents investigate the week. {agent?.builtin ? "Usually a minute or two." : agent?.online ? "A few minutes per step." : agent?.cloud?.enabled && agent.cloud.seconds_left>0 ? `About ${agent.cloud.eta_minutes ?? 15} minutes for a brief.` : "Waits until an agent host is available."}</span></span></label>}
           </div>
         </fieldset>
-        {(engine==="agent" || reviewPromotion) && <label className={LABEL}>Your question (optional)
-          <textarea value={ask} onChange={e=>setAsk(e.target.value)} maxLength={300} rows={2} placeholder="For example: why did Pacific drop, and is anything else going on?" className={FIELD}/>
-        </label>}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">
           <span className="text-xs text-muted">{loadingContext ? "Loading the data release…" : engine==="agent" ? "You review the agents' plan before they investigate." : "You review the plan before the checks run."}</span>
-          <button type="submit" disabled={!selectable || !!invalidComparison} className={BTN}>Generate briefing</button>
+          <button type="submit" disabled={!selectable || !!invalidComparison || !!invalidPeriod} className={BTN}>Generate briefing</button>
         </div>
       </form>
     </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
-        {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · {requestScope.promotion ? "release-wide Promotion review" : `week of ${labelWeek(requestScope.week)}`}</span>}
+        {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · {requestScope.promotion ? "release-wide Promotion review" : requestScope.weekEnd > requestScope.week ? `weeks ${labelWeek(requestScope.week)} to ${labelWeek(requestScope.weekEnd)}` : `week of ${labelWeek(requestScope.week)}`}</span>}
       </div>
       {pending && (jobState
         ? <JobProgress kind={jobState.kind} status={jobState.status} note={jobNote}/>
@@ -1052,7 +1043,7 @@ function AnalystApp({me}: {me: Me}) {
     </div>}
     {brand && view!=="approved" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
-      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week) setWeek(o.week); setPromotion(false); setComparison(o.comparison ?? null); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
+      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparison(o.comparison ?? DEFAULT_COMPARISON); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
 }
 
