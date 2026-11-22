@@ -20,6 +20,24 @@ class Fact(BaseModel):
     id: str
     value: int | float | str
     sql: str
+    role: Literal["must", "context"] = "context"  # core-011: must-state facts feed key_fact_recall
+    tolerance: float | None = None  # relative, for values the source states roughly; None = stated precision
+    reviewed: bool = True  # agent drafts write false until a person reviews them
+
+
+Driver = Literal["access", "promotion", "supply", "competitor", "data", "holiday", "none"]
+
+
+class Finding(BaseModel):
+    """A conclusion a first-pass analyst should reach on the case (core-011 FR-002), scored on the story cards."""
+
+    id: str
+    territory: str  # territory ID or NATIONAL
+    direction: Literal["up", "down", "flat"] | None = None
+    drivers_supported: list[Driver] = []
+    drivers_ruled_out: list[Driver] = []
+    withheld: bool = False  # the cut must be withheld, with no story for it
+    reviewed: bool = True
 
 
 class MustNotSay(BaseModel):
@@ -59,6 +77,7 @@ class Case(BaseModel):
     action: str | None = None
     eval_items: list[str]
     facts: list[Fact] = []
+    findings: list[Finding] = []
     follow_up: FollowUp | None = None  # two-turn cases (brief-006 FR-013)
     comparison: Comparison | None = None
     source: str
@@ -79,6 +98,9 @@ class Case(BaseModel):
             "lane": self.lane,
             "must_not_say": self.must_not_say.phrases + later,
             "golden_numbers": [f.value for f in self.facts if isinstance(f.value, (int, float))],
+            "key_facts": [{"id": f.id, "value": f.value, "tolerance": f.tolerance} for f in self.facts
+                          if f.role == "must" and isinstance(f.value, (int, float))],
+            "findings": [f.model_dump() for f in self.findings],
             "eval_items": self.eval_items,
         }
 
