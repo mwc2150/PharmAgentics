@@ -84,11 +84,6 @@ def test_extra_supported_driver_is_a_false_driver():
     assert finding_recall(outputs=out, expectations=expect(SOUTHEAST)).value == 1.0
 
 
-def test_card_for_an_unexpected_territory_counts_its_supported_drivers():
-    out = memo(card("SOUTHEAST", "down", ["promotion"], ["access"]), card("GREAT_LAKES", "down", ["access"]))
-    assert false_drivers(outputs=out, expectations=expect(SOUTHEAST)).value == 1
-
-
 def test_no_cards_or_no_findings_is_not_scored():
     for scorer_fn in (finding_recall, false_drivers):
         assert scorer_fn(outputs=text("no sections"), expectations=expect(SOUTHEAST)).value is None
@@ -166,3 +161,8 @@ def test_pooled_share_counts_facts_across_cases_and_skips_unanswered_ones():
     answered = {key("a"): text("3,860 only"), key("b"): text("481"), key("c"): text("nothing")}
     assert _pooled_key_facts(cases, answered, key) == round(2 / 3, 4)
     assert _pooled_key_facts([case("c", [])], {key("c"): text("x")}, key) is None
+
+
+def test_a_story_the_case_does_not_mention_adds_no_false_driver():
+    out = memo(card("SOUTHEAST", "down", ["promotion"], ["access"]), card("PACIFIC", "down", ["supply"]))
+    assert false_drivers(outputs=out, expectations=expect(SOUTHEAST)).value == 0

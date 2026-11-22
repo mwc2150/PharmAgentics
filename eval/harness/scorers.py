@@ -196,7 +196,7 @@ def finding_recall(outputs, expectations) -> Feedback:
 
 
 @scorer(name="false_drivers",
-        description="Supported drivers on story cards that no expected finding for that territory lists (core-011 FR-004). Report only.")
+        description="Supported drivers on story cards, for territories the case has a finding for, that no finding lists (core-011 FR-004). Report only.")
 def false_drivers(outputs, expectations) -> Feedback:
     findings, cards = expectations.get("findings") or [], _cards(outputs)
     if not findings:
@@ -206,8 +206,10 @@ def false_drivers(outputs, expectations) -> Feedback:
     expected: dict[str, set] = {}
     for f in findings:
         expected.setdefault(_territory(f["territory"]), set()).update(f.get("drivers_supported") or [])
-    extra = [f"{card['territory']}: {d}" for card in cards for d in card.get("drivers_supported") or []
-             if d not in expected.get(_territory(card["territory"]), set())]
+    # Only territories the case has a finding for: a correct story the golden answer does not mention is not a
+    # wrong attribution.
+    extra = [f"{card['territory']}: {d}" for card in cards if _territory(card["territory"]) in expected
+             for d in card.get("drivers_supported") or [] if d not in expected[_territory(card["territory"])]]
     return Feedback(value=len(extra), rationale=("Unexpected supported drivers: " + "; ".join(extra)) if extra else "No unexpected driver.")
 
 
