@@ -10,7 +10,7 @@ import mlflow
 
 from .cases import golden_fingerprint, load_cases
 from .paths import EXPERIMENT, MLFLOW_DIR, tracking_uri
-from .scorers import DETERMINISTIC, EVIDENCE, TRAJECTORY, judge_scorers
+from .scorers import DETERMINISTIC, EVIDENCE, REPORT_ONLY, TRAJECTORY, judge_scorers, key_fact_counts
 from .systems import SYSTEMS
 from .versions import code_version, data_fingerprint
 
@@ -32,7 +32,7 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
     if not cases:
         raise SystemExit("No golden cases match; run `python -m eval import-stories` first.")
     sut = SYSTEMS[system](cases, model=model) if model else SYSTEMS[system](cases)
-    scorers = (DETERMINISTIC + (EVIDENCE if sut.returns_evidence else [])
+    scorers = (DETERMINISTIC + REPORT_ONLY + (EVIDENCE if sut.returns_evidence else [])
                + (TRAJECTORY if getattr(sut, "returns_trajectory", False) else []))
     judges = judge_scorers(judge) if judge else []
     os.environ["PHARMAGENTICS_TRACING"] = "1"  # stage and tool spans inside the system under test
@@ -49,6 +49,10 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
 
     # Traced here because skipping MLflow's first-row validation also skips its auto-tracing wrapper.
     errors: list[str] = []
+    answered: dict[tuple, dict] = {}  # what the system returned per input, for the pooled key-fact share
+
+    def input_key(question, follow_up=None, section=None, comparison=None) -> tuple:
+        return question, follow_up, section, repr(sorted(comparison.items())) if comparison else None
 
     @mlflow.trace(name=f"{system}.predict", span_type="AGENT")
     def predict_fn(question: str, follow_up: str | None = None, section: str | None = None,
@@ -64,6 +68,7 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
             for kind, secs in timed.items():
                 if kind in latency and secs is not None:
                     latency[kind].append(float(secs))
+            answered[input_key(question, follow_up, section, comparison)] = out
             return out
         except Exception as exc:  # MLflow records the failure per row; count it so it is never read as a score
             errors.append(f"{question[:70]}: {type(exc).__name__}: {exc}")
@@ -85,6 +90,7 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
             with mlflow.start_run(run_name=f"{system} · {lane} · rerun {i}", nested=True) as child:
                 mlflow.log_params({**params, "rerun": i})
                 errors.clear()
+                answered.clear()
                 latency["brief"].clear(); latency["turn"].clear()
                 result = mlflow.genai.evaluate(data=rows, predict_fn=predict_fn, scorers=scorers)
                 metrics = {k: float(v) for k, v in result.metrics.items() if isinstance(v, (int, float))}
@@ -99,6 +105,10 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
                         metrics[f"latency_{kind}_p95/mean"] = ordered[min(len(ordered) - 1, round(0.95 * (len(ordered) - 1)))]
                         mlflow.log_metric(f"latency_{kind}_p50/mean", metrics[f"latency_{kind}_p50/mean"])
                         mlflow.log_metric(f"latency_{kind}_p95/mean", metrics[f"latency_{kind}_p95/mean"])
+                pooled = _pooled_key_facts(cases, answered, input_key)
+                if pooled is not None:  # stated must facts over all must facts; `key_fact_recall/mean` is per case
+                    metrics["key_fact_recall_pooled"] = pooled
+                    mlflow.log_metric("key_fact_recall_pooled", pooled)
                 metrics["run_errors/mean"] = float(len(errors))  # failure tag "run error" (Evaluation Pack section 8)
                 mlflow.log_metric("run_errors/mean", float(len(errors)))
                 if errors:
@@ -116,6 +126,21 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
         values = [m[key] for m in per_rerun if key in m]
         print(f"  {key:<40} {statistics.fmean(values):.3f}")
     return parent.info.run_id
+
+
+def _pooled_key_facts(cases, answered: dict, input_key) -> float | None:
+    """Stated must facts over all must facts across the cases that answered; None when no case has a must fact.
+    A case with no must facts is "not scored" in `key_fact_recall`, which MLflow leaves out of the mean (None
+    values are dropped by compute_aggregated_metrics), so `key_fact_recall/mean` is already over scored cases."""
+    stated = total = 0
+    for case in cases:
+        inputs = case.inputs()
+        out = answered.get(input_key(inputs["question"], inputs["follow_up"], inputs["section"], inputs.get("comparison")))
+        if out is None:
+            continue
+        s, _, t = key_fact_counts(out, case.expectations())
+        stated, total = stated + s, total + t
+    return round(stated / total, 4) if total else None
 
 
 def _judge_rerun(run_id: str, judges: list, expected: int) -> dict:
