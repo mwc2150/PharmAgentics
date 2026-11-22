@@ -14,7 +14,7 @@ story_text: As Magdalena, I want reach shown next to results, so that high impre
 given: promotion data at territory level only.
 when: the brief shows a promotion story.
 then: it puts calls and impressions beside TRx for the same cut and weeks, and says that reach in the target segment cannot be shown yet.
-reference_answer: 'Partly. The data has digital impressions and rep calls by territory, product and week: in Southeast''s gap, impressions averaged 870 against a median of about 1,774. It has no reach by target segment, no channel spend and no consumer campaigns.'
+reference_answer: 'Partly. The data has digital impressions and rep calls by territory, product and week: in Southeast''s gap, impressions averaged 870 against a median of 1,773.5. It has no reach by target segment, no channel spend and no consumer campaigns.'
 must_not_say:
   text: '"the campaign reached its target HCPs."'
   phrases:
@@ -23,5 +23,23 @@ must_not_say:
 action: Magdalena asks for channel spend and reach data. The brief tells her this is open (Architecture A16).
 eval_items:
 - EV-7.5
-facts: []
+facts:
+- id: se_digital_impressions_aug_avg
+  value: 870
+  sql: 'select (select sum(digital_impressions) * 1.0 / count(distinct week_start) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'')'
+  role: must
+  reviewed: false
+- id: se_digital_impressions_median
+  value: 1773.5
+  sql: 'select median(digital_impressions) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''SOUTHEAST'''
+  role: must
+  reviewed: false
+findings:
+- id: southeast_coverage_gap
+  territory: SOUTHEAST
+  direction: down
+  drivers_supported: []
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P4-Q3

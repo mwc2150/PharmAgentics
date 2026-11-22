@@ -26,21 +26,40 @@ eval_items:
 - EV-1.2
 facts:
 - id: restated_cells
+  role: context
   value: 32
   sql: select count(*) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
 - id: trx_signed_off
+  role: must
   value: 692
   sql: select sum(trx_prior) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
 - id: trx_restated
+  role: must
   value: 742
   sql: select sum(trx_revised) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
 - id: nbrx_signed_off
+  role: context
   value: 97
   sql: select sum(nbrx_prior) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
 - id: nbrx_restated
+  role: context
   value: 98
   sql: select sum(nbrx_revised) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
 - id: restated_on
+  role: context
   value: '2026-07-13'
   sql: select min(revised_at) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXA'
+- id: restatement_change_pct
+  value: 7.2
+  sql: 'select 100.0 * (sum(trx_revised) - sum(trx_prior)) / sum(trx_prior) from raw.restatement_log where week_start = DATE ''2026-04-06'' and territory_id = ''MID_ATLANTIC'' and product_id = ''BXA'''
+  role: must
+  reviewed: false
+findings:
+- id: mid_atlantic_restated_figure
+  territory: MID_ATLANTIC
+  direction: up
+  drivers_supported: [data]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P2-Q5

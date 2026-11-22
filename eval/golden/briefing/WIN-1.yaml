@@ -19,10 +19,19 @@ must_not_say:
 eval_items: [EV-1.1]
 facts:
   - id: reported_trx_change_vs_last_year
+    role: must
     value: 9.8
     sql: |
       select round(100.0 * (
         sum(trx) filter (where week_start in (date '2025-12-22', date '2025-12-29')) /
         sum(trx) filter (where week_start in (date '2024-12-23', date '2024-12-30')) - 1), 1)
       from reporting.v_reportable_rx where product_id = 'BXA'
+findings:
+- id: national_like_for_like
+  territory: NATIONAL
+  direction: up
+  drivers_supported: []
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: specs/brief-007-windows-and-evidence/spec.md#FR-014

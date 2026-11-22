@@ -25,21 +25,35 @@ eval_items:
 - EV-1.2
 facts:
 - id: ma_restated_old
+  role: must
   value: 692
   sql: select sum(trx_prior) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'
 - id: ma_restated_new
+  role: must
   value: 742
   sql: select sum(trx_revised) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'
 - id: ma_restated_on
+  role: context
   value: '2026-07-13'
   sql: select min(revised_at)::varchar from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'
 - id: territories_passing_0713
+  role: context
   value: 8
   sql: select count(*) from reporting.v_feed_health where week_start = DATE '2026-07-13' and health_status = 'PASS'
 - id: national_projected_trx_0713
+  role: must
   value: 4240
   sql: select sum(trx) from reporting.v_reportable_rx where week_start = DATE '2026-07-13' and product_id = 'BXA'
 - id: like_for_like_territories
+  role: context
   value: 7
   sql: select count(distinct territory_id) from reporting.v_feed_health h where week_start between DATE '2026-06-15' and DATE '2026-07-13' and not exists (select 1 from reporting.v_feed_health f where f.territory_id = h.territory_id and f.week_start between DATE '2026-06-15' and DATE '2026-07-13' and f.health_status <> 'PASS')
+findings:
+- id: mid_atlantic_restated_figure
+  territory: MID_ATLANTIC
+  direction: up
+  drivers_supported: [data]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P3-Q6

@@ -26,4 +26,12 @@ eval_items:
 - EV-7.4
 - EV-9.2
 facts: []
+findings:
+- id: southeast_coverage_gap
+  territory: SOUTHEAST
+  direction: down
+  drivers_supported: [promotion]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P1-Q6

@@ -14,7 +14,7 @@ story_text: As Ace, I want every material change surfaced and ranked, so that th
 given: a week with a regional supply shortfall on top of an ongoing competitor launch.
 when: the brief runs.
 then: both stories appear, ranked by business impact, and the "considered and dropped" list shows what else was checked.
-reference_answer: National BXA TRx was 3,860, about 513 below its 4-week average (−11.7%). Two stories were live. First, Pacific BXA TRx fell to 464 against 709 a week in May, while BXA inventory fill there dropped to 0.687 with 22.5% of orders backordered (normal is 0.97 to 1.0); Pacific alone is about half of the national gap. Second, competitor Metacora (BXE), launched 2026-03-02, held about 12% of the basket and was still climbing.
+reference_answer: National BXA TRx was 3,860, 513 below its 4-week average (−11.7%). Two stories were live. First, Pacific BXA TRx fell to 464 against 709 a week in May, while BXA inventory fill there dropped to 0.687 with 22.5% of orders backordered (normal is 0.97 to 1.0); Pacific alone is about half of the national gap. Second, competitor Metacora (BXE), launched 2026-03-02, held 12.5% of the basket and was still climbing.
 must_not_say:
   text: '"BXA fell 12% nationally" with no regional split.'
   phrases: []
@@ -26,18 +26,48 @@ eval_items:
 - EV-3.3
 facts:
 - id: national_bxa_trx
+  role: context
   value: 3860
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08'
 - id: national_vs_4wk_avg_pct
+  role: must
   value: -11.7
   sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2026-06-08' - 28 and DATE '2026-06-08' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
 - id: pacific_bxa_trx
+  role: must
   value: 464
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08' and territory_id = 'PACIFIC'
 - id: pacific_fill_rate
+  role: must
   value: 0.687
   sql: select inventory_fill_rate from raw.inventory_weekly where week_start = DATE '2026-06-08' and territory_id = 'PACIFIC' and product_id = 'BXA'
 - id: pacific_backorder_pct
+  role: must
   value: 22.5
   sql: select 100 * distribution_backorder_rate from raw.inventory_weekly where week_start = DATE '2026-06-08' and territory_id = 'PACIFIC' and product_id = 'BXA'
+- id: national_gap_vs_4wk_avg
+  value: 513
+  sql: 'select (select avg(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2026-06-08'' - 28 and DATE ''2026-06-08'' - 7 group by 1)) - (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2026-06-08'')'
+  role: context
+  reviewed: false
+- id: metacora_share_june_week
+  value: 12.5
+  sql: 'select 100.0 * sum(trx) filter (where product_id = ''BXE'') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE ''2026-06-08'''
+  role: context
+  reviewed: false
+findings:
+- id: pacific_supply_shortfall
+  territory: PACIFIC
+  direction: down
+  drivers_supported: [supply]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+- id: national_metacora_competitor
+  territory: NATIONAL
+  direction: down
+  drivers_supported: [competitor]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P1-Q5

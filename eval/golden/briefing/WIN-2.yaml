@@ -21,14 +21,29 @@ must_not_say:
 eval_items: [EV-1.1]
 facts:
   - id: southeast_july_weekly_trx
+    role: context
     value: 639
     sql: |
       select sum(trx) / 4.0 from reporting.v_reportable_rx
       where product_id = 'BXA' and territory_id = 'SOUTHEAST'
         and week_start between date '2026-07-06' and date '2026-07-27'
   - id: southeast_august_trx
+    role: must
     value: 469
     sql: |
       select sum(trx) from reporting.v_reportable_rx
       where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = date '2026-08-24'
+  - id: southeast_change_pct
+    value: -26.6
+    sql: 'select 100.0 * ((select sum(trx) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start = date ''2026-08-24'') / (select sum(trx) / 4.0 from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between date ''2026-07-06'' and date ''2026-07-27'') - 1)'
+    role: must
+    reviewed: false
+findings:
+- id: southeast_july_window
+  territory: SOUTHEAST
+  direction: down
+  drivers_supported: []
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: specs/brief-007-windows-and-evidence/spec.md#FR-014
