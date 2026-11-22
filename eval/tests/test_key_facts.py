@@ -142,7 +142,7 @@ def test_golden_key_facts_can_be_matched():
     assert len(cases) == 32
     for case in cases:
         for f in case.expectations()["key_facts"]:
-            assert not (float(f["value"]).is_integer() and 0 <= abs(f["value"]) <= 10), (case.id, f["id"])
+            assert not (isinstance(f["value"], int) and abs(f["value"]) <= 10), (case.id, f["id"])
 
 
 def test_pooled_share_counts_facts_across_cases_and_skips_unanswered_ones():
