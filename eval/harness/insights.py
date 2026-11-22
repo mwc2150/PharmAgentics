@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from statistics import pstdev
 
-from .paths import MLFLOW_DIR
+from .paths import EXPERIMENT, MLFLOW_DIR
 from .scorers import kind_of
 
 OUT_DIR = MLFLOW_DIR / "insights"
@@ -24,6 +24,9 @@ DEFAULT_STORE = MLFLOW_DIR / "mlflow.db"
 PARAM_KEYS = ("system", "lane", "golden_version", "code_version", "data_version")
 # Run counters, not quality scores: kept in the matrix, left out of stuck, fallen, engine and spread lists.
 OPERATIONAL = {"seconds", "llm_calls", "tool_calls", "hit_cap", "needed_revision"}
+# Scorers where a lower number is better: they stay out of stuck and spread (0 is good, or a spread is not a fault),
+# and a RISE is the regression in fallen and in the engine comparison's "agent is worse" count.
+LOWER_IS_BETTER = {"false_drivers", "brief_words", "needed_revision"}
 KIND_ORDER = ("code", "agent", "safety")  # ops (run counters) stay out, as OPERATIONAL does
 KIND_TITLES = {"code": "Code checks", "agent": "Agent checks", "safety": "Safety"}
 EPS = 0.001
@@ -89,8 +92,10 @@ def _read_store(path: Path) -> list[dict]:
             return c.execute(sql, args).fetchall()
 
         runs = {rid: (name, start) for rid, name, start in
-                rows("select run_uuid, name, start_time from runs "
-                     "where lifecycle_stage = 'active' and status = 'FINISHED'")}  # a run still going is not the latest
+                rows("select r.run_uuid, r.name, r.start_time from runs r "
+                     "join experiments e on e.experiment_id = r.experiment_id "
+                     "where r.lifecycle_stage = 'active' and r.status = 'FINISHED' and e.name = ?",
+                     (EXPERIMENT,))}  # a run still going is not the latest; other experiments are not golden runs
         params = defaultdict(dict)
         for rid, key, value in rows("select run_uuid, key, value from params where key in (?,?,?,?,?)", PARAM_KEYS):
             params[rid][key] = value
@@ -209,7 +214,8 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
         for c, row in matrix[s].items():
             for k, vals in row.items():
                 present = [v for v in vals if v is not None]
-                if k not in OPERATIONAL and len(present) == len(vals) and all(v <= EPS for v in present):
+                if (k not in OPERATIONAL and k not in LOWER_IS_BETTER
+                        and len(present) == len(vals) and all(v <= EPS for v in present)):
                     stuck.append({"system": s, "story": stories.get(c, ""), "case": c, "scorer": k, "runs": len(present)})
         if len(rs) >= 2 and rs[-2]["golden_version"] == rs[-1]["golden_version"]:
             prev, last_run = rs[-2], rs[-1]
@@ -218,14 +224,15 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
                     if k in OPERATIONAL:
                         continue
                     before, now = prev["cases"][c][k][0], last_run["cases"][c][k][0]
-                    if now < before - EPS:
+                    worse = (now - before) if k in LOWER_IS_BETTER else (before - now)  # how much worse the latest is
+                    if worse > EPS:
                         fallen.append({"system": s, "story": stories.get(c, ""), "case": c, "scorer": k, "previous": round(before, 4),
-                                       "latest": round(now, 4), "drop": round(before - now, 4),
+                                       "latest": round(now, 4), "drop": round(worse, 4),
                                        "previous_run": prev["run_id"], "latest_run": last_run["run_id"]})
         for r in rs:
             for c, row in r["cases"].items():
                 for k, (mean, sd) in row.items():
-                    if k not in OPERATIONAL and sd > STD_LIMIT:
+                    if k not in OPERATIONAL and k not in LOWER_IS_BETTER and sd > STD_LIMIT:
                         spread.append({"system": s, "run_id": r["run_id"], "story": stories.get(c, ""), "case": c, "scorer": k,
                                        "mean": round(mean, 4), "std": round(sd, 4)})
 
@@ -295,7 +302,7 @@ def render_md(d: dict) -> str:
            "None in the listed runs.")
     _table(lines, "Stuck (a scorer at 0 in every listed run)", ["system", "story", "case", "scorer", "runs"], d["stuck"],
            "None.")
-    _table(lines, "Fallen (lower in the latest run than the one before, by more than 0.001)",
+    _table(lines, "Fallen (worse in the latest run than the one before, by more than 0.001; lower is worse except false_drivers and brief_words, where a rise is worse)",
            ["system", "story", "case", "scorer", "previous", "latest", "drop"], d["fallen"], "None.")
     lines += ["", "## Engine comparison (latest scripted vs latest agent, per lane)"]
     if not d["engine"]:
@@ -303,14 +310,14 @@ def render_md(d: dict) -> str:
     for pair in d["engine"]:
         note = "" if pair["same_golden"] else " NOT COMPARABLE: golden versions differ."
         lines += ["", f"### {pair['lane']}: {pair['scripted']} vs {pair['agent']}{note}", "",
-                  "| scorer | cases | scripted mean | agent mean | cases where agent is lower |", "|---|---|---|---|---|"]
+                  "| scorer | cases | scripted mean | agent mean | cases where agent is worse |", "|---|---|---|---|---|"]
         by_scorer = defaultdict(list)
         for row in pair["cases"].values():
             for k, v in row.items():
                 by_scorer[k].append(v)
         for k in sorted(by_scorer):
             vs = by_scorer[k]
-            lower = sum(v["delta"] < -EPS for v in vs)
+            lower = sum((v["delta"] > EPS) if k in LOWER_IS_BETTER else (v["delta"] < -EPS) for v in vs)
             lines.append(f"| {k} | {len(vs)} | {sum(v['scripted'] for v in vs) / len(vs):.3f} | "
                          f"{sum(v['agent'] for v in vs) / len(vs):.3f} | {lower} |")
     lost = sorted((e for e in d.get("numbers_lost", []) if e["lost"] > EPS), key=lambda e: -e["lost"])

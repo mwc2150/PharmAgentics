@@ -11,7 +11,10 @@ Q_BRIEF = "Week of 2026-06-08 in Pacific: Brief me on Pacific this week."
 PAIRS = [("C-1", Q_DOLLAR), ("C-2", Q_CONF), ("C-3", Q_BRIEF)]
 
 SCHEMA = """
-create table runs (run_uuid text, name text, start_time integer, lifecycle_stage text, status text default 'FINISHED');
+create table experiments (experiment_id integer, name text);
+insert into experiments values (1, 'pharmagentics-golden'), (2, 'pharmagentics-forecast-drivers');
+create table runs (run_uuid text, name text, start_time integer, lifecycle_stage text, status text default 'FINISHED',
+                   experiment_id integer default 1);
 create table params (key text, value text, run_uuid text);
 create table tags (key text, value text, run_uuid text);
 create table trace_info (request_id text, request_preview text);
@@ -24,17 +27,19 @@ def _question(q):
     return '{"question": "%s"}' % q
 
 
-def _store(path, parents):
+def _store(path, parents, experiment_id=1):
     """parents: {run_id: (system, golden, start, [(question, {scorer: value_text})...])} ; each parent gets one child."""
     con = sqlite3.connect(path)
     con.executescript(SCHEMA)
     n = 0
     for run_id, (system, golden, start, traces) in parents.items():
-        con.execute("insert into runs (run_uuid, name, start_time, lifecycle_stage) values (?,?,?,?)", (run_id, "name", start, "active"))
+        con.execute("insert into runs (run_uuid, name, start_time, lifecycle_stage, experiment_id) values (?,?,?,?,?)",
+                    (run_id, "name", start, "active", experiment_id))
         con.execute("insert into params values ('system', ?, ?)", (system, run_id))
         con.execute("insert into params values ('golden_version', ?, ?)", (golden, run_id))
         child = f"child-{run_id}"
-        con.execute("insert into runs (run_uuid, name, start_time, lifecycle_stage) values (?,?,?,?)", (child, "child", start, "active"))
+        con.execute("insert into runs (run_uuid, name, start_time, lifecycle_stage, experiment_id) values (?,?,?,?,?)",
+                    (child, "child", start, "active", experiment_id))
         con.execute("insert into tags values ('mlflow.parentRunId', ?, ?)", (run_id, child))
         for question, scores in traces:
             n += 1
@@ -141,6 +146,36 @@ def test_a_run_still_going_is_left_out(tmp_path):
     con.close()
     out = build([path], PAIRS)
     assert [r["run_id"] for r in out["systems"]["briefing_scripted"]["runs"]] == ["P1"]
+
+
+def test_a_run_in_another_experiment_is_ignored(tmp_path):
+    path = tmp_path / "mixed.db"
+    _store(str(path), {"P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"golden_number_recall": "1.0"})])})
+    other = tmp_path / "other.db"
+    _store(str(other), {"D1": ("forecast_drivers", "g1", 2000, [(Q_DOLLAR, {"golden_number_recall": "0.0"})])}, experiment_id=2)
+    con = sqlite3.connect(str(path))
+    con.execute("attach database ? as o", (str(other),))
+    con.execute("insert into runs select * from o.runs")
+    for t in ("params", "tags", "trace_info", "trace_request_metadata", "assessments"):
+        con.execute(f"insert into {t} select * from o.{t}")
+    con.commit()
+    con.execute("detach database o")
+    con.close()
+    out = build([path], PAIRS)
+    assert list(out["systems"]) == ["briefing_scripted"]
+
+
+def test_lower_is_better_scorers_are_not_stuck_or_spread_and_a_rise_is_a_fall(tmp_path):
+    path = tmp_path / "low.db"
+    _store(str(path), {
+        "P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"false_drivers": "2.0"}), (Q_CONF, {"false_drivers": "0.0"}),
+                                                   (Q_BRIEF, {"false_drivers": "0.0"}), (Q_BRIEF, {"false_drivers": "3.0"})]),
+        "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"false_drivers": "0.0"}), (Q_CONF, {"false_drivers": "1.0"}),
+                                                   (Q_BRIEF, {"false_drivers": "0.0"}), (Q_BRIEF, {"false_drivers": "3.0"})])})
+    d = build([path], PAIRS)
+    assert d["stuck"] == [] and d["rerun_spread"] == []  # 0 false drivers is good, not stuck
+    fallen = {(r["case"], r["previous"], r["latest"]) for r in d["fallen"]}
+    assert fallen == {("C-2", 0.0, 1.0)}  # 2 -> 0 is better; 0 -> 1 is worse
 
 
 def test_numbers_lost_compares_latest_agent_with_latest_scripted_on_the_same_golden(tmp_path):
