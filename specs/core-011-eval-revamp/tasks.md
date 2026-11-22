@@ -29,7 +29,17 @@ Packets and file ownership are in `plan.md`.
 ### Packet E: story card fields, after brief-008 merges
 - [x] E1 Cards gain `territory`, `direction`, `drivers_supported`, `drivers_ruled_out` from tool verdicts, on both engines; answer text unchanged.
 
+### Packet F: two scorecards and honest matching (FR-011 to FR-014)
+- [x] F1 `KIND` for every scorer; insights and the Evaluation page group by kind.
+- [x] F2 `scope_match` with derived expected scope; not scored without `scope_proposal`.
+- [x] F3 "numbers lost by the agent" in insights, the export and the page.
+- [x] F4 Unit-aware matching; repeated golden numbers once; key-fact units from the reference or `_pct`.
+
+### Packet G: golden definitions (FR-015)
+- [x] G1 Windows the case text names go into `comparison` (C-005, C-009, C-010, C-022); house restatements from SQL (C-008, C-013, C-014, C-019); CHANGELOG; `reviewed: false`.
+- [ ] G2 Michael reviews the G edits with D5.
+
 ## Integration (Opus)
-- [ ] I1 Merge A, B, D; full suite; one scripted run; gate (unchanged gated checks); `eval insights` over the brief-008 runs.
+- [x] I1 Merge A, B, D; full suite; one scripted run; gate (unchanged gated checks); `eval insights` over the brief-008 runs.
 - [ ] I2 After brief-008 merges: C and E; one scripted and one Haiku run; two report-only runs, then propose `GATED` changes to Michael (FR-006).
 - [ ] I3 `/code-review`; pull request; `specs/README.md`, `eval/README.md` and `PROJECT_STATE.md` updated.

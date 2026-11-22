@@ -50,6 +50,11 @@ Every Briefing case that states numbers has facts with SQL; each fact is tagged 
 - **FR-008**: `python -m eval insights` MUST open each store read-only, never write to MLflow, and write Markdown plus JSON (the JSON is the input of US4).
 - **FR-009**: The Evaluation page per-case table MUST hold scores, case ids and stories only: no reference answers, facts or SQL.
 - **FR-010**: Forecast cases, FE scorers and `eval drivers` MUST NOT change.
+- **FR-011** (2026-11-22, deterministic first): every scorer MUST have a kind in `scorers.KIND`: `code` (what code guarantees: numbers, claims, links, sections; scored on the scripted engine as regression tests), `agent` (what the agent infers: findings, drivers, must-say, scope, revisions, brevity, judges), `safety` (gated on both engines) or `ops`. `eval insights` and the Evaluation page group scores by kind.
+- **FR-012**: `scope_match` (report-only, agent) MUST compare the scope the agent proposes (`trajectory.scope_proposal`) with the case's expected scope: an explicit `scope`, else one derived from the question prefix and the case's `comparison`. Not scored without a proposal.
+- **FR-013**: For agent systems, "numbers lost by the agent" MUST be the scripted engine's `key_fact_recall` minus the agent's on the same case and golden version (insights and the Evaluation page).
+- **FR-014**: Number matching MUST respect units: a percent matches only a percent, a count only a count; a golden number repeated in a reference answer counts once. A key fact's unit comes from its reference answer, else from an `_pct` id, else it is unknown.
+- **FR-015**: Golden definitions follow the case text and house conventions (packet G): a window the text names is encoded in the case's `comparison`; otherwise the golden figure is restated under the four weeks before, from SQL. When two definitions stay defensible, the number is `context`.
 
 ## Success Criteria
 
