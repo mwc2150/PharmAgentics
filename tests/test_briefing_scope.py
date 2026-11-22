@@ -144,6 +144,22 @@ def test_rules_shorten_a_comparison_that_would_reach_before_the_release():
     assert body["comparison_weeks"] == 2 and any("shortened" in n for n in body["notes"])
 
 
+def test_rules_propose_no_comparison_when_no_earlier_week_exists():
+    sign_in("dev-analyst")
+    body = post_scope("Week of 2024-10-14 in Pacific: what moved?").json()
+    assert body["comparison_weeks"] is None
+    assert any("There are no earlier weeks in the release before 2024-10-14" in n for n in body["notes"])
+    assert not any("1 earlier" in n or "weeks exist" in n for n in body["notes"])
+
+
+def test_rules_note_uses_the_right_singular_and_plural():
+    sign_in("dev-analyst")
+    one = post_scope("Week of 2024-10-21 in Pacific: what moved?").json()
+    assert one["comparison_weeks"] == 1 and any("Only 1 earlier week exists before 2024-10-21" in n for n in one["notes"])
+    two = post_scope("Week of 2024-10-28 in Pacific: what moved?").json()
+    assert two["comparison_weeks"] == 2 and any("Only 2 earlier weeks exist before 2024-10-28" in n for n in two["notes"])
+
+
 def test_rules_flag_a_promotion_question_only_for_bxa():
     sign_in("dev-analyst-multibrand")
     body = post_scope("Did the campaign reach the people it was meant to?", "BXA").json()
@@ -177,6 +193,22 @@ def test_a_single_date_is_the_week_holding_it(monkeypatch):
     assert body["week_start"] == body["week_end"] == "2026-06-08"
 
 
+def test_a_model_comparison_that_reaches_before_the_release_is_shortened_not_refused(monkeypatch):
+    use_model(monkeypatch, {**GOOD, "period_start": "2024-10-28", "period_end": "2024-11-04", "comparison_weeks": 4})
+    sign_in("dev-analyst")
+    body = post_scope("Weeks of 2024-10-28 to 2024-11-04 in the Southeast, against the previous 4").json()
+    assert body["read_by"] == "model" and body["comparison_weeks"] == 2
+    assert any("Only 2 earlier weeks exist before 2024-10-28" in n for n in body["notes"])
+
+
+def test_a_model_comparison_with_no_earlier_week_is_none_not_refused(monkeypatch):
+    use_model(monkeypatch, {**GOOD, "period_start": "2024-10-14", "period_end": "2024-10-14", "comparison_weeks": 4})
+    sign_in("dev-analyst")
+    body = post_scope("Week of 2024-10-14 in the Southeast").json()
+    assert body["read_by"] == "model" and body["comparison_weeks"] is None
+    assert any("There are no earlier weeks in the release before 2024-10-14" in n for n in body["notes"])
+
+
 BAD = {
     "weeks outside the release": {"period_start": "2027-01-04", "period_end": "2027-01-25"},
     "last before first": {"period_start": "2026-08-31", "period_end": "2026-08-03"},
@@ -186,7 +218,6 @@ BAD = {
     "comparison zero": {"comparison_weeks": 0},
     "comparison a string": {"comparison_weeks": "4"},
     "comparison a bool": {"comparison_weeks": True},
-    "comparison before the release": {"period_start": "2024-10-28", "period_end": "2024-11-04", "comparison_weeks": 4},
     "promotion not a bool": {"promotion_review": "yes"},
 }
 

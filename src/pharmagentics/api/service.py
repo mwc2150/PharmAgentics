@@ -297,18 +297,19 @@ def calendar_to_weeks(start: str, end: str) -> list[str]:
 
 
 def _clamp_weeks(count: int, first: str, available: set[str]) -> int:
-    """The longest comparison up to `count` weeks that lies inside the release before `first` (at least 1)."""
+    """The longest comparison up to `count` weeks that lies inside the release before `first`; 0 when none fits."""
     day = date.fromisoformat(first)
     fit = 0
     while fit < count and (day - timedelta(weeks=fit + 1)).isoformat() in available:
         fit += 1
-    return max(fit, 1)
+    return fit
 
 
 def validate_scope(proposal: dict, release: ReleaseContext, brand_id: str) -> dict:
     """Check a model's proposal against the release and return the form values. Raises ValueError on anything
     unusable: dates that are not dates, weeks outside the release, an unknown territory, a comparison that is not a
-    whole number from 1 to 13 or reaches before the release, a promotion flag that is not a boolean."""
+    whole number from 1 to 13, a promotion flag that is not a boolean.
+    A comparison that reaches before the release is shortened with a note (None when no earlier week exists)."""
     available = {w.isoformat() for w in release.available_weeks}
     weeks = calendar_to_weeks(str(proposal.get("period_start", "")), str(proposal.get("period_end", "")))
     if not weeks or any(w not in available for w in weeks):
@@ -323,13 +324,22 @@ def validate_scope(proposal: dict, release: ReleaseContext, brand_id: str) -> di
         count = DEFAULT_COMPARISON_WEEKS
     if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= 13:
         raise ValueError("The comparison must be a whole number of weeks from 1 to 13.")
-    if any((date.fromisoformat(weeks[0]) - timedelta(weeks=i)).isoformat() not in available for i in range(1, count + 1)):
-        raise ValueError("The proposed comparison reaches before the release.")
+    notes: list[str] = []
+    fit = _clamp_weeks(count, weeks[0], available)
+    if fit < count:  # a reading that is otherwise valid is kept; its comparison is shortened, not refused
+        notes.append(_shortened_note(fit, weeks[0]))
+    count = fit or None
     promotion = proposal.get("promotion_review", False)
     if not isinstance(promotion, bool) or (promotion and brand_id != "BXA"):
         raise ValueError("The proposed promotion flag is not usable.")
     return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": territory or None,
-            "comparison_weeks": count, "promotion_review": promotion}
+            "comparison_weeks": count, "promotion_review": promotion, "notes": notes}
+
+
+def _shortened_note(fit: int, first: str) -> str:
+    if fit == 0:
+        return f"There are no earlier weeks in the release before {first}, so the brief uses the default comparison."
+    return f"Only {fit} earlier week{' exists' if fit == 1 else 's exist'} before {first}, so the comparison is shortened."
 
 
 def rules_scope(question: str, release: ReleaseContext, brand_id: str) -> dict:
@@ -348,7 +358,7 @@ def rules_scope(question: str, release: ReleaseContext, brand_id: str) -> dict:
     available = {w.isoformat() for w in release.available_weeks}
     count = _clamp_weeks(DEFAULT_COMPARISON_WEEKS, weeks[0], available)
     if count < DEFAULT_COMPARISON_WEEKS:
-        notes.append(f"Only {count} earlier week{'' if count == 1 else 's'} exist before {weeks[0]}, so the comparison is shortened.")
+        notes.append(_shortened_note(count, weeks[0]))
     else:
         notes.append(f"The comparison is the previous {count} weeks unless you change it.")
     if not got["territory"]:
@@ -356,7 +366,7 @@ def rules_scope(question: str, release: ReleaseContext, brand_id: str) -> dict:
     if got["promotion"] and not promotion:
         notes.append("The Promotion review is available for BXA only.")
     return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": got["territory"],
-            "comparison_weeks": count, "promotion_review": promotion, "notes": notes}
+            "comparison_weeks": count or None, "promotion_review": promotion, "notes": notes}
 
 
 def _ask_model(spec: str, question: str, release: ReleaseContext, brand_id: str) -> dict:
@@ -385,5 +395,5 @@ def read_briefing_scope(question: str, brand_id: str) -> dict:
         if checked:
             span = checked["week_start"] if checked["week_start"] == checked["week_end"] else f"{checked['week_start']} to {checked['week_end']}"
             return {"question": question, **checked, "read_by": "model", "model": spec.partition(":")[2],
-                    "notes": [f"Read by the model as {span}; code checked every field."]}
+                    "notes": [f"Read by the model as {span}; code checked every field.", *checked["notes"]]}
     return {"question": question, **rules_scope(question, release, brand_id), "read_by": "rules", "model": None}

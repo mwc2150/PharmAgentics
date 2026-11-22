@@ -70,7 +70,7 @@ class BriefingScope(BaseModel):
     week_start: date
     week_end: date
     territory_id: Territory | None = None  # None: the question names no territory, so the form keeps its choice
-    comparison_weeks: int = Field(ge=1, le=13)
+    comparison_weeks: int | None = Field(default=None, ge=1, le=13)  # None: no earlier week fits, so the default comparison applies
     promotion_review: bool = False
     notes: list[str] = Field(default_factory=list)
     read_by: Literal["model", "rules"]
