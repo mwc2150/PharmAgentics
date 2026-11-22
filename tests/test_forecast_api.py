@@ -369,3 +369,142 @@ def test_the_forecast_model_is_local_qwen_unless_named(monkeypatch):
     assert forecast.question_model() is None  # no local model: code only
     monkeypatch.setenv("FORECAST_AGENT_MODEL", "anthropic:claude-haiku-5-5")
     assert forecast.question_model() == "anthropic:claude-haiku-5-5"  # only when named
+
+
+# ---- review 2026-11-22: follow-up scopes are checked, and lost background work can be retried ----------------------
+
+def _followups_done(rid: str) -> list[dict]:
+    import time
+
+    for _ in range(100):
+        body = CLIENT.get(f"/api/forecast/runs/{rid}").json()
+        if all(f["status"] != "running" for f in body["followups"]):
+            return body["followups"]
+        time.sleep(0.1)
+    raise AssertionError("the follow-up did not finish")
+
+
+@pytest.mark.parametrize("plan, says", [
+    ({"op": "rerun", "territory": "Atlantis", "weeks": None, "drop_controls": []}, "don't know the territory"),
+    ({"op": "rerun", "territory": None, "weeks": ["2031-01-06", "2031-02-03"], "drop_controls": []}, "outside the release"),
+    ({"op": "rerun", "territory": None, "weeks": ["last spring", None], "drop_controls": []}, "as dates"),
+    ({"op": "rerun", "territory": None, "weeks": ["2026-03-30", "2026-03-02"], "drop_controls": []}, "comes before"),
+])
+def test_a_rerun_follow_up_with_a_scope_the_release_lacks_runs_nothing(monkeypatch, plan, says):
+    """A model picks the rerun's scope: a territory or weeks the release lacks get an answer, not a run on zero rows."""
+    from forecast_agent import followup
+
+    sign_in("dev-forecast-analyst")
+    rid = CLIENT.post("/api/forecast/ask", json={"question": "Week of 2026-08-24: How much of the miss does each driver explain?"}).json()["forecast_run_id"]
+    _wait(rid)
+    monkeypatch.setattr(followup, "route", lambda *a, **k: dict(plan))
+    assert CLIENT.post(f"/api/forecast/runs/{rid}/followups", json={"question": "rerun it"}).status_code == 200
+    (f,) = _followups_done(rid)
+    assert f["status"] == "done" and f["op"] == "help" and says in f["answer"] and not f["child_run_id"]
+
+
+def test_a_rerun_follow_up_reads_a_territory_name_and_snaps_weeks_to_mondays(monkeypatch):
+    from forecast_agent import followup
+
+    sign_in("dev-forecast-analyst")
+    rid = CLIENT.post("/api/forecast/ask", json={"question": "Week of 2026-08-24: How much of the miss does each driver explain?"}).json()["forecast_run_id"]
+    _wait(rid)
+    monkeypatch.setattr(followup, "route", lambda *a, **k: {"op": "rerun", "territory": "Pacific",
+                                                             "weeks": ["2026-06-03", "2026-06-03"], "drop_controls": ["Mountain"]})
+    CLIENT.post(f"/api/forecast/runs/{rid}/followups", json={"question": "rerun it"})
+    (f,) = _followups_done(rid)
+    child = CLIENT.get(f"/api/forecast/runs/{f['child_run_id']}").json()["report"]
+    assert child["territory_id"] == "PACIFIC" and child["scope"]["weeks"] == ["2026-06-01"]
+
+
+def _lost(record: dict, age_seconds: int) -> None:
+    """Store a record as a restarted server would find it: nothing in this process works on it, last saved long ago."""
+    from datetime import datetime, timedelta, timezone
+
+    from pharmagentics.api.store import _dump, backend
+
+    record["updated_at"] = (datetime.now(timezone.utc) - timedelta(seconds=age_seconds)).isoformat()
+    backend().write(f"forecast_runs/{record['run_id']}.json", _dump(record))
+
+
+def test_an_investigation_lost_to_a_restart_shows_as_failed_and_runs_again():
+    sign_in("dev-forecast-analyst")
+    q = {"question": "Week of 2026-08-24: How much of the miss does each driver explain?"}
+    rid = CLIENT.post("/api/forecast/ask", json=q).json()["forecast_run_id"]
+    _wait(rid)
+    record = forecast_store.get(rid)
+    record.update(job_status="running")
+    _lost(record, forecast_store.LOST_GRACE_SECONDS + 60)
+    body = CLIENT.get(f"/api/forecast/runs/{rid}").json()
+    assert body["job_status"] == "failed" and "restarted" in body["job_error"]
+    assert CLIENT.post("/api/forecast/ask", json=q).json()["job_status"] == "running"  # asked again, it starts again
+    assert _wait(rid)["job_status"] == "done"
+
+
+def test_a_running_investigation_this_process_holds_is_not_failed():
+    record = {"run_id": "f-0123456789ab", "kind": "question", "created_at": forecast_store.now(), "job_status": "running",
+              "review_status": "not_submitted"}
+    forecast_store.hold("f-0123456789ab")
+    try:
+        _lost(record, forecast_store.LOST_GRACE_SECONDS + 60)
+        assert forecast_store.get("f-0123456789ab")["job_status"] == "running"
+    finally:
+        forecast_store.release("f-0123456789ab")
+    assert forecast_store.get("f-0123456789ab")["job_status"] == "failed"
+
+
+def test_a_follow_up_lost_to_a_restart_shows_as_failed():
+    from datetime import datetime, timedelta, timezone
+
+    sign_in("dev-forecast-analyst")
+    rid = CLIENT.post("/api/forecast/ask", json={"question": "Week of 2026-08-24: How much of the miss does each driver explain?"}).json()["forecast_run_id"]
+    _wait(rid)
+    record = forecast_store.get(rid)
+    old = (datetime.now(timezone.utc) - timedelta(seconds=forecast_store.LOST_GRACE_SECONDS + 60)).isoformat()
+    record["followups"] = [{"id": "q1", "question": "why?", "status": "running", "op": None, "answer": None,
+                            "child_run_id": None, "started_at": old}]
+    _lost(record, 0)
+    (f,) = CLIENT.get(f"/api/forecast/runs/{rid}").json()["followups"]
+    assert f["status"] == "failed" and "restarted" in f["answer"]
+
+
+def test_a_report_draft_lost_to_a_restart_unlocks_the_report():
+    from datetime import datetime, timedelta, timezone
+
+    from pharmagentics.api import forecast_reports
+
+    sign_in("dev-forecast-analyst")
+    rid = CLIENT.post("/api/forecast/ask", json={"question": "Week of 2026-08-24: How much of the miss does each driver explain?"}).json()["forecast_run_id"]
+    _wait(rid)
+    report = CLIENT.post("/api/forecast/reports", json={"run_id": rid}).json()
+    for _ in range(100):
+        r = forecast_reports.get(report["id"])
+        if r["job"]["status"] != "drafting":
+            break
+        import time
+        time.sleep(0.1)
+    old = (datetime.now(timezone.utc) - timedelta(seconds=forecast_store.LOST_GRACE_SECONDS + 60)).isoformat()
+    r["job"] = {"status": "drafting", "message": None, "started_at": old}
+    forecast_reports.put(r)
+    body = CLIENT.get(f"/api/forecast/reports/{report['id']}").json()
+    assert body["job"]["status"] == "failed" and "restarted" in body["job"]["message"]
+    assert CLIENT.post(f"/api/forecast/reports/{report['id']}/draft", json={}).status_code == 200
+
+
+def test_a_review_saved_while_the_writer_runs_is_kept():
+    """set_writer and review both read, change and save the run under one lock."""
+    import threading
+
+    sign_in("dev-forecast-analyst")
+    run = CLIENT.post("/api/forecast/runs", json=NATIONAL).json()
+    rid = run["forecast_run_id"]
+    forecast_store.submit(rid, "u-a", "forecast-analyst")
+    writer = {"narrative": {"summary": "x"}, "report_model": "m", "writer_status": "ok", "writer_attempts": []}
+    threads = [threading.Thread(target=forecast_store.set_writer, args=(rid, writer)) for _ in range(20)]
+    threads.append(threading.Thread(target=forecast_store.review, args=(rid, "approved", None, "u-b", "forecast-manager")))
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    record = forecast_store.get(rid)
+    assert record["review_status"] == "approved" and record["writer_status"] == "ok"

@@ -14,6 +14,14 @@ needs_db = pytest.mark.skipif(not DEFAULT_DB.exists(), reason="build it with: uv
     "delete from raw.calendar",
     "select 1 from raw.calendar; select 2 from raw.calendar",
     "select * from metadata.secrets",
+    # Ways around a name match (review 2026-11-22): each reads raw Rx or a file while naming a governed view.
+    'select count(*) from "raw".rx_weekly, reporting.v_feed_health',
+    "select count(*) from raw . rx_weekly, reporting.v_feed_health",
+    "select count(*) from read_csv('data/agent_visible/rx_weekly.csv') -- reporting.v_feed_health",
+    "select table_name from information_schema.tables -- reporting.v_feed_health",
+    "select * from duckdb_tables(), reporting.v_feed_health",
+    "select * from rx_weekly",  # an unqualified name is not a governed relation
+    "select (select max(trx) from raw.rx_weekly) from reporting.v_feed_health",  # nested
 ])
 def test_ungoverned_queries_are_refused(sql):
     with pytest.raises(Refused):
@@ -43,6 +51,14 @@ def test_verifier_allows_tokens_dates_and_ids_only():
     assert digits_outside_tokens("BXA TRx was {c1} in the week of 2026-04-06 on data 06bcba77fbe1 (plan SYN_X_1).") == []
     assert digits_outside_tokens("BXA TRx was 3,860 this week.") == ["3,860"]
     assert digits_outside_tokens("Normal is near 1.00.")
+    assert digits_outside_tokens("Plan SYN_NEW_ENGLAND_COMMERCIAL_1 fell {c2}.") == []
+
+
+@pytest.mark.parametrize("text", ["We missed by 12k TRx.", "Sales fell 3x.", "A 5pct drop.", "The 2nd week.",
+                                  "About 300TRx short."])
+def test_verifier_refuses_numbers_written_with_a_unit_or_suffix(text):
+    """A word that starts with a digit is a typed number, however it ends (review 2026-11-22)."""
+    assert digits_outside_tokens(text)
 
 
 @pytest.mark.parametrize("question, weeks, territory", [
