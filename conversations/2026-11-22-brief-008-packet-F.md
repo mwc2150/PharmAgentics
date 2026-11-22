@@ -13,7 +13,7 @@ Worktree `C:\Users\micha\test_agent_v1\pa-008-F`, branch `feature/brief-008-form
 
 ## Checks
 
-See the final report for results. `npx tsc --noEmit -p tsconfig.app.json` and `npx vite build --config vite.config.standalone.ts` pass. The worktree has no `node_modules`; a directory junction to the main checkout's `frontend/figma-make/node_modules` was used (git-ignored). A live end-to-end run of `service.run_briefing` and `run_triage` with a 4-week period on the real DuckDB worked (question `Weeks of 2026-08-03 to 2026-08-24 in Southeast: ...`, `week_end` kept in the triage plan). No model eval, no real model call, no screenshot of the running app (integrator).
+`uv run pytest -q tests/test_briefing_api.py tests/test_briefing_scope.py tests/test_jobs.py tests/test_rbac.py tests/test_brand_access.py tests/test_comparison_windows.py tests/test_frontend_scope.py`: **128 passed in 5 min 36 s** (the real-pipeline tests take 20 to 90 s each). `npx tsc --noEmit -p tsconfig.app.json` and `npx vite build --config vite.config.standalone.ts` pass. The worktree has no `node_modules`; a directory junction to the main checkout's `frontend/figma-make/node_modules` was used (git-ignored). A live end-to-end run of `service.run_briefing` and `run_triage` with a 4-week period on the real DuckDB worked (question `Weeks of 2026-08-03 to 2026-08-24 in Southeast: ...`, `week_end` kept in the triage plan). No model eval, no real model call, no screenshot of the running app (integrator).
 
 ## Files outside the packet's file list that I touched
 
