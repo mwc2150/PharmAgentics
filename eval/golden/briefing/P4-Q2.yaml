@@ -27,5 +27,110 @@ action: Magdalena notes that responses are broad, so she plans by territory, not
 eval_items:
 - EV-4.3
 - EV-7.5
-facts: []
+facts:
+- id: gl_cash_change_pct
+  value: -31
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''CASH'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''CASH'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: must
+  reviewed: false
+- id: gl_medicaid_change_pct
+  value: -25
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''MEDICAID'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''MEDICAID'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_commercial_change_pct
+  value: -14
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''COMMERCIAL'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''COMMERCIAL'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_medicare_part_d_change_pct
+  value: -12
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''MEDICARE_PART_D'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''MEDICARE_PART_D'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_cardiology_change_pct
+  value: -20
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''CARDIOLOGY'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''CARDIOLOGY'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_internal_medicine_change_pct
+  value: -20
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''INTERNAL_MEDICINE'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''INTERNAL_MEDICINE'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_primary_care_change_pct
+  value: -17
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''PRIMARY_CARE'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''PRIMARY_CARE'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_endocrinology_change_pct
+  value: 3
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''ENDOCRINOLOGY'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and hcp_specialty = ''ENDOCRINOLOGY'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: se_commercial_change_pct
+  value: -30
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''COMMERCIAL'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''COMMERCIAL'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: must
+  reviewed: false
+- id: se_cash_change_pct
+  value: -26
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''CASH'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''CASH'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: se_medicaid_change_pct
+  value: -21
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''MEDICAID'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''MEDICAID'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: se_medicare_part_d_change_pct
+  value: -21
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''MEDICARE_PART_D'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''MEDICARE_PART_D'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: se_endocrinology_change_pct
+  value: -30
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''ENDOCRINOLOGY'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''ENDOCRINOLOGY'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: se_internal_medicine_change_pct
+  value: -29
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''INTERNAL_MEDICINE'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''INTERNAL_MEDICINE'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: se_cardiology_change_pct
+  value: -26
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''CARDIOLOGY'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''CARDIOLOGY'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: se_primary_care_change_pct
+  value: -20
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''PRIMARY_CARE'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and hcp_specialty = ''PRIMARY_CARE'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_other_territories_change_pct
+  value: 1.1
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: se_other_territories_change_pct
+  value: 6.5
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+findings:
+- id: great_lakes_promotion_lapse
+  territory: GREAT_LAKES
+  direction: down
+  drivers_supported: [promotion]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+- id: southeast_promotion_lapse
+  territory: SOUTHEAST
+  direction: down
+  drivers_supported: [promotion]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P4-Q2

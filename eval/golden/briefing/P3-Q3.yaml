@@ -24,5 +24,28 @@ must_not_say:
 action: Diana tells leadership it was supply, not demand. The brief tells her to ask supply chain and trade for the root cause.
 eval_items:
 - EV-7.1
-facts: []
+facts:
+- id: pacific_change_pct
+  value: -34.0
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''PACIFIC'' and week_start between DATE ''2026-06-01'' and DATE ''2026-06-29'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''PACIFIC'' and week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'') - 1))'
+  role: must
+  reviewed: false
+- id: other_territories_change_pct
+  value: -1
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''PACIFIC'' and week_start between DATE ''2026-06-01'' and DATE ''2026-06-29'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''PACIFIC'' and week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'') - 1))'
+  role: context
+  reviewed: false
+- id: pacific_fill_rate_june
+  value: 0.7
+  sql: 'select avg(inventory_fill_rate) from raw.inventory_weekly where product_id = ''BXA'' and territory_id = ''PACIFIC'' and week_start between DATE ''2026-06-01'' and DATE ''2026-06-29'''
+  role: must
+  reviewed: false
+findings:
+- id: pacific_supply_shortfall
+  territory: PACIFIC
+  direction: down
+  drivers_supported: [supply]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P3-Q3

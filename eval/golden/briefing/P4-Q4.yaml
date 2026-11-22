@@ -25,5 +25,38 @@ eval_items:
 - EV-4.5
 - EV-4.2
 - EV-3.4
-facts: []
+facts:
+- id: plan_trx_summer_per_week
+  value: 183
+  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'')'
+  role: must
+  reviewed: false
+- id: plan_trx_gap_per_week
+  value: 218
+  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'')'
+  role: must
+  reviewed: false
+- id: plan_change_pct
+  value: 19.0
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  role: must
+  reviewed: false
+- id: plan_nbrx_change_pct
+  value: 42
+  sql: 'select (100.0 * ((select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'') / (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  role: context
+  reviewed: false
+- id: national_change_pct
+  value: 14.4
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  role: context
+  reviewed: false
+findings:
+- id: mid_atlantic_access_restored
+  territory: MID_ATLANTIC
+  direction: up
+  drivers_supported: [access]
+  drivers_ruled_out: [promotion]
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P4-Q4
