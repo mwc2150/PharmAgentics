@@ -85,10 +85,20 @@ def test_captions_and_explanations_are_in_the_answer_and_traced():
 @needs_db
 def test_leaders_get_charts_without_tables_queries_claims_or_checks():
     sections = leadership_sections(brief(PACIFIC_JUNE)["sections"])
-    assert [s["number"] for s in sections][:3] == ["1", "2", "3"] and sections[-1]["number"] == "5"
-    assert not any(s["number"].startswith(("4", "6")) for s in sections)
+    numbers = [s["number"] for s in sections]
+    assert numbers[:3] == ["1", "2", "3"] and numbers[-3:] == ["4", "5", "6"]  # brief-008 FR-005: §4 short, §6 the Assumptions
+    short, assumptions = next(s for s in sections if s["number"] == "4"), sections[-1]
+    assert "chart" not in short and "\n" not in short["text"] and assumptions["title"] == "Assumptions"
+    assert assumptions["text"].startswith("- Comparison weeks:") and "Data version" not in assumptions["text"]
     text = json.dumps(sections)
-    for leak in ("select ", "evidence_id", "\"claims\"", "citations", "\"table\"", "Checked, in this order"):
+    # "territory_table" is a block key, not a data table: no table, query, citation or detail reaches a leader
+    for leak in ("select ", "evidence_id", "\"claims\"", "citations", "\"table\"", "Checked, in this order", "\"cell_citations\"",
+                 "\"value_citation\"", "Glossary", "Cuts of the change"):
         assert leak not in text, leak
+    assert all("detail" not in s for s in sections)  # a tile's own "detail" label lives inside its kpis, not on the section
+    one, two = sections[0], sections[1]
+    assert one["kpis"] and set(one["kpis"][0]) == {"label", "value", "detail", "direction"}
+    assert two["territory_table"]["rows"] and set(two["territory_table"]["rows"][0]) == {"cells", "basis"}
+    assert set(next(s for s in sections if s["number"] == "3.1")["card"]) == {"headline", "confidence", "drivers_checked"}
     story = next(s for s in sections if s["number"] == "3.1")
     assert story["chart"]["panel"]["points"] and story["chart"]["band"]
