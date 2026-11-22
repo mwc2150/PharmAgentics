@@ -25,12 +25,28 @@ eval_items:
 - EV-3.3
 facts:
 - id: metacora_share_pct
+  role: must
   value: 9.3
   sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-04-27'
 - id: bxa_share_pct
+  role: must
   value: 33.2
   sql: select 100.0 * sum(trx) filter (where product_id = 'BXA') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-04-27'
 - id: bxa_share_pre_launch_pct
+  role: must
   value: 35.8
   sql: select 100.0 * sum(trx) filter (where product_id = 'BXA') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE '2026-02-23'
+- id: bxa_share_drop_points
+  value: 2.6
+  sql: 'select (select 100.0 * sum(trx) filter (where product_id = ''BXA'') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE ''2026-02-23'') - (select 100.0 * sum(trx) filter (where product_id = ''BXA'') / sum(trx) from reporting.v_weekly_rx_kpis where week_start = DATE ''2026-04-27'')'
+  role: context
+  reviewed: false
+findings:
+- id: national_metacora_share_gain
+  territory: NATIONAL
+  direction: down
+  drivers_supported: [competitor]
+  drivers_ruled_out: [access, promotion, supply]
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P3-Q1

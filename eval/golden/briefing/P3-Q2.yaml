@@ -26,24 +26,54 @@ eval_items:
 - EV-3.2
 facts:
 - id: national_bxa_trx_christmas
+  role: context
   value: 4309
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-22'
 - id: christmas_vs_4wk_avg_pct
+  role: must
   value: -16.1
   sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-22'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-12-22' - 28 and DATE '2025-12-22' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
 - id: national_bxa_trx_new_year
+  role: context
   value: 4188
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-29'
 - id: new_year_vs_4wk_avg_pct
+  role: must
   value: -19.0
   sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-12-29'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-12-29' - 28 and DATE '2025-12-29' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
 - id: national_bxa_trx_rebound
+  role: context
   value: 4861
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-01-05'
 - id: business_days_new_year
+  role: context
   value: 4
   sql: select business_days from raw.calendar where week_start = DATE '2025-12-29'
 - id: plan_year_reset_new_year
+  role: context
   value: 1
   sql: select plan_year_reset from raw.calendar where week_start = DATE '2025-12-29'
+- id: prior_year_christmas_vs_4wk_avg_pct
+  value: -18.9
+  sql: 'with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2024-12-23''), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2024-12-23'' - 28 and DATE ''2024-12-23'' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a'
+  role: context
+  reviewed: false
+- id: prior_year_new_year_vs_4wk_avg_pct
+  value: -18.2
+  sql: 'with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2024-12-30''), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2024-12-30'' - 28 and DATE ''2024-12-30'' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a'
+  role: context
+  reviewed: false
+- id: rebound_week_change_pct
+  value: 16.1
+  sql: 'select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2026-01-05'') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2025-12-29'') - 1)'
+  role: context
+  reviewed: false
+findings:
+- id: national_holiday_drop
+  territory: NATIONAL
+  direction: down
+  drivers_supported: [holiday]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P3-Q2
