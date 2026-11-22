@@ -67,7 +67,57 @@ def tokens(text: str) -> set[str]:
     return {m.group(0) for m in TOKEN.finditer(text or "")}
 
 
-def problems(piece: str, allowed: set[str], n_claims: int, glosses: dict[str, dict] | None = None) -> list[str]:
+# Reader-facing prose rules (brief-008 FR-004, FR-006): short sentences (ASD-STE100), one paragraph, no list, no
+# raw IDs, no number spelled out by the model, no cause for a story that is not High, nothing from the folded detail.
+MAX_WORDS = 25
+BULLET = re.compile(r"(?m)^\s*(?:[-*•]|\d+[.)])\s+|\*\*|^\s*#{1,6}\s")
+RAW_ID = re.compile(r"\b(?:(?:territory|competitor):\w+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z]{5,}|[a-z]+(?:_[a-z0-9]+)+)\b")
+NUMBER_WORDS = re.compile(r"\b(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|"
+                          r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|"
+                          r"percent|per cent|double[sd]?|triple[sd]?|twice|half)\b", re.I)
+_CODE_PHRASES = re.compile(r"\b(?:\w+ weeks? (?:before|earlier)|four-brand|week of)\b", re.I)  # words code itself writes
+CAUSAL = re.compile(r"\b(because|caused|causes|causing|drove|driven|drives|due to|led to|leads to|leading to|result of|"
+                    r"resulted|responsible|reason (?:for|why)|is why|explains|explained by|thanks to|attributable|blamed?)\b", re.I)
+FOLDED = re.compile(r"\b(splits?|by (?:plan|specialty|channel)|cuts of the change|considered and dropped|glossary)\b|\bmethod:", re.I)
+REP = re.compile(r"\b(?i:reps?|representatives?)\s+(?:[A-Z][a-z]+|#)")
+CONFIDENCE = re.compile(r"\bConfidence(?: for [^:]+)?:\s*(High|Medium|Low)\b")
+
+
+def confidence(section: str) -> str | None:
+    """The confidence a story's code section states ("Confidence for Southeast: Medium."), if any."""
+    m = CONFIDENCE.search(section or "")
+    return m.group(1) if m else None
+
+
+def style(piece: str, max_sentences: int | None = None) -> list[str]:
+    """Wording rules that need no data: one short paragraph, no list or markup, no raw ID, no spelled-out number,
+    no rep named, nothing from the folded detail."""
+    text = (piece or "").strip()
+    if not text:
+        return []
+    out = []
+    if "\n" in text or BULLET.search(text):
+        out.append("is a list, has line breaks or markup (write one plain paragraph)")
+    if (ids := RAW_ID.findall(text)):
+        out.append(f"shows raw IDs or enum names {', '.join(dict.fromkeys(ids[:3]))} (use the readable name)")
+    if (words := NUMBER_WORDS.findall(_CODE_PHRASES.sub("", text))):
+        out.append(f"spells out numbers {', '.join(dict.fromkeys(w.lower() for w in words[:3]))} (use a claim token or no number)")
+    if REP.search(text):
+        out.append("names an individual rep")
+    if (folded := FOLDED.search(text)):
+        out.append(f'restates folded detail ("{folded.group(0)}"); splits, method and dropped cuts stay folded')
+    sentences = [x for x in re.split(r"(?<=[.!?])\s+", text) if x]
+    if (long := [x for x in sentences if len(x.split()) > MAX_WORDS]):
+        out.append(f"has a sentence of {len(long[0].split())} words (keep each under {MAX_WORDS + 1})")
+    if max_sentences and len(sentences) > max_sentences:
+        out.append(f"has {len(sentences)} sentences (at most {max_sentences})")
+    return out
+
+
+def problems(piece: str, allowed: set[str], n_claims: int, glosses: dict[str, dict] | None = None,
+             *, causal_ok: bool | None = None, max_sentences: int | None = None) -> list[str]:
+    """What fails in one piece of writer prose. `causal_ok=False` rejects causal wording (the story is not High);
+    `None` skips that check."""
     out = []
     if (bad := digits_outside_tokens(piece)):
         out.append(f"typed numbers {', '.join(bad[:5])}")
@@ -79,6 +129,9 @@ def problems(piece: str, allowed: set[str], n_claims: int, glosses: dict[str, di
     if foreign:
         out.append(f"tokens from another part of the brief {', '.join(foreign)}")
     out += [why for rx, why in BANNED if rx.search(piece or "")]
+    out += style(piece, max_sentences)
+    if causal_ok is False and (m := CAUSAL.search(piece or "")):
+        out.append(f'says "{m.group(0)}", but confidence is not High (say "association", not cause)')
     if glosses is not None:  # wording: a comparison is described only as the glossary states it
         if RELATIVE_WEEK.search(piece or "") and not any(glosses.get(t, {}).get("base_single") for t in used):
             out.append('compares with "the week before", but none of its numbers is a week-over-week comparison '
@@ -101,27 +154,35 @@ def normalize(reply: dict, story_ids) -> dict:
     return {**reply, "stories": out}
 
 
+ANSWER_SENTENCES, STORY_SENTENCES, CHART_SENTENCES = 4, 5, 3
+
+
 def check(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
-          glosses: dict[str, dict] | None = None) -> dict[str, list[str]]:
-    """Problems per piece: 'answer' and each story id."""
+          glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None) -> dict[str, list[str]]:
+    """Problems per piece: 'answer' and each story id. With `confidences` (story id to its stated confidence), a
+    story's prose may use causal wording only when that confidence is High, and the answer only when every story is."""
     reply = normalize(reply, story_tokens)
     every = set().union(*story_tokens.values(), story_tokens.get("_sections", set()))
     found = {}
-    if (p := problems(str(reply.get("answer", "")), every, n_claims, glosses)):
+    answer_causal = None if confidences is None else bool(confidences) and all(c == "High" for c in confidences.values())
+    if (p := problems(str(reply.get("answer", "")), every, n_claims, glosses, causal_ok=answer_causal,
+                      max_sentences=ANSWER_SENTENCES)):
         found["answer"] = p
     for sid, sentence in (reply.get("stories") or {}).items():
         if sid not in story_tokens:
             continue  # an entry for a story this brief does not have is discarded, not revised (small models invent them)
-        elif (p := problems(str(sentence), story_tokens[sid], n_claims, glosses)):
+        causal = None if confidences is None else confidences.get(sid) == "High"
+        if (p := problems(str(sentence), story_tokens[sid], n_claims, glosses, causal_ok=causal,
+                          max_sentences=STORY_SENTENCES)):
             found[sid] = p
     return found
 
 
 def clean(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
-          glosses: dict[str, dict] | None = None) -> tuple[str, dict[str, str], list[str]]:
+          glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None) -> tuple[str, dict[str, str], list[str]]:
     """Keep only the pieces that pass; report what was dropped."""
     reply = normalize(reply, story_tokens)
-    bad = check(reply, story_tokens, n_claims, glosses)
+    bad = check(reply, story_tokens, n_claims, glosses, confidences)
     answer = "" if "answer" in bad else str(reply.get("answer", "")).strip()
     stories = {sid: str(s).strip() for sid, s in (reply.get("stories") or {}).items()
                if sid in story_tokens and sid != "_sections" and sid not in bad and str(s).strip()}
@@ -131,8 +192,16 @@ def clean(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
 
 def sections_text(sections: dict, close: dict, stories: list[dict]) -> str:
     """What the writer sees: the memo's code sections, each story labelled with its id."""
-    parts = ["[title]", *sections["title"], "[bottom line, by code]", *close["bottom_line"],
-             "[the numbers]", *sections["numbers"], "[what the data can't tell us]", *sections["limits"]]
+    parts = ["[title]", *sections["title"], "[bottom line, by code]", *close["bottom_line"]]
+    if close.get("kpis"):  # shown as tiles above the bottom line: the reader sees them, so the answer need not repeat them
+        parts += ["[figure tiles, shown above the bottom line]",
+                  *(f"{k['label']}: {k['value']}" + (f" ({k['detail']})" if k.get("detail") else "") for k in close["kpis"])]
+    parts += ["[the numbers]", *sections["numbers"]]
+    table = sections.get("territory_table")
+    if table:  # per-territory figures sit in a table; only territories that are not plainly observed are named here
+        odd = [f"{r['cells'][0]} ({r['basis']})" for r in table["rows"] if r.get("basis") not in (None, "observed")]
+        parts += ["[territory table, shown under the numbers: one row per territory]"] + ([f"Not observed: {', '.join(odd)}."] if odd else [])
+    parts += ["[what the data can't tell us]", *sections["limits"]]
     for s in stories:
         parts += [f"[story {s['id']}]", s["section"]]
     for key, chart in chart_targets(close, stories).items():
@@ -161,7 +230,7 @@ def chart_explanations(reply: dict, close: dict, stories: list[dict], n_claims: 
         if key not in targets or not line:
             continue
         allowed = tokens(targets[key]["caption"] + "\n" + targets[key]["explanation"])
-        bad = problems(line, allowed, n_claims, glosses)
+        bad = problems(line, allowed, n_claims, glosses, max_sentences=CHART_SENTENCES)
         if bad:
             dropped.append(f"chart {key}: {'; '.join(bad)}")
         else:
@@ -171,7 +240,8 @@ def chart_explanations(reply: dict, close: dict, stories: list[dict], n_claims: 
 
 def section_tokens(sections: dict, close: dict) -> set[str]:
     """Tokens the answer may use besides the stories': the title, bottom line, numbers and limits."""
-    return tokens("\n".join(sections["title"] + close["bottom_line"] + sections["numbers"] + sections["limits"]))
+    tiles = [f"{k.get('value', '')} {k.get('detail') or ''}" for k in close.get("kpis") or []]
+    return tokens("\n".join(sections["title"] + close["bottom_line"] + sections["numbers"] + sections["limits"] + tiles))
 
 
 def _story_title(sid: str) -> str:
