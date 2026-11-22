@@ -76,10 +76,17 @@ def _problems(reply: str, n_claims: int) -> list[str]:
     return out
 
 
+def _multi_week(brief: dict) -> bool:
+    end = brief.get("week_end")
+    return bool(end) and str(end) > str(brief.get("week_start"))
+
+
 def _scope_question(brief: dict, question: str) -> str:
     t = brief.get("territory_id") or "NATIONAL"
     where = "" if t == "NATIONAL" else f" in {name(t)}"
-    return f"Week of {brief.get('week_start')}{where}: {question}"
+    # Same forms as service.normalize_question, so window.parse reads every week of a multi-week brief.
+    weeks = f"Weeks of {brief.get('week_start')} to {brief.get('week_end')}" if _multi_week(brief) else f"Week of {brief.get('week_start')}"
+    return f"{weeks}{where}: {question}"
 
 
 async def _agent_turn(brief: dict, question: str, section: str | None, spec: str, log: RunLog) -> dict:
@@ -97,7 +104,8 @@ async def _agent_turn(brief: dict, question: str, section: str | None, spec: str
         agent = Agent(client=chat_client(spec), name="follow_up", tools=tools, default_options=chat_options(spec),
                       instructions="Answer with claim tokens only; never type a digit.", middleware=log.for_agent("follow_up"))
         about = f" about §{section}" if section else ""
-        scope = f"BXA, {name(brief.get('territory_id') or 'NATIONAL')}, week of {brief.get('week_start')}"
+        weeks = f"weeks of {brief.get('week_start')} to {brief.get('week_end')}" if _multi_week(brief) else f"week of {brief.get('week_start')}"
+        scope = f"BXA, {name(brief.get('territory_id') or 'NATIONAL')}, {weeks}"
         prompt = PROMPT.format(scope=scope, sections=_masked(sections), about=about, question=question)
         reply = (await agent.run(prompt)).text or ""
         run = json.loads(await _call(mcp, "export_run"))
