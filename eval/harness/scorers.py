@@ -104,6 +104,135 @@ DETERMINISTIC = [numbers_match_golden, golden_number_recall, must_not_say, gover
                  sections_exist]
 
 
+# core-011: key facts, findings and brevity. Report-only until two runs after the golden review (FR-006).
+# "Not scored" is Feedback(value=None): MLflow leaves a None value out of `<scorer>/mean` (aggregation.py), so a
+# case with nothing to check never counts as 1.0 or 0.0.
+def _not_scored(why: str) -> Feedback:
+    return Feedback(value=None, rationale=f"Not scored: {why}.")
+
+
+def fact_stated(fact: dict, found: list[Number]) -> bool:
+    """A must-state fact is stated when an extracted number matches it at its stated precision,
+    or within its relative tolerance when one is set."""
+    value, tolerance = fact["value"], fact.get("tolerance")
+    target = as_numbers([value])
+    if any(same(n, t) for n in found for t in target):
+        return True
+    if tolerance is None:
+        return False
+    return any(abs(abs(n.value) - abs(value)) <= tolerance * abs(value) for n in found)
+
+
+def key_fact_counts(outputs, expectations) -> tuple[int, list[str], int]:
+    """(stated, missing ids, total) over the case's must-state numeric facts."""
+    facts = expectations.get("key_facts") or []
+    found = extract(_answer(outputs))
+    missing = [f["id"] for f in facts if not fact_stated(f, found)]
+    return len(facts) - len(missing), missing, len(facts)
+
+
+@scorer(name="key_fact_recall",
+        description="Share of the case's must-state facts that the answer states (core-011 FR-003). Report only.")
+def key_fact_recall(outputs, expectations) -> Feedback:
+    stated, missing, total = key_fact_counts(outputs, expectations)
+    if not total:
+        return _not_scored("the case has no must-state facts")
+    note = f"{stated} of {total} must-state facts stated"
+    return Feedback(value=round(stated / total, 4), rationale=note + (f"; missing: {', '.join(missing)}" if missing else "."))
+
+
+def _cards(outputs) -> list[dict]:
+    """Story cards that name a territory: `card` on sections numbered 3.N (core-011 plan)."""
+    sections = outputs.get("sections") if isinstance(outputs, dict) else None
+    cards = []
+    for section in sections or []:
+        card = section.get("card") if isinstance(section, dict) else None
+        if isinstance(card, dict) and card.get("territory") and str(section.get("number", "")).startswith("3."):
+            cards.append(card)
+    return cards
+
+
+def _territory(value) -> str:
+    return str(value or "").strip().upper()
+
+
+def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[str]]:
+    """(points, possible, notes) for one expected finding."""
+    same_territory = [c for c in cards if _territory(c["territory"]) == _territory(finding["territory"])]
+    if finding.get("withheld"):
+        return (0 if same_territory else 1), 1, ([] if not same_territory else [f"{finding['id']}: should be withheld"])
+    direction = finding.get("direction")
+    supported, ruled_out = finding.get("drivers_supported") or [], finding.get("drivers_ruled_out") or []
+    possible = 1 + len(supported) + len(ruled_out)
+    best, notes = 0, [f"{finding['id']}: no {direction or 'any'}-direction card for {finding['territory']}"]
+    for card in same_territory:
+        if direction is not None and card.get("direction") != direction:
+            continue
+        have_s, have_r = card.get("drivers_supported") or [], card.get("drivers_ruled_out") or []
+        points = 1 + sum(d in have_s for d in supported) + sum(d in have_r for d in ruled_out)
+        if points > best:
+            best = points
+            lost = [f"supported {d}" for d in supported if d not in have_s] + [f"ruled out {d}" for d in ruled_out if d not in have_r]
+            notes = [f"{finding['id']}: missing {', '.join(lost)}"] if lost else []
+    return best, possible, notes
+
+
+@scorer(name="finding_recall",
+        description="Points for each expected finding the story cards reach (territory, direction, drivers) (core-011 FR-004). Report only.")
+def finding_recall(outputs, expectations) -> Feedback:
+    findings, cards = expectations.get("findings") or [], _cards(outputs)
+    if not findings:
+        return _not_scored("the case has no expected findings")
+    if not cards:
+        return _not_scored("the answer has no story cards with a territory")
+    got = possible = 0
+    notes: list[str] = []
+    for finding in findings:
+        points, worth, why = _finding_points(finding, cards)
+        got, possible = got + points, possible + worth
+        notes += why
+    return Feedback(value=round(got / possible, 4),
+                    rationale=f"{got} of {possible} points over {len(findings)} findings" + (f"; {'; '.join(notes)}" if notes else "."))
+
+
+@scorer(name="false_drivers",
+        description="Supported drivers on story cards that no expected finding for that territory lists (core-011 FR-004). Report only.")
+def false_drivers(outputs, expectations) -> Feedback:
+    findings, cards = expectations.get("findings") or [], _cards(outputs)
+    if not findings:
+        return _not_scored("the case has no expected findings")
+    if not cards:
+        return _not_scored("the answer has no story cards with a territory")
+    expected: dict[str, set] = {}
+    for f in findings:
+        expected.setdefault(_territory(f["territory"]), set()).update(f.get("drivers_supported") or [])
+    extra = [f"{card['territory']}: {d}" for card in cards for d in card.get("drivers_supported") or []
+             if d not in expected.get(_territory(card["territory"]), set())]
+    return Feedback(value=len(extra), rationale=("Unexpected supported drivers: " + "; ".join(extra)) if extra else "No unexpected driver.")
+
+
+def _words(text) -> int:
+    return len(re.findall(r"\S+", text)) if isinstance(text, str) else 0
+
+
+@scorer(name="brief_words",
+        description="Words a reader sees unfolded: section text, card headlines, table cells; not detail (core-011 FR-005). Report only.")
+def brief_words(outputs) -> Feedback:
+    sections = outputs.get("sections") if isinstance(outputs, dict) else None
+    if not sections:
+        return _not_scored("the answer has no sections")
+    total = 0
+    for section in sections:
+        total += _words(section.get("text"))
+        total += _words((section.get("card") or {}).get("headline"))
+        for row in (section.get("territory_table") or {}).get("rows") or []:
+            total += sum(_words(cell) for cell in row.get("cells") or [])
+    return Feedback(value=total, rationale=f"{total} words across {len(sections)} sections, excluding detail.")
+
+
+REPORT_ONLY = [key_fact_recall, finding_recall, false_drivers, brief_words]
+
+
 def _claims(outputs):
     outputs = outputs if isinstance(outputs, dict) else {}
     return outputs.get("claims") or [], {e["id"]: e for e in outputs.get("evidence") or []}
