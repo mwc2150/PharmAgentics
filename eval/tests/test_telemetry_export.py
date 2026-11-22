@@ -118,3 +118,23 @@ def test_every_system_names_the_unit_of_each_column():
     s = _system(cases_block(insights, LABELS), "briefing_scripted")
     assert s["units"] == {"claims_reconcile": "share", "false_drivers": "count", "brief_words": "count", "needed_revision": "flag"}
     assert unit_of("judge_anything") == "share"
+
+
+def test_export_builds_cases_from_the_store_behind_the_uri(tmp_path, monkeypatch):
+    from eval.harness import telemetry_export as module
+
+    seen = []
+    monkeypatch.setattr(module, "build", lambda stores, pairs, **kw: seen.append(list(stores)) or INSIGHTS)
+    monkeypatch.setattr(module, "_labels", lambda: LABELS)
+    db = tmp_path / "other.db"
+    snap = export(tmp_path / "t.json", uri=f"sqlite:///{db.as_posix()}")
+    assert seen == [[db]] and "cases" in snap  # the store named by the uri, not the default one
+
+
+def test_the_store_behind_a_uri():
+    from eval.harness.insights import DEFAULT_STORE
+    from eval.harness.telemetry_export import _store_for
+
+    assert _store_for(None) == DEFAULT_STORE
+    assert _store_for("sqlite:///C:/x/y.db").as_posix() == "C:/x/y.db"
+    assert _store_for("http://mlflow.example") is None and _store_for("file:///x") is None

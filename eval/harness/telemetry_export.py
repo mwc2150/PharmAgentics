@@ -95,8 +95,16 @@ def _labels() -> dict[str, dict]:
     return {c.id: {"lane": c.lane, "story": c.story, "persona": c.persona} for c in load_cases()}
 
 
+def _store_for(uri: str | None) -> Path | None:
+    """The SQLite file behind a tracking uri, DEFAULT_STORE for None, and None for any other kind of store."""
+    if uri is None:
+        return DEFAULT_STORE
+    return Path(uri.removeprefix("sqlite:///")) if uri.startswith("sqlite:///") else None
+
+
 def export(out: Path = OUT, uri: str | None = None, insights: dict | None = None) -> dict:
-    """Write the snapshot. `insights` is the dict `insights.build` returns; without it the default local store is read."""
+    """Write the snapshot. `insights` is the dict `insights.build` returns; without it the per-case block is built from
+    the SQLite store behind `uri` (the default local store when `uri` is None), and left out for any other store."""
     mlflow.set_tracking_uri(uri or tracking_uri())
     client = MlflowClient()
     exp = client.get_experiment_by_name(EXPERIMENT)
@@ -110,11 +118,12 @@ def export(out: Path = OUT, uri: str | None = None, insights: dict | None = None
     snap = {"exported": datetime.now(timezone.utc).isoformat(timespec="minutes"), "source": "golden set (MLflow)",
             "note": "Run-level scores only. Judge scores are report-only until judge agreement clears the bar.",
             "latest": list(latest.values()), "runs": parents}
-    if insights is None and DEFAULT_STORE.exists():
+    store = _store_for(uri)
+    if insights is None and store is not None and store.exists():
         from .cases import load_cases
 
         cases = load_cases()
-        insights = build([DEFAULT_STORE], [(c.id, c.question) for c in cases], stories={c.id: c.story for c in cases})
+        insights = build([store], [(c.id, c.question) for c in cases], stories={c.id: c.story for c in cases})
     if insights is not None:
         snap["cases"] = cases_block(insights, _labels())
     out.write_text(json.dumps(snap, indent=1) + "\n", encoding="utf-8")
