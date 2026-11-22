@@ -126,6 +126,7 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
     story_tokens = {s["id"]: write.tokens(s["section"]) for s in stories}
     story_tokens["_sections"] = write.section_tokens(sections, close)
     confidences = {s["id"]: write.confidence(s["section"]) for s in stories}  # causal words only for a High story
+    mentions = {s["id"]: write.mention(s["id"]) for s in stories}
     shown = write.sections_text(sections, close, stories)
     cmp = sections.get("comparison_phrase")  # the comparison in words, by code; the writer only places {cmp}
     gloss_text, glosses = write.glossary(shown, claims, evidence, sections.get("comparison_weeks"))  # what each number measures, by code
@@ -142,11 +143,12 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
         finish(sp, {"reply": raw})
     revised = False
     with span("6_verification") as sp:
-        bad = write.check(reply, story_tokens, n_claims, glosses, confidences, bool(cmp))
+        bad = write.check(reply, story_tokens, n_claims, glosses, confidences, bool(cmp), mentions)
         if bad:
             allowed = "\n".join(f"- {k}: {', '.join(sorted(v)) or '(none)'}" for k, v in story_tokens.items() if k != "_sections")
             allowed += "\n- answer: any token above, or " + (", ".join(sorted(story_tokens["_sections"])) or "(none)")
             allowed += "\n- every piece: " + (f"{write.CMP} (code fills it with the comparison)" if cmp else "no comparison placeholder (the brief has none)")
+            allowed += f"\n- every piece: {write.LINK} (code fills it with the causal verb for the story's confidence)"
             fix = (HERE / cfg["prompts"]["revise"]).read_text(encoding="utf-8").format(
                 problems="\n".join(f"- {k}: {'; '.join(v)}" for k, v in bad.items()), allowed=allowed,
                 glossary=gloss_text or "(no numbers)", reply=json.dumps(reply))
@@ -156,12 +158,15 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
             except Exception:  # noqa: BLE001
                 pass
             revised = True
-        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses, confidences, bool(cmp))
+        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses, confidences, bool(cmp), mentions)
         chart_lines, chart_dropped = write.chart_explanations(reply, close, stories, n_claims, glosses, bool(cmp))
         dropped += chart_dropped
-        answer_text = write.fill(answer_text, cmp)  # code's words go in after every check
-        sentences = {k: write.fill(v, cmp) for k, v in sentences.items()}
-        chart_lines = {k: write.fill(v, cmp) for k, v in chart_lines.items()}
+        # code's words go in after every check: the comparison, and each piece's causal verb from its confidence
+        all_high = write.answer_high("", confidences)  # a chart of §2 or §4 speaks for the whole brief
+        answer_text = write.fill(answer_text, cmp, write.link_verb(write.answer_high(answer_text, confidences, mentions)))
+        sentences = {k: write.fill(v, cmp, write.link_verb(confidences.get(k) == "High")) for k, v in sentences.items()}
+        chart_lines = {k: write.fill(v, cmp, write.link_verb(confidences[k] == "High" if k in confidences else all_high))
+                       for k, v in chart_lines.items()}
         finish(sp, {"problems": bad, "revised": revised, "dropped": dropped, "chart_lines": sorted(chart_lines)})
     return answer_text, sentences, chart_lines, revised, dropped
 

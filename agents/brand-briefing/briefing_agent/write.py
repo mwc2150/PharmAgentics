@@ -26,6 +26,7 @@ TOKEN_NUMBERS = re.compile(r"\{c(\d+)\}")
 OWN_COMPARISON = re.compile(r"\b(?:\w+ )?weeks? (?:before|earlier|prior|ago)\b|\b(?:last|previous|prior|preceding|earlier|past) (?:\w+ )?weeks?\b"
                             r"|\bweek[- ]over[- ]week\b", re.I)
 CMP = "{cmp}"
+LINK = "{link}"  # a story's causal verb, filled by code from its confidence (brief-008 FR-015)
 YEAR_BACK = re.compile(r"\b(last year|year[- ]over[- ]year|a year ago|same week last year)\b", re.I)
 
 
@@ -91,6 +92,27 @@ REP = re.compile(r"\b(?i:reps?|representatives?)\s+(?:[A-Z][a-z]+|#)")
 CONFIDENCE = re.compile(r"\bConfidence(?: for [^:]+)?:\s*(High|Medium|Low)\b")
 
 
+def mention(sid: str) -> str:
+    """The name the answer uses for a story: its territory, or Metacora."""
+    from pharmagentics.tools.queries import name
+
+    kind, _, key = sid.partition(":")
+    return "Metacora" if kind == "competitor" else name(key)
+
+
+def answer_high(text: str, confidences: dict[str, str | None], mentions: dict[str, str] | None = None) -> bool:
+    """True when the answer may use causal wording: every story it names is High, or every story when it names none.
+    False when the brief has no story (nothing to be sure of)."""
+    named = [sid for sid, who in (mentions or {}).items() if who and who.lower() in (text or "").lower()]
+    pool = [confidences[sid] for sid in (named or confidences) if sid in confidences]
+    return bool(pool) and all(c == "High" for c in pool)
+
+
+def link_verb(high: bool) -> str:
+    """The causal verb code writes for a story: "drove" only for High confidence, else "is linked with"."""
+    return "drove" if high else "is linked with"
+
+
 def confidence(section: str) -> str | None:
     """The confidence a story's code section states ("Confidence for Southeast: Medium."), if any."""
     m = CONFIDENCE.search(section or "")
@@ -126,10 +148,12 @@ PLACEHOLDER = re.compile(r"\{[^{}]*\}")
 
 
 def placeholders(piece: str, *, has_cmp: bool = True) -> list[str]:
-    """Braces the writer may not leave: anything but a claim token or the code-filled {cmp}."""
+    """Braces the writer may not leave: anything but a claim token or the code-filled {cmp} and {link}."""
     out = []
     for m in PLACEHOLDER.findall(piece or ""):
         if TOKEN.fullmatch(m):
+            continue
+        if m == LINK:
             continue
         if m == CMP and not has_cmp:
             out.append(f"{m} (this brief has no comparison to name)")
@@ -153,7 +177,7 @@ def problems(piece: str, allowed: set[str], n_claims: int, glosses: dict[str, di
     if foreign:
         out.append(f"tokens from another part of the brief {', '.join(foreign)}")
     if (stray := placeholders(piece, has_cmp=has_cmp)):
-        out.append(f"uses {', '.join(dict.fromkeys(stray[:3]))}, which code does not fill (the only allowed placeholder is {CMP})")
+        out.append(f"uses {', '.join(dict.fromkeys(stray[:3]))}, which code does not fill (the only allowed placeholders are {CMP} and {LINK})")
     out += [why for rx, why in BANNED if rx.search(piece or "")]
     out += style(piece, max_sentences)
     if (own := OWN_COMPARISON.search(piece or "")):
@@ -184,13 +208,14 @@ ANSWER_SENTENCES, STORY_SENTENCES, CHART_SENTENCES = 4, 5, 3
 
 def check(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
           glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None,
-          has_cmp: bool = True) -> dict[str, list[str]]:
+          has_cmp: bool = True, mentions: dict[str, str] | None = None) -> dict[str, list[str]]:
     """Problems per piece: 'answer' and each story id. With `confidences` (story id to its stated confidence), a
-    story's prose may use causal wording only when that confidence is High, and the answer only when every story is."""
+    story's prose may use causal wording only when that confidence is High, and the answer only when every story
+    it names is (every story, when it names none; `mentions` maps a story id to the name the answer would use)."""
     reply = normalize(reply, story_tokens)
     every = set().union(*story_tokens.values(), story_tokens.get("_sections", set()))
     found = {}
-    answer_causal = None if confidences is None else bool(confidences) and all(c == "High" for c in confidences.values())
+    answer_causal = None if confidences is None else answer_high(str(reply.get("answer", "")), confidences, mentions)
     if (p := problems(str(reply.get("answer", "")), every, n_claims, glosses, causal_ok=answer_causal,
                       max_sentences=ANSWER_SENTENCES, has_cmp=has_cmp)):
         found["answer"] = p
@@ -206,10 +231,10 @@ def check(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
 
 def clean(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
           glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None,
-          has_cmp: bool = True) -> tuple[str, dict[str, str], list[str]]:
+          has_cmp: bool = True, mentions: dict[str, str] | None = None) -> tuple[str, dict[str, str], list[str]]:
     """Keep only the pieces that pass; report what was dropped."""
     reply = normalize(reply, story_tokens)
-    bad = check(reply, story_tokens, n_claims, glosses, confidences, has_cmp)
+    bad = check(reply, story_tokens, n_claims, glosses, confidences, has_cmp, mentions)
     answer = "" if "answer" in bad else str(reply.get("answer", "")).strip()
     stories = {sid: str(s).strip() for sid, s in (reply.get("stories") or {}).items()
                if sid in story_tokens and sid != "_sections" and sid not in bad and str(s).strip()}
@@ -220,13 +245,16 @@ def clean(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
 _CMP_AT_START = re.compile(r"(^|[.!?]\s+)\{cmp\}")
 
 
-def fill(text: str, cmp: str | None) -> str:
-    """Fill the writer's code-owned phrase tokens: {cmp} with the comparison phrase (capitalised at a sentence start).
-    Runs after every check, so the filled words are code's, never the model's (brief-008 FR-014)."""
-    if not text or cmp is None:
+def fill(text: str, cmp: str | None, link: str | None = None) -> str:
+    """Fill the writer's code-owned phrase tokens: {cmp} with the comparison phrase (capitalised at a sentence
+    start) and {link} with the causal verb. Runs after every check, so the filled words are code's, never the
+    model's (brief-008 FR-014, FR-015)."""
+    if not text:
         return text
-    text = _CMP_AT_START.sub(lambda m: m.group(1) + cmp[:1].upper() + cmp[1:], text)
-    return text.replace(CMP, cmp)
+    if cmp is not None:
+        text = _CMP_AT_START.sub(lambda m: m.group(1) + cmp[:1].upper() + cmp[1:], text)
+        text = text.replace(CMP, cmp)
+    return text if link is None else text.replace(LINK, link)
 
 
 def sections_text(sections: dict, close: dict, stories: list[dict]) -> str:

@@ -28,7 +28,7 @@ Writing rules:
 - Comparison: {comparison} Use {{cmp}} only with a number whose glossary line says to name its comparison with {{cmp}}. For any other number, do not name a comparison. Write "last year" only with a token whose glossary states that exact comparison. Never describe a period in relative terms of your own.
 - Do not use the noisy small-cell figures to interpret a story.
 - Use only what the sections say. Do not add causes, numbers or advice that are not there.
-- Say "association" for promotion. Promotion is an association with the change, not its cause, unless the story's confidence is High. Words such as "because", "caused", "drove", "due to" and "explains" are allowed only for a story whose confidence is High. For any other story, write "is linked with", "moved with" or "fits".
+- Say "association" for promotion. When you link a driver to a move, use the token {{link}} as the verb, as in "Promotion {{link}} the fall". Code fills it with "drove" when the story's confidence is High and with "is linked with" otherwise. Never write "because", "caused", "due to", "explains" or any other causal word yourself. In the answer, {{link}} follows the same rule across the stories the answer names.
 - If the data health section withholds cuts or a restatement is listed, say so in the answer, in plain words.
 - Say "competitive intelligence", never "surveillance". Say "new patients" only for NBRx. Never name or number an individual rep, and write only about territories and the brand.
 
