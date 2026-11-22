@@ -289,6 +289,14 @@ def submit_survey(body: SurveyIn, response: Response, who=Depends(participant)) 
 
 # --- votes on one answer (User Story 5) -----------------------------------------------------------
 
+def _brief_scope(r: dict) -> dict:
+    """The brief's scope as feedback shows it; week_end only when the brief has one (a multi-week period)."""
+    scope = {k: r.get(k) for k in ("brand_id", "territory_id", "week_start", "question")}
+    if r.get("week_end"):
+        scope["week_end"] = r["week_end"]
+    return scope
+
+
 def _answer(p: rbac.Principal, lane: str, ref: str, view: str) -> dict:
     """What the participant was shown, if they may open this answer in this view; otherwise 404 (or 403 for a
     view their role does not hold), exactly as opening it would answer, so a vote never reveals that it exists."""
@@ -305,14 +313,14 @@ def _answer(p: rbac.Principal, lane: str, ref: str, view: str) -> dict:
         if shown is None:
             raise HTTPException(status_code=404, detail="No such follow-up.")
         r = record["result"]
-        return {"scope": {k: r.get(k) for k in ("brand_id", "territory_id", "week_start", "question")},
+        return {"scope": _brief_scope(r),
                 "engine": "scripted", "system": r.get("system"), "data_version": r.get("data_version"),
                 "review_status": record["review_status"], "shown": shown}
     if lane == "briefing":
         record = brand_access.brief_for(p, role, ref)
         r = record["result"]
         shown = r.get("answer") or ""
-        return {"scope": {k: r.get(k) for k in ("brand_id", "territory_id", "week_start", "question")},
+        return {"scope": _brief_scope(r),
                 "engine": r.get("engine"), "system": r.get("system"), "data_version": r.get("data_version"),
                 "review_status": record["review_status"],
                 "shown": views.executive_summary(shown, r.get("sections")) if view == "leadership" else shown}

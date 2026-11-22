@@ -384,6 +384,8 @@ def accept_result(job_id: str, ok: bool, result: dict | None, error: str | None)
             if plan.get("state") != "OUT_OF_SCOPE":
                 service._traceable(plan.get("claims", []), plan.get("evidence", []))
             plan.update(brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start.isoformat())
+            if query.week_end is not None:
+                plan["week_end"] = query.week_end.isoformat()
             _charge_cloud(jobs.complete(job_id, True, plan, None))
         else:
             brief = service.accept_agent_brief(query, result or {})
