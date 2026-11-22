@@ -232,7 +232,20 @@ def brief_words(outputs) -> Feedback:
     return Feedback(value=total, rationale=f"{total} words across {len(sections)} sections, excluding detail.")
 
 
-REPORT_ONLY = [key_fact_recall, finding_recall, false_drivers, brief_words]
+@scorer(name="must_say_recall",
+        description="Share of the case's must-say phrases the answer carries (core-011). Report only.")
+def must_say_recall(outputs, expectations) -> Feedback:
+    phrases = expectations.get("must_say") or []
+    if not phrases:
+        return _not_scored("the case has no must-say phrases")
+    text = _answer(outputs)
+    missing = [p for p in phrases if not any(contains_phrase(text, alt.strip()) for alt in p.split("|") if alt.strip())]
+    note = f"{len(phrases) - len(missing)} of {len(phrases)} must-say phrases"
+    return Feedback(value=round(1 - len(missing) / len(phrases), 4),
+                    rationale=note + (f"; missing: {'; '.join(missing)}" if missing else "."))
+
+
+REPORT_ONLY = [key_fact_recall, finding_recall, false_drivers, brief_words, must_say_recall]
 
 
 def _claims(outputs):

@@ -166,3 +166,12 @@ def test_pooled_share_counts_facts_across_cases_and_skips_unanswered_ones():
 def test_a_story_the_case_does_not_mention_adds_no_false_driver():
     out = memo(card("SOUTHEAST", "down", ["promotion"], ["access"]), card("PACIFIC", "down", ["supply"]))
     assert false_drivers(outputs=out, expectations=expect(SOUTHEAST)).value == 0
+
+
+def test_must_say_counts_phrases_with_alternatives_and_skips_cases_without_any():
+    from eval.harness.scorers import must_say_recall
+    out = text("Confidence: Medium. Re-read: re-run this brief four weeks after any change. There is no spend data.")
+    fb = must_say_recall(outputs=out, expectations={"must_say": ["Medium", "four weeks after any change", "rank channels|price a dollar"]})
+    assert fb.value == 0.6667 and "rank channels" in fb.rationale
+    assert must_say_recall(outputs=out, expectations={"must_say": ["no spend data|spend figures"]}).value == 1.0
+    assert must_say_recall(outputs=out, expectations={"must_say": []}).value is None
