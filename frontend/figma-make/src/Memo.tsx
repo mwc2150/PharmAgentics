@@ -328,7 +328,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
       <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{s.title}</h3>
     {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-agentdeep hover:underline">Ask about this</button>}
   </div>
-  return <div className="pa-memo space-y-7">
+  return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>
     {sections.filter(s => !s.number.includes(".")).map(s => {
       const children = sections.filter(c => c.number.startsWith(`${s.number}.`))
       return <section key={s.number} aria-labelledby={`memo-${briefId}-${s.number}`}>

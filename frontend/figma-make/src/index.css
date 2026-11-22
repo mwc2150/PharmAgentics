@@ -191,7 +191,12 @@
   .pa-memo dl > div { padding: 0.4rem 0.5rem !important; }
   .pa-memo dl dd:not(.pa-kpi-value) { font-size: 8.5pt !important; }
   .pa-memo .pa-card { padding: 0.75rem !important; margin-top: 0.4rem !important; }
-  .pa-memo figure > :not(figcaption):not(p) { display: none !important; }  /* the drawings stay on screen; on paper the caption and the sentence under each chart carry the numbers (two A4 pages) */
+  /* On paper the leader's memo keeps each chart as a small drawing (legend and second panel stay on screen); the
+     analyst's longer memo prints the caption and the sentence under each chart, which carry the numbers. Both fit two
+     A4 pages on the anchor briefs (brief-008 SC-002). */
+  .pa-memo figure > :not(figcaption):not(p):not(svg) { display: none !important; }
+  .pa-memo[data-view="leader"] figure > svg { display: block; height: 22mm !important; width: auto !important; max-width: 100%; }
+  .pa-memo[data-view="analyst"] figure > svg { display: none !important; }
   .pa-memo table { font-size: 9.5pt; }
   .pa-memo svg { max-width: 100%; }
   .pa-cite { text-decoration: none; }
