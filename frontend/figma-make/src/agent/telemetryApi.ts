@@ -6,7 +6,20 @@ export type TelemetryRun = {
   control: boolean; cases: number; reruns: number; judge: string; code_version: string; data_version: string
   metrics: Record<string, number>; judge_metrics: Record<string, number>
 }
-export type Telemetry = { exported: string | null; note: string; latest: TelemetryRun[]; runs: TelemetryRun[] }
+// Per-case table (core-011 FR-009): ids, labels, scores and marks only. The server sends it to analysts and the test login.
+export type CaseRow = {
+  case: string; story: string; persona: string
+  scores: Record<string, number | null>; stuck: string[]
+  fallen: { scorer: string; previous: number; latest: number }[]
+}
+export type CaseTable = {
+  system: string; lane: string; control: boolean; run_id: string; started: string; golden_version: string | null
+  scorers: string[]; report_only: string[]; rows: CaseRow[]
+}
+export type Telemetry = {
+  exported: string | null; note: string; latest: TelemetryRun[]; runs: TelemetryRun[]
+  cases?: { generated: string | null; systems: CaseTable[] }
+}
 
 export type Spread = { n: number; p50: number | null; p95: number | null } | null
 export type LaneUsage = {

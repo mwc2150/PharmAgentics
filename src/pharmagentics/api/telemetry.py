@@ -69,11 +69,24 @@ def snapshot() -> dict:
     return _cached("eval", _read_snapshot)
 
 
-def for_lanes(snap: dict, lanes: set[str]) -> dict:
+def for_lanes(snap: dict, lanes: set[str], case_lanes: set[str] | None = None) -> dict:
+    """The snapshot for a signed-in user. The per-case `cases` block goes only to `case_lanes` (analysts and the
+    test login, core-011 FR-009); everyone else gets the response without it."""
     def keep(r: dict) -> bool:
         return r.get("lane") in lanes or r.get("lane") == "all"
-    return {**snap, "latest": [r for r in snap.get("latest", []) if keep(r)],
-            "runs": [r for r in snap.get("runs", []) if keep(r)]}
+    out = {k: v for k, v in snap.items() if k != "cases"}
+    out |= {"latest": [r for r in snap.get("latest", []) if keep(r)], "runs": [r for r in snap.get("runs", []) if keep(r)]}
+    cases = snap.get("cases")
+    if case_lanes and isinstance(cases, dict):
+        out["cases"] = {**cases, "systems": [s for s in cases.get("systems", []) if s.get("lane") in case_lanes]}
+    return out
+
+
+def case_lanes(p: rbac.Principal) -> set[str]:
+    """Lanes whose per-case table the user may see: where they hold the analyst view, and every lane for the test login."""
+    if p.is_tester:
+        return {r.lane for r in p.lanes}
+    return {r.lane for r in p.lanes if rbac.ANALYST in r.views}
 
 
 def _percentile(values: list[float], q: float) -> float | None:
@@ -174,7 +187,7 @@ def _signed_in(p: rbac.Principal) -> set[str]:
 def telemetry(response: Response, p: rbac.Principal = Depends(rbac.require_user)) -> dict:
     lanes = _signed_in(p)
     response.headers["Cache-Control"] = "no-store"
-    return for_lanes(snapshot(), lanes)
+    return for_lanes(snapshot(), lanes, case_lanes(p))
 
 
 @router.get("/telemetry/usage")
