@@ -1,12 +1,15 @@
 import type { Comparison } from "./agent/briefingApi"
 
-// brief-008 FR-007: "Compare with the previous N weeks" (1 to 13, default 4) is the main choice. The brief-007
-// choices, the same weeks last year and custom dates, sit under "Other comparison".
-export const DEFAULT_COMPARISON: Comparison = { kind: "previous", weeks: 4 }
+// brief-008 FR-007: "Compare with the previous N weeks" (1 to 13) is the main choice. The brief-007 choices, the
+// same weeks last year and custom dates, sit under "Other comparison".
+// The default is no choice at all: the form sends no comparison (null) and the server applies its own rule (the
+// four weeks before the period, shortened where the release starts; the materiality screen uses as many preceding
+// weeks as a longer period has). The same rule runs in the eval, so a brief made here matches what is scored.
+export const DEFAULT_COMPARISON_WEEKS = 4
 
 type Props = {
-  value: Comparison
-  onChange: (value: Comparison) => void
+  value: Comparison | null   // null: the default comparison
+  onChange: (value: Comparison | null) => void
   period: string[]   // the reporting weeks, first to last
   weeks: string[]    // every week of the release
   disabled: boolean
@@ -21,12 +24,18 @@ function shiftWeek(week: string, count: number): string {
   return date.toISOString().slice(0, 10)
 }
 
+/** How many release weeks come before the period starts. */
+export function earlierWeekCount(period: string[], weeks: string[]): number {
+  return period[0] ? weeks.filter(w => w < period[0]).length : 0
+}
+
 export function comparisonError(value: Comparison | null, period: string[], weeks: string[]): string | null {
-  if (value === null) return null
+  if (value === null) return null  // the default is always allowed: the server shortens it to the weeks that exist
   const available = new Set(weeks)
   const first = period[0]
   if (value.kind === "previous") {
     if (!Number.isInteger(value.weeks) || value.weeks < 1 || value.weeks > 13) return "Enter a whole number of weeks from 1 to 13."
+    if (first && earlierWeekCount(period, weeks) === 0) return "There are no earlier weeks in the release to compare with. Clear the number to use the default."
     if (first && !Array.from({ length: value.weeks }, (_, i) => shiftWeek(first, -1 - i)).every(w => available.has(w))) {
       return "The release has fewer earlier weeks than that. Choose fewer weeks."
     }
@@ -46,7 +55,8 @@ export function comparisonError(value: Comparison | null, period: string[], week
 export function ComparisonPicker({ value, onChange, period, weeks, disabled, labelWeek }: Props) {
   const earlier = weeks.filter(w => !period[0] || w < period[0])
   const error = comparisonError(value, period, weeks)
-  const other = value.kind !== "previous"
+  const other = value !== null && value.kind !== "previous"
+  const earlierCount = earlierWeekCount(period, weeks)
 
   return <fieldset className="space-y-3" disabled={disabled}>
     <legend className="sr-only">Comparison</legend>
@@ -54,30 +64,33 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
       <label className="flex flex-wrap items-center gap-2 text-sm text-ink">
         <span>Compare with the previous</span>
         <input type="number" inputMode="numeric" min={1} max={13} step={1} className={`${field} !w-20 tabular-nums`}
-          value={value.kind === "previous" && Number.isFinite(value.weeks) ? value.weeks : ""}
-          aria-invalid={!!error && value.kind === "previous"} aria-describedby={error ? "comparison-error" : undefined}
-          onChange={event => onChange({ kind: "previous", weeks: event.target.value === "" ? Number.NaN : Number(event.target.value) })}/>
+          value={value?.kind === "previous" && Number.isFinite(value.weeks) ? value.weeks : ""} placeholder="Default"
+          aria-invalid={!!error && value?.kind === "previous"} aria-describedby={error ? "comparison-error" : "comparison-default"}
+          onChange={event => onChange(event.target.value === "" ? null : { kind: "previous", weeks: Number(event.target.value) })}/>
         <span>weeks</span>
       </label>
+      {value === null && <p id="comparison-default" className="text-xs text-muted">{earlierCount === 0 && period.length
+        ? "There are no earlier weeks in the release to compare with. The briefing runs without a comparison period."
+        : `Default: the ${DEFAULT_COMPARISON_WEEKS} weeks before the period, or fewer where the release starts later. A longer period is screened against as many preceding weeks as it has.`}</p>}
       {other && <p className="text-xs text-muted">Using {value.kind === "last_year" ? "the same weeks last year" : "custom weeks"} instead.
-        {" "}<button type="button" className="underline" onClick={() => onChange(DEFAULT_COMPARISON)}>Use the previous 4 weeks</button></p>}
+        {" "}<button type="button" className="underline" onClick={() => onChange(null)}>Use the default comparison</button></p>}
     </div>
     <details className="text-xs text-muted" open={other}>
       <summary className="cursor-pointer select-none">Other comparison</summary>
       <div className="mt-2 space-y-2">
         <label className="block space-y-1 text-xs font-medium text-muted">Compare with
-          <select className={field} value={value.kind} onChange={event => {
+          <select className={field} value={value?.kind ?? "previous"} onChange={event => {
             const kind = event.target.value
             if (kind === "last_year") onChange({ kind })
             else if (kind === "custom") onChange({ kind, start: "", end: "" })
-            else onChange(DEFAULT_COMPARISON)
+            else onChange(null)
           }}>
-            <option value="previous">The previous weeks, set above</option>
+            <option value="previous">The previous weeks, set above (default)</option>
             <option value="last_year">The same weeks last year</option>
             <option value="custom">Custom weeks</option>
           </select>
         </label>
-        {value.kind === "custom" && <div className="grid gap-2 sm:grid-cols-2">
+        {value?.kind === "custom" && <div className="grid gap-2 sm:grid-cols-2">
           <label className="block text-xs text-muted">Start week
             <select className={field} value={value.start} onChange={event => onChange({ ...value, start: event.target.value })}>
               <option value="">Select a week</option>

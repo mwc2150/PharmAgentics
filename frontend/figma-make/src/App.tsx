@@ -5,7 +5,7 @@ import { TelemetryWorkspace } from "./Telemetry"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
 import { Memo } from "./Memo"
-import { ComparisonPicker, DEFAULT_COMPARISON, comparisonError } from "./ComparisonPicker"
+import { ComparisonPicker, comparisonError } from "./ComparisonPicker"
 import { PeriodPicker, QuestionReader, periodError, periodWeeks } from "./BriefingScope"
 import { FeedbackReview } from "./FeedbackReview"
 import { MessageBar, type Chip } from "./MessageBar"
@@ -877,7 +877,7 @@ function AnalystApp({me}: {me: Me}) {
   const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,weekEnd:string,promotion:boolean,question:string,
     comparison:Comparison | null} | null>(null)
   const [promotion,setPromotion] = useState(false)
-  const [comparison,setComparison] = useState<Comparison>(DEFAULT_COMPARISON)
+  const [comparison,setComparison] = useState<Comparison | null>(null)  // null: the server's default comparison, the one the eval scores
   const reviewPromotion = brand === "BXA" && promotion
   const releaseWeeks = context?.available_weeks ?? []
   const invalidPeriod = reviewPromotion ? null : periodError(week, weekEnd, releaseWeeks)
@@ -904,7 +904,7 @@ function AnalystApp({me}: {me: Me}) {
     setEngine(e=>supported.includes(e) ? e : "scripted")
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
     setTriageJob(null); setJobNote(null); setJobState(null); setPending(false)
-    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(DEFAULT_COMPARISON)
+    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(null)
     setView(v=>v==="triage" || v==="result" ? "home" : v)
   }
 
@@ -1046,7 +1046,7 @@ function AnalystApp({me}: {me: Me}) {
     </div>}
     {brand && view!=="approved" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
-      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparison(o.comparison ?? DEFAULT_COMPARISON); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
+      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparison(o.comparison ?? null); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
 }
 

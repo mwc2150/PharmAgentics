@@ -225,7 +225,7 @@ export type BriefingScope = {
   week_start: string
   week_end: string
   territory_id: string | null  // null: the question names no territory, so the form keeps its choice
-  comparison_weeks: number
+  comparison_weeks: number | null  // null: no earlier week fits, so the default comparison applies
   promotion_review: boolean
   notes: string[]
   read_by: "model" | "rules"
@@ -354,7 +354,7 @@ function checkPlan(v: unknown): TriagePlan {
 export async function readBriefingScope(req: { question: string; brand_id: string }): Promise<BriefingScope> {
   const v: unknown = await api("/api/briefing/scope", post(req))
   expectObject(v)
-  if (typeof v.week_start !== "string" || typeof v.week_end !== "string" || typeof v.comparison_weeks !== "number" ||
+  if (typeof v.week_start !== "string" || typeof v.week_end !== "string" || (v.comparison_weeks !== null && typeof v.comparison_weeks !== "number") ||
       typeof v.promotion_review !== "boolean" || (v.read_by !== "model" && v.read_by !== "rules") || !Array.isArray(v.notes)) {
     throw new Error("The question could not be read. Set the scope by hand.")
   }
