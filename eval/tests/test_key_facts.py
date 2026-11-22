@@ -130,7 +130,7 @@ def test_brief_words_is_not_scored_without_sections():
 # registration and existing golden files
 
 def test_new_scorers_are_report_only():
-    assert {s.name for s in REPORT_ONLY} == {"key_fact_recall", "finding_recall", "false_drivers", "brief_words"}
+    assert {s.name for s in REPORT_ONLY} == {"key_fact_recall", "finding_recall", "false_drivers", "brief_words", "must_say_recall"}
     assert not set(scorer_module.GATED) & {s.name for s in REPORT_ONLY}
     assert not {s.name for s in scorer_module.DETERMINISTIC} & {s.name for s in REPORT_ONLY}
 
