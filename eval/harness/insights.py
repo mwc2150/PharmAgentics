@@ -86,7 +86,8 @@ def _read_store(path: Path) -> list[dict]:
             return c.execute(sql, args).fetchall()
 
         runs = {rid: (name, start) for rid, name, start in
-                rows("select run_uuid, name, start_time from runs where lifecycle_stage = 'active'")}
+                rows("select run_uuid, name, start_time from runs "
+                     "where lifecycle_stage = 'active' and status = 'FINISHED'")}  # a run still going is not the latest
         params = defaultdict(dict)
         for rid, key, value in rows("select run_uuid, key, value from params where key in (?,?,?,?,?)", PARAM_KEYS):
             params[rid][key] = value

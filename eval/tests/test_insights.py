@@ -11,7 +11,7 @@ Q_BRIEF = "Week of 2026-06-08 in Pacific: Brief me on Pacific this week."
 PAIRS = [("C-1", Q_DOLLAR), ("C-2", Q_CONF), ("C-3", Q_BRIEF)]
 
 SCHEMA = """
-create table runs (run_uuid text, name text, start_time integer, lifecycle_stage text);
+create table runs (run_uuid text, name text, start_time integer, lifecycle_stage text, status text default 'FINISHED');
 create table params (key text, value text, run_uuid text);
 create table tags (key text, value text, run_uuid text);
 create table trace_info (request_id text, request_preview text);
@@ -30,11 +30,11 @@ def _store(path, parents):
     con.executescript(SCHEMA)
     n = 0
     for run_id, (system, golden, start, traces) in parents.items():
-        con.execute("insert into runs values (?,?,?,?)", (run_id, "name", start, "active"))
+        con.execute("insert into runs (run_uuid, name, start_time, lifecycle_stage) values (?,?,?,?)", (run_id, "name", start, "active"))
         con.execute("insert into params values ('system', ?, ?)", (system, run_id))
         con.execute("insert into params values ('golden_version', ?, ?)", (golden, run_id))
         child = f"child-{run_id}"
-        con.execute("insert into runs values (?,?,?,?)", (child, "child", start, "active"))
+        con.execute("insert into runs (run_uuid, name, start_time, lifecycle_stage) values (?,?,?,?)", (child, "child", start, "active"))
         con.execute("insert into tags values ('mlflow.parentRunId', ?, ?)", (run_id, child))
         for question, scores in traces:
             n += 1
@@ -129,3 +129,15 @@ def test_store_is_opened_read_only(stores):
     with pytest.raises(sqlite3.OperationalError):
         con.execute("insert into runs values ('x','x',0,'active')")
     con.close()
+
+
+def test_a_run_still_going_is_left_out(tmp_path):
+    path = tmp_path / "running.db"
+    _store(str(path), {"P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"golden_number_recall": "1.0"})]),
+                       "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"golden_number_recall": "0.0"})])})
+    con = sqlite3.connect(str(path))
+    con.execute("update runs set status = 'RUNNING' where run_uuid in ('P2', 'child-P2')")
+    con.commit()
+    con.close()
+    out = build([path], PAIRS)
+    assert [r["run_id"] for r in out["systems"]["briefing_scripted"]["runs"]] == ["P1"]
