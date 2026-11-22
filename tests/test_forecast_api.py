@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from pharmagentics.api import forecast, service
+from pharmagentics.api import forecast, forecast_store, service
 from pharmagentics.api.app import app
 
 CLIENT = TestClient(app)
@@ -22,6 +22,7 @@ def _dev_auth(monkeypatch, tmp_path):
     monkeypatch.setenv("PHARMAGENTICS_STATE_DIR", str(tmp_path))
     monkeypatch.delenv("FEAGENT_MODE", raising=False)
     monkeypatch.setenv("FEAGENT_WRITER", "off")  # no model call in these tests; the writer has its own tests
+    monkeypatch.setenv("FORECAST_AGENT_MODEL", "rules")  # never the local Qwen, even when Ollama is running
     CLIENT.cookies.clear()
 
 
@@ -198,7 +199,8 @@ def test_a_question_runs_in_the_background_and_leaders_see_no_trace(monkeypatch)
     done = _wait(started["forecast_run_id"])
     assert done["job_status"] == "done" and done["report"]["variance_trx"] == -1036
     assert done["report"]["decisions"] and done["report"]["comparisons"]
-    assert CLIENT.post(f"/api/forecast/runs/{started['forecast_run_id']}/submit").json()["review_status"] == "pending_review"
+    assert CLIENT.post(f"/api/forecast/runs/{started['forecast_run_id']}/submit").status_code == 409  # submitted via its report
+    forecast_store.update(started["forecast_run_id"], review_status="pending_review")  # as a leader would see a shared run
     sign_in("dev-forecast-manager")
     lead = CLIENT.get(f"/api/forecast/runs/{started['forecast_run_id']}").json()
     assert lead["view"] == "leadership" and "progress" not in lead
@@ -260,3 +262,110 @@ def test_the_scope_card_says_who_read_it_and_the_confirmed_intent_is_used(monkey
     report = _wait(started["forecast_run_id"])["report"]
     assert report["intent"] == "attribution" and report["scope_read_by"] == "confirmed"
     assert CLIENT.post("/api/forecast/ask", json={"question": "Week of 2026-08-24", "intent": "guess"}).status_code == 422
+
+
+def test_a_report_is_drafted_from_the_runs_pins_and_follows_them(monkeypatch):
+    import time
+
+    monkeypatch.setenv("FORECAST_AGENT_MODEL", "rules")
+    sign_in("dev-forecast-analyst")
+    a = CLIENT.post("/api/forecast/ask", json={"question": "Week of 2026-08-24: How much of the miss does each driver explain?"}).json()["forecast_run_id"]
+    _wait(a)
+    CLIENT.post(f"/api/forecast/runs/{a}/followups", json={"question": "Show it week by week"})
+    for _ in range(100):
+        if CLIENT.get(f"/api/forecast/runs/{a}").json()["followups"][0]["status"] != "running":
+            break
+        time.sleep(0.1)
+
+    def settled(rid):
+        for _ in range(100):
+            body = CLIENT.get(f"/api/forecast/reports/{rid}").json()
+            if body["job"]["status"] != "drafting":
+                return body
+            time.sleep(0.1)
+        raise AssertionError("the draft did not finish")
+
+    rid = CLIENT.post("/api/forecast/reports", json={"run_id": a}).json()["id"]
+    first = settled(rid)
+    assert [f["kind"] for f in first["findings"]] == ["run"] and first["version"] == 1 and not first["stale"]
+    assert CLIENT.post("/api/forecast/reports", json={"run_id": a}).json()["id"] == rid  # one open report per run
+    assert CLIENT.get(f"/api/forecast/runs/{a}").json()["report_id"] == rid
+
+    assert CLIENT.post(f"/api/forecast/runs/{a}/pins/q1").json()["pins"] == ["q1"]  # pinned on the run page
+    changed = CLIENT.get(f"/api/forecast/reports/{rid}").json()
+    assert changed["stale"] and [f["kind"] for f in changed["findings"]] == ["run", "weekly"]
+    assert CLIENT.post(f"/api/forecast/reports/{rid}/submit").status_code == 409  # not drafted from the pins yet
+    CLIENT.post(f"/api/forecast/reports/{rid}/draft", json={})
+    second = settled(rid)
+    assert second["version"] == 2 and not second["stale"] and any(k.endswith(" weekly") for k in second["charts"])
+    assert second["kpis"] and "Executive summary" in [s["title"] for s in second["sections"]]
+
+    CLIENT.delete(f"/api/forecast/runs/{a}/pins/q1")
+    CLIENT.post(f"/api/forecast/reports/{rid}/draft", json={})
+    third = settled(rid)
+    assert not any(k.endswith(" weekly") and k.startswith("F2") for k in third["charts"])
+    assert CLIENT.post(f"/api/forecast/reports/{rid}/draft", json={"instruction": "shorter"}).status_code == 409  # no model
+    assert CLIENT.post(f"/api/forecast/reports/{rid}/submit").json()["review_status"] == "pending_review"
+    assert CLIENT.post(f"/api/forecast/reports/{rid}/draft", json={}).status_code == 409  # locked once submitted
+
+    sign_in("dev-forecast-manager")
+    lead = CLIENT.get(f"/api/forecast/reports/{rid}").json()
+    assert "findings" not in lead and "versions" not in lead and "history" not in lead and lead["sections"]
+    assert CLIENT.post(f"/api/forecast/reports/{rid}/review", json={"decision": "returned"}).status_code == 422
+    assert CLIENT.post(f"/api/forecast/reports/{rid}/review", json={"decision": "approved"}).json()["review_status"] == "approved"
+    assert CLIENT.post("/api/forecast/reports", json={"run_id": a}).status_code == 403
+    assert CLIENT.post(f"/api/forecast/runs/{a}/pins/q1").status_code == 403
+
+def test_chart_follow_ups_and_leaders_see_chart_data_without_evidence_ids(monkeypatch):
+    import time
+
+    monkeypatch.setenv("FORECAST_AGENT_MODEL", "rules")
+    sign_in("dev-forecast-analyst")
+    rid = CLIENT.post("/api/forecast/ask", json={"question": "Mar to Oct 2026: Should any forecast assumptions be reviewed?"}).json()["forecast_run_id"]
+    _wait(rid)
+    for q in ("Plot it by week", "Plot it by quarter of the moon"):
+        CLIENT.post(f"/api/forecast/runs/{rid}/followups", json={"question": q})
+    for _ in range(100):
+        body = CLIENT.get(f"/api/forecast/runs/{rid}").json()
+        if all(f["status"] != "running" for f in body["followups"]):
+            break
+        time.sleep(0.1)
+    weekly, other = body["followups"]
+    assert weekly["op"] == "chart" and weekly["chart"]["id"] == "weekly" and weekly["chart"]["rows"]
+    assert other["op"] == "chart"
+    forecast_store.update(rid, review_status="pending_review")
+    sign_in("dev-forecast-manager")
+    lead = CLIENT.get(f"/api/forecast/runs/{rid}").json()["report"]
+    assert lead["charts_shown"] == ["trend"] and set(lead["charts"]) == {"trend"}
+    assert "evidence" not in lead["charts"]["trend"]
+
+
+def test_a_split_follow_up_locates_the_gap_and_can_be_pinned(monkeypatch):
+    import time
+
+    monkeypatch.setenv("FORECAST_AGENT_MODEL", "rules")
+    sign_in("dev-forecast-analyst")
+    rid = CLIENT.post("/api/forecast/ask", json={"question": "Weeks of 2026-08-31 to 2026-09-28: Where is the miss concentrated?"}).json()["forecast_run_id"]
+    _wait(rid)
+    CLIENT.post(f"/api/forecast/runs/{rid}/followups", json={"question": "Split the South Central gap by plan and specialty"})
+    for _ in range(100):
+        f = CLIENT.get(f"/api/forecast/runs/{rid}").json()["followups"][0]
+        if f["status"] != "running":
+            break
+        time.sleep(0.1)
+    assert f["op"] == "drill" and "concentrated in Commercial" in f["answer"] and f["chart"]["rows"]
+    CLIENT.post(f"/api/forecast/runs/{rid}/pins/{f['id']}")
+    rep = CLIENT.post("/api/forecast/reports", json={"run_id": rid}).json()["id"]
+    assert [x["kind"] for x in CLIENT.get(f"/api/forecast/reports/{rep}").json()["findings"]] == ["run", "drill"]
+
+
+def test_the_forecast_model_is_local_qwen_unless_named(monkeypatch):
+    monkeypatch.delenv("FORECAST_AGENT_MODEL", raising=False)
+    monkeypatch.setenv("PHARMAGENTICS_AGENT_MODEL", "anthropic:claude-haiku-5-5")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "not-a-real-key")
+    monkeypatch.setattr(forecast, "_ollama_up", lambda: True)
+    assert forecast.question_model() == "ollama:qwen3:4b-instruct-2507-q4_K_M"  # a key alone never switches the model
+    monkeypatch.setattr(forecast, "_ollama_up", lambda: False)
+    assert forecast.question_model() is None  # no local model: code only
+    monkeypatch.setenv("FORECAST_AGENT_MODEL", "anthropic:claude-haiku-5-5")
+    assert forecast.question_model() == "anthropic:claude-haiku-5-5"  # only when named

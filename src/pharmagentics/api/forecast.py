@@ -107,23 +107,53 @@ def _agent():
     return forecast_agent
 
 
+DEFAULT_LOCAL_MODEL = "qwen3:4b-instruct-2507-q4_K_M"
+_OLLAMA_SEEN: dict = {"at": 0.0, "up": False}
+
+
+def _ollama_up() -> bool:
+    """Whether a local Ollama answers at OLLAMA_HOST (cached for a minute, so a request never waits on it)."""
+    import time
+    import urllib.request
+
+    if time.time() - _OLLAMA_SEEN["at"] < 60:
+        return _OLLAMA_SEEN["up"]
+    host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+    host = host if host.startswith("http") else "http://" + host
+    try:
+        with urllib.request.urlopen(host.rstrip("/") + "/api/tags", timeout=1.5) as r:
+            up = r.status == 200
+    except Exception:  # noqa: BLE001 - no local model server
+        up = False
+    _OLLAMA_SEEN.update(at=time.time(), up=up)
+    return up
+
+
 def question_model() -> str | None:
-    """The model the Forecast investigator uses, or None for the rules policy. FORECAST_AGENT_MODEL wins
-    (`rules` forces the rules); otherwise the hosted app's Anthropic model when its key is set."""
+    """The language model for the Forecast lane (reading questions, wording, charts, follow-ups, reports), or None for
+    code only. FORECAST_AGENT_MODEL wins (`rules` means none). Otherwise local Qwen 3 4B on Ollama (OLLAMA_MODEL) when
+    Ollama answers: the team's one model until the designs are set. A hosted model (e.g. Haiku) is used only when
+    FORECAST_AGENT_MODEL names it, so a key in the environment never switches the model by itself."""
     from pharmagentics.llm import load_env
 
     load_env()
     spec = os.environ.get("FORECAST_AGENT_MODEL", "").strip()
     if spec:
         return None if spec in ("rules", "none") else spec
-    hosted = os.environ.get("PHARMAGENTICS_AGENT_MODEL", "")
-    return hosted if hosted.startswith("anthropic:") and os.environ.get("ANTHROPIC_API_KEY") else None
+    if _ollama_up():
+        return "ollama:" + (os.environ.get("OLLAMA_MODEL") or DEFAULT_LOCAL_MODEL)
+    return None
 
 
 def investigator_mode() -> str:
     """Who investigates (step 6): the rules by default; FORECAST_INVESTIGATOR=model makes the model the investigator
     (the comparison arm, for trials only)."""
     return "model" if os.environ.get("FORECAST_INVESTIGATOR", "rules").strip() == "model" and question_model() else "rules"
+
+
+def drill_mode() -> str:
+    """Who splits an unexplained gap: the rules by default; FORECAST_DRILL=model lets the model pick the splits."""
+    return "model" if os.environ.get("FORECAST_DRILL", "rules").strip() == "model" and question_model() else "rules"
 
 
 def _weeks(ask: ForecastAsk) -> list[str] | None:
@@ -192,7 +222,7 @@ def _investigate(rid: str, ask: ForecastAsk, weeks: list[str] | None, model: str
 
     try:
         out = agent.answer(ask.question, model=model, db=service.DB, territory=ask.territory_id, weeks=weeks, on_step=on_step,
-                           intent=ask.intent, investigator=investigator_mode())
+                           intent=ask.intent, investigator=investigator_mode(), drill=drill_mode())
         forecast_store.update(rid, result=_result(rid, out, model), job_status="done", progress=list(steps))
     except Exception as exc:  # noqa: BLE001 - the run records the failure; the request has already returned
         log.exception("forecast question failed")
@@ -247,6 +277,7 @@ def drivers(response: Response, who=Forecast) -> dict:
 
 
 _FOLLOWUP_LOCK = threading.Lock()  # follow-ups on one run append to the same JSON document
+TERRITORY_IDS = {"NEW_ENGLAND", "MID_ATLANTIC", "GREAT_LAKES", "SOUTHEAST", "SOUTH_CENTRAL", "MOUNTAIN", "PACIFIC", "NORTHWEST"}
 
 
 def _set_followup(rid: str, fid: str, **fields) -> None:
@@ -281,7 +312,7 @@ def _run_followup(rid: str, fid: str, question: str, model: str | None, by: str)
                                            week_to=date.fromisoformat(weeks[-1])))
             drop = sorted(set(plan.get("drop_controls") or []))
             out = agent.answer(report["question"], model=model, db=service.DB, territory=territory, weeks=weeks,
-                               drop_controls=drop, intent=report.get("intent"), investigator=investigator_mode())
+                               drop_controls=drop, intent=report.get("intent"), investigator=investigator_mode(), drill=drill_mode())
             child_q = report["question"] + f" [follow-up: {question}]"
             cid = forecast_store.question_id(child_q, territory, weeks, model or "rules", "followup")
             forecast_store.start_question(cid, {"question": child_q, "territory_id": territory,
@@ -290,16 +321,64 @@ def _run_followup(rid: str, fid: str, question: str, model: str | None, by: str)
             child = out.get("report") or {}
             text = child.get("summary") or child.get("headline") or out["answer"].split("\n")[0]
             _set_followup(rid, fid, status="done", op="rerun", answer=text, child_run_id=cid)
+        elif op == "drill":
+            terr = plan.get("territory")
+            out = followup.drill(report, terr if terr in TERRITORY_IDS else None,
+                                 model if drill_mode() == "model" else None, db=service.DB)
+            _set_followup(rid, fid, status="done", op="drill", answer=out["answer"], chart=out.get("chart"),
+                          splits=out.get("splits"), territory=out.get("territory"))
+        elif op == "chart":
+            kind = plan.get("kind")
+            spec = (report.get("charts") or {}).get(kind) if kind else None
+            if spec:
+                _set_followup(rid, fid, status="done", op="chart", answer=f"Chart: {spec['title']}.", chart={"id": kind, **spec})
+            else:
+                offered = ", ".join(report.get("charts") or {}) or "none"
+                _set_followup(rid, fid, status="done", op="help",
+                              answer=f"That chart is not available for this answer. Charts it offers: {offered}.")
         elif op == "explain":
             _set_followup(rid, fid, status="done", op="explain", answer=followup.explain(plan.get("topic") or question, report))
         elif op == "weekly":
             out = followup.weekly(report, db=service.DB)
-            _set_followup(rid, fid, status="done", op="weekly", answer=out["answer"], evidence=len(out["evidence"]))
+            _set_followup(rid, fid, status="done", op="weekly", answer=out["answer"], evidence=len(out["evidence"]),
+                          table=out["table"])
         else:
             _set_followup(rid, fid, status="done", op="help", answer=followup.HELP)
     except Exception as exc:  # noqa: BLE001 - recorded on the follow-up; the request has already returned
         log.exception("forecast follow-up failed")
         _set_followup(rid, fid, status="failed", answer=f"The follow-up failed: {type(exc).__name__}.")
+
+
+PINNABLE = {"rerun", "weekly", "explain", "chart", "drill"}
+
+
+@router.post("/runs/{run_id}/pins/{followup_id}")
+def pin_followup(run_id: str, followup_id: str, response: Response, who=Forecast) -> dict:
+    """Pin a follow-up for the run's report (the investigation itself is always included)."""
+    _no_store(response)
+    _p, role = who
+    rbac.allow(role, "run")
+    with _FOLLOWUP_LOCK:
+        record = _record(run_id)
+        f = next((x for x in record.get("followups", []) if x["id"] == followup_id), None)
+        if f is None or f["status"] != "done" or f.get("op") not in PINNABLE:
+            raise HTTPException(status_code=409, detail="Only a finished follow-up with content can be pinned.")
+        pins = record.get("pins", [])
+        if followup_id not in pins:
+            pins.append(followup_id)
+        record = forecast_store.update(run_id, pins=pins)
+    return views.forecast_record(record, rbac.view_for(role, "analyst"))
+
+
+@router.delete("/runs/{run_id}/pins/{followup_id}")
+def unpin_followup(run_id: str, followup_id: str, response: Response, who=Forecast) -> dict:
+    _no_store(response)
+    _p, role = who
+    rbac.allow(role, "run")
+    with _FOLLOWUP_LOCK:
+        record = _record(run_id)
+        record = forecast_store.update(run_id, pins=[x for x in record.get("pins", []) if x != followup_id])
+    return views.forecast_record(record, rbac.view_for(role, "analyst"))
 
 
 @router.post("/runs/{run_id}/followups")
@@ -460,7 +539,8 @@ def submit(run_id: str, response: Response, who=Forecast) -> dict:
     _no_store(response)
     p, role = who
     rbac.allow(role, "run")
-    _record(run_id)
+    if _record(run_id).get("kind") == "question":
+        raise HTTPException(status_code=409, detail="A question is submitted through its report: create the report and submit that.")
     try:
         record = forecast_store.submit(run_id, rbac.pseudonym(p.sub), role.name)
     except ValueError as exc:
@@ -485,3 +565,10 @@ def review(run_id: str, decision: ForecastReview, response: Response, who=Foreca
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     store.record_event("forecast_reviewed", **_who(p, role), forecast_run_id=run_id, decision=decision.decision, note=decision.note)
     return views.forecast_record(record, rbac.view_for(role, None))
+
+
+# Reports: pinned findings drafted into one reviewed report (fcst-002).
+from . import forecast_reports  # noqa: E402
+
+forecast_reports.routes(Forecast)
+router.include_router(forecast_reports.router)

@@ -155,7 +155,7 @@ def test_candidates_a_model_leaves_open_are_decided_by_the_rules_and_labelled(mo
 
     monkeypatch.setattr(agent, "Agent", Silent)
     monkeypatch.setattr(agent, "chat_client", lambda spec: None)
-    monkeypatch.setattr(agent, "chat_options", lambda spec: {})
+    monkeypatch.setattr(agent, "options", lambda spec, *a: {})
     out = answer("Week of 2026-08-24: How much of the miss does each driver explain?", model="ollama:none",
                  investigator="model")
     assert out["trajectory"]["left_undecided"] == 2 and not out["trajectory"]["fallback"]
@@ -209,3 +209,185 @@ def test_the_summary_check_refuses_what_a_model_must_not_write():
     assert check(ok + " We should cut the budget there.", tokens, allowed) == "commercial_action"
     assert check(ok + " Supply was tight too.", tokens, allowed) == "new_driver"
     assert check(ok + " Pacific also fell.", tokens, allowed) == "new_territory"
+
+
+# ---- reports (fcst-002) ----------------------------------------------------------------------------------------
+
+def _f1():
+    from forecast_agent.report import finding_from_run
+    return finding_from_run("F1", "f-test", answer("Week of 2026-08-24: How much of the miss does each driver explain?")["report"])
+
+
+def test_a_code_draft_renders_code_numbers_and_passes_its_checks():
+    from forecast_agent.report import blocks_used, check, code_draft, kpis_used, render
+    f1 = _f1()
+    t = code_draft([f1], "National miss")
+    assert check(t, {"F1": f1}, require_all=True) == []
+    for heading in ("## Executive summary", "## How much each driver explains", "## Conclusions and next steps", "## About this report"):
+        assert heading in t  # a report: summary, a chapter per finding, conclusions
+    assert "[[kpis F1]]" in t and "[[block F1 attribution]]" in t and "[[chart F1 waterfall]]" in t
+    assert kpis_used(t, {"F1": f1})["F1"]["miss"] == -1036
+    assert "-655" in blocks_used(t, {"F1": f1})["F1 attribution"]["text"]  # the investigation's verified passage
+    assert "The miss splits into" in render(t, {"F1": f1})
+
+@pytest.mark.parametrize("bad,why", [
+    ("# T\n## A\nThe miss was about 1,000 TRx.", "outside a token"),
+    ("# T\n## A\nMetacora {F1:d1}, medium. Residual {F1:missing}.", "not a token"),
+    ("# T\n## A\nMetacora {F1:d1}, medium.", "without its unexplained residual"),
+    ("# T\n## A\nMetacora {F1:d1}. Residual {F1:residual}.", "needs its own confidence"),
+    ("# T\n### M\n- {F1:d1}\n- Confidence: medium\n### S\n- {F1:d2}\n- Confidence: high\nResidual {F1:residual}.", "needs its own confidence"),
+    ("# T\n## A\nMetacora {F1:d1}, medium, is confirmed. Residual {F1:residual}.", "overstates"),
+    ("# T\n## A\nSupply shortfalls hurt too. Residual {F1:residual}.", "supply driver"),
+    ("# T\n## A\nOn the week {F1:miss}, Pacific also fell. Residual {F1:residual}.", "Pacific"),
+    ("# T\n## A\nWe should cut the budget. Residual {F1:residual}.", "commercial action"),
+])
+def test_report_checks_refuse_what_a_model_must_not_write(bad, why):
+    from forecast_agent.report import check, finding_from_run
+    f1 = _f1()
+    if why == "Pacific":  # a finding that covers no Pacific comparison or ranking (the provisional New England week)
+        r = answer("Week of 2026-05-04, New England: Is the deviation reliable, or a data issue?")["report"]
+        f1 = finding_from_run("F1", "x", {**r, "screen": []})
+    assert any(why in p for p in check(bad, {"F1": f1}))
+
+
+def test_a_percent_sign_after_a_percent_token_is_not_doubled():
+    from forecast_agent.report import render
+    assert render("{F1:miss_pct}% and {F1:miss_pct} percent", {"F1": _f1()}) == "20.2% and 20.2%"
+
+
+# ---- charts (fcst-002) -----------------------------------------------------------------------------------------
+
+def test_the_waterfall_reconciles_from_forecast_to_actual():
+    r = answer("Week of 2026-08-24: How much of the miss does each driver explain?")["report"]
+    steps = r["charts"]["waterfall"]["steps"]
+    first, last = steps[0]["value"], steps[-1]["value"]
+    assert first == r["forecast_trx"] and last == r["actual_trx"]
+    assert first + sum(s["value"] for s in steps[1:-1]) == pytest.approx(last, abs=2)
+    assert r["charts_shown"] == ["waterfall"] and r["charts_by"] == "code"
+
+
+@pytest.mark.parametrize("question,shown", [
+    ("Top 5 largest gaps in the last 3 months", ["territories"]),
+    ("Mar to Oct 2026: Should any forecast assumptions be reviewed?", ["trend"]),
+    ("Week of 2026-05-04, New England: Is the deviation reliable, or a data issue?", []),
+])
+def test_code_shows_a_default_chart_per_question_type(question, shown):
+    assert answer(question)["report"]["charts_shown"] == shown
+
+
+def test_a_report_chart_marker_must_name_a_chart_its_finding_has():
+    from forecast_agent.report import check, code_draft
+    f1 = _f1()
+    t = code_draft([f1], "T")
+    assert "[[chart F1 waterfall]]" in t and check(t, {"F1": f1}) == []
+    assert any("not a chart" in p for p in check(t + "\n[[chart F1 trend]]", {"F1": f1}))
+
+
+def test_a_chart_follow_up_names_its_chart_or_says_which_are_offered():
+    from forecast_agent.followup import route
+    r = answer("Week of 2026-08-24: How much of the miss does each driver explain?")["report"]
+    assert route("Can you plot that by territory?", r, FIRST, LATEST) == {"op": "chart", "kind": "territories"}
+    assert route("plot it by week", r, FIRST, LATEST) == {"op": "chart", "kind": "weekly"}  # not offered: the reply says so
+
+
+# ---- where an unexplained gap sits (fcst-002) ------------------------------------------------------------------
+
+def test_south_central_september_sits_in_one_commercial_plan_and_is_broad_by_specialty():
+    c = case("Weeks of 2026-08-31 to 2026-09-28, South Central: What portion remains unexplained?")
+    ch, sp = c.split("SOUTH_CENTRAL", "channel"), c.split("SOUTH_CENTRAL", "specialty")
+    assert ch["verdict"] == "concentrated" and ch["top"] == "COMMERCIAL"
+    assert sp["verdict"] == "broad"
+    plans = c.split("SOUTH_CENTRAL", "plan", "COMMERCIAL")
+    assert plans["verdict"] == "concentrated" and plans["top"] == "SYN_SOUTH_CENTRAL_COMMERCIAL_1"
+
+
+@pytest.mark.parametrize("question,terr", [
+    ("Weeks of 2026-02-02 to 2026-02-23, Great Lakes: why?", "GREAT_LAKES"),
+    ("Weeks of 2026-08-03 to 2026-08-31, Southeast: why?", "SOUTHEAST"),
+])
+def test_the_promotion_lapses_hit_broadly_as_the_user_stories_say(question, terr):
+    c = case(question)
+    assert c.split(terr, "channel")["verdict"] == "broad" and c.split(terr, "specialty")["verdict"] == "broad"
+
+
+def test_an_unexplained_gap_gets_its_split_section_check_and_chart():
+    r = answer("Weeks of 2026-08-31 to 2026-09-28, South Central: What portion remains unexplained?")["report"]
+    gap = next(s for s in r["sections"] if s["id"] == "gap")
+    assert "concentrated in Commercial" in gap["text"] and "not why" in gap["text"]
+    assert any("Commercial coverage" in c["question"] for c in r["what_to_check"])
+    assert "segments" in r["charts"] and "segments" in r["charts_shown"]
+    assert not any("Split the South Central gap" in c["question"] for c in r["what_to_check"])
+
+
+def test_every_pinned_finding_must_appear_in_a_model_version():
+    from forecast_agent.report import check, finding_from_run
+    f1 = _f1()
+    f2 = finding_from_run("F2", "b", answer("Top 5 largest gaps in the last 3 months")["report"])
+    text = "# T\nMetacora {F1:d1}, medium; Southeast {F1:d2}, medium; residual {F1:residual}."
+    assert any("F2" in p and "missing" in p for p in check(text, {"F1": f1, "F2": f2}, require_all=True))
+
+
+def test_a_driver_named_in_words_must_carry_its_own_confidence():
+    from forecast_agent.report import check
+    f1 = {"F1": _f1()}
+    assert check("We are confident in the Metacora launch and medium on the Southeast lapse.", f1)
+    assert check("The Metacora launch explains most of it, with medium confidence.", f1) == []
+
+
+def test_a_refused_model_paragraph_falls_back_to_codes_own(monkeypatch):
+    import forecast_agent.report as report
+
+    class Writer:
+        def __init__(self, *a, **k):
+            self.tools = k["tools"]
+
+        async def run(self, *a, **k):
+            self.tools[0](summary="The Metacora launch explains most of the miss, with medium confidence.",
+                          key_points="Most of the miss matches the launch\nPart is unexplained",
+                          chapters="F1: Metacora explains 2,000 TRx of it.", conclusion="Forecasting reviews the assumption.")
+
+    monkeypatch.setattr("agent_framework.Agent", Writer)
+    monkeypatch.setattr("pharmagentics.llm.chat_client", lambda spec: None)
+    prose, refused = report.model_prose([_f1()], "ollama:none", None, None)
+    assert "Metacora" in prose["summary"] and prose["key_points"].count("\n") == 1
+    assert prose["F1"] == report.LEAD_IN["attribution"] and any(r.startswith("F1") for r in refused)
+
+def test_a_model_written_summary_is_used_and_tidied(monkeypatch):
+    import forecast_agent.prose as prose
+
+    monkeypatch.setattr(prose, "write_summary", lambda w, parts, spec: ("Cardiovela missed by {c2} percent... ", "ok"))
+    import forecast_agent.charts as charts
+    monkeypatch.setattr(charts, "choose", lambda q, i, menu, spec: (["waterfall"], "model"))
+    out = answer("Why did we miss?", model="ollama:none", territory="NATIONAL", weeks=["2026-08-24"], intent="attribution")
+    assert out["report"]["summary_by"] == "model" and out["report"]["charts_by"] == "model"
+
+
+def test_local_model_options_keep_qwen_loaded_and_grow_the_context_only_when_needed():
+    from forecast_agent.models import options
+    short = options("ollama:qwen3:4b-instruct-2507-q4_K_M")
+    assert short["num_ctx"] == 8192 and short["keep_alive"] == "30m"
+    assert options("ollama:qwen3:4b-instruct-2507-q4_K_M", prompt_chars=30000)["num_ctx"] == 16384
+
+
+@pytest.mark.parametrize("question,clear", [
+    ("Week of 2026-08-24: How much of the miss does each driver explain?", True),
+    ("Weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic: How much can credibly be attributed to each driver?", True),
+    ("Why were we so far below plan in the Southeast last August?", False),
+    ("Which region hurt us most this summer?", False),
+    ("What were the most likely commercial drivers between March and September 2026?", False),
+])
+def test_only_clear_questions_skip_the_model(question, clear):
+    from forecast_agent.scope import confident
+    assert confident(question, parse_scope(question, FIRST, LATEST)) is clear
+
+
+def test_a_report_reads_as_a_report_not_a_chat():
+    from forecast_agent.followup import weekly
+    from forecast_agent.report import code_draft, finding_from_explain, finding_from_run, finding_from_weekly
+    r = answer("Week of 2026-08-24: How much of the miss does each driver explain?")["report"]
+    fs = [finding_from_run("F1", "a", r),
+          finding_from_weekly("F2", "a", {"id": "q1", "question": "Show it week by week", "table": weekly(r)["table"]}, r),
+          finding_from_explain("F3", "a", {"id": "q2", "question": "Why was this driver accepted?", "answer": "It moved away from clean controls."}, r)]
+    t = code_draft(fs, "Cardiovela forecast performance")
+    assert "Asked" not in t and "?" not in "".join(l for l in t.splitlines() if l.startswith("#"))
+    assert "## The miss week by week: National" in t and "## The reasoning behind the findings: National" in t

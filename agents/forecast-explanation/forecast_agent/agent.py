@@ -12,7 +12,9 @@ from typing import Annotated
 
 from agent_framework import Agent, tool
 
-from pharmagentics.llm import chat_client, chat_options
+from pharmagentics.llm import chat_client
+
+from .models import options
 
 from .engine import Case, Refused
 from .policy import run_rules
@@ -125,7 +127,7 @@ def investigate(case: Case, spec: str, on_step=None) -> dict:
         return step("finish", {"note": note}, "Done. Undecided episodes stay listed as not tested." if open_ else "Done.")
 
     async def run_agent() -> None:
-        opts = chat_options(spec)
+        opts = options(spec)
         agent = Agent(client=chat_client(spec), name="forecast_investigator", instructions=open(PROMPT, encoding="utf-8").read(),
                       tools=[compare, accept_driver, reject_driver, abstain, finish], default_options=opts)
         task = ("Investigate this forecast miss. Decide every candidate with the tools, then call finish.\n\n" + briefing(case))

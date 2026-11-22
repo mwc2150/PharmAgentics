@@ -36,8 +36,8 @@ BANNED = re.compile(r"\b(surveillance|new patients?)\b", re.I)
 
 PROMPT = """You write the summary of a forecast-miss report for a pharmaceutical brand lead: two to four short
 sentences in plain language. Use only the facts given. Every number must be written as its token exactly, for
-example {c3}; never type a digit yourself. Percent tokens already include the % sign, so never write "percent"
-after them. Say how big the miss was, what explains most of it and how sure we
+example {c3}; never type a digit yourself. Percent tokens already include the % sign, so never write "%" or
+"percent" after them. Say how big the miss was, what explains most of it and how sure we
 are, and how much is not explained yet. Do not recommend any action, do not add a cause, region or product that
 is not in the facts, and do not use the words "surveillance" or "new patients". Call submit_summary once."""
 
@@ -101,7 +101,9 @@ def write_summary(w, parts: list[dict], spec: str) -> tuple[str | None, str]:
     """The summary template (claim tokens unfilled) and a status: ok, or why the code summary is kept."""
     from agent_framework import Agent, tool
 
-    from pharmagentics.llm import chat_client, chat_options
+    from pharmagentics.llm import chat_client
+
+    from .models import options
 
     tokens, allowed = facts(w, parts)
     got: dict = {}
@@ -116,7 +118,7 @@ def write_summary(w, parts: list[dict], spec: str) -> tuple[str | None, str]:
     task = (f"Report on {allowed['scope']['brand']}, {allowed['scope']['where']}, {allowed['scope']['period']}.\n"
             f"Facts (token = meaning):\n{lines}")
     agent = Agent(client=chat_client(spec), name="summary_writer", instructions=PROMPT, tools=[submit_summary],
-                  default_options=chat_options(spec))
+                  default_options=options(spec))
     try:
         asyncio.run(asyncio.wait_for(agent.run(task), timeout=WRITE_SECONDS))
     except Exception:  # noqa: BLE001 - the code summary stands

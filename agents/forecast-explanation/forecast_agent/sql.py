@@ -96,3 +96,32 @@ def context_mean(table: str, col: str, weeks, terr: str, scale: float = 1.0) -> 
 def monthly_national_pct(start: str, end: str) -> str:
     return (f"select 100.0 * sum(variance_trx) / nullif(sum(forecast_trx), 0) from {FVA} where product_id = 'BXA' "
             f"and territory_id = 'NATIONAL' and week_start between DATE '{start}' and DATE '{end}'")
+
+
+# ---- segment splits (where an unexplained gap sits) ---------------------------------------------------------------
+SEG_DIMS = {"channel": "payer_channel", "specialty": "hcp_specialty", "plan": "plan_id"}
+
+
+def seg_weekly(weeks, dim: str, seg: str, own: str | None, channel: str | None = None) -> str:
+    """Average weekly BXA TRx of one segment: in territory `own`, or in every other territory when `own` starts with '!'.
+    A plan exists in one territory only, so its peers are the same payer channel elsewhere."""
+    col = SEG_DIMS[dim]
+    if own and own.startswith("!"):
+        where = f"territory_id <> '{own[1:]}'"
+        seg_sql = f"payer_channel = '{channel}'" if dim == "plan" else f"{col} = '{seg}'"
+    else:
+        where = f"territory_id = '{own}'"
+        seg_sql = f"{col} = '{seg}'"
+    return (f"select coalesce(sum(trx), 0) / {len(weeks)}.0 from {RX} where product_id = 'BXA' and {where} "
+            f"and {seg_sql} and week_start in {dates(weeks)}")
+
+
+def seg_change(weeks, base, dim, seg, own, channel=None) -> str:
+    return f"select 100.0 * (({seg_weekly(weeks, dim, seg, own, channel)}) / nullif(({seg_weekly(base, dim, seg, own, channel)}), 0) - 1)"
+
+
+def seg_excess(weeks, base, dim, seg, terr, channel=None) -> str:
+    """The segment's TRx over the weeks beyond what its peers' change since the baseline predicts."""
+    own_w, own_b = seg_weekly(weeks, dim, seg, terr), seg_weekly(base, dim, seg, terr)
+    peer_w, peer_b = seg_weekly(weeks, dim, seg, "!" + terr, channel), seg_weekly(base, dim, seg, "!" + terr, channel)
+    return f"select {len(weeks)} * (({own_w}) - ({own_b}) * ({peer_w}) / nullif(({peer_b}), 0))"

@@ -11,7 +11,7 @@ from typing import Annotated
 
 from pharmagentics.tools.queries import TERRITORY_NAMES, iso, mondays
 
-from .scope import INTENTS, Scope, parse_scope
+from .scope import INTENTS, Scope, confident, parse_scope
 
 READ_SECONDS = float(os.environ.get("FORECAST_SCOPE_SECONDS", "120"))
 
@@ -57,13 +57,18 @@ def _period(start: str, end: str, first: str, latest: str) -> list[str]:
 
 
 def read_scope(question: str, first: str, latest: str, spec: str) -> tuple[Scope, str]:
-    """The scope and who read it: "model", or "rules" when the model's reading was unusable."""
+    """The scope and who read it: "rules" when the question is unambiguous (no model call) or the model's reading was
+    unusable, else "model"."""
     rules = parse_scope(question, first, latest)
     if rules.out_of_scope and "outside the release" not in rules.out_of_scope:
         return rules, "rules"  # code's own refusals (another product, a commercial action) always stand
+    if confident(question, rules):
+        return rules, "rules"  # explicit dates and a clear question type: code reads it exactly, with no model call
     from agent_framework import Agent, tool
 
-    from pharmagentics.llm import chat_client, chat_options
+    from pharmagentics.llm import chat_client
+
+    from .models import options
 
     got: dict = {}
 
@@ -78,7 +83,7 @@ def read_scope(question: str, first: str, latest: str, spec: str) -> tuple[Scope
     instructions = PROMPT.format(first=first, latest=latest, territories=", ".join(TERRITORY_NAMES),
                                  intents="\n".join(f"  {k}: {v}" for k, v in INTENTS.items()))
     agent = Agent(client=chat_client(spec), name="scope_reader", instructions=instructions, tools=[set_scope],
-                  default_options=chat_options(spec))
+                  default_options=options(spec))
     try:
         asyncio.run(asyncio.wait_for(agent.run("Question: " + question), timeout=READ_SECONDS))
         weeks = _period(got["start"], got["end"], first, latest)

@@ -16,6 +16,7 @@
     "forecast.new": "confidential",
     "forecast.review": "proprietary",
     "forecast.approved": "proprietary",
+    "forecast.reports": "proprietary",
     "forecast.view.analyst": "confidential",
     "forecast.view.leadership": "proprietary",
     "evaluation.overview": "proprietary"

@@ -217,9 +217,9 @@ class ForecastAgent(ForecastRules):
 
     def __init__(self, cases: list[Case], model: str | None = None):
         super().__init__(cases)
-        from pharmagentics.llm import model_spec
+        from pharmagentics.llm import DEFAULT_AGENT_MODEL, model_spec
 
-        self.model = model_spec(model)
+        self.model = model_spec(model or DEFAULT_AGENT_MODEL)  # local Qwen 3 4B unless --model names another
         self.params["investigator"] = self.investigator
 
     def predict(self, question: str) -> dict:

@@ -1,5 +1,6 @@
 // Forecast API contract. The server—not the browser—chooses the permitted view and engine.
 import { NotSignedIn } from "./briefingApi"
+import type { ChartSpec } from "../ForecastCharts"
 
 const BASE = (import.meta.env.VITE_PHARMAGENTICS_API_BASE_URL || "").trim().replace(/\/+$/, "")
 
@@ -13,12 +14,12 @@ export type ForecastDecision = { by: string; action: string; target: string; rea
 export type ForecastCandidate = { id: string; driver: string; territory: string; label: string; first_active: string | null; last_active: string | null; status: string; reason: string | null; comparison: string | null }
 export type ForecastComparison = { id: string; episode: string; method: string; controls: string[]; stats: Record<string, unknown>; flags: string[] }
 export type ForecastScope = { question: string; weeks: string[]; territory: string; territory_name: string; intent: string; intent_label: string; period: string; n_weeks: number; notes: string[]; out_of_scope: string | null; engine: string; investigator?: string; read_by?: "model" | "rules" }
-export type ForecastFollowupItem = { id: string; question: string; status: "running" | "done" | "failed"; op: string | null; answer: string | null; child_run_id: string | null }
+export type ForecastFollowupItem = { id: string; question: string; status: "running" | "done" | "failed"; op: string | null; answer: string | null; child_run_id: string | null; chart?: ChartSpec & { id: string } }
 export type ForecastStep = { tool: string; args: Record<string, unknown>; result: string }
 export type ForecastReport = { headline: string; territory_id: string; week: number; week_ending: string; window_weeks: number; forecast_trx: number | null; actual_trx: number | null; variance_trx: number | null; variance_pct: number | null; residual_trx: number | null; drivers: ForecastDriver[]; caveats: string[]; what_to_check: { question: string; why: string; owner: string }[]; abstained: boolean; verification?: { verdict?: string; checks?: { id: string; status: string; detail: string }[] }; investigator_mode?: string
   question?: string; intent?: string; summary?: string | null; sections?: ForecastSectionText[]; decisions?: ForecastDecision[]; candidates?: ForecastCandidate[]
-  comparisons?: ForecastComparison[]; summary_by?: "model" | "code"; scope_read_by?: string; set_aside_weeks?: string[]; week_start?: string | null; out_of_scope?: string; bias_trx?: number | null }
-export type ForecastRun = { followups?: ForecastFollowupItem[]; parent_run_id?: string | null; kind?: "question" | "form"; job_status?: "running" | "done" | "failed"; job_error?: string | null; progress?: ForecastStep[]; view: "analyst" | "leadership"; forecast_run_id: string; review_status: string; reviewed_at: string | null; review_note: string | null; report: ForecastReport; stages?: { stage: number; name: string; status: string }[]; history?: { at: string; role: string; action: string; note: string | null }[] }
+  comparisons?: ForecastComparison[]; charts?: Record<string, ChartSpec>; charts_shown?: string[]; charts_by?: "model" | "code"; summary_by?: "model" | "code"; scope_read_by?: string; set_aside_weeks?: string[]; week_start?: string | null; out_of_scope?: string; bias_trx?: number | null }
+export type ForecastRun = { followups?: ForecastFollowupItem[]; parent_run_id?: string | null; pins?: string[]; report_id?: string | null; kind?: "question" | "form"; job_status?: "running" | "done" | "failed"; job_error?: string | null; progress?: ForecastStep[]; view: "analyst" | "leadership"; forecast_run_id: string; review_status: string; reviewed_at: string | null; review_note: string | null; report: ForecastReport; stages?: { stage: number; name: string; status: string }[]; history?: { at: string; role: string; action: string; note: string | null }[] }
 
 function object(value: unknown): asserts value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid Forecast API response")
@@ -74,3 +75,24 @@ export type DriverProbe = { id: string; question: string; expect: string[]; got:
 export type DriverSystem = { run_id: string; model: string | null; exported: string; metrics: { driver_recall: number; false_drivers: number; exact_set_share: number; probes: number }; confusion: Record<string, Record<string, number>>; drivers: string[]; probes: DriverProbe[] }
 export type DriverBoard = { labels: string; systems: Record<string, DriverSystem> }
 export async function forecastDrivers(): Promise<DriverBoard> { const value: unknown = await api("/api/forecast/drivers"); object(value); if (typeof value.systems !== "object" || value.systems === null) throw new Error("Driver recovery is unavailable."); return value as unknown as DriverBoard }
+
+// Reports (fcst-002): pinned findings drafted into one reviewed report.
+export type ReportSection = { title: string; text: string }
+export type ReportFinding = { id: string; kind: string; title: string; scope: string; question?: string | null; source: { run_id: string; followup_id?: string } }
+export type ReportView = { id: string; title: string; review_status: string; review_note: string | null; reviewed_at: string | null; submitted_at: string | null; version: number | null; sections: ReportSection[]; author: string | null; sources: { id: string; scope: string }[]; charts?: Record<string, ChartSpec>; kpis?: Record<string, { forecast: number; actual: number; miss: number; miss_pct?: number; scope: string }>; blocks?: Record<string, { title: string; text: string }>
+  job?: { status: "idle" | "drafting" | "failed"; message: string | null; started_at?: string; step?: string }; stale?: boolean; model?: string | null; findings?: ReportFinding[]; runs?: { run_id: string; question: string | null }[]; versions?: { n: number; at: string; author: string; instruction: string | null }[]; history?: { at: string; action: string; note: string | null }[] }
+export type ReportSummary = { id: string; title: string; review_status: string; created_at: string; findings: number; version: number | null }
+function report(value: unknown): ReportView { object(value); if (typeof value.id !== "string" || !Array.isArray(value.sections)) throw new Error("Report response is incomplete."); return value as unknown as ReportView }
+const R = (id: string, tail = "") => `/api/forecast/reports/${encodeURIComponent(id)}${tail}`
+export async function listReports(): Promise<ReportSummary[]> { const v: unknown = await api("/api/forecast/reports"); object(v); if (!Array.isArray(v.reports)) throw new Error("Reports are unavailable."); return v.reports as ReportSummary[] }
+export async function createReport(body: { run_id: string; title?: string }): Promise<ReportView> { return report(await api("/api/forecast/reports", post(body))) }
+export async function addReportRun(id: string, run_id: string): Promise<ReportView> { return report(await api(R(id, "/runs"), post({ run_id }))) }
+export async function removeReportRun(id: string, run_id: string): Promise<ReportView> { return report(await api(R(id, `/runs/${encodeURIComponent(run_id)}`), { method: "DELETE" })) }
+const RUN = (id: string, tail: string) => `/api/forecast/runs/${encodeURIComponent(id)}${tail}`
+export async function pinFollowup(runId: string, followupId: string): Promise<ForecastRun> { return run(await api(RUN(runId, `/pins/${encodeURIComponent(followupId)}`), post())) }
+export async function unpinFollowup(runId: string, followupId: string): Promise<ForecastRun> { return run(await api(RUN(runId, `/pins/${encodeURIComponent(followupId)}`), { method: "DELETE" })) }
+export async function openReport(id: string, leadership = false): Promise<ReportView> { return report(await api(R(id, leadership ? "?view_as=leadership" : ""))) }
+export async function draftReport(id: string, instruction?: string): Promise<ReportView> { return report(await api(R(id, "/draft"), post(instruction ? { instruction } : {}))) }
+export async function restoreReportVersion(id: string, n: number): Promise<ReportView> { return report(await api(R(id, `/versions/${n}/restore`), post())) }
+export async function submitReport(id: string): Promise<ReportView> { return report(await api(R(id, "/submit"), post())) }
+export async function reviewReport(id: string, decision: "approved" | "rejected" | "returned", note?: string): Promise<ReportView> { return report(await api(R(id, "/review"), post({ decision, note: note || null }))) }

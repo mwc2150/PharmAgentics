@@ -112,9 +112,9 @@ def analyst(record: dict) -> dict:
 # Forecast leadership view: an executive summary. No stage trace, evidence, tool calls or check detail.
 FORECAST_LEADERSHIP_REPORT = ("headline", "brand", "territory_id", "week", "week_ending", "window_weeks", "forecast_trx",
                               "actual_trx", "variance_trx", "variance_pct", "residual_trx", "caveats", "abstained",
-                              "question", "intent", "summary", "week_start", "bias_trx", "out_of_scope")
+                              "question", "intent", "summary", "week_start", "bias_trx", "out_of_scope", "charts_shown")
 # Sections of a question run a leader may read: no data forensics, decision log, comparisons or audit trail.
-FORECAST_LEADERSHIP_SECTIONS = {"summary", "miss", "where", "screen", "attribution", "unknowns", "checks", "assumptions"}
+FORECAST_LEADERSHIP_SECTIONS = {"summary", "miss", "where", "screen", "attribution", "unknowns", "checks", "assumptions", "gap"}
 
 
 def forecast_leadership(run: dict) -> dict:
@@ -123,6 +123,9 @@ def forecast_leadership(run: dict) -> dict:
     out = {k: run.get(k) for k in ("run_id", "lane", "workflow_status", "dataset_release")}
     out["report"] = {k: report.get(k) for k in FORECAST_LEADERSHIP_REPORT}
     out["report"]["drivers"] = [{k: d[k] for k in ("driver", "label", "impact_trx", "confidence") if k in d} for d in report["drivers"]]
+    if report.get("charts"):  # chart data only, no evidence ids
+        out["report"]["charts"] = {k: {f: v for f, v in c.items() if f != "evidence"} for k, c in report["charts"].items()
+                                   if k in (report.get("charts_shown") or [])}
     if "sections" in report:
         out["report"]["sections"] = [{k: x[k] for k in ("id", "title", "text")} for x in report["sections"]
                                      if x["id"] in FORECAST_LEADERSHIP_SECTIONS]
@@ -144,6 +147,7 @@ def forecast_record(record: dict, view: str) -> dict:
     return {**out, "narrative": narrative, "writer_attempts": record.get("writer_attempts", []),
             "progress": record.get("progress", []), "job_error": record.get("job_error"),
             "followups": record.get("followups", []), "parent_run_id": (record.get("request") or {}).get("parent"),
+            "pins": record.get("pins", []), "report_id": record.get("report_id"),
             "submitted_at": record["submitted_at"], "history": record["history"], **record["result"]}
 
 

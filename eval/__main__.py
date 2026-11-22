@@ -147,13 +147,15 @@ def main(argv=None) -> int:
         from .harness.drivers import run as drivers_run
         from pharmagentics.llm import model_spec
 
-        drivers_run(args.system, model_spec(args.model) if args.system == "forecast_investigator" else None)
+        from pharmagentics.llm import DEFAULT_AGENT_MODEL
+        drivers_run(args.system, model_spec(args.model or DEFAULT_AGENT_MODEL) if args.system == "forecast_investigator" else None)
         return 0
     if args.cmd == "scopes":
         from .harness.scopes import run as scopes_run
         from pharmagentics.llm import model_spec
 
-        scopes_run(args.reader, model_spec(args.model) if args.reader == "model" else None)
+        from pharmagentics.llm import DEFAULT_AGENT_MODEL
+        scopes_run(args.reader, model_spec(args.model or DEFAULT_AGENT_MODEL) if args.reader == "model" else None)
         return 0
     if args.cmd == "ui":
         from .harness.paths import MLFLOW_DIR, tracking_uri

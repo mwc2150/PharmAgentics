@@ -16,10 +16,10 @@ ORDER = {
     "reliability": ["miss", "data", "where"],
     "screen": ["screen"],
     "where": ["miss", "data", "where"],
-    "drivers": ["miss", "data", "candidates", "attribution", "confidence", "checks"],
-    "attribution": ["miss", "data", "attribution", "confidence", "candidates", "unknowns", "checks"],
-    "unknowns": ["miss", "data", "confidence", "unknowns", "attribution", "checks"],
-    "next_checks": ["miss", "data", "checks", "attribution"],
+    "drivers": ["miss", "data", "candidates", "attribution", "confidence", "gap", "checks"],
+    "attribution": ["miss", "data", "attribution", "confidence", "candidates", "unknowns", "gap", "checks"],
+    "unknowns": ["miss", "data", "confidence", "unknowns", "gap", "attribution", "checks"],
+    "next_checks": ["miss", "data", "checks", "attribution", "gap"],
     "assumptions": ["miss", "data", "assumptions", "attribution", "candidates"],
     "audit": ["miss", "data", "attribution", "audit"],
     "communicate": ["summary", "miss", "attribution", "unknowns"],
@@ -27,7 +27,7 @@ ORDER = {
 TITLES = {"miss": "The miss", "data": "Data checks", "where": "Where", "screen": "Largest gaps",
           "candidates": "What was investigated", "attribution": "Attribution", "confidence": "Confidence by driver",
           "unknowns": "What remains unknown", "checks": "What to check next", "assumptions": "Forecast assumptions",
-          "audit": "Audit", "summary": "Summary for leadership"}
+          "audit": "Audit", "summary": "Summary for leadership", "gap": "Where the unexplained gap sits"}
 FRACTIONS = [(1.0, "all"), (0.75, "three-quarters"), (2 / 3, "two-thirds"), (0.5, "half"), (1 / 3, "one-third"),
              (0.25, "one-quarter"), (0.2, "one-fifth"), (1 / 6, "one-sixth"), (1 / 7, "one-seventh"), (0.125, "one-eighth"),
              (0.1, "one-tenth")]
@@ -47,6 +47,13 @@ def _names(terrs: list[str]) -> str:
 
 def _span(weeks: list[str]) -> str:
     return f"the week of {weeks[0]}" if len(weeks) == 1 else f"the weeks of {weeks[0]} to {weeks[-1]}"
+
+
+def _seg(seg: str | None) -> str:
+    """A segment's display name: channels and specialties in words; plan ids as given."""
+    if not seg:
+        return ""
+    return seg if seg.startswith("SYN_") else seg.replace("_", " ").title().replace("Medicare Part D", "Medicare Part D")
 
 
 def _possessive(n: str) -> str:
@@ -336,6 +343,34 @@ class Writer:
             lines.append("Not tested: " + "; ".join(_pretty(e.label) for e in untested) + ".")
         return "\n".join(lines) or "Nothing else stands out."
 
+    def gap(self) -> str:
+        """Each split of an unexplained gap: where it sits, never why."""
+        if not self.case.splits:
+            return ""
+        lines = []
+        for sp in self.case.splits:
+            t, dim, ch, base = sp["territory"], sp["dimension"], sp["within_channel"], sp["base_weeks"]
+            W = [w for w in self.case.usable]
+            what = {"channel": "payer channel", "specialty": "prescriber specialty", "plan": f"plan within {_seg(ch)}"}[dim]
+            verdict = (f"the shortfall is concentrated in {_seg(sp['top'])}." if sp["verdict"] == "concentrated"
+                       else "the shortfall is broad, not in one segment.")
+            lines.append(f"{name(t)} by {what}, against the eight weeks before, each segment beside the same segment in "
+                         f"the other territories: {verdict}")
+            for r in sp["rows"][:4]:
+                seg = r["segment"]
+                chg = self.c("split_gap", S.seg_change(W, base, dim, seg, t), "pct1", territory=t, segment=seg)
+                peer = self.c("split_gap", S.seg_change(W, base, dim, seg, "!" + t, ch if dim == "plan" else None), "pct1",
+                              scope="other territories", segment=seg)
+                ex = self.c("split_gap", S.seg_excess(W, base, dim, seg, t, ch if dim == "plan" else None), territory=t, segment=seg)
+                own = "down" if (r["change_pct"] or 0) < 0 else "up"
+                other = "down" if (r["peer_change_pct"] or 0) < 0 else "up"
+                lines.append(f"- {_seg(seg)}: {own} {chg}, against {other} {peer} elsewhere; {ex} TRx beyond peers"
+                             + (" (a small cell, so noisy)." if r["small_cell"] else "."))
+        for n in self.case.drill_notes:
+            lines.append(f"The agent's reading for {name(n['territory'])}: {n['note']}")
+        lines.append("This shows where a gap sits, not why. Confirm it with the owners below before naming a cause.")
+        return "\n".join(lines)
+
     def checks(self, parts: list[dict]) -> list[dict]:
         out = []
         for p in parts:
@@ -348,13 +383,22 @@ class Writer:
             else:
                 out.append({"question": f"Confirm the {_pretty(ep.label)} finding and whether it has ended.",
                             "owner": OWNER[ep.driver], "why": "It is the supported local driver in these weeks."})
+        split_done = {sp["territory"] for sp in self.case.splits}
         for r in self.case.unexplained(self.case.screen(self.W)):
+            if r["territory"] in split_done:
+                continue
             out.append({"question": f"Split the {name(r['territory'])} gap by plan and specialty.", "owner": OWNER["residual"],
                         "why": "It stands out from the other territories with no visible driver."})
+        for sp in self.case.splits:
+            if sp["verdict"] != "concentrated":
+                continue
+            where = f"{name(sp['territory'])}'s {_seg(sp['top'])}" + (" coverage" if sp["dimension"] != "specialty" else " prescribers")
+            out.append({"question": f"Look into {where} in these weeks.", "owner": "Market access" if sp["dimension"] != "specialty"
+                        else "Sales leadership and marketing", "why": "The unexplained shortfall sits there; the data shows where, not why."})
         if self.case.abstained:
             out.append({"question": "Reload the provisional feed, then ask again.", "owner": OWNER["data"],
                         "why": "The actual is provisional."})
-        else:
+        elif self.cut not in split_done:
             out.append({"question": "Split the unexplained residual by plan and specialty.", "owner": OWNER["residual"],
                         "why": "Part of the miss has no identified driver."})
         return out
@@ -435,7 +479,7 @@ def _verify(case: Case, w: Writer, parts: list[dict], template: str) -> dict:
     return {"verdict": verdict, "checks": checks}
 
 
-def compose(case: Case, mode: str, trajectory: dict | None = None, writer_model: str | None = None) -> dict:
+def compose(case: Case, mode: str, trajectory: dict | None = None, writer_model: str | None = None, steps=None) -> dict:
     """The answer envelope (answer, claims, evidence) plus the structured report the UI and API read."""
     w = Writer(case)
     intent = case.scope.intent
@@ -451,6 +495,10 @@ def compose(case: Case, mode: str, trajectory: dict | None = None, writer_model:
             text = w.screen(int(m.group(1)) if m else 5)
         elif key == "checks":
             text = w.checks_text(checks)
+        elif key == "gap":
+            text = w.gap()
+            if not text:
+                continue
         elif key in ("attribution", "confidence", "unknowns", "summary"):
             text = getattr(w, key)(parts)
         else:
@@ -471,14 +519,22 @@ def compose(case: Case, mode: str, trajectory: dict | None = None, writer_model:
     if writer_model and summary and parts and not case.abstained:
         from .prose import write_summary
 
+        if steps:
+            steps("Writing the summary", model=True)
         text, writer_status = write_summary(w, parts, writer_model)
         if text:
-            summary, summary_by = re.sub(r"%\s+percent\b", "%", reg.render(text)), "model"
+            summary, summary_by = re.sub(r"%\s*%|%\s+percent\b", "%", reg.render(text)), "model"
             for s in sections:
                 if s["id"] == "summary":
                     s["text"] = summary
     if trajectory is not None:
         trajectory["writer_status"] = writer_status
+    from .charts import catalog, choose
+
+    if steps:
+        steps("Choosing charts", model=bool(writer_model))
+    menu = catalog(w, parts)
+    shown, charts_by = choose(case.scope.question, intent, menu, writer_model)
     var = case.variance() if case.weeks else {}
     drivers = []
     for p in parts:
@@ -517,6 +573,8 @@ def compose(case: Case, mode: str, trajectory: dict | None = None, writer_model:
                          "flags": k.flags} for k in case.comparisons.values()],
         "screen": case.screen() if case.weeks else [],
         "data_version": reg.data_version,
+        "charts": menu, "charts_shown": shown, "charts_by": charts_by,
+        "splits": [{k: v for k, v in sp.items() if k != "base_weeks"} for sp in case.splits], "drill_notes": case.drill_notes,
     }
     return {"answer": reg.render(template), "claims": reg.claims, "evidence": reg.evidence,
             "abstained": bool(case.abstained), "trajectory": trajectory, "report": report}

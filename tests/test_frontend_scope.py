@@ -12,6 +12,7 @@ def test_frontend_contains_only_supported_feature_modules():
         "ComparisonPicker.tsx",
         "Feedback.tsx",
         "FeedbackReview.tsx",
+        "ForecastCharts.tsx",
         "ForecastDrivers.tsx",
         "Memo.tsx",
         "MessageBar.tsx",

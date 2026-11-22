@@ -32,7 +32,7 @@ _INTENT_RULES = [
     ("next_checks", r"\b(check next|checked next|which team|who should|next steps?)\b"),
     ("unknowns", r"\b(unexplained|unknown|remains?|confiden\w*|residual)\b"),
     ("where", r"\b(where|which (regions?|territor\w*|segments?)|concentrated)\b"),
-    ("attribution", r"\b(how much|attribut\w*)\b"),
+    ("attribution", r"\b(how much|attribut\w*|split)\b"),
     ("drivers", r"\b(drivers?|hypothes\w*|candidate|contributed|caus\w*|why)\b"),
     ("attribution", r"\b(how much|attribut\w*|explain\w*|split|contribut\w*)\b"),
 ]
@@ -64,12 +64,33 @@ class Scope:
                 "intent_label": INTENTS[self.intent], "n_weeks": len(self.weeks)}
 
 
-def intent_of(question: str) -> str:
+def intent_match(question: str) -> str | None:
+    """The question type the keyword rules recognize, or None when none of them fires."""
     ask = question.split(":", 1)[-1].lower()
     for intent, pattern in _INTENT_RULES:
         if re.search(pattern, ask):
             return intent
-    return "attribution"
+    return None
+
+
+def intent_of(question: str) -> str:
+    return intent_match(question) or "attribution"
+
+
+def confident(question: str, scope: "Scope") -> bool:
+    """Whether the keyword rules read a question unambiguously: an explicit period (dates, "Mar to Sep 2026", "the
+    last three months") and a recognized question type. Such questions need no model; vague ones ("last August",
+    "this summer", "Q3") go to the model."""
+    if scope.out_of_scope or not scope.weeks or any("No week was given" in n for n in scope.notes):
+        return False
+    if re.search(r"\b(q[1-4]|quarter|summer|winter|spring|fall|autumn|last (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*|"
+                 r"this (year|month|week)|early|late|mid[- ](jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|year|month)\w*)\b", question, re.I):
+        return False
+    months = re.findall(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b", question, re.I)
+    if len(months) >= 2 and not re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* to "
+                                          r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", question, re.I):
+        return False  # "between March and September": the rules would read one month only
+    return intent_match(question) is not None
 
 
 def _relative(question: str, first: str, latest: str) -> list[str] | None:

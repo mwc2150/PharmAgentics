@@ -24,6 +24,8 @@ STANDOUT_MIN = 100.0
 PLACEBO_PARTIAL = 0.5  # pre-period excess rate above this share of the effect rate: part of the gap predates it
 PLACEBO_FULL = 0.8     # above this share: the gap was already there, so the episode does not explain it
 LEVELS = ["inconclusive", "low", "medium", "high"]
+CONCENTRATION_SHARE = 0.4  # the top segment holds at least this share of the shortfall
+CONCENTRATION_RATIO = 2.0  # and fell behind its peers at least twice as far as the territory's other segments
 LOO_SHARE = 0.25       # leave-one-out: the estimate moves by more than this share when one control is dropped
 RECOVERY_SHARE = 0.75  # the gap after the episode keeps more than this share of the gap during it
 
@@ -86,6 +88,8 @@ class Case:
         self.weeks = scope.weeks
         self.cut = scope.territory
         self.decisions: list[dict] = []
+        self.splits: list[dict] = []
+        self.drill_notes: list[dict] = []
         self.comparisons: dict[str, Comparison] = {}
         self.episodes: dict[str, Episode] = {}
         self.abstained: str | None = None
@@ -470,6 +474,56 @@ class Case:
             reasons.append("clean controls, no pre-period gap, and the effect is well outside control noise")
         reasons += passed
         return cap, reasons
+
+    # ---- where an unexplained gap sits (segment splits) ----------------------------------------------------
+    def split(self, territory: str, dimension: str, within_channel: str | None = None) -> dict:
+        """Each segment's change against the same segment in the other territories, over the usable weeks, and its
+        TRx beyond what the peers' change predicts. Plans are compared with their payer channel elsewhere."""
+        if territory not in T:
+            raise Refused(f"Unknown territory {territory!r}. Use one of: {', '.join(T)}.")
+        if dimension not in S.SEG_DIMS:
+            raise Refused("dimension must be channel, specialty or plan.")
+        if dimension == "plan" and not within_channel:
+            raise Refused("A plan split needs within_channel (a payer channel such as COMMERCIAL).")
+        W = self.usable
+        if not W:
+            raise Refused("No usable week in this scope.")
+        base = [w for w in (shift(W[0], -i) for i in range(8, 0, -1)) if w >= self.first and w not in self.provisional]
+        col = S.SEG_DIMS[dimension]
+        filt = f" and payer_channel = '{within_channel}'" if within_channel else ""
+        segs = [r[0] for r in self.reg.rows(f"select distinct {col} from {S.RX} where product_id = 'BXA' "
+                                            f"and territory_id = '{territory}'{filt} order by 1")]
+        rows = []
+        for seg in segs:
+            ch = within_channel if dimension == "plan" else None
+            now = self.reg.scalar(S.seg_weekly(W, dimension, seg, territory)) or 0
+            before = self.reg.scalar(S.seg_weekly(base, dimension, seg, territory)) or 0
+            peer = self.reg.scalar(S.seg_change(W, base, dimension, seg, "!" + territory, ch))
+            excess = self.reg.scalar(S.seg_excess(W, base, dimension, seg, territory, ch)) or 0
+            rows.append({"segment": seg, "weekly_now": round(now, 1), "weekly_before": round(before, 1),
+                         "change_pct": round(100 * (now / before - 1), 1) if before else None,
+                         "peer_change_pct": round(peer, 1) if peer is not None else None,
+                         "excess_trx": round(excess), "small_cell": before < 50})
+        rows.sort(key=lambda r: r["excess_trx"])
+        short = sum(r["excess_trx"] for r in rows if r["excess_trx"] < 0)
+        top = rows[0] if rows else None
+        concentrated = False
+        if top and short < 0 and top["excess_trx"] < 0 and not top["small_cell"] and top["change_pct"] is not None \
+                and top["peer_change_pct"] is not None and top["excess_trx"] / short >= CONCENTRATION_SHARE:
+            # Concentrated: the top segment fell behind its peers at least twice as far as the territory's other
+            # segments did (volume-weighted). A segment that is simply large is not concentrated.
+            gap = top["change_pct"] - top["peer_change_pct"]
+            rest = [r for r in rows[1:] if r["change_pct"] is not None and r["peer_change_pct"] is not None]
+            vol = sum(r["weekly_before"] for r in rest)
+            rest_gap = sum((r["change_pct"] - r["peer_change_pct"]) * r["weekly_before"] for r in rest) / vol if vol else 0
+            concentrated = gap < 0 and (rest_gap >= 0 or abs(gap) >= CONCENTRATION_RATIO * abs(rest_gap))
+        result = {"id": f"S{len(self.splits) + 1}", "territory": territory, "dimension": dimension,
+                  "within_channel": within_channel, "weeks": [W[0], W[-1]], "baseline": [base[0], base[-1]] if base else None,
+                  "base_weeks": base,
+                  "rows": rows, "total_shortfall_trx": round(short), "verdict": "concentrated" if concentrated else "broad",
+                  "top": top["segment"] if concentrated else None}
+        self.splits.append(result)
+        return result
 
     def unexplained(self, screen: list[dict]) -> list[dict]:
         """Territories that stand out beyond their peers with no accepted episode covering them."""

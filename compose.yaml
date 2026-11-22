@@ -36,11 +36,15 @@ services:
       PHARMAGENTICS_OIDC_METADATA_URL: http://keycloak:8080/realms/pharmagentics/.well-known/openid-configuration
       PHARMAGENTICS_OIDC_CLIENT_ID: pharmagentics-app
       PHARMAGENTICS_STATE_DIR: /state
-      # Forecast uses the same local Qwen model as the Brand Briefing agent.
-      # `auto` retains the deterministic Forecast baseline when Ollama is offline.
+      # Forecast uses the same local Qwen model as the Brand Briefing agent: the question-driven Forecast engine reads
+      # questions, words summaries and reports, and routes follow-ups with OLLAMA_MODEL when Ollama answers at
+      # OLLAMA_HOST (else code only). Set FORECAST_AGENT_MODEL to choose another model, or `rules` for none.
+      # `auto` retains the deterministic Forecast baseline when Ollama is offline (old form engine).
       FEAGENT_MODE: auto
       OLLAMA_HOST: http://host.docker.internal:11434
       OLLAMA_MODEL: qwen3:4b-instruct-2507-q4_K_M
+      # Empty means local Qwen above (the team's model until the designs are set); `rules` means code only.
+      FORECAST_AGENT_MODEL: ${FORECAST_AGENT_MODEL:-}
       # Agent team on Claude Haiku, run by the app itself (core-007 FR-032). The key comes from the repo-root .env
       # (git-ignored; Compose reads it for ${...}) and is never baked into the image. Unset key: agent jobs wait.
       PHARMAGENTICS_AGENT_MODEL: ${PHARMAGENTICS_AGENT_MODEL:-anthropic:claude-haiku-5-5}
