@@ -1,8 +1,12 @@
 # PharmAgentics Spec Index
 
-One Spec Kit feature per component. Specs say WHAT and WHY. Each `plan.md` says HOW. Each `tasks.md` is the work list. Updated 2026-10-23 to the Oct 21–22 sources; the Oct 16 numbering (001 to 010) is retired.
+One Spec Kit feature per component. Specs say WHAT and WHY. Each `plan.md` says HOW. Each `tasks.md` is the work list.
 
-**2026-10-29:** the project moved to eval-driven development. Only the five `brief-###` specs (`brief-001` to `brief-005`, the Briefing lane's own) keep their `spec.md` but have no `plan.md` or `tasks.md`; those were scrapped and will be re-planned against the golden set in [`eval/`](../eval/README.md). The `core-*` specs, which serve both lanes, keep their plans, and so do any future `fcst-*` specs.
+**2026-11-22:** specs work together with [`PROJECT_STATE.md`](../PROJECT_STATE.md), which says where the project stands, and [`conversations/`](../conversations/), which holds the handoffs. Code may run ahead of its spec while iterating, and the spec is brought up to date in the same pull request (`AGENTS.md`, Workflow). Specs are never deleted. A superseded spec or decision is marked **History** here, with what replaced it.
+
+**History (2026-10-23):** updated to the Oct 21–22 sources; the Oct 16 numbering (001 to 010) is retired.
+
+**History (2026-10-29):** the project moved to eval-driven development. Only the five `brief-###` specs (`brief-001` to `brief-005`, the Briefing lane's own) keep their `spec.md` but have no `plan.md` or `tasks.md`; those were scrapped and will be re-planned against the golden set in [`eval/`](../eval/README.md). The `core-*` specs, which serve both lanes, keep their plans, and so do any future `fcst-*` specs.
 
 **Sources, in order of precedence** (all in [`docs/planning/`](../docs/planning/README.md)): the Proposal; each lane's personas and evaluation pack; the [System Architecture](../docs/planning/system-architecture.md); each lane's architecture doc ([Briefing](../docs/planning/briefing-architecture.md)). The [user stories](../docs/planning/user-stories.md) supply the acceptance scenarios.
 
@@ -65,7 +69,7 @@ A spec that changes one of these logs it here and in the source doc's decision l
 | Loop caps | Values live in the semantic layer; starting values in core-002 plan | Eval item 17 |
 | Test runner | pytest, which also runs the existing `unittest` suite unchanged (proposed answer to S15) | System S15 |
 | Roles and views | One analyst and one leader per lane: P1 and P3 (Briefing), CA and BM (Forecast; Alvin and Sienna confirm). Leaders get the executive summary only, enforced by the server, and see only analyst-approved briefs. P2, P4 and FM have no role | core-007; Michael, 2026-11-11 |
-| Hosting | UAT app on Google Cloud within the free tiers; free Keycloak; scripted engine live, no language model in the cloud; agent output only as locally generated, committed snapshots that pass a traceability check | core-007; Michael, 2026-11-11 |
+| Hosting | UAT app on Google Cloud within the free tiers; free Keycloak. **History:** "scripted engine live, no language model in the cloud; agent output only as committed snapshots" was replaced by core-007 FR-032 (the app runs the agent team on Claude Haiku when given the key) | core-007; Michael, 2026-11-11 |
 
 ## Open items by spec
 

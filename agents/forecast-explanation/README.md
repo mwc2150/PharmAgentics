@@ -169,7 +169,7 @@ uv run pytest agents/forecast-explanation/tests tests/test_forecast_api.py -q
 $env:PHARMAGENTICS_AUTH = "dev"; uv run uvicorn pharmagentics.api.app:app --port 8080   # then sign in as a Forecast role
 ```
 
-The dev sign-in page lists a stand-in Commercial Analytics Analyst (`forecast-analyst`) and Brand Manager (`forecast-manager`). The lane stays "Coming soon" in the UI until `lanes.forecast.available` is set to `true` in `roles.json`; the routes work for the Forecast roles either way. The root `README.md` and `CLAUDE.md` cover the rest of the app.
+The dev sign-in page lists a stand-in Commercial Analytics Analyst (`forecast-analyst`) and Brand Manager (`forecast-manager`). The lane stays "Coming soon" in the UI until `lanes.forecast.available` is set to `true` in `roles.json`; the routes work for the Forecast roles either way. The root `README.md` and `AGENTS.md` cover the rest of the app.
 
 ## Not built yet
 

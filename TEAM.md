@@ -91,7 +91,7 @@ Once the GitHub repository variables are set, a merge to `main` deploys the app 
 
 ## Rules
 
-- **Ground truth never enters the repo, the image or the app.** The answer key and held-out parameters stay in the private store (`CLAUDE.md`, hard rules). Agent code never reads `eval/`.
+- **Ground truth never enters the repo, the image or the app.** The answer key and held-out parameters stay in the private store (`AGENTS.md`, hard rules). Agent code never reads `eval/`.
 - **Every number is a claim filled by code.** The app refuses an agent brief with a number that has no claim behind it.
 - **Don't create cloud resources by hand.** Use `deploy/gcp.py`. Everything is sized for the free tiers, with a $1 budget alert and a monthly cap on the cloud agent host. Your access covers deploys, rollbacks, logs and secrets, but not billing or granting access.
 - **Access:** teammates get the deployer role set from the project owner (`gcp.py team --member`). Mentors and other readers get read-only access (`gcp.py team --viewer`): the project Viewer role, with no secret values, deploys or billing.
