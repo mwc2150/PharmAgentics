@@ -8,7 +8,7 @@ import duckdb
 from mlflow.entities import Feedback
 from mlflow.genai.scorers import scorer
 
-from .numbers import Number, as_numbers, contains_phrase, extract, parse_token, same
+from .numbers import Number, as_numbers, contains_phrase, extract, matches, parse_token, same, unique
 from .paths import DATABASE
 from .versions import data_fingerprint
 
@@ -22,7 +22,12 @@ def _answer(outputs) -> str:
 
 
 def _golden(expectations) -> list:
-    return extract(expectations.get("expected_response", "")) + as_numbers(expectations.get("golden_numbers", []))
+    """The golden answer's numbers (unit known) plus fact values the text does not already carry. A fact value has
+    no unit, so one that the text states exactly (22.5 beside "22.5%") is dropped in favour of the text's number."""
+    stated = extract(expectations.get("expected_response", ""))
+    exact = {(abs(n.value), n.decimals) for n in stated}
+    facts = [f for f in as_numbers(expectations.get("golden_numbers", [])) if (abs(f.value), f.decimals) not in exact]
+    return unique(stated) + facts
 
 
 @scorer(name="numbers_match_golden",
@@ -31,7 +36,7 @@ def numbers_match_golden(outputs, expectations) -> Feedback:
     found, golden = extract(_answer(outputs)), _golden(expectations)
     if not found:
         return Feedback(value=1.0, rationale="The answer states no numbers to check.")
-    unmatched = [n.text for n in found if not any(same(n, g) for g in golden)]
+    unmatched = [n.text for n in found if not any(matches(n, g) for g in golden)]
     share = 1 - len(unmatched) / len(found)
     note = f"{len(found) - len(unmatched)} of {len(found)} numbers match the golden answer"
     return Feedback(value=round(share, 4), rationale=note + (f"; unmatched: {', '.join(unmatched)}" if unmatched else "."))
@@ -40,10 +45,10 @@ def numbers_match_golden(outputs, expectations) -> Feedback:
 @scorer(name="golden_number_recall",
         description="Share of the golden answer's numbers that the answer states.")
 def golden_number_recall(outputs, expectations) -> Feedback:
-    golden, found = extract(expectations.get("expected_response", "")), extract(_answer(outputs))
+    golden, found = unique(extract(expectations.get("expected_response", ""))), extract(_answer(outputs))
     if not golden:
         return Feedback(value=1.0, rationale="The golden answer states no numbers.")
-    missing = [g.text for g in golden if not any(same(g, n) for n in found)]
+    missing = [g.text for g in golden if not any(matches(g, n) for n in found)]
     note = f"{len(golden) - len(missing)} of {len(golden)} golden numbers stated"
     return Feedback(value=round(1 - len(missing) / len(golden), 4),
                     rationale=note + (f"; missing: {', '.join(missing[:12])}" if missing else "."))
@@ -213,6 +218,10 @@ def false_drivers(outputs, expectations) -> Feedback:
     return Feedback(value=len(extra), rationale=("Unexpected supported drivers: " + "; ".join(extra)) if extra else "No unexpected driver.")
 
 
+def _trajectory(outputs) -> dict:
+    return (outputs or {}).get("trajectory") or {}
+
+
 def _words(text) -> int:
     return len(re.findall(r"\S+", text)) if isinstance(text, str) else 0
 
@@ -245,7 +254,42 @@ def must_say_recall(outputs, expectations) -> Feedback:
                     rationale=note + (f"; missing: {'; '.join(missing)}" if missing else "."))
 
 
-REPORT_ONLY = [key_fact_recall, finding_recall, false_drivers, brief_words, must_say_recall]
+SCOPE_FIELDS = ("territory", "week_start", "week_end", "comparison", "intent")
+
+
+def _scope_value(field: str, value):
+    """Comparable form of one scope field: territory IDs upper-case, dates as ISO text, comparison without its Nones."""
+    if value is None:
+        return None
+    if field == "territory":
+        return str(value).strip().upper()
+    if field == "comparison":
+        return {k: str(v) for k, v in dict(value).items() if v is not None} or None
+    return str(value).strip()
+
+
+@scorer(name="scope_match",
+        description="Share of the case's expected scope fields (territory, weeks, comparison, intent) the agent's scope proposal "
+                    "matches (core-011 packet F). Report only; not scored until a run records scope_proposal.")
+def scope_match(outputs, expectations) -> Feedback:
+    expected = expectations.get("scope") or {}
+    checked = [f for f in SCOPE_FIELDS if expected.get(f) is not None]
+    proposal = _trajectory(outputs).get("scope_proposal")
+    if not isinstance(proposal, dict):
+        return _not_scored("the run recorded no scope proposal")
+    if not checked:
+        return _not_scored("the case states no expected scope")
+    wrong = []
+    for f in checked:
+        want, got = _scope_value(f, expected[f]), _scope_value(f, proposal.get(f))
+        if want != got:
+            wrong.append(f"{f}: expected {want}, got {got}")
+    return Feedback(value=round((len(checked) - len(wrong)) / len(checked), 4),
+                    rationale=f"{len(checked) - len(wrong)} of {len(checked)} scope fields match"
+                              + (f"; {'; '.join(wrong)}" if wrong else "."))
+
+
+REPORT_ONLY = [key_fact_recall, finding_recall, false_drivers, brief_words, must_say_recall, scope_match]
 
 
 def _claims(outputs):
@@ -315,10 +359,6 @@ EVIDENCE = [claims_reconcile, numbers_traced, links_resolve]
 
 
 # Trajectory: white-box and report-only, never gated. For agent systems that return `trajectory`.
-def _trajectory(outputs) -> dict:
-    return (outputs or {}).get("trajectory") or {}
-
-
 @scorer(name="tool_calls", description="MCP tool calls the agents made (report only).")
 def tool_calls(outputs) -> Feedback:
     tools = _trajectory(outputs).get("tools", [])
@@ -352,6 +392,24 @@ def needed_revision(outputs) -> Feedback:
 
 
 TRAJECTORY = [tool_calls, llm_calls, seconds, hit_cap, needed_revision]
+
+
+# What each check tells you (Michael, 2026-11-22): code checks are things code can produce deterministically, so
+# a miss is a code defect; agent checks measure the agent's own inference and are where agent work aims; safety
+# checks guard wording; ops are run counters. A new scorer must be added here (a test enforces it).
+KIND: dict[str, str] = {
+    "golden_number_recall": "code", "numbers_match_golden": "code", "key_fact_recall": "code",
+    "claims_reconcile": "code", "numbers_traced": "code", "links_resolve": "code", "sections_exist": "code",
+    "finding_recall": "agent", "false_drivers": "agent", "must_say_recall": "agent", "needed_revision": "agent",
+    "brief_words": "agent", "scope_match": "agent", "judge_factual_correctness": "agent",
+    "must_not_say": "safety", "governed_terms": "safety", "no_individual_rep": "safety",
+    "tool_calls": "ops", "llm_calls": "ops", "seconds": "ops", "hit_cap": "ops",
+}
+
+
+def kind_of(name: str) -> str:
+    """The kind of a scorer by name; any judge or RAGAS score is an agent check, an unknown name is too."""
+    return KIND.get(name, "agent")
 
 
 def judge_scorers(model: str) -> list:
