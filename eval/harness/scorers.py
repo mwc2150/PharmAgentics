@@ -410,6 +410,17 @@ KIND: dict[str, str] = {
 }
 
 
+# How a score is read: "share" (0 to 1, shown as a percent; the default), "count" (a whole number), "flag" (0 or 1, yes/no).
+UNIT: dict[str, str] = {
+    "false_drivers": "count", "brief_words": "count", "tool_calls": "count", "llm_calls": "count", "seconds": "count",
+    "needed_revision": "flag", "hit_cap": "flag",
+}
+
+
+def unit_of(name: str) -> str:
+    return UNIT.get(name, "share")
+
+
 def kind_of(name: str) -> str:
     """The kind of a scorer by name; any judge or RAGAS score is an agent check, an unknown name is too."""
     return KIND.get(name, "agent")

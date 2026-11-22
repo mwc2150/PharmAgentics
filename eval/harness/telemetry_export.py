@@ -18,7 +18,7 @@ from mlflow.tracking import MlflowClient
 
 from .insights import DEFAULT_STORE, build
 from .paths import EXPERIMENT, tracking_uri
-from .scorers import kind_of
+from .scorers import kind_of, unit_of
 
 OUT = Path(__file__).resolve().parents[2] / "src" / "pharmagentics" / "api" / "telemetry.json"
 JUDGE_HINTS = ("judge", "ragas", "faithfulness", "relevan")  # LLM judges are report-only (Evaluation Pack item 2)
@@ -83,7 +83,7 @@ def cases_block(insights: dict, labels: dict[str, dict]) -> dict:
             entries.append({
                 "system": system, "lane": lane, "control": system.partition(":")[0] in CONTROLS,
                 "run_id": run["run_id"][:8], "started": run["started"], "golden_version": run["golden_version"],
-                "scorers": used, "kinds": {k: kind_of(k) for k in used},
+                "scorers": used, "kinds": {k: kind_of(k) for k in used}, "units": {k: unit_of(k) for k in used},
                 "report_only": [k for k in used if any(h in k.lower() for h in JUDGE_HINTS)],
                 "rows": [{**r, "scores": {k: r["scores"][k] for k in used}} for r in rows]})
     return {"generated": insights.get("generated"), "systems": entries}

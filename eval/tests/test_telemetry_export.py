@@ -62,7 +62,7 @@ def test_block_carries_no_golden_text():
     block = cases_block(INSIGHTS, _labels() | LABELS)
     allowed_row = {"case", "story", "persona", "scores", "stuck", "fallen"}
     for s in block["systems"]:
-        assert set(s) == {"system", "lane", "control", "run_id", "started", "golden_version", "scorers", "kinds", "report_only", "rows"}
+        assert set(s) == {"system", "lane", "control", "run_id", "started", "golden_version", "scorers", "kinds", "units", "report_only", "rows"}
         assert all(set(r) == allowed_row for r in s["rows"])
     # Nothing from a real golden case beyond its id, story id and persona label reaches the block.
     from eval.harness.cases import load_cases
@@ -106,3 +106,15 @@ def test_agent_systems_carry_numbers_lost_as_an_agent_column():
     assert c1["scores"]["numbers_lost"] == 0.5
     assert c2["scores"]["numbers_lost"] is None  # not computable stays null
     assert "numbers_lost" not in _system(block, "briefing_scripted")["rows"][0]["scores"]
+
+
+def test_every_system_names_the_unit_of_each_column():
+    from eval.harness.scorers import unit_of
+
+    insights = {**INSIGHTS, "systems": {"briefing_scripted": {**INSIGHTS["systems"]["briefing_scripted"],
+                                                              "scorers": ["claims_reconcile", "false_drivers", "brief_words", "needed_revision"]}},
+                "matrix": {"briefing_scripted": {"C-1": {"claims_reconcile": [1.0], "false_drivers": [1.0], "brief_words": [430.0],
+                                                         "needed_revision": [0.0]}}}}
+    s = _system(cases_block(insights, LABELS), "briefing_scripted")
+    assert s["units"] == {"claims_reconcile": "share", "false_drivers": "count", "brief_words": "count", "needed_revision": "flag"}
+    assert unit_of("judge_anything") == "share"

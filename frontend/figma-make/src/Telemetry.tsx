@@ -10,6 +10,9 @@ const NAMES: Record<string, string> = {
 }
 const label = (k: string) => k.replace(/[_.]/g, " ").replace(/^./, c => c.toUpperCase())
 const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toFixed(2))
+// A score as people read it: a share as a percent, a count as a whole number, a flag as Yes/No; no unit means a share.
+const fmt = (v: number, unit?: "share" | "count" | "flag") =>
+  unit === "count" ? String(Math.round(v)) : unit === "flag" ? (v >= 0.5 ? "Yes" : "No") : pct(v)
 const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 const name = (r: TelemetryRun) => NAMES[r.system] ?? r.system
 const list = (o: Record<string, number> | undefined) => Object.entries(o ?? {}).map(([k, v]) => `${v} ${k}`).join(", ") || "none"
@@ -84,11 +87,11 @@ const scorerName = (k: string) => SCORERS[k] ?? label(k)
 const LANES: Record<string, string> = { briefing: "Briefing", forecast: "Forecast" }
 const MARK = "ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
 
-function CaseScore({ v, stuck, fell, lost }: { v: number | null | undefined, stuck: boolean, fell?: { previous: number; latest: number }, lost?: boolean }) {
+function CaseScore({ v, stuck, fell, lost, unit }: { v: number | null | undefined, stuck: boolean, fell?: { previous: number; latest: number }, lost?: boolean, unit?: "share" | "count" | "flag" }) {
   if (v == null) return <span className="text-muted" title="Not scored in this run">{"—"}<span className="sr-only">not scored</span></span>
-  return <>{lost ? `${Math.round(v * 100)}%` : pct(v)}
+  return <>{lost ? `${Math.round(v * 100)}%` : fmt(v, unit)}
     {stuck && <span className={`${MARK} bg-amberbg text-amber`} title="Zero in every listed run">stuck</span>}
-    {fell && <span className={`${MARK} bg-amberbg text-amber`} title={`Was ${pct(fell.previous)} in the run before`}>fell from {pct(fell.previous)}</span>}
+    {fell && <span className={`${MARK} bg-amberbg text-amber`} title={`Was ${fmt(fell.previous, unit)} in the run before`}>{fell.latest > fell.previous ? "up" : "fell"} from {fmt(fell.previous, unit)}</span>}
   </>
 }
 
@@ -118,7 +121,7 @@ function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
         </thead>
         <tbody>{t.rows.map(r => <tr key={r.case} className="border-t border-rule">
           <th scope="row" className="px-5 py-2 text-left font-normal"><span className="tabular-nums">{r.case}</span><span className="block text-xs text-muted">{r.story}{r.persona ? ` · ${r.persona}` : ""}</span></th>
-          {cols.map(k => <td key={k} className={`px-3 py-2 text-right tabular-nums${edge(k)}`}><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} fell={r.fallen.find(f => f.scorer === k)} lost={k === "numbers_lost"}/></td>)}
+          {cols.map(k => <td key={k} className={`px-3 py-2 text-right tabular-nums${edge(k)}`}><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} fell={r.fallen.find(f => f.scorer === k)} lost={k === "numbers_lost"} unit={t.units?.[k]}/></td>)}
         </tr>)}</tbody>
       </table>
     </div>

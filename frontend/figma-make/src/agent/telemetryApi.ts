@@ -16,6 +16,7 @@ export type CaseTable = {
   system: string; lane: string; control: boolean; run_id: string; started: string; golden_version: string | null
   scorers: string[]; report_only: string[]; rows: CaseRow[]
   kinds?: Record<string, "code" | "agent" | "safety" | "ops">  // scorer -> kind; absent in older snapshots
+  units?: Record<string, "share" | "count" | "flag">  // scorer -> how to read it; absent: percent
 }
 export type Telemetry = {
   exported: string | null; note: string; latest: TelemetryRun[]; runs: TelemetryRun[]
