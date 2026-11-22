@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import importlib
 import json
 import sys
 from pathlib import Path
@@ -74,80 +75,13 @@ async def _tool(log, agent: str, mcp, tool: str, **args):
     await mw.process(ctx, nxt)
 
 
-@pytest.fixture
-def stub_agent(monkeypatch):
-    import briefing_agent as agent
-    from briefing_agent import investigate as inv
-
-    replies = {"writer": [json.dumps({"answer": "Typed 99 digits here.", "stories": {}}),  # breaks a rule: one revision
-                          ], "reviser": [json.dumps({"answer": "BXA moved as the code sections show.", "stories": {}})],
-               "manager_triage": ['{"order": []}']}
-
-    async def fake_ask(spec, prompt, log, name):
-        reply = replies[name].pop(0) if name in replies and replies[name] else "{}"
-        ctx = SimpleNamespace(messages=[SimpleNamespace(text=prompt)], result=None)
-
-        async def nxt():
-            ctx.result = SimpleNamespace(text=reply, usage_details={})
-        await log.chat(name).process(ctx, nxt)
-        return reply
-
-    async def fake_team(cfg, spec, mcp, task, log, wall):
-        territory = task.split("territory ID ")[1].split(")")[0]
-        await _chat(log, "manager", "Plan the story.", '{"next_speaker": {"answer": "data_forensics"}}')
-        await _tool(log, "data_forensics", mcp, "check_data", territory=territory)
-        await _chat(log, "manager", "Plan the story.", '{"next_speaker": {"answer": "driver_investigator"}}')
-        for tool in ("check_access", "check_promotion", "check_supply", "check_competitor", "story_confidence"):
-            await _tool(log, "driver_investigator", mcp, tool, territory=territory)
-        await _chat(log, "manager", inv_marker(), "DONE")
-        return None
-
-    def inv_marker():
-        return "We are working on the following task: x\n" + _marker()
-
-    def _marker():
-        text = (Path(agent.__file__).parent / "prompts" / "story_done.md").read_text(encoding="utf-8")
-        return next(x.strip() for x in text.splitlines() if x.strip() and "{task}" not in x)
-
-    monkeypatch.setattr(agent, "_ask", fake_ask)
-    monkeypatch.setattr(inv, "_team", fake_team)
-    return agent
-
-
 def _job(kind: str, **payload) -> dict:
     return {"id": "j-test", "kind": kind, "payload": {"question": Q, "query": {"brand_id": "BXA"}, **payload}}
 
 
-def _plan_and_run(agent, with_events: bool, progress=None):
-    from briefing_agent import worker
-
-    tj = worker.run_job(_job("triage"), SPEC, progress if with_events else None) if with_events else agent.triage(Q, SPEC)
-    plan = tj if with_events else dict(tj)
-    if not with_events:
-        plan["events"] = None
-    decision = {"plan_id": plan["plan_id"], "stories": plan["manager_order"]}
-    if with_events:
-        return plan, worker.run_job(_job("brief", plan=plan, decision=decision), SPEC, progress)
-    plan.pop("events")
-    return plan, agent.run_with_plan(Q, decision, plan, SPEC)
-
-
-def test_agent_events_on_stubbed_run_and_the_answer_is_unchanged(stub_agent):
-    posted: list[dict] = []
-    plan, with_events = _plan_and_run(stub_agent, True, posted.extend)
-    # fresh stubs for the run with events off
-    stub_agent._ask.__globals__  # noqa: B018 - the same fake serves both runs (its reply lists are per run, see below)
-    off_plan, without = None, None
-    replies_reset = stub_agent  # noqa: F841
-
-
-def _fresh_run(agent, with_events: bool, progress=None):
-    return _plan_and_run(agent, with_events, progress)
-
-
 def test_events_do_not_change_the_answer_claims_or_evidence(monkeypatch):
     import briefing_agent as agent
-    from briefing_agent import investigate as inv
+    inv = importlib.import_module("briefing_agent.investigate")
 
     def install():
         replies = {"writer": [json.dumps({"answer": "Typed 99 digits here.", "stories": {}})],
@@ -218,7 +152,9 @@ def test_events_do_not_change_the_answer_claims_or_evidence(monkeypatch):
 
 def test_worker_run_job_streams_events_and_the_brief_continues_the_triage_log(monkeypatch):
     import briefing_agent as agent
-    from briefing_agent import investigate as inv, worker
+    from briefing_agent import worker
+
+    inv = importlib.import_module("briefing_agent.investigate")
 
     async def fake_ask(spec, prompt, log, name):
         reply = {"writer": json.dumps({"answer": "BXA moved as the code sections show.", "stories": {}})}.get(name, '{"order": []}')

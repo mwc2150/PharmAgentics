@@ -182,7 +182,7 @@ def test_leadership_response_carries_no_evidence_query_or_trace():
     body = response.json()
     assert response.headers["cache-control"] == "no-store"
     assert body["view"] == "leadership" and leaks(body) == []
-    assert set(body) == set(views.LEADERSHIP_FIELDS) | {"view", "summary", "sections"}  # sections: brief-003 FR-026
+    assert set(body) == set(views.LEADERSHIP_FIELDS) | {"view", "summary", "sections", "process_summary"}  # sections: brief-003 FR-026; process_summary: brief-009 FR-005
     assert all(set(s) <= set(views.SECTION_FIELDS) | {"chart", "kpis", "territory_table", "card"} for s in body["sections"] or [])
 
 
