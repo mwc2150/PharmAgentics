@@ -6,7 +6,7 @@
 - Running when usage ran out: the scripted eval then the full suite on `c0bc982`. Logs are in Claude's session scratchpad: `eval_008.log` and `pytest_008.log` (the second ends with `CHAIN_DONE`). If they are gone, rerun both.
 - Wave 2, in progress in their own worktrees (they may have stopped mid-task; check `git log` and their `conversations/2026-11-22-brief-008-packet-{G,W}.md`):
   - G: `C:/Users/micha/test_agent_v1/pa-008-G`, branch `feature/brief-008-promotion` (P4-Q6 vs P4-Q1 bottom lines, P4-Q5 routing, Promotion review with blocks and readable names).
-  - W: `C:/Users/micha/test_agent_v1/pa-008-W`, branch `feature/brief-008-writer` (Writer prompts and checks for the paragraph memo).
+  - W: DONE at `199393d` on `feature/brief-008-writer` (`pa-008-W`); 44 focused tests pass; merge it. Watch `6_verification` dropped/revised counts in the Haiku run (stricter prose checks).
 
 ## Next steps
 1. Read the eval log: gate the new scripted run against `c65d888fe3e444adab380e509f497a88` (`uv run python -m eval gate <run> c65d888fe3e444adab380e509f497a88`); all seven gated checks must be 1.000. Recall is report-only; packet M changed split values, so compare per case (SC-003 floor 0.668; P4-Q6 should rise after G).
