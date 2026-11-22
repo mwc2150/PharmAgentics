@@ -7,6 +7,11 @@ Sync Impact Report
   IX → B-VI, XII → B-VII. The v1.0.0 "Additional Constraints" are kept below.
 - Updated for the Oct 21 personas: P4 Marketer added; promotion verdict rule
   (Architecture decision 20).
+- v1.1.0, 2026-11-22 (MINOR; Michael, reviewed by Meghna): B-II adds how a
+  question's scope is read. A model may propose the scope, the analyst confirms
+  it, code validates it, and the code parser decides in evals and without a
+  model (brief-008 FR-008). Follow-up: add a row to the Briefing Architecture
+  decision log (§16) in the Drive master.
 -->
 
 # PharmAgentics Briefing Lane Constitution
@@ -25,6 +30,8 @@ Metric definitions, dimensions, materiality thresholds, the hypothesis catalog, 
 ### B-II. Deterministic, Agentic, or Human — Declared
 
 Use code where the answer is knowable, an agent where the path is not, and a person where judgment stays uncertain. Every component states its mode in the autonomy ledger (Briefing Architecture §9). A component not listed as agentic must not claim autonomy.
+
+Reading the question follows the same split. A model may propose a question's scope: its weeks, territory, comparison length and whether it is a promotion question. The analyst confirms or edits the proposal, and code validates it before anything runs. A model never sets the scope of a built brief by itself. In evaluation runs, and when no model is configured, the code parser sets the scope.
 
 ### B-III. Pinned Data Version
 
@@ -59,4 +66,4 @@ Eval items live in the Evaluation Pack. Specs cite them by ID (EV-x.y) and user 
 
 Amendments follow the shared constitution's process, with a row in the Briefing Architecture decision log (§16). Michael and Meghna approve lane amendments. A lane article that becomes shared moves to the shared constitution by a MINOR bump there.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-10-23
+**Version**: 1.1.0 | **Ratified**: 2026-10-23 | **Last Amended**: 2026-11-22
