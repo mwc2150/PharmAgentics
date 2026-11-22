@@ -166,5 +166,6 @@ def coverage(reg: Registry, p) -> dict:
     return {"kind": "coverage", "weeks": W, "table": table,
             "rows": [{"territory": q.name(t), "cells": cs} for t, cs in sorted(rows.items(), key=lambda kv: q.name(kv[0]))],
             "caption": f"Feed coverage by territory and week, {W[0]} to {W[-1]}." + legend,
-            "explanation": (f"{n} territory-weeks in this window are not observed counts." if n else
+            "explanation": (f"{n} {'territory-week' if off == 1 else 'territory-weeks'} in this window {'is' if off == 1 else 'are'} not "
+                            f"{'an observed count' if off == 1 else 'observed counts'}." if n else
                             "Every territory-week in this window is an observed count.")}

@@ -33,6 +33,7 @@ export type BriefingResult = {
   brand_id: string
   territory_id: string
   week_start: string
+  week_end?: string | null
   answer: string
   claims: Claim[]
   evidence: Evidence[]
@@ -60,6 +61,28 @@ export type ChartSpec = {
   table?: DataTable | null  // analyst view only
   explanation_citations?: Span[]  // analyst view only
 }
+// brief-008: structured blocks beside a section's text. Every value is a string the server already filled from a
+// claim token (the UI shows it as given); the *_citations fields are analyst view only and use the Span form.
+export type KpiTile = {
+  label: string
+  value: string
+  detail?: string | null
+  direction?: "up" | "down" | "flat" | null
+  value_citation?: Span[]
+}
+export type TerritoryBasis = "observed" | "projected" | "estimated" | "withheld"
+export type TerritoryRow = {
+  cells: string[]
+  basis: TerritoryBasis
+  cell_citations?: Span[][]    // one list of spans per cell, offsets within that cell's string
+}
+export type TerritoryTable = { columns: string[], rows: TerritoryRow[], note?: string | null }
+export type StoryCardBlock = {
+  headline: string
+  confidence: "High" | "Medium" | "Low"
+  drivers_checked: string[]
+  headline_citations?: Span[]
+}
 export type MemoSection = {
   number: string
   title: string
@@ -69,6 +92,11 @@ export type MemoSection = {
   text_citations?: Span[]      // analyst view only
   prose_citations?: Span[]     // analyst view only
   chart?: ChartSpec | null
+  kpis?: KpiTile[] | null                 // brief-008: §1
+  territory_table?: TerritoryTable | null // brief-008: §2
+  card?: StoryCardBlock | null            // brief-008: each story section
+  detail?: string | null                  // brief-008: analyst view only, folded under "Show detail"
+  detail_citations?: Span[]               // analyst view only
 }
 // brief-002 Phase A: the code triage plan P1 reviews, and how a brief was made.
 export type StoryCard = {
@@ -144,6 +172,7 @@ export type LeadershipBrief = {
   brand_id: string
   territory_id: string
   week_start: string
+  week_end?: string | null  // brief-008: set for a multi-week period
   data_version: string | null
   abstained: boolean
   review_status: ReviewStatus
@@ -155,6 +184,7 @@ export type PublishedBrief = {
   brief_id: string
   brand_id: string
   week_start: string
+  week_end?: string | null
   territory_id: string
   engine: string
   reviewed_at: string | null
@@ -184,8 +214,22 @@ export type BriefingQuery = {
   brand_id: string
   territory_id: string
   week_start: string
+  week_end?: string | null  // brief-008: the last week of a multi-week period; absent for one week
   comparison?: Comparison | null
   question: string
+}
+
+// brief-008 FR-008: a typed question read into a proposed scope for the form. Nothing runs on it.
+export type BriefingScope = {
+  question: string
+  week_start: string
+  week_end: string
+  territory_id: string | null  // null: the question names no territory, so the form keeps its choice
+  comparison_weeks: number | null  // null: no earlier week fits, so the default comparison applies
+  promotion_review: boolean
+  notes: string[]
+  read_by: "model" | "rules"
+  model?: string | null
 }
 
 export class NotSignedIn extends Error {}
@@ -306,6 +350,15 @@ function checkPlan(v: unknown): TriagePlan {
     }
   }
   return v as unknown as TriagePlan
+}
+export async function readBriefingScope(req: { question: string; brand_id: string }): Promise<BriefingScope> {
+  const v: unknown = await api("/api/briefing/scope", post(req))
+  expectObject(v)
+  if (typeof v.week_start !== "string" || typeof v.week_end !== "string" || (v.comparison_weeks !== null && typeof v.comparison_weeks !== "number") ||
+      typeof v.promotion_review !== "boolean" || (v.read_by !== "model" && v.read_by !== "rules") || !Array.isArray(v.notes)) {
+    throw new Error("The question could not be read. Set the scope by hand.")
+  }
+  return v as unknown as BriefingScope
 }
 export async function getBriefing(q: BriefingQuery, triage?: TriageDecision): Promise<BriefingResult> {
   return checkAnalyst(await api("/api/briefing/query", post(triage ? { ...q, triage } : q)))

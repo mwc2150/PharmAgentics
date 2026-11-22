@@ -35,8 +35,8 @@ def stored(tmp_path: Path) -> list[dict]:
     return [json.loads(p.read_text(encoding="utf-8")) for p in (tmp_path / "feedback" / "response").rglob("*.json")]
 
 
-def a_brief(status: str = "pending") -> str:
-    result = {"system": "briefing_scripted", "engine": "scripted", "data_version": "dv-1", "brand_id": "BXA",
+def a_brief(status: str = "pending", **extra) -> str:
+    result = {**extra, "system": "briefing_scripted", "engine": "scripted", "data_version": "dv-1", "brand_id": "BXA",
               "territory_id": "GREAT_LAKES", "week_start": "2026-10-05", "question": None,
               "answer": "BXA TRx rose.\nChecked, in this order:\n- SQL detail for the analyst."}
     bid = store.save_brief(result, by="u-test")["brief_id"]
@@ -75,6 +75,13 @@ def test_analyst_votes_on_a_brief_and_reads_it_back(tmp_path):
     assert doc["user"] == rbac.pseudonym("dev-analyst") and doc["personas"] == ["P1"]
     assert "dev-analyst" not in json.dumps(doc) and "Dev Commercial" not in json.dumps(doc)
     assert c.get("/api/feedback/vote", params=q).json()["vote"] == "up"
+
+
+def test_a_vote_on_a_multi_week_brief_keeps_its_last_week(tmp_path):
+    c = signed_in("dev-analyst")
+    c.post("/api/feedback/vote", json={"lane": "briefing", "ref": a_brief(week_end="2026-10-19"), "view": "analyst", "vote": "up"})
+    (doc,) = stored(tmp_path)
+    assert doc["scope"]["week_start"] == "2026-10-05" and doc["scope"]["week_end"] == "2026-10-19"
 
 
 def test_a_leader_votes_only_on_approved_briefs_and_only_the_summary_is_kept(tmp_path):

@@ -63,6 +63,10 @@ class RunSession:
         self.calls: list[dict] = []
         self.proj: projection.Projection | None = None  # set by brief_sections, read by memo_close
         self.restated = False
+        self.facts: dict = {}  # stage 3 claims by name, kept for the memo's blocks (brief-008)
+        self.story_facts: dict[str, dict] = {}  # territory -> the story head's claims, for its card
+        self.story_detail: dict[str, list[str]] = {}  # territory -> readable splits, for its folded detail
+        self.competitor_facts: dict = {}
 
     # admin -------------------------------------------------------------------------------------
     def open_run(self, question: str, comparison: Comparison | None = None) -> str:
@@ -70,6 +74,7 @@ class RunSession:
         self.reg = Registry(self.db)
         self.p = stages.resolve(self.reg, question, comparison=comparison)
         self.checks, self.stories, self.calls, self.seen = {}, {}, [], {}
+        self.story_facts, self.story_detail, self.competitor_facts = {}, {}, {}
         if not self.p.requested:
             return stages.outside_release(self.p)
         lines = [f"Period: {stages.describe(self.p)}. Comparison: {memo.comparison_text(self.p)}. Source: {self.p.baseline_source}.",
@@ -220,11 +225,13 @@ class RunSession:
         reg, p = self._reg(), self.p
         health = stages.data_health(reg, p)
         restated = stages.restatements(reg, p)
-        kpis = stages.kpis(reg, p)
-        self.proj, self.restated = projection.build(reg, p), bool(restated)
-        return {"title": memo.title_lines(p), "numbers": memo.numbers(self.proj, kpis, restated, p),
-                "limits": memo.limits(p, self.proj, health, reg), "appendix": memo.appendix(reg, p=p, proj=self.proj),
-                "calendar": bool(p.calendar),
+        facts: dict = {}
+        stages.kpis(reg, p, facts)
+        self.proj, self.restated, self.facts = projection.build(reg, p), bool(restated), facts
+        nums, lim = memo.numbers(self.proj, facts, restated, p), memo.limits(p, self.proj, health, reg)
+        return {"title": memo.title_lines(p), "numbers": nums["lines"], "limits": lim["lines"],
+                "appendix": memo.appendix(reg, p=p, proj=self.proj), "calendar": bool(p.calendar),
+                "territory_table": nums["territory_table"], "details": {"2": nums["detail"], "4": lim["detail"]},
                 "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 
     def memo_close(self, competitor: bool) -> dict:
@@ -243,7 +250,15 @@ class RunSession:
             plan = (access.detail or {}).get("plan") if access else None
             drivers = s["drivers"] if s["confidence"] != "Low" else []
             story_charts[s["territory"]] = charts.story(reg, p, s["territory"], drivers, plan)
-        return {"bottom_line": memo.bottom_line(reg, p, self.proj, told, self.restated),
+        top: dict = {}
+        bottom = memo.bottom_line(reg, p, self.proj, told, self.restated, facts=top)
+        cards = {s["territory"]: memo.story_card(q.name(s["territory"]), self.story_facts[s["territory"]], s["confidence"],
+                                                 list(self.checks.get(s["territory"], {})))
+                 for s in told if s["territory"] in self.story_facts}
+        if competitor and self.competitor_facts:
+            cards["competitor"] = memo.competitor_card(p, self.competitor_facts)
+        return {"bottom_line": bottom, "kpis": memo.kpis(p, self.proj, top), "details": {"1": memo.bottom_detail(top)},
+                "story_cards": cards, "story_details": {s["territory"]: self.story_detail.get(s["territory"], []) for s in told},
                 "next_checks": memo.next_checks(p, told, competitor),
                 "driver_timing": memo.driver_timing(told),
                 "charts": {"2": charts.trend(reg, p), "4": charts.coverage(reg, p), "stories": story_charts,
@@ -256,22 +271,27 @@ class RunSession:
             raise ToolError(self._bad_territory(territory))
         if self.p.promotion and t == self.p.focus and "promotion" not in self.checks.get(t, {}):
             self.check_promotion(t)
-        head = f"Story {_ORD.get(n, str(n))}: {stages.territory_change(self._reg(), self.p, t)}"
+        facts: dict = {}
+        head = f"Story {_ORD.get(n, str(n))}: {stages.territory_change(self._reg(), self.p, t, facts)}"
+        self.story_facts[t] = facts
         done = list(self.checks.get(t, {}).values())
         lines = [head] + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
         lines.append(memo.without_next(self._status(t, closing=True)))  # its next check goes to §5
-        lines.extend(splits.story_lines(self._reg(), self.p, t))
+        self.story_detail[t] = memo.story_detail(self._reg(), self.p, t)  # folded, not in the story's text
         return "\n".join(lines)
 
     def competitor_section(self, lead: str) -> str:
-        return stages.competitor_status(self._reg(), self.p, lead=lead) or ""
+        facts: dict = {}
+        text = stages.competitor_status(self._reg(), self.p, lead=lead, facts=facts) or ""
+        self.competitor_facts = facts
+        return text
 
     def dropped_line(self) -> str:
         reg, p = self._reg(), self.p
         if p.calendar:
             return ""
         _found, quiet = stages.screen(reg, p)
-        return f"Considered and dropped: {stages.dropped_count(reg, p, quiet)} territories moved within their normal range." if quiet else ""
+        return stages.dropped_line(reg, p, quiet) if quiet else ""
 
     def _record(self, t: str, check: Check) -> str:
         self.checks.setdefault(t, {})[check.driver] = check

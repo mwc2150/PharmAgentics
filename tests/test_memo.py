@@ -106,7 +106,7 @@ def test_bottom_line_order_on_the_withheld_week():
 def test_every_projected_or_estimated_level_is_flagged_as_an_assumption(week, territory):
     """FR-022 (Michael, 2026-11-20): a level the feed did not deliver is always called an assumption."""
     text = brief(week)["answer"]
-    row = next(x for x in section(text, "The numbers") if x.startswith(f"- {territory}:"))
+    row = next(x for x in section(text, "The numbers") if x.startswith(f"{territory}:"))  # the folded level line
     assert "an assumption" in row
     assert "an assumption" in section(text, "Bottom line")[0]  # the data warning
     assert any(x.startswith("Assumption:") for x in section(text, "What the data can't tell us"))
@@ -115,14 +115,14 @@ def test_every_projected_or_estimated_level_is_flagged_as_an_assumption(week, te
 @needs_db
 def test_least_sure_falls_to_the_lowest_confidence_story_then_the_smallest_change():
     restated = section(brief(RESTATED)["answer"], "Bottom line")
-    assert restated[-1] == "Least sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories."
+    assert ("Least sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories."
+            in restated)
     routine = section(brief(ROUTINE)["answer"], "Bottom line")
-    assert routine[-1].startswith("Least sure: the week-over-week change")
+    assert any(x.startswith("Least sure: the week-over-week change") for x in routine)
     numbers = section(brief(ROUTINE)["answer"], "The numbers")
-    rows = [x for x in numbers if x.startswith("- ") and "on the week before" not in x]  # the level table only
-    assert len(rows) == 8 and not any("(projected" in x or "(estimated" in x for x in rows)  # nothing marked
-    changes = [x for x in numbers if x.startswith("- ") and "on the week before" in x]  # brief-007 FR-007
-    assert len(changes) == 8  # one change line per territory
+    levels = [x for x in numbers if re.match(r"[A-Z][A-Za-z\- ]+: [\d,]+ BXA TRx a week", x)]  # the folded level lines
+    assert len(levels) == 8 and not any("(projected" in x or "(estimated" in x for x in levels)  # nothing marked
+    assert len([x for x in levels if "on the week before" in x]) == 8  # brief-007 FR-007: one change line per territory
 
 
 @needs_db
@@ -145,12 +145,15 @@ def test_next_checks_name_an_owner_and_a_decision():
 @needs_db
 def test_leaders_get_bottom_line_numbers_stories_without_checks_and_next_checks():
     text = brief(RESTATED)["answer"]
-    summary = executive_summary(text)
+    env = brief(RESTATED)
+    summary = executive_summary(text, env["sections"])
     heads = [x for x in summary.splitlines() if x.startswith("## ")]
-    assert heads == ["## Bottom line", "## The numbers", "## What changed and why", "## Next checks"]
+    assert heads == ["## Bottom line", "## The numbers", "## What changed and why", "## What the data can't tell us",
+                     "## Next checks", "## Assumptions"]  # brief-008 FR-005: a short limits paragraph, the Assumptions
     assert "Checked, in this order:" not in summary and "Considered and dropped" not in summary
-    assert "Data version" not in summary and "Data health:" not in summary
-    assert "Restated: Mid-Atlantic" in summary
+    assert not any(x in summary for x in ("Data version", "Method:", "Glossary", "Cuts of the change", "Feed for "))
+    assert "Restated: Mid-Atlantic" in summary and "- Comparison weeks:" in summary
+    assert len(section(summary, "What the data can't tell us")) == 1  # the first paragraph only
 
 
 def test_a_brief_from_before_the_memo_is_cut_as_before():
@@ -214,8 +217,8 @@ def test_scope_line_and_assumptions_name_the_comparison_weeks():
 def test_territory_changes_match_the_golden_swings():
     """FR-007 (P1-Q3): each territory's week-over-week change, with its direction."""
     numbers = section(brief(ROUTINE)["answer"], "The numbers")
-    assert "- Pacific: up 24.8% on the week before; up 8.4% on the comparison weeks." in numbers
-    assert "- Southeast: down 10.8% on the week before; down 16.0% on the comparison weeks." in numbers
+    assert any(x.startswith("Pacific: ") and x.endswith("up 24.8% on the week before; up 8.4% on the comparison weeks.") for x in numbers)
+    assert any(x.startswith("Southeast: ") and x.endswith("down 10.8% on the week before; down 16.0% on the comparison weeks.") for x in numbers)
 
 
 @needs_db
@@ -238,3 +241,126 @@ def test_bxc_memo_uses_the_selected_brand_for_withheld_cut_evidence():
     assert "Product: BXC (Lipidara), synthetic data." in result["answer"]
     assert any("product_id = 'BXC'" in e["query"] and "select min(s)" in e["query"] for e in result["evidence"])
     assert not any("product_id = 'BXA'" in e["query"] for e in result["evidence"])
+
+
+# --- brief-008: the blocks, the paragraphs, the folded detail ---------------------------------------------------
+
+RAW_ID = re.compile(r"\bSYN_|\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b")  # SYN_GREAT_LAKES_MEDICARE_PART_D_1, PRIMARY_CARE
+SIGNED = re.compile(r"(?<![\w.-])-\d[\d,]*\.\d+")  # -158.40
+PLURAL_SLIP = re.compile(r"\b1 (?:weeks|territories|territory-weeks)\b")
+ANCHORS = [f"Week of {ROUTINE}: Generate the weekly brand-performance briefing.",
+           f"Week of {WITHHELD}: Generate the weekly brand-performance briefing.",
+           f"Week of {EVENTFUL}: Generate the weekly brand-performance briefing.",
+           f"Week of {RESTATED}: Generate the weekly brand-performance briefing.", SOUTHEAST_GAP,
+           "Weeks of 2026-06-01 to 2026-06-29, Pacific: Why did BXA prescriptions fall?"]
+
+
+def built(question: str) -> tuple[str, list[dict], dict]:
+    """The template and unrendered sections of one scripted brief, with its envelope."""
+    from briefing_baseline.pipeline import Registry, _brief
+
+    import pharmagentics.tools.memo as memo
+
+    reg, captured, real = Registry(), {}, memo.compose
+    memo.compose = lambda parts: captured.setdefault("t", real(parts))
+    try:
+        env = _brief(reg, question)
+    finally:
+        memo.compose = real
+        reg.close()
+    return captured["t"][0], captured["t"][1], env
+
+
+def by_number(env: dict) -> dict[str, dict]:
+    return {s["number"]: s for s in env["sections"]}
+
+
+def _tokens(*texts) -> set[str]:
+    return {t for x in texts for t in re.findall(r"\{c\d+\}", x or "")}
+
+
+def _block_strings(s: dict) -> list[str]:
+    out = [f"{k['value']} {k.get('detail') or ''}" for k in s.get("kpis", [])]
+    if s.get("territory_table"):
+        out += [c for r in s["territory_table"]["rows"] for c in r["cells"]] + [s["territory_table"].get("note") or ""]
+    if s.get("card"):
+        out.append(s["card"]["headline"])
+    return out
+
+
+@needs_db
+@pytest.mark.parametrize("question", ANCHORS)
+def test_every_block_number_is_in_the_scored_answer(question):
+    """FR-002: a token used in a block also appears in the section's text or detail, so the answer keeps every claim."""
+    template, sections, _env = built(question)
+    for s in sections:
+        shown = _tokens("\n".join(s["lines"]), s["prose"], s.get("detail"), (s.get("chart") or {}).get("caption"),
+                        (s.get("chart") or {}).get("explanation"))
+        assert _tokens(*_block_strings(s)) <= shown, s["number"]
+    assert _tokens(template) >= _tokens(*[x for s in sections for x in _block_strings(s)])
+    assert digits_outside_tokens(template) == []
+
+
+@needs_db
+def test_blocks_follow_the_schema_for_a_one_week_brief():
+    env = brief(EVENTFUL)
+    one, two = by_number(env)["1"], by_number(env)["2"]
+    assert [k["label"] for k in one["kpis"]] == ["National BXA TRx", "Change on the comparison weeks", "BXA basket share", "Territories reportable"]
+    assert [k["direction"] for k in one["kpis"]] == [None, "down", "down", None]
+    assert one["kpis"][0]["value"] == "4,105" and one["kpis"][1]["value"] == "4.4%" and one["kpis"][3]["value"] == "8"
+    assert all(k["value_citation"] and not re.search(r"\{c\d+\}", k["value"] + (k["detail"] or "")) for k in one["kpis"])
+    table = two["territory_table"]
+    assert table["columns"] == ["Territory", "BXA TRx", "On the week before", "On the comparison weeks", "Basis"]
+    assert [r["cells"][0] for r in table["rows"]][:2] == ["Great Lakes", "Mid-Atlantic"] and len(table["rows"]) == 8
+    assert table["rows"][0]["cells"] == ["Great Lakes", "556", "down 12.3%", "down 12.6%", "observed"]
+    assert all(len(r["cells"]) == len(table["columns"]) == len(r["cell_citations"]) for r in table["rows"])
+    assert table["rows"][0]["cell_citations"][0] == [] and len(table["rows"][0]["cell_citations"][1]) == 1
+    assert "four weeks before" in table["note"]
+    story = by_number(env)["3.1"]
+    assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"] == []  # the competitor story
+    assert "Metacora holds 15.9%" in story["card"]["headline"] and story["card"]["headline_citations"]
+    assert "detail" in by_number(env)["6"] and "Glossary" in by_number(env)["6"]["detail"]
+
+
+@needs_db
+def test_a_multi_week_brief_quotes_no_single_week_change():
+    """FR-011: no 'week before' change in the table, the lines or the detail of a multi-week period."""
+    template, sections, env = built(SOUTHEAST_GAP)
+    assert "On the week before" not in by_number(env)["2"]["territory_table"]["columns"]
+    assert "on the week before" not in env["answer"] and "Week over week" not in env["answer"]
+    card = by_number(env)["3.1"]["card"]
+    assert card["headline"].startswith("Southeast fell 24.8% on the comparison weeks, while the other territories were up 2.8%")
+    assert card["drivers_checked"] == ["data quality", "access", "promotion", "supply", "competitor"]
+
+
+@needs_db
+@pytest.mark.parametrize("question", ANCHORS)
+def test_paragraphs_have_no_raw_ids_signed_decimals_or_long_lists(question):
+    env = built(question)[2]
+    for s in env["sections"]:
+        shown = "\n".join([s["text"], s["prose"], s.get("detail") or "", *_block_strings(s)])
+        assert not RAW_ID.findall(shown), (s["number"], RAW_ID.findall(shown))
+        assert not SIGNED.findall(shown) and not PLURAL_SLIP.findall(shown), (s["number"], shown)
+        run = 0
+        for line in s["text"].splitlines():  # no list of more than five items in the visible text
+            run = run + 1 if line.startswith("- ") else 0
+            assert run <= 5, (s["number"], line)
+    assert not RAW_ID.findall(env["answer"].replace("Product:", ""))
+
+
+@needs_db
+def test_the_splits_are_readable_rounded_and_folded():
+    story = by_number(brief(SOUTHEAST_GAP))["3.1"]
+    assert "Cuts of the change" not in story["text"] and "Cuts of the change by plan" in story["detail"]
+    assert "- Commercial plan one: down 48 TRx a week." in story["detail"]
+    assert "- Internal medicine: down 52 TRx a week." in story["detail"] and "(small cell: noisy)" in story["detail"]
+    assert story["detail_citations"] and all(story["detail"][c["start"]:c["end"]] for c in story["detail_citations"])
+
+
+@needs_db
+def test_old_sections_without_blocks_render_as_before():
+    from pharmagentics.tools.memo import render_sections
+
+    old = [{"number": "1", "title": "Bottom line", "lines": ["A {c1}."], "prose": ""}]
+    out = render_sections(old, [{"value": "5", "evidence_id": "e1"}])
+    assert out[0]["text"] == "A 5." and not {"kpis", "territory_table", "card", "detail"} & set(out[0])

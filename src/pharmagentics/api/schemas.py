@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from pharmagentics.tools.window import Comparison
 
@@ -37,16 +37,44 @@ class BriefingQuery(BaseModel):
     brand_id: Brand = "BXA"
     territory_id: Territory = "PACIFIC"
     week_start: date
+    week_end: date | None = None  # brief-008: the last week of a multi-week period; absent or equal = one week
     question: str = Field(default="What changed this week?", min_length=3, max_length=300)
     comparison: Comparison | None = None
     triage: TriageDecision | None = None  # brief-002: absent = the code plan, unchanged behavior
 
-    @field_validator("week_start")
+    @field_validator("week_start", "week_end")
     @classmethod
-    def reporting_week_must_start_on_monday(cls, value: date) -> date:
-        if value.weekday() != 0:
-            raise ValueError("week_start must be a Monday (reporting week start)")
+    def reporting_week_must_start_on_monday(cls, value: date | None) -> date | None:
+        if value is not None and value.weekday() != 0:
+            raise ValueError("Reporting weeks must start on a Monday")
         return value
+
+    @model_validator(mode="after")
+    def last_week_not_before_first(self):
+        if self.week_end is not None and self.week_end < self.week_start:
+            raise ValueError("The last week comes before the first week")
+        return self
+
+
+class BriefingScopeRequest(BaseModel):
+    """brief-008: the typed question whose scope the analyst wants read before building (analysts only)."""
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=3, max_length=300)
+    brand_id: Brand = "BXA"
+
+
+class BriefingScope(BaseModel):
+    """A proposed scope for the form. Nothing runs on it until the analyst confirms. `read_by` says who read it."""
+    question: str
+    week_start: date
+    week_end: date
+    territory_id: Territory | None = None  # None: the question names no territory, so the form keeps its choice
+    comparison_weeks: int | None = Field(default=None, ge=1, le=13)  # None: no earlier week fits, so the default comparison applies
+    promotion_review: bool = False
+    notes: list[str] = Field(default_factory=list)
+    read_by: Literal["model", "rules"]
+    model: str | None = None  # the model that read it, when read_by is "model"
 
 
 class Claim(BaseModel):
@@ -73,6 +101,7 @@ class BriefingResult(BaseModel):
     brand_id: Brand = "BXA"
     territory_id: Territory
     week_start: date
+    week_end: date | None = None  # brief-008: set only for a multi-week period
     comparison: Comparison | None = None
     answer: str
     claims: list[Claim] = Field(default_factory=list)

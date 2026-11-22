@@ -1,8 +1,9 @@
 """Views of one briefing (core-007 FR-002 to FR-006).
 
-The leadership view is cut from the full answer by code: it keeps the memo's Bottom line, The
-numbers, What changed and why without the driver-check detail, and Next checks (brief-003 FR-026),
-so each number it shows is already a claim of the same run. Caveats survive: the Bottom line leads
+The leadership view is cut from the full answer by code: it keeps the memo's Bottom line with its KPI strip,
+The numbers with its territory table, What changed and why with each story's card but without the
+driver-check detail, the first paragraph of What the data can't tell us, Next checks and the Assumptions
+(brief-003 FR-026, brief-008 FR-005), so each number it shows is already a claim of the same run. Caveats survive: the Bottom line leads
 with any withheld cut and The numbers carries restatements. It carries no claims, evidence, query
 text or trace.
 """
@@ -15,9 +16,21 @@ HEADING = "## "
 LEADERSHIP_DROPS = ("What the data can't tell us", "Appendix")
 
 
-def executive_summary(answer: str) -> str:
-    """Leaders get the title, Bottom line, The numbers, What changed and why without the checks, and Next
-    checks. A brief from before the memo (no headings) keeps every line but the checks."""
+def executive_summary(answer: str, sections: list[dict] | None = None) -> str:
+    """Leaders get the title, Bottom line, The numbers, What changed and why without the checks, the first
+    paragraph of the limits, Next checks and the Assumptions. With the memo's `sections` the cut is theirs, so
+    folded detail never reaches the summary; a brief stored without them is cut from its flat text (every line
+    but the checks, the dropped line and, from the memo on, the limits and the appendix)."""
+    if sections and (cut := leadership_sections(sections)):
+        keep = [x for x in answer.split("\n## ")[0].splitlines() if x.strip()]
+        for s in cut:
+            if "." not in s["number"]:
+                keep.append(HEADING + s["title"])
+            keep += [x for x in (s["text"] or "").splitlines() + (s.get("prose") or "").splitlines() if x.strip()]
+            chart = s.get("chart")
+            if chart:
+                keep += [f"Chart: {chart['caption']}", chart["explanation"]]
+        return "\n".join(keep)
     keep: list[str] = []
     in_checks = dropped_section = False
     for line in answer.splitlines():
@@ -43,10 +56,12 @@ def executive_summary(answer: str) -> str:
     return "\n".join(keep)
 
 
-LEADERSHIP_FIELDS = ("brief_id", "engine", "system", "brand_id", "territory_id", "week_start",
+LEADERSHIP_FIELDS = ("brief_id", "engine", "system", "brand_id", "territory_id", "week_start", "week_end",
                      "data_version", "abstained", "review_status", "reviewed_at")
-LEADERSHIP_SECTIONS = ("1", "2", "3", "5")  # brief-003 FR-026; story subsections 3.1, 3.2 … follow §3
+LEADERSHIP_SECTIONS = ("1", "2", "3", "4", "5", "6")  # §4 in short, §6 as the Assumptions; story subsections follow §3
 SECTION_FIELDS = ("number", "title", "text", "prose")  # allow-list: no claims, citations or evidence
+KPI_FIELDS, ROW_FIELDS, CARD_FIELDS = ("label", "value", "detail", "direction"), ("cells", "basis"), ("headline", "confidence", "drivers_checked")
+TABLE_FIELDS = ("columns", "note")  # blocks (brief-008): values and labels only, never their citations or the detail
 CHART_FIELDS = ("kind", "weeks", "caption", "explanation", "series", "band", "rows")  # no table, query or panel table
 
 
@@ -64,16 +79,54 @@ def _leader_text(text: str) -> str:
     return "\n".join(keep)
 
 
+def _assumptions(text: str) -> list[str]:
+    """The Assumptions block of the Appendix text: its items, with the data version and the heading left out."""
+    lines = text.splitlines()
+    if "Assumptions:" not in lines:
+        return []
+    items = []
+    for line in lines[lines.index("Assumptions:") + 1:]:
+        if not line.startswith("- "):
+            break
+        items.append(line)
+    return items
+
+
+def _blocks(s: dict) -> dict:
+    """The brief-008 blocks a leader sees: values and labels, no citations, no detail."""
+    out = {}
+    if s.get("kpis"):
+        out["kpis"] = [{k: x.get(k) for k in KPI_FIELDS} for x in s["kpis"]]
+    if s.get("territory_table"):
+        t = s["territory_table"]
+        out["territory_table"] = {**{k: t.get(k) for k in TABLE_FIELDS}, "rows": [{k: r.get(k) for k in ROW_FIELDS} for r in t["rows"]]}
+    if s.get("card"):
+        out["card"] = {k: s["card"].get(k) for k in CARD_FIELDS}
+    return out
+
+
 def leadership_sections(sections: list[dict] | None) -> list[dict] | None:
-    """The memo sections a leader sees, cut by code from the analyst's: §1, §2 with its chart, §3 and its stories
-    without the checks list or the evidence, and §5. Allow-lists, so a new field never reaches a leader."""
+    """The memo sections a leader sees, cut by code from the analyst's: §1 with its KPI strip, §2 with its table
+    and chart, §3 and its stories (cards) without the checks list or the evidence, §4 in its first paragraph, §5,
+    and the Assumptions from §6. Allow-lists, so a new field never reaches a leader."""
     if not sections:
         return None
     out = []
     for s in sections:
-        if s["number"].split(".")[0] not in LEADERSHIP_SECTIONS:
+        top = s["number"].split(".")[0]
+        if top not in LEADERSHIP_SECTIONS:
+            continue
+        if top == "4":  # the short limits paragraph: no chart, no table, no gate detail
+            first = (s.get("text") or "").split("\n")[0]
+            out.append({"number": s["number"], "title": s["title"], "text": first, "prose": s.get("prose") or ""})
+            continue
+        if top == "6":
+            items = _assumptions(s.get("text") or "")
+            if items:
+                out.append({"number": s["number"], "title": "Assumptions", "text": "\n".join(items), "prose": ""})
             continue
         cut = {k: s.get(k) for k in SECTION_FIELDS}
+        cut.update(_blocks(s))
         cut["text"] = _leader_text(cut["text"] or "")
         chart = s.get("chart")
         if chart:
@@ -90,7 +143,7 @@ def leadership(record: dict) -> dict:
     result = record["result"]
     out = {k: (record.get(k) if k in record else result.get(k)) for k in LEADERSHIP_FIELDS}
     out["view"] = "leadership"
-    out["summary"] = executive_summary(result["answer"])
+    out["summary"] = executive_summary(result["answer"], result.get("sections"))
     out["sections"] = leadership_sections(result.get("sections"))
     return out
 

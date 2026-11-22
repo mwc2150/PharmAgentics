@@ -109,3 +109,15 @@ def test_an_untraceable_brief_is_refused_as_before():
     agent_host.work_once(SPEC, accept_result, runner=invented)
     shown = a.get(f"/api/agent/jobs/{bjob['id']}").json()
     assert shown["status"] == "failed" and "99.9%" in shown["error"]
+
+
+def test_a_multi_week_triage_plan_from_the_worker_carries_week_end():
+    a = analyst()
+    multi = {**Q, "week_end": "2026-07-27"}
+    job = a.post("/api/agent/jobs", json={"kind": "triage", "query": multi}).json()
+    assert agent_host.work_once(SPEC, accept_result, runner=lambda j, s: {"state": "ROUTINE", "claims": [], "evidence": []}) is True
+    plan = a.get(f"/api/agent/jobs/{job['id']}").json()["result"]
+    assert (plan["week_start"], plan["week_end"]) == ("2026-07-13", "2026-07-27")
+    one = a.post("/api/agent/jobs", json={"kind": "triage", "query": Q}).json()
+    agent_host.work_once(SPEC, accept_result, runner=lambda j, s: {"state": "ROUTINE", "claims": [], "evidence": []})
+    assert "week_end" not in a.get(f"/api/agent/jobs/{one['id']}").json()["result"]
