@@ -145,7 +145,7 @@ def test_golden_key_facts_can_be_matched():
             assert not (isinstance(f["value"], int) and abs(f["value"]) <= 10), (case.id, f["id"])
 
 
-def test_pooled_share_counts_facts_across_cases_and_skips_unanswered_ones():
+def test_pooled_share_counts_facts_across_cases_and_counts_unanswered_ones_as_missed():
     from types import SimpleNamespace
     from eval.harness.run import _pooled_key_facts
 
@@ -159,7 +159,7 @@ def test_pooled_share_counts_facts_across_cases_and_skips_unanswered_ones():
     cases = [case("a", [fact("x", 3860), fact("y", 4729)]), case("b", [fact("z", 481)]), case("c", []),
              case("crashed", [fact("w", 999)])]
     answered = {key("a"): text("3,860 only"), key("b"): text("481"), key("c"): text("nothing")}
-    assert _pooled_key_facts(cases, answered, key) == round(2 / 3, 4)
+    assert _pooled_key_facts(cases, answered, key) == round(2 / 4, 4)  # the crashed case's fact is in the total
     assert _pooled_key_facts([case("c", [])], {key("c"): text("x")}, key) is None
 
 

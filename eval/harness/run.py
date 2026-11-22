@@ -129,7 +129,8 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
 
 
 def _pooled_key_facts(cases, answered: dict, input_key) -> float | None:
-    """Stated must facts over all must facts across the cases that answered; None when no case has a must fact.
+    """Stated must facts over all must facts across all cases; None when no case has a must fact. A case that crashed
+    or never answered still counts its must facts in the total, with none stated, so a crash lowers the share.
     A case with no must facts is "not scored" in `key_fact_recall`, which MLflow leaves out of the mean (None
     values are dropped by compute_aggregated_metrics), so `key_fact_recall/mean` is already over scored cases."""
     stated = total = 0
@@ -137,6 +138,7 @@ def _pooled_key_facts(cases, answered: dict, input_key) -> float | None:
         inputs = case.inputs()
         out = answered.get(input_key(inputs["question"], inputs["follow_up"], inputs["section"], inputs.get("comparison")))
         if out is None:
+            total += len(case.expectations().get("key_facts") or [])
             continue
         s, _, t = key_fact_counts(out, case.expectations())
         stated, total = stated + s, total + t
