@@ -6,6 +6,7 @@ from __future__ import annotations
 import re
 import statistics
 from dataclasses import dataclass, field
+from datetime import date
 
 from pharmagentics.tools import Registry
 from pharmagentics.tools.queries import REASONS, name, shift
@@ -80,6 +81,16 @@ class Comparison:
 
 class Case:
     def __init__(self, reg: Registry, scope: Scope, drop_controls: list[str] | None = None):
+        # The cut and the weeks go into SQL text, so anything that is not a known territory or an ISO date is refused
+        # here, before a query is built (a model-chosen follow-up scope reaches this point too).
+        if scope.territory != "NATIONAL" and scope.territory not in T:
+            raise Refused(f"Unknown territory {scope.territory!r}. Use NATIONAL or one of: {', '.join(T)}.")
+        for w in scope.weeks:
+            try:
+                if date.fromisoformat(str(w)).isoformat() != w:
+                    raise ValueError
+            except ValueError:
+                raise Refused(f"Not a week date: {w!r}. Weeks are given as YYYY-MM-DD.") from None
         self.reg, self.scope = reg, scope
         # Territories the analyst asked to keep out of every control group (a follow-up such as "drop South Central").
         self.dropped = [t for t in (drop_controls or []) if t in T]
@@ -476,6 +487,13 @@ class Case:
         return cap, reasons
 
     # ---- where an unexplained gap sits (segment splits) ----------------------------------------------------
+    def channels(self) -> list[str]:
+        """The payer channels in the release (read once per case)."""
+        if not hasattr(self, "_channels"):
+            self._channels = [r[0] for r in self.reg.rows(f"select distinct payer_channel from {S.RX} "
+                                                           "where payer_channel is not null order by 1")]
+        return self._channels
+
     def split(self, territory: str, dimension: str, within_channel: str | None = None) -> dict:
         """Each segment's change against the same segment in the other territories, over the usable weeks, and its
         TRx beyond what the peers' change predicts. Plans are compared with their payer channel elsewhere."""
@@ -485,6 +503,12 @@ class Case:
             raise Refused("dimension must be channel, specialty or plan.")
         if dimension == "plan" and not within_channel:
             raise Refused("A plan split needs within_channel (a payer channel such as COMMERCIAL).")
+        if within_channel is not None:
+            # A model may pass this argument, and it goes into SQL text: only a channel the data holds is accepted.
+            channels = self.channels()
+            within_channel = str(within_channel).strip().upper().replace(" ", "_")
+            if within_channel not in channels:
+                raise Refused(f"Unknown payer channel. Use one of: {', '.join(channels)}.")
         W = self.usable
         if not W:
             raise Refused("No usable week in this scope.")

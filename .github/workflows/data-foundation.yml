@@ -19,13 +19,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
-      # Same uv.lock as every laptop; the data tests need the base and dev groups, and the api and agent
-      # groups so unittest discovery can import every test module (the API and agent tests import them).
-      - run: uv sync --locked --no-default-groups --group dev --group api --group agent
+      # Same uv.lock as every laptop, every group: the whole suite imports the API, the agents and the eval harness.
+      - run: uv sync --locked
       - run: uv run python src/pharmagentics/data/load_duckdb.py
       # The fixture intentionally contains feed flags; the tests assert them.
       - run: uv run python src/pharmagentics/data/check_duckdb.py
-      - run: uv run python -m unittest discover -s tests -v
+      # The whole suite (pyproject testpaths: tests/, eval/tests and the Forecast lane's tests). unittest discovery
+      # found only the unittest-style files, so the pytest-style ones, including every Forecast test, never ran here.
+      # No model in CI: the Forecast lane runs its rules, and a test that needs a local model skips.
+      - run: uv run pytest -q
+        env:
+          FORECAST_AGENT_MODEL: rules
 
   # Golden-set integrity, code checks, isolation scans and an end-to-end MLflow run.
   # No model is needed: LLM controls and judges run locally on demand.
@@ -38,7 +42,8 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - run: uv run python src/pharmagentics/data/load_duckdb.py
-      - run: uv run pytest tests/test_tools.py eval/tests -q
+      # The tests run in the integration job; this one checks the golden set and recomputes every fact from the data.
+      - run: uv run python -m eval check
 
   # core-007 and brief-002: role-based views, sign-in, triage review, agent build (no model) and job queue.
   api:

@@ -391,3 +391,29 @@ def test_a_report_reads_as_a_report_not_a_chat():
     t = code_draft(fs, "Cardiovela forecast performance")
     assert "Asked" not in t and "?" not in "".join(l for l in t.splitlines() if l.startswith("#"))
     assert "## The miss week by week: National" in t and "## The reasoning behind the findings: National" in t
+
+
+# ---- inputs that reach SQL text (review 2026-11-22) ---------------------------------------------------------------
+
+def test_an_unknown_cut_or_a_malformed_week_is_refused_before_any_query():
+    """A model-chosen follow-up scope reaches the engine: a name instead of an id used to answer from zero rows
+    ("0.0% above forecast in Pacific"), and a week is put into SQL text."""
+    reg = Registry(DEFAULT_DB)
+    try:
+        with pytest.raises(Refused, match="Unknown territory"):
+            Case(reg, parse_scope("Why did we miss?", FIRST, LATEST, territory="Pacific", weeks=["2026-03-02"]))
+        with pytest.raises(Refused, match="Not a week date"):
+            Case(reg, parse_scope("Why did we miss?", FIRST, LATEST, weeks=["2026-03-02' or '1'='1"]))
+    finally:
+        reg.close()
+
+
+def test_a_repeated_week_is_one_week():
+    assert parse_scope("Why did we miss?", FIRST, LATEST, weeks=["2026-03-02", "2026-03-02"]).weeks == ["2026-03-02"]
+
+
+def test_a_plan_split_takes_only_a_payer_channel_the_data_holds():
+    c = case("Week of 2026-08-24: Which regions or segments drive the miss?")
+    with pytest.raises(Refused, match="Unknown payer channel"):
+        c.split("PACIFIC", "plan", "COMMERCIAL' or '1'='1")
+    assert c.split("PACIFIC", "plan", "commercial")["within_channel"] == "COMMERCIAL"
