@@ -43,7 +43,13 @@ def _run_job(job: dict, spec: str) -> dict:
         sys.path.insert(0, str(AGENTS_DIR))
     from briefing_agent.worker import run_job
 
-    return run_job(job, spec)
+    def progress(events: list[dict]) -> None:  # the timeline fills in live (brief-009 FR-002)
+        try:
+            jobs.add_progress(job["id"], events, NAME, spec)
+        except KeyError:
+            pass  # the job was failed or finished under us; the result path reports that
+
+    return run_job(job, spec, progress)
 
 
 def work_once(spec: str, accept: Callable[[str, bool, dict | None, str | None], dict],

@@ -19,6 +19,8 @@ from pharmagentics.tracing import finish, span
 
 from briefing_lowcode.team import RunLog, _call, _model_failure  # build 2's middleware and helpers
 
+from . import trace
+
 HERE = Path(__file__).resolve().parent
 ORD = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
 
@@ -89,6 +91,8 @@ async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], l
         card = by_id[sid]
         if card["kind"] == "competitor":
             text = await _call(mcp, "competitor_section", lead=f"Story {ORD[n + 1]}: competitor Metacora")
+            await trace.note(log, "Check the competitor", text, tool="competitor_section", story=sid,
+                             summary="Code wrote the competitor Metacora story from the shared basket figures.")
             if text:
                 n += 1
                 stories.append({"id": sid, "n": n, "section": text})
@@ -96,12 +100,18 @@ async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], l
         n += 1
         left = cfg["run_wall_seconds"] * scale - (time.time() - started)
         capped = "run_cap" if left < 20 else None
+        if log.events is not None:
+            log.events.story = sid
         with span(f"story_{n}_{card['territory']}", inputs={"story": sid, "hypotheses": card["manager"]["hypotheses"]}) as sp:
             if not capped:
                 capped = await _team(cfg, spec, mcp, story_task(card, card["manager"]["hypotheses"]), log,
                                      min(cfg["story_wall_seconds"] * scale, left))
             section = await _call(mcp, "story_section", territory=card["territory"], n=n)  # code closes the story
+            await trace.note(log, "Close the story", section, tool="story_section", args={"territory": card["territory"]},
+                             verdict="done", summary=trace.confidence(section) + (f" The team stopped early ({capped})." if capped else ""))
             finish(sp, {"capped": capped, "section": section})
         stories.append({"id": sid, "n": n, "section": section, "territory": card["territory"]})
         notes.append({"story": sid, "capped": capped})
+    if log.events is not None:
+        log.events.story = None
     return stories, notes

@@ -34,6 +34,7 @@ from mcp.client.stdio import StdioServerParameters
 from pharmagentics.llm import REPO_ROOT, chat_client, chat_options, model_spec
 from pharmagentics.mcp_server import AGENT_TOOLS
 from pharmagentics.tools.registry import digits_outside_tokens
+from pharmagentics.tools.events import EventLog
 from pharmagentics.tracing import finish, span
 
 HERE = Path(__file__).resolve().parent
@@ -67,7 +68,8 @@ def answer(question: str, model: str | None = None) -> dict:
 class RunLog:
     """Middleware that records each agent turn, LLM call and tool call, and wraps each in a span."""
 
-    def __init__(self):
+    def __init__(self, events: "EventLog | None" = None):
+        self.events = events  # brief-009: the run's event log; None records nothing (the eval path)
         self.reports: list[tuple[str, str]] = []  # (agent, text) for every specialist turn
         self.tools: list[str] = []
         self.llm_calls = 0
@@ -92,6 +94,7 @@ class RunLog:
                     await call_next()
                     log.tools.append(tool)
                     finish(sp, {"result": _text(context.result)})
+                await log.record_tool(name, tool, dict(context.arguments or {}), _text(context.result))
 
         mws: list = [_Tool(), log.chat(name)]
         return [_Agent(), *mws]
@@ -109,8 +112,54 @@ class RunLog:
                     log.tokens["input"] += usage.get("input_token_count") or 0
                     log.tokens["output"] += usage.get("output_token_count") or 0
                     finish(sp, {"text": getattr(context.result, "text", "") or "", "usage": dict(usage)})
+                await log.record_chat(name, last, getattr(context.result, "text", "") or "")
 
         return _Chat()
+
+    # brief-009: events. Both are no-ops without a log and never raise, so recording cannot change a run.
+    async def record_tool(self, agent: str, tool: str, args: dict, text: str) -> None:
+        from pharmagentics.tools import events as ev
+
+        if self.events is None:
+            return
+        try:
+            await self.events.refresh(text)
+            actor = ev.ACTOR_OF.get(agent, "Code")
+            self.events.emit(actor, "agent", ev.TOOL_STEP.get(tool, "Use a tool"), tool=tool, args=args,
+                             verdict=ev.verdict_of(tool, text), summary=ev.summary_line(tool, text), text=text,
+                             prompt=self.events.prompts.get(agent))
+        except Exception:  # noqa: BLE001
+            pass
+
+    async def record_chat(self, name: str, last_message: str, reply: str) -> None:
+        from pharmagentics.tools import events as ev
+
+        if self.events is None or name not in _CHAT_STEPS:
+            return  # a specialist's own model turn is shown through its tool calls
+        try:
+            step, summary = _CHAT_STEPS[name]
+            logical = "revise" if name == "reviser" else name  # the prompt file's id
+            if name == "manager" and self.events.done_marker and self.events.done_marker in last_message:
+                step, summary, logical = "Is the story done?", "The manager closed the story from what the team reported.", "story_done"
+            elif name == "manager":
+                nxt = _next_speaker(reply)
+                summary = f"The manager asked {nxt} to act next." if nxt else summary
+            self.events.emit(ev.ACTOR_OF[name], "llm", step, summary=summary, prompt=self.events.prompts.get(logical))
+        except Exception:  # noqa: BLE001
+            pass
+
+
+_CHAT_STEPS = {"manager_triage": ("Plan the stories", "The manager proposed which stories to investigate and in what order."),
+               "manager": ("Coordinate story", "The manager planned the story's checks."),
+               "writer": ("Draft the paragraphs", "The writer drafted the answer and one sentence per story."),
+               "reviser": ("Rewrite a sentence", "The writer rewrote the sentences that broke a rule.")}
+_SPEAKERS = {"data_forensics": "Data Forensics", "driver_investigator": "Driver Investigator"}
+
+
+def _next_speaker(reply: str) -> str | None:
+    """The team member the manager named next (Magentic's ledger), from a fixed set of names; never model text."""
+    m = re.search(r'"next_speaker"\s*:\s*\{[^}]*?"answer"\s*:\s*"([^"]+)"', reply or "", re.S)
+    return _SPEAKERS.get(m.group(1).strip()) if m else None
 
 
 def _text(result) -> str:

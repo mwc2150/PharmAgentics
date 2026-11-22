@@ -108,7 +108,7 @@ def save_brief(result: dict, by: str) -> dict:
     bid = brief_id(result)
     existing = get_brief(bid)
     if existing and existing["result"].get("answer") == result.get("answer"):
-        missing = {k: result[k] for k in ("triage", "flow") if result.get(k) and not existing["result"].get(k)}
+        missing = {k: result[k] for k in ("triage", "flow", "events", "claim_events") if result.get(k) and not existing["result"].get(k)}
         if missing:  # a brief stored before brief-002 Phase A gains its flow; the review state is kept
             existing["result"].update(missing)
             backend().write(_brief_key(bid), _dump(existing))

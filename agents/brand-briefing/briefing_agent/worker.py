@@ -32,24 +32,64 @@ def _env_file(path: Path) -> dict[str, str]:
     return out
 
 
-def run_job(job: dict, model: str | None) -> dict:
-    """One job, on the local model. Returns the result the app expects."""
+def run_job(job: dict, model: str | None, progress=None) -> dict:
+    """One job, on the local model. Returns the result the app expects. `progress(events)` is called with each batch
+    of new run events as they happen (brief-009); the finished result carries the whole log."""
     import briefing_agent as agent
 
     payload = job["payload"]
     if (payload.get("query") or {}).get("brand_id", "BXA") != "BXA":
         raise ValueError("The agent worker supports BXA only; use scripted Briefing for BXC.")
+    on_event = (lambda e: progress([e])) if progress else None
     if job["kind"] == "triage":
+        log = agent.events_for(on_event=on_event)
+        options = {}
         if comparison := (payload.get("query") or {}).get("comparison"):
-            return agent.triage(payload["question"], model, comparison=Comparison.model_validate(comparison))
-        return agent.triage(payload["question"], model)
-    return agent.run_with_plan(payload["question"], payload["decision"], payload["plan"], model)
+            options["comparison"] = Comparison.model_validate(comparison)
+        plan = agent.triage(payload["question"], model, events=log, **options)
+        return dict(plan, events=log.public())  # the brief job continues this log
+    log = agent.events_for(on_event=on_event, seed=payload["plan"].get("events"))
+    log.replay()  # a live timeline starts at the triage steps
+    return agent.run_with_plan(payload["question"], payload["decision"], payload["plan"], model, events=log)
 
 
-def _heartbeat(app: str, headers: dict, model: str, name: str, stop: threading.Event, every: float = 20.0) -> None:
-    """Tell the app this worker is alive while it runs a job (it does not poll then). Never raises."""
+class ProgressPost:
+    """Collects a running job's events and posts them in batches (with the heartbeat). Never raises: a missed batch
+    is sent again with the next, and the finished result carries the whole log anyway."""
+
+    def __init__(self, http_post):
+        self._post = http_post
+        self._lock = threading.Lock()
+        self._pending: list[dict] = []
+
+    def __call__(self, events: list[dict]) -> None:
+        with self._lock:
+            self._pending += events
+
+    def flush(self) -> None:
+        with self._lock:
+            batch, self._pending = self._pending, []
+        if not batch:
+            return
+        try:
+            self._post(batch)
+        except Exception:  # noqa: BLE001 - keep them for the next beat
+            with self._lock:
+                self._pending = batch + self._pending
+
+
+def _heartbeat(app: str, headers: dict, model: str, name: str, stop: threading.Event, every: float = 20.0,
+               progress: "ProgressPost | None" = None, flush_every: float = 3.0) -> None:
+    """Tell the app this worker is alive while it runs a job (it does not poll then), and send the run's new events
+    (brief-009) every few seconds so the timeline is live. Never raises."""
+    last_beat = time.time()
     with httpx.Client(timeout=20) as http:
-        while not stop.wait(every):
+        while not stop.wait(flush_every if progress else every):
+            if progress:
+                progress.flush()
+            if time.time() - last_beat < every and progress:
+                continue
+            last_beat = time.time()
             try:
                 http.post(f"{app}/api/worker/heartbeat", json={"model": model, "worker": name}, headers=headers)
             except httpx.HTTPError:
@@ -102,16 +142,25 @@ def main(argv: list[str] | None = None) -> None:
             started = time.time()
             print(f"  job {job['id']} ({job['kind']}): {job['payload']['question']}", flush=True)
             stop = threading.Event()
-            beat = threading.Thread(target=_heartbeat, args=(app, headers, spec, a.name, stop), daemon=True)
+
+            def post_events(batch: list[dict], job_id: str = job["id"]) -> None:
+                http2.post(f"{app}/api/worker/jobs/{job_id}/progress", json={"events": batch}, headers=headers).raise_for_status()
+
+            http2 = httpx.Client(timeout=20)
+            progress = ProgressPost(post_events)
+            beat = threading.Thread(target=_heartbeat, args=(app, headers, spec, a.name, stop), kwargs={"progress": progress},
+                                    daemon=True)
             beat.start()  # a long CPU run must not look like a dead host
             try:
-                body = {"ok": True, "result": run_job(job, spec)}
+                body = {"ok": True, "result": run_job(job, spec, progress)}
             except Exception as exc:  # noqa: BLE001 - any failure is reported to the app, not swallowed
                 traceback.print_exc()
                 body = {"ok": False, "error": f"{exc.__class__.__name__}: {exc}"[:1900]}
             finally:
                 stop.set()
                 beat.join(timeout=5)
+                progress.flush()
+                http2.close()
             for attempt in range(5):
                 try:
                     done = http.post(f"{app}/api/worker/jobs/{job['id']}", json=body, headers=headers)

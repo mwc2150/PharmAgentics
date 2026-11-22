@@ -137,12 +137,32 @@ def leadership_sections(sections: list[dict] | None) -> list[dict] | None:
     return out
 
 
+def process_summary(record: dict) -> str | None:
+    """One line on how the brief was made, built by code for leaders (brief-009 FR-005): the engine, how many stories
+    and checks, and the analyst's review date. It carries no step, tool, argument or prompt."""
+    result = record["result"]
+    who = "the agent team" if result.get("engine") == "agent" else "the scripted engine"
+    events = result.get("events") or []
+    if not events and not result.get("engine"):
+        return None
+    parts = []
+    if events:
+        stories = len({e["story"] for e in events if e.get("story")})
+        checks = sum(e.get("step") in ("Check the data", "Test a driver") and (e.get("tool") or "").startswith("check_") for e in events)
+        parts = [f"{stories} stor{'y' if stories == 1 else 'ies'}", f"{checks} check{'' if checks == 1 else 's'}"]
+    line = f"Built by {who}" + (": " + ", ".join(parts) if parts else "")
+    if record.get("review_status") == "approved" and record.get("reviewed_at"):
+        line += f"; reviewed by the analyst on {record['reviewed_at'][:10]}"
+    return line + "."
+
+
 def leadership(record: dict) -> dict:
     """Build the leadership response from a stored brief. Allow-list, so a new field on the
     analyst result never reaches a leader by accident."""
     result = record["result"]
     out = {k: (record.get(k) if k in record else result.get(k)) for k in LEADERSHIP_FIELDS}
     out["view"] = "leadership"
+    out["process_summary"] = process_summary(record)
     out["summary"] = executive_summary(result["answer"], result.get("sections"))
     out["sections"] = leadership_sections(result.get("sections"))
     return out
