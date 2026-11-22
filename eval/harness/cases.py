@@ -14,6 +14,7 @@ from pharmagentics.tools.window import Comparison, parse
 
 from .numbers import as_numbers, extract, same
 from .paths import GOLDEN_DIR
+from .truth import exact_value
 
 Lane = Literal["briefing", "forecast"]
 
@@ -172,9 +173,13 @@ class Case(BaseModel):
             "lane": self.lane,
             "must_not_say": self.must_not_say.phrases + later,
             "golden_numbers": [f.value for f in self.facts if isinstance(f.value, (int, float))],
-            "key_facts": [{"id": f.id, "value": f.value, "tolerance": f.tolerance,
+            "key_facts": [{"id": f.id, "value": f.value, "exact": exact_value(f.sql), "tolerance": f.tolerance,
                            "percent": fact_percent(f.id, f.value, self.reference_answer), "reviewed": f.reviewed} for f in self.facts
                           if f.role == "must" and isinstance(f.value, (int, float))],
+            # core-011 FR-016: the exact value behind each numeric fact, so a number is scored against the data,
+            # not against a figure the golden file already rounded.
+            "fact_exact": [{"value": f.value, "exact": exact_value(f.sql)} for f in self.facts
+                           if isinstance(f.value, (int, float)) and not isinstance(f.value, bool)],
             "findings": [f.model_dump() for f in self.findings],
             "must_say": self.must_say.phrases if self.must_say else [],
             "scope": self.expected_scope().model_dump(),

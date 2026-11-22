@@ -9,7 +9,7 @@ import duckdb
 from mlflow.entities import Feedback
 from mlflow.genai.scorers import scorer
 
-from .numbers import Number, as_numbers, contains_phrase, extract, matches, parse_token, same, unique
+from .numbers import Number, as_numbers, contains_phrase, extract, matches, parse_token, same, states, unique
 from .paths import DATABASE
 from .versions import data_fingerprint
 
@@ -31,13 +31,36 @@ def _golden(expectations) -> list:
     return unique(stated) + facts
 
 
+def _exacts(expectations) -> list[tuple[Number, float]]:
+    """(written figure, exact value) for each numeric fact whose SQL ran (core-011 FR-016)."""
+    return [(as_numbers([f["value"]])[0], f["exact"]) for f in expectations.get("fact_exact") or []
+            if f.get("exact") is not None]
+
+
+def _unit_ok(a: Number, b: Number) -> bool:
+    return a.percent is None or b.percent is None or a.percent == b.percent
+
+
+def _golden_stated(g: Number, found: list[Number], exacts) -> bool:
+    """A golden number backed by a fact (it is the fact's exact value at its own precision, or the fact's written
+    figure) is stated by any answer number that prints that exact value at the answer's precision; one no fact
+    backs falls back to `matches`. So a golden "22.5%" (exact 22.45) is stated by "22%", and a brief that prints
+    the true value is never failed by a figure the golden file rounded twice."""
+    backing = [e for written, e in exacts if states(g, e) or same(g, written)]
+    if backing:
+        return any(_unit_ok(g, n) and states(n, e) for n in found for e in backing)
+    return any(matches(g, n) for n in found)
+
+
 @scorer(name="numbers_match_golden",
         description="Share of numbers in the answer that match a golden number (EV-1.1 / FE-04 proxy).")
 def numbers_match_golden(outputs, expectations) -> Feedback:
     found, golden = extract(_answer(outputs)), _golden(expectations)
     if not found:
         return Feedback(value=1.0, rationale="The answer states no numbers to check.")
-    unmatched = [n.text for n in found if not any(matches(n, g) for g in golden)]
+    exacts = _exacts(expectations)
+    unmatched = [n.text for n in found
+                 if not any(matches(n, g) for g in golden) and not any(states(n, e) for _, e in exacts)]
     share = 1 - len(unmatched) / len(found)
     note = f"{len(found) - len(unmatched)} of {len(found)} numbers match the golden answer"
     return Feedback(value=round(share, 4), rationale=note + (f"; unmatched: {', '.join(unmatched)}" if unmatched else "."))
@@ -49,7 +72,8 @@ def golden_number_recall(outputs, expectations) -> Feedback:
     golden, found = unique(extract(expectations.get("expected_response", ""))), extract(_answer(outputs))
     if not golden:
         return Feedback(value=1.0, rationale="The golden answer states no numbers.")
-    missing = [g.text for g in golden if not any(matches(g, n) for n in found)]
+    exacts = _exacts(expectations)
+    missing = [g.text for g in golden if not _golden_stated(g, found, exacts)]
     note = f"{len(golden) - len(missing)} of {len(golden)} golden numbers stated"
     return Feedback(value=round(1 - len(missing) / len(golden), 4),
                     rationale=note + (f"; missing: {', '.join(missing[:12])}" if missing else "."))
@@ -118,11 +142,15 @@ def _not_scored(why: str) -> Feedback:
 
 
 def fact_stated(fact: dict, found: list[Number]) -> bool:
-    """A must-state fact is stated when an extracted number matches it at its stated precision,
-    or within its relative tolerance when one is set."""
-    value, tolerance = fact["value"], fact.get("tolerance")
+    """A must-state fact is stated when an extracted number prints the fact's exact value (from its SQL) at the
+    number's own precision (core-011 FR-016), or, with no exact value, matches the written figure at its stated
+    precision; or within its relative tolerance when one is set."""
+    value, tolerance, exact = fact["value"], fact.get("tolerance"), fact.get("exact")
     target = [replace(t, percent=fact.get("percent")) for t in as_numbers([value])]
-    if any(matches(n, t) for n in found for t in target):
+    if exact is not None:
+        if any(_unit_ok(n, t) and states(n, exact) for n in found for t in target):
+            return True
+    elif any(matches(n, t) for n in found for t in target):
         return True
     if tolerance is None:
         return False

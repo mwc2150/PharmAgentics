@@ -55,6 +55,7 @@ Every Briefing case that states numbers has facts with SQL; each fact is tagged 
 - **FR-013**: For agent systems, "numbers lost by the agent" MUST be the scripted engine's `key_fact_recall` minus the agent's on the same case and golden version (insights and the Evaluation page).
 - **FR-014**: Number matching MUST respect units: a percent matches only a percent, a count only a count; a golden number repeated in a reference answer counts once. A key fact's unit comes from its reference answer, else from an `_pct` id, else it is unknown.
 - **FR-015**: Golden definitions follow the case text and house conventions (packet G): a window the text names is encoded in the case's `comparison`; otherwise the golden figure is restated under the four weeks before, from SQL. When two definitions stay defensible, the number is `context`.
+- **FR-016**: A number MUST be scored against the fact's exact value, from the fact's own SQL, rounded half up to the precision the answer prints it at (the rule the brief's formatter follows, brief-008 FR-016); the golden file's written figure is display text and the fallback when the SQL cannot run. A golden prose number is tied to a fact when it is that fact's exact value or written figure at its own precision. So "22%" states a backorder rate of 22.45 written as "22.5", and a brief that rounds the true value once is never failed by a figure the golden file rounded twice. Applies to `key_fact_recall`, `golden_number_recall` and `numbers_match_golden`.
 
 ## Success Criteria
 
