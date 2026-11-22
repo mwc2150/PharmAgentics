@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
-import { getTelemetry, getUsage, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
+import { getTelemetry, getUsage, type CaseTable, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
 const NAMES: Record<string, string> = {
@@ -65,6 +65,55 @@ function InUse({ u }: { u: Usage }) {
   </>
 }
 
+const SCORERS: Record<string, string> = {
+  claims_reconcile: "Claims reconcile", golden_number_recall: "Number recall", key_fact_recall: "Key facts found",
+  finding_recall: "Findings found",
+}
+const scorerName = (k: string) => SCORERS[k] ?? label(k)
+const LANES: Record<string, string> = { briefing: "Briefing", forecast: "Forecast" }
+const MARK = "ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
+
+function CaseScore({ v, stuck, fell }: { v: number | null | undefined, stuck: boolean, fell?: { previous: number; latest: number } }) {
+  if (v == null) return <span className="text-muted" title="Not scored in this run">{"—"}<span className="sr-only">not scored</span></span>
+  return <>{pct(v)}
+    {stuck && <span className={`${MARK} bg-amberbg text-amber`} title="Zero in every listed run">stuck</span>}
+    {fell && <span className={`${MARK} bg-amberbg text-amber`} title={`Was ${pct(fell.previous)} in the run before`}>fell from {pct(fell.previous)}</span>}
+  </>
+}
+
+function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
+  const stuck = t.rows.reduce((n, r) => n + r.stuck.length, 0)
+  const fallen = t.rows.reduce((n, r) => n + r.fallen.length, 0)
+  return <details open={open} className={PANEL}>
+    <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60">
+      <span className="text-sm font-semibold">{NAMES[t.system.split(":")[0]] ?? t.system}</span>
+      <span className="text-xs text-muted">{LANES[t.lane] ?? t.lane} · run {t.run_id} · {when(t.started)} · {t.rows.length} cases · {stuck} stuck · {fallen} fallen</span>
+    </summary>
+    <div className="overflow-x-auto border-t border-rule">
+      <table className="w-full min-w-[32rem] text-left text-sm">
+        <thead className="text-xs text-muted"><tr>
+          <th scope="col" className="px-5 py-2 font-medium">Case</th>
+          {t.scorers.map(k => <th key={k} scope="col" className="px-3 py-2 text-right font-medium">{scorerName(k)}{t.report_only.includes(k) && <span className="block font-normal">report only</span>}</th>)}
+        </tr></thead>
+        <tbody>{t.rows.map(r => <tr key={r.case} className="border-t border-rule">
+          <th scope="row" className="px-5 py-2 text-left font-normal"><span className="tabular-nums">{r.case}</span><span className="block text-xs text-muted">{r.story}{r.persona ? ` · ${r.persona}` : ""}</span></th>
+          {t.scorers.map(k => <td key={k} className="px-3 py-2 text-right tabular-nums"><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} fell={r.fallen.find(f => f.scorer === k)}/></td>)}
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </details>
+}
+
+function PerCase({ tables }: { tables: CaseTable[] }) {
+  const real = tables.filter(t => !t.control)
+  return <>
+    <Heading title="Per-case results" note="Latest run of each system, one row per golden question. Stuck: zero in every listed run. Fell: lower than the run before. A dash means the case was not scored."/>
+    <div className="space-y-3">
+      {[...real, ...tables.filter(t => t.control)].map((t, i) => <CaseTableView key={`${t.system}|${t.lane}`} t={t} open={i === 0}/>)}
+    </div>
+  </>
+}
+
 function Scores({ runs }: { runs: TelemetryRun[] }) {
   const cell = (v: number | undefined) => (v != null ? pct(v) : "–")
   return <section className={PANEL}>
@@ -118,6 +167,7 @@ export function TelemetryWorkspace() {
       <Heading title="Golden-set scores" note={<>{t.exported ? `Exported ${when(t.exported)}. ` : ""}{t.note}{lead ? ` Latest: ${name(lead)}, ${when(lead.started)}.` : ""} Select a row for every score.</>}/>
       <Scores runs={t.latest.filter(r => !r.control)}/>
       {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)}/></>}
+      {!!t.cases?.systems.length && <PerCase tables={t.cases.systems}/>}
       {!!t.runs.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">All runs ({t.runs.length})</summary>
         <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
           <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Number recall</th><th className="font-medium">Claims reconcile</th></tr></thead>
