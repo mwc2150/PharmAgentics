@@ -215,7 +215,9 @@ class RunSession:
                 t, check_promotion(self.reg, t, self.p.weeks, self.p.baseline, source_baseline=B)))
         if fn is check_competitor and self.p.comparison is not None:
             return self._remember(name, t, self._record(
-                t, check_competitor(self.reg, t, self.p.weeks, B, exact_comparison=True)))
+                t, check_competitor(self.reg, t, self.p.weeks, B, exact_comparison=True, pct_format="pct")))
+        if fn is check_competitor:  # the shared check; the brief's percentages print the Briefing way (FR-016)
+            return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B, pct_format="pct")))
         return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B)))
 
     # Admin: the brief's code-built sections (build 3, brief-002 FR-026) --------------------------

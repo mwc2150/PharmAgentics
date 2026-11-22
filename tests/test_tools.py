@@ -31,6 +31,14 @@ def test_rounding_is_half_up_like_the_pack():
     assert FORMATS["dec3"](0.6559) == "0.656"
 
 
+def test_briefing_percent_is_whole_from_ten_and_one_decimal_below():
+    """brief-008 FR-016. The cut is made on the rounded value, the sign is dropped like pct1, and pct1 is unchanged."""
+    pct = FORMATS["pct"]
+    assert pct(31.24) == "31%" and pct(-31.5) == "32%" and pct(10.0) == "10%" and pct(10.4) == "10%"
+    assert pct(9.94) == "9.9%" and pct(9.95) == "10%" and pct(9.96) == "10%" and pct(-4.25) == "4.3%" and pct(0.04) == "0.0%"
+    assert FORMATS["pct1"](31.24) == "31.2%" and FORMATS["pct1"](9.96) == "10.0%"  # Forecast keeps one decimal
+
+
 def test_verifier_allows_tokens_dates_and_ids_only():
     assert digits_outside_tokens("BXA TRx was {c1} in the week of 2026-04-06 on data 06bcba77fbe1 (plan SYN_X_1).") == []
     assert digits_outside_tokens("BXA TRx was 3,860 this week.") == ["3,860"]
