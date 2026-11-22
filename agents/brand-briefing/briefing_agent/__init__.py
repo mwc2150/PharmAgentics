@@ -116,6 +116,10 @@ def _left_out(plan: dict, order: list[str]) -> list[str]:
            ([f"Left out of this brief by the analyst: {', '.join(by_analyst)}."] if by_analyst else [])
 
 
+_CMP_NOTE = 'The token {cmp} is available: code fills it with the comparison the analyst chose, as in "against {cmp}".'
+_NO_CMP_NOTE = "This brief has no comparison (no earlier week). Do not write {cmp} or any comparison."
+
+
 async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dict, stories: list[dict],
                  claims: list[dict], evidence: list[dict], log: RunLog) -> tuple[str, dict, dict, bool, list[str]]:
     n_claims = len(claims)
@@ -123,9 +127,11 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
     story_tokens["_sections"] = write.section_tokens(sections, close)
     confidences = {s["id"]: write.confidence(s["section"]) for s in stories}  # causal words only for a High story
     shown = write.sections_text(sections, close, stories)
-    gloss_text, glosses = write.glossary(shown, claims, evidence)  # what each number measures, written by code
+    cmp = sections.get("comparison_phrase")  # the comparison in words, by code; the writer only places {cmp}
+    gloss_text, glosses = write.glossary(shown, claims, evidence, sections.get("comparison_weeks"))  # what each number measures, by code
     prompt = (HERE / cfg["prompts"]["writer"]).read_text(encoding="utf-8").format(
-        question=question.split(":", 1)[-1].strip(), sections=shown, glossary=gloss_text or "(no numbers)") \
+        question=question.split(":", 1)[-1].strip(), sections=shown, glossary=gloss_text or "(no numbers)",
+        comparison=_CMP_NOTE if cmp else _NO_CMP_NOTE) \
         + lessons.block("writer")  # approved lessons only (core-008 FR-022); empty adds nothing
     with span("5_writer") as sp:
         raw = await _ask(spec, prompt, log, "writer")
@@ -136,10 +142,11 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
         finish(sp, {"reply": raw})
     revised = False
     with span("6_verification") as sp:
-        bad = write.check(reply, story_tokens, n_claims, glosses, confidences)
+        bad = write.check(reply, story_tokens, n_claims, glosses, confidences, bool(cmp))
         if bad:
             allowed = "\n".join(f"- {k}: {', '.join(sorted(v)) or '(none)'}" for k, v in story_tokens.items() if k != "_sections")
             allowed += "\n- answer: any token above, or " + (", ".join(sorted(story_tokens["_sections"])) or "(none)")
+            allowed += "\n- every piece: " + (f"{write.CMP} (code fills it with the comparison)" if cmp else "no comparison placeholder (the brief has none)")
             fix = (HERE / cfg["prompts"]["revise"]).read_text(encoding="utf-8").format(
                 problems="\n".join(f"- {k}: {'; '.join(v)}" for k, v in bad.items()), allowed=allowed,
                 glossary=gloss_text or "(no numbers)", reply=json.dumps(reply))
@@ -149,9 +156,12 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
             except Exception:  # noqa: BLE001
                 pass
             revised = True
-        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses, confidences)
-        chart_lines, chart_dropped = write.chart_explanations(reply, close, stories, n_claims, glosses)
+        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses, confidences, bool(cmp))
+        chart_lines, chart_dropped = write.chart_explanations(reply, close, stories, n_claims, glosses, bool(cmp))
         dropped += chart_dropped
+        answer_text = write.fill(answer_text, cmp)  # code's words go in after every check
+        sentences = {k: write.fill(v, cmp) for k, v in sentences.items()}
+        chart_lines = {k: write.fill(v, cmp) for k, v in chart_lines.items()}
         finish(sp, {"problems": bad, "revised": revised, "dropped": dropped, "chart_lines": sorted(chart_lines)})
     return answer_text, sentences, chart_lines, revised, dropped
 

@@ -231,6 +231,7 @@ class RunSession:
         nums, lim = memo.numbers(self.proj, facts, restated, p), memo.limits(p, self.proj, health, reg)
         return {"title": memo.title_lines(p), "numbers": nums["lines"], "limits": lim["lines"],
                 "appendix": memo.appendix(reg, p=p, proj=self.proj), "calendar": bool(p.calendar),
+                "comparison_phrase": memo.comparison_phrase(p), "comparison_weeks": list(p.baseline or []),
                 "territory_table": nums["territory_table"], "details": {"2": nums["detail"], "4": lim["detail"]},
                 "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 

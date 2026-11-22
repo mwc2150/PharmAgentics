@@ -10,12 +10,13 @@ Rules again:
 - Readable names only ("Southeast", "primary care"), never ids such as territory:SOUTHEAST or PRIMARY_CARE.
 - Do not mention splits by plan, specialty or channel, the method, the glossary or "considered and dropped": they are folded away.
 - Say "association" for promotion. Use "because", "caused", "drove", "due to" or "explains" only for a story whose confidence is High.
+- Name a comparison only with the token {{cmp}} when the allowed list offers it. Never word a comparison in your own words.
 - Never use "surveillance"; "new patients" only for NBRx; never name or number an individual rep.
 
 Allowed tokens per piece:
 {allowed}
 
-What each number measures (describe a comparison only as this list does):
+What each number measures (a note says when to name its comparison with {{cmp}}):
 {glossary}
 
 Your previous reply:

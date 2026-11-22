@@ -54,7 +54,7 @@ def test_prose_rules_reject(piece, fragment):
 
 
 def test_words_that_code_writes_are_not_spelled_out_numbers():
-    assert problems("Compared with the four weeks before, the week of 2026-08-03 fell {c1} in the four-brand basket.") == []
+    assert problems("Against {cmp}, the week of 2026-08-03 fell {c1} in the four-brand basket.") == []
 
 
 def test_long_sentences_and_long_paragraphs_are_rejected():
@@ -99,7 +99,7 @@ def test_chart_lines_follow_the_same_prose_rules():
 
 def test_prompts_fill_and_describe_the_new_memo():
     here = ROOT / "agents" / "brand-briefing" / "briefing_agent" / "prompts"
-    writer = (here / "writer.md").read_text(encoding="utf-8").format(question="q", sections="[story x]", glossary="g")
+    writer = (here / "writer.md").read_text(encoding="utf-8").format(question="q", sections="[story x]", glossary="g", comparison="c")
     revise = (here / "revise.md").read_text(encoding="utf-8").format(problems="p", allowed="a", glossary="g", reply="{}")
     for needle in ("association", "folded", "tiles", "territory table", "card", "at most 25 words", "no line breaks"):
         assert needle in writer
@@ -200,3 +200,68 @@ def test_the_prompts_and_the_revise_message_state_the_limits_the_code_checks():
     assert f"The answer has at most {words[str(write.ANSWER_SENTENCES)]} sentences and a story at most {words[str(write.STORY_SENTENCES)]}" in revise
     message = next(p for p in problems(" ".join(["word"] * (write.MAX_WORDS + 1)) + "."))
     assert f"at most {write.MAX_WORDS}" in message and "under 26" not in message
+
+
+@pytest.mark.parametrize("phrase", ["the week before", "last week", "the previous week", "the prior weeks", "four weeks before",
+                                    "the previous four weeks", "a week earlier", "week over week", "the preceding weeks"])
+def test_the_model_never_words_the_comparison_itself(phrase):
+    found = problems(f"Southeast fell {{c1}} against {phrase}.")
+    assert any("words the comparison itself" in p for p in found), found
+
+
+def test_the_comparison_token_is_the_only_placeholder_and_needs_a_comparison():
+    assert problems("Southeast fell {c1} against {cmp}.") == []
+    assert any("{cmp}" in p for p in problems("Southeast fell {c1} against {cmp}.", has_cmp=False))
+    assert any("{link:x}" in p for p in problems("Southeast fell {c1} {link:x} it."))
+
+
+def test_fill_puts_the_phrase_in_and_capitalises_a_sentence_start():
+    from briefing_agent import write
+
+    assert write.fill("Down {c1} against {cmp}. {cmp} was higher.", "the previous four weeks") == (
+        "Down {c1} against the previous four weeks. The previous four weeks was higher.")
+    assert write.fill("Down {c1}.", None) == "Down {c1}."
+
+
+def test_comparison_phrase_by_window():
+    from types import SimpleNamespace as NS
+
+    from pharmagentics.tools.memo import comparison_phrase
+
+    four = ["2026-07-27", "2026-08-03", "2026-08-10", "2026-08-17"]
+    assert comparison_phrase(NS(baseline=four, comparison=None)) == "the previous four weeks"
+    assert comparison_phrase(NS(baseline=four, comparison=NS(kind="previous"))) == "the previous four weeks"
+    assert comparison_phrase(NS(baseline=four, comparison=NS(kind="last_year"))) == "the same weeks last year"
+    assert comparison_phrase(NS(baseline=four, comparison=NS(kind="custom"))) == "the weeks from 2026-07-27 to 2026-08-17"
+    assert comparison_phrase(NS(baseline=["2026-08-17"], comparison=None)) == "the week of 2026-08-17"
+    assert comparison_phrase(NS(baseline=[], comparison=None)) is None
+
+
+def test_glossary_marks_the_numbers_the_comparison_token_names():
+    from briefing_agent import write
+
+    claims = [{"value": "-3.0%", "evidence_id": "e1"}, {"value": "-2.0%", "evidence_id": "e2"}]
+    q = ("select 100.0 * (a - b) / b from (select 1 a, 2 b) where week_start in (DATE '2026-08-24') and "
+         "week_start in (DATE '%s')")
+    evidence = [{"id": "e1", "query": q % "2026-07-27", "params": {}}, {"id": "e2", "query": q % "2026-08-17", "params": {}}]
+    _t, data = write.glossary("{c1} {c2}", claims, evidence, ["2026-07-27"])
+    assert data["{c1}"]["uses_cmp"] is True and "{cmp}" in data["{c1}"]["text"]
+    assert data["{c2}"]["uses_cmp"] is False and "do not name" in data["{c2}"]["text"]
+
+
+@needs_db
+def test_the_comparison_token_is_filled_by_code_after_the_checks(monkeypatch, brief):
+    reply = json.dumps({"answer": "Southeast is the story to follow. It fell against {cmp}.",
+                        "stories": {"territory:SOUTHEAST": "Southeast fell against {cmp}. The cause is not settled."}, "charts": {}})
+    (answer, sentences, _charts, revised, dropped), seen = _run_write(monkeypatch, brief, [reply])
+    phrase = brief[1]["comparison_phrase"]
+    assert phrase == "the previous four weeks" and revised is False and dropped == []
+    assert answer.endswith(f"It fell against {phrase}.") and f"against {phrase}." in sentences["territory:SOUTHEAST"]
+    assert "{cmp}" not in answer and "{cmp}" in seen[0][1]
+
+
+@needs_db
+def test_a_comparison_the_model_words_itself_is_revised_then_dropped(monkeypatch, brief):
+    slip = json.dumps({"answer": "Southeast fell against the week before. Please check it.", "stories": {}})
+    (answer, _s, _c, revised, dropped), seen = _run_write(monkeypatch, brief, [slip, slip])
+    assert revised is True and answer == "" and "words the comparison itself" in seen[1][1] and dropped

@@ -249,6 +249,26 @@ def comparison_text(p) -> str:
     return f"the {_WORDS.get(len(B), 'several')} weeks before ({B[0]} to {B[-1]})"
 
 
+_COUNT = {**_WORDS, 7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve", 13: "thirteen"}
+
+
+def comparison_phrase(p) -> str | None:
+    """The comparison as a short phrase a sentence can carry (brief-008 FR-014): code fills it into the writer's
+    `{cmp}` token, so the model never words the comparison. None when there is no earlier week to compare with.
+    No digit except the dates of a single week or a custom window."""
+    B = p.baseline
+    if not B:
+        return None
+    if len(B) == 1:
+        return f"the week of {B[0]}"
+    kind = p.comparison.kind if p.comparison is not None else "previous"
+    if kind == "last_year":
+        return "the same weeks last year"
+    if kind == "custom":
+        return f"the weeks from {B[0]} to {B[-1]}"
+    return f"the previous {_COUNT.get(len(B), 'several')} weeks"
+
+
 def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str | None:
     """Research R8: estimated territory, else projected, else the lowest-confidence story's change, else the
     change built on the fewest prescriptions. The competitor story is left out: its share is measured."""

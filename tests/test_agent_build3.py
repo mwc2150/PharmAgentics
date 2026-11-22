@@ -286,10 +286,10 @@ def test_the_week_before_slip_from_trace_c018_is_caught():
     _t, glosses = write.glossary("{c1} {c2} {c3}", claims, evidence)
     tokens = {"territory:PACIFIC": {"{c1}", "{c3}"}, "_sections": {"{c2}"}}
     slip = {"answer": "BXA is {c2} lower than last week.", "stories": {"territory:PACIFIC": "Pacific fell {c1} against the week before."}}
-    bad = write.check(slip, tokens, 3, glosses)
+    bad = write.check(slip, tokens, 3, glosses)  # FR-014: no model-worded comparison, even a true one
     assert "territory:PACIFIC" in bad and any("week before" in m for m in bad["territory:PACIFIC"])
-    assert "answer" not in bad  # {c2} really is week over week
-    fixed = {"answer": "BXA is {c2} lower than the week before.", "stories": {"territory:PACIFIC": "Pacific fell {c1} against the four weeks before."}}
+    assert "answer" in bad and any("last week" in m for m in bad["answer"])
+    fixed = {"answer": "BXA is {c2} lower against {cmp}.", "stories": {"territory:PACIFIC": "Pacific fell {c1} against {cmp}."}}
     assert write.check(fixed, tokens, 3, glosses) == {}
     assert write.check({"answer": "Down {c1}, worse than last year."}, {"_sections": {"{c1}"}}, 3, glosses)["answer"]
 
