@@ -135,14 +135,14 @@ def test_new_scorers_are_report_only():
     assert not {s.name for s in scorer_module.DETERMINISTIC} & {s.name for s in REPORT_ONLY}
 
 
-def test_existing_golden_yaml_loads_without_key_facts():
+def test_golden_key_facts_can_be_matched():
+    """Every Briefing case loads, and no must-state fact is a value the answer-side extractor skips
+    (integers 0 to 10), which no brief could ever be credited for."""
     cases = load_cases("briefing")
     assert len(cases) == 32
     for case in cases:
-        assert case.findings == []
-        expectations = case.expectations()
-        assert expectations["findings"] == []
-        assert expectations["key_facts"] == []  # no golden file tags a must-state fact yet (packet D)
+        for f in case.expectations()["key_facts"]:
+            assert not (float(f["value"]).is_integer() and 0 <= abs(f["value"]) <= 10), (case.id, f["id"])
 
 
 def test_pooled_share_counts_facts_across_cases_and_skips_unanswered_ones():
