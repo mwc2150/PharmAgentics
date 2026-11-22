@@ -40,6 +40,14 @@ class Finding(BaseModel):
     reviewed: bool = True
 
 
+class MustSay(BaseModel):
+    """Key terms a decision or trust answer must carry (core-011, Q3 of the 2026-11-22 review). Each entry is one
+    phrase, or alternatives separated by "|"; matched like must-not-say phrases (words in order, a little slack)."""
+
+    phrases: list[str] = []
+    reviewed: bool = True
+
+
 class MustNotSay(BaseModel):
     text: str
     phrases: list[str] = []  # checked by code: any appearance fails the case
@@ -74,6 +82,7 @@ class Case(BaseModel):
     then: str
     reference_answer: str
     must_not_say: MustNotSay
+    must_say: MustSay | None = None
     action: str | None = None
     eval_items: list[str]
     facts: list[Fact] = []
@@ -101,6 +110,7 @@ class Case(BaseModel):
             "key_facts": [{"id": f.id, "value": f.value, "tolerance": f.tolerance} for f in self.facts
                           if f.role == "must" and isinstance(f.value, (int, float))],
             "findings": [f.model_dump() for f in self.findings],
+            "must_say": self.must_say.phrases if self.must_say else [],
             "eval_items": self.eval_items,
         }
 

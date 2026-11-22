@@ -53,6 +53,10 @@ A case holds the question, the golden answer (the story's "Answer from the data"
 | :- | :- | :- | :- |
 | `numbers_match_golden` | Every number in the answer matches a golden number at the precision stated. Dates, IDs, years and counts up to 10 are skipped | EV-1.1 proxy for systems without evidence | No: a system with evidence may state correct numbers the golden answer omits |
 | `golden_number_recall` | The answer states the golden answer's numbers | Completeness | No |
+| `key_fact_recall` | The answer states the case's must-state facts (`role: must`, numeric), each matched at its stated precision or its relative `tolerance`. Not scored (left out of the mean) when the case has no must-state facts. The run also logs `key_fact_recall_pooled`: stated must facts over all must facts | core-011 FR-003; completeness | No: report-only until two runs after the golden review (FR-006) |
+| `finding_recall` | Points per expected finding on the story cards (`sections[*].card` of §3.N): 1 for the territory and direction, plus 1 per expected supported and ruled-out driver in that card; a withheld finding scores 1 when no card has the territory. Not scored without findings or without cards that name a territory (today's cards lack the field until packet E) | core-011 FR-004 | No: report-only |
+| `false_drivers` | Count of supported drivers on story cards that no expected finding for that territory lists. Not scored under the same conditions as `finding_recall` | core-011 FR-004 | No: report-only |
+| `brief_words` | Words a reader sees unfolded: section text, card headline and territory-table cells, not `detail`. Not scored without `sections` | core-011 FR-005, brief-008 SC-002 | No: report-only |
 | `must_not_say` | No literal must-not-say phrase appears, allowing rounding and small rewordings | Case rule | Yes |
 | `governed_terms` | No "surveillance"; "new patients" only next to NBRx | EV-9.2 | Yes |
 | `no_individual_rep` | No line names or numbers a rep (heuristic) | EV-9.1 | Yes |
