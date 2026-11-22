@@ -54,7 +54,7 @@ def reset() -> None:
 def submit(kind: str, payload: dict, by: str) -> dict:
     job = {"id": "j-" + uuid.uuid4().hex[:12], "kind": kind, "status": "queued", "payload": payload, "by": by,
            "created_at": store.now(), "started_at": None, "finished_at": None, "result": None, "error": None,
-           "started_ts": None}
+           "started_ts": None, "progress": []}
     with _lock:
         _load()
         _jobs[job["id"]] = job
@@ -115,6 +115,29 @@ def next_job(model: str | None, worker: str = "worker") -> dict | None:
         job.update(status="running", started_at=store.now(), started_ts=now, worker=worker)
         _save(job)
         return job
+
+
+def add_progress(job_id: str, events: list[dict], worker: str | None = None, model: str | None = None) -> int:
+    """A running job's new run events (brief-009 FR-002), from a worker's post or the built-in worker. Idempotent: an
+    event whose seq is already stored is ignored, so a retried batch cannot repeat a step. Counts as a heartbeat.
+    Returns how many events the job now holds. Raises KeyError when no such job is running."""
+    from pharmagentics.tools import events as ev
+
+    with _lock:
+        _load()
+        job = _jobs.get(job_id)
+        if job is None or job["status"] != "running":
+            raise KeyError(job_id)
+        if worker or job.get("worker"):
+            _hosts[worker or job["worker"]] = {"last_seen": time.time(), "model": model or _hosts.get(worker or job["worker"], {}).get("model")}
+        have = job.setdefault("progress", [])
+        last = have[-1]["seq"] if have else 0
+        for e in sorted(ev.clean(events), key=lambda e: e["seq"]):
+            if e["seq"] > last and len(have) < ev.MAX_EVENTS:
+                have.append(e)
+                last = e["seq"]
+        _save(job)
+        return len(have)
 
 
 def complete(job_id: str, ok: bool, result: dict | None, error: str | None) -> dict:

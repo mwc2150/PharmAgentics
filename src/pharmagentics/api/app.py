@@ -30,7 +30,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_host, auth, brand_access, classification, cloud, feedback, forecast, jobs, overview, rbac, service, store, telemetry, views
 from .schemas import (AgentJobRequest, BriefingQuery, BriefingScope, BriefingScopeRequest, InsightMark, ReleaseContext, ReviewRequest, ViewAs, WorkerPoll,
-                      WorkerResult)
+                      WorkerProgress, WorkerResult)
+from pharmagentics.tools import events as events_mod
 
 logger = logging.getLogger(__name__)
 
@@ -263,8 +264,9 @@ async def insight(mark: InsightMark, who=Briefing) -> Response:
 
 # --- Agent jobs, run by the owner's local worker (core-007 FR-028; brief-002 Phase B) -----------------
 
-def _job_view(job: dict, p: rbac.Principal, role: rbac.Role) -> dict:
+def _job_view(job: dict, p: rbac.Principal, role: rbac.Role, after: int = 0) -> dict:
     out = {k: job[k] for k in ("id", "kind", "status", "created_at", "started_at", "finished_at", "error")}
+    out["progress"] = [e for e in job.get("progress", []) if e["seq"] > after]  # run events so far; analysts only (jobs are)
     worker = job.get("worker")
     out["host_kind"] = None
     if worker:
@@ -327,14 +329,15 @@ async def agent_submit(req: AgentJobRequest, response: Response, who=Briefing) -
 
 
 @app.get("/api/agent/jobs/{job_id}", tags=["briefing"])
-def agent_job(job_id: str, response: Response, who=Briefing) -> dict:
+def agent_job(job_id: str, response: Response, after: int = Query(default=0, ge=0), who=Briefing) -> dict:
+    """The job's status and, while it runs, its run events with seq above `after` (brief-009 FR-002)."""
     p, role = who
     rbac.allow(role, "run")
     _no_store(response)
     job = brand_access.job_for(p, job_id)
     if job["status"] == "queued":
         _wake_cloud_host()  # a poll is also the retry if the first start failed or the host went away
-    return _job_view(job, p, role)
+    return _job_view(job, p, role, after)
 
 
 def _worker(authorization: str | None = Header(default=None)) -> None:
@@ -361,6 +364,15 @@ def worker_next(poll: WorkerPoll) -> Response:
     return JSONResponse({"id": job["id"], "kind": job["kind"], "payload": job["payload"]})
 
 
+@app.post("/api/worker/jobs/{job_id}/progress", tags=["briefing"], dependencies=[Depends(_worker)])
+def worker_progress(job_id: str, body: WorkerProgress) -> dict:
+    """A worker's new run events for the job it is running. Counts as a heartbeat."""
+    try:
+        return {"stored": jobs.add_progress(job_id, body.events)}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="No running job with that ID.") from exc
+
+
 def _charge_cloud(job: dict) -> None:
     """Jobs the cloud host ran count against this month's CPU budget (core-007 FR-031)."""
     if job.get("worker") == "cloud" and job.get("started_ts"):
@@ -381,6 +393,8 @@ def accept_result(job_id: str, ok: bool, result: dict | None, error: str | None)
         brand_access.require_engine(query.brand_id, "agent")
         if job["kind"] == "triage":
             plan = result or {}
+            if "events" in plan:
+                plan["events"] = events_mod.clean(plan["events"])
             service._matching_brand(query.brand_id, plan)
             service._matching_comparison(query.comparison, plan)
             if plan.get("state") != "OUT_OF_SCOPE":
