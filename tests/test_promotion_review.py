@@ -107,6 +107,10 @@ def test_the_review_is_blocks_and_paragraphs(monkeypatch):
     stories = [s for n, s in sections.items() if n.startswith("3.")]
     assert [s["card"]["confidence"] for s in stories] == ["Medium", "Medium"]
     assert stories[0]["card"]["headline"].startswith("Great Lakes: aggregated calls fell from 49 to 21 a week")
+    for story, territory in zip(stories, ("GREAT_LAKES", "SOUTHEAST")):  # core-011: the same verdict as the confidence
+        card = story["card"]
+        assert (card["territory"], card["direction"]) == (territory, "down")
+        assert card["drivers_supported"] == ["promotion"] and card["drivers_ruled_out"] == []
     assert "Medicare Part D plan one: down 25 TRx a week" in stories[0]["detail"]
     assert "Primary care: down 53 TRx a week" in stories[0]["detail"] and "Cash: down 14" in stories[0]["detail"]
     assert all(len(s["text"].splitlines()) <= 3 for s in stories)

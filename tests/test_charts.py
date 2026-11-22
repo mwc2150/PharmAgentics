@@ -99,6 +99,6 @@ def test_leaders_get_charts_without_tables_queries_claims_or_checks():
     one, two = sections[0], sections[1]
     assert one["kpis"] and set(one["kpis"][0]) == {"label", "value", "detail", "direction"}
     assert two["territory_table"]["rows"] and set(two["territory_table"]["rows"][0]) == {"cells", "basis"}
-    assert set(next(s for s in sections if s["number"] == "3.1")["card"]) == {"headline", "confidence", "drivers_checked"}
+    assert set(next(s for s in sections if s["number"] == "3.1")["card"]) == {"headline", "confidence", "drivers_checked", "territory", "direction", "drivers_supported", "drivers_ruled_out"}
     story = next(s for s in sections if s["number"] == "3.1")
     assert story["chart"]["panel"]["points"] and story["chart"]["band"]
