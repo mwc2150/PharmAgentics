@@ -2,8 +2,11 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
-_2026-11-22 (later), brief-008 in progress (Claude Opus, Sonnet packets)._
-- Integration branch `feature/brief-008-readable-memo` holds packets M, F and R plus the leader period fix; not pushed. Scripted eval and full suite were running at handoff; G and W in their own worktrees. Handoff and next steps: `conversations/2026-11-22-brief-008-integration.md`.
+_2026-11-22 (evening), brief-008 readable memo ready for review (Claude Opus, Sonnet and Haiku packets)._
+- Branch `feature/brief-008-readable-memo`: packets M (memo blocks, paragraphs, leader cut), F (first and last week, "previous N weeks", Haiku scope reader, account menu), R (KPI strip, territory table, story cards, print), G (Promotion review in blocks, the dollar question, P4-Q5 routing) and W (Writer paragraphs), plus integration fixes: multi-week period in the leader and published views, a re-read next check, readable plan names, print fit, and seven `/code-review` fixes (the form sends no comparison unless the analyst picks one, so app briefs match what the eval scores).
+- Scripted run `12cb72c894dc4bfaba08d3e604448b53` gated against `c65d888fe3e444adab380e509f497a88`: exit 0, all seven gated checks at 1.000, no run errors. Golden-number recall (report-only) 0.668 -> 0.703; "How confident is the estimate" 0 -> 0.67; P4-Q6 stays 0 because its golden says "about 120 to 200" (core-011 makes that figure context). One case lost a single-week change that a 13-week brief no longer quotes (by design, FR-011).
+- Print (SC-002): the leader and analyst views of the five anchor briefs each print on two A4 pages, rendered through the API and the app's own memo component and CSS; the leader print keeps small charts, the analyst print keeps chart captions. Analyst a3 and a4 nearly fill page 2.
+- Not done yet: the Haiku agent run and gate (I4); §1 and §2 still read one sentence per line (follow-up); brief-009 packets E and T. Handoffs: `conversations/2026-11-22-brief-008-*.md`.
 
 _2026-11-22, Briefing: state after brief-007, and the plan for brief-008 and brief-009 (Michael, Claude)._
 - `main` at `c704632` holds the memo brief (PR #13), brief-007 slice A (#16), slices B and C (#17, Codex) and core-010 multi-brand access (#15).
