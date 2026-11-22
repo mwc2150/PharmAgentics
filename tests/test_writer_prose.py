@@ -101,9 +101,9 @@ def test_prompts_fill_and_describe_the_new_memo():
     here = ROOT / "agents" / "brand-briefing" / "briefing_agent" / "prompts"
     writer = (here / "writer.md").read_text(encoding="utf-8").format(question="q", sections="[story x]", glossary="g")
     revise = (here / "revise.md").read_text(encoding="utf-8").format(problems="p", allowed="a", glossary="g", reply="{}")
-    for needle in ("association", "folded", "tiles", "territory table", "card", "at most 20 words", "no line breaks"):
+    for needle in ("association", "folded", "tiles", "territory table", "card", "at most 25 words", "no line breaks"):
         assert needle in writer
-    for needle in ("association", "folded", "at most 20 words", "no line breaks"):
+    for needle in ("association", "folded", "at most 25 words", "no line breaks"):
         assert needle in revise
     assert '"answer"' in writer and '"stories"' in writer and '"charts"' in writer
 
@@ -185,3 +185,18 @@ def test_a_typed_digit_or_invented_token_never_reaches_the_brief(monkeypatch, br
     reply = json.dumps({"answer": "Down 24.8% in Southeast {c9999}.", "stories": {"territory:SOUTHEAST": "Fell {c33} {c52}."}})
     (answer, sentences, *_), _seen = _run_write(monkeypatch, brief, [reply, reply])
     assert answer == "" and sentences == {}
+
+
+def test_the_prompts_and_the_revise_message_state_the_limits_the_code_checks():
+    from briefing_agent import write
+
+    here = ROOT / "agents" / "brand-briefing" / "briefing_agent" / "prompts"
+    words = {"4": "four", "5": "five"}
+    writer = (here / "writer.md").read_text(encoding="utf-8")
+    revise = (here / "revise.md").read_text(encoding="utf-8")
+    assert f"at most {write.MAX_WORDS} words" in writer and f"at most {write.MAX_WORDS} words" in revise
+    assert f"two to {words[str(write.ANSWER_SENTENCES)]} short sentences" in writer
+    assert f"two to {words[str(write.STORY_SENTENCES)]} sentences" in writer
+    assert f"The answer has at most {words[str(write.ANSWER_SENTENCES)]} sentences and a story at most {words[str(write.STORY_SENTENCES)]}" in revise
+    message = next(p for p in problems(" ".join(["word"] * (write.MAX_WORDS + 1)) + "."))
+    assert f"at most {write.MAX_WORDS}" in message and "under 26" not in message

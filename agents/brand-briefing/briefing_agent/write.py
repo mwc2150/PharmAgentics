@@ -108,7 +108,7 @@ def style(piece: str, max_sentences: int | None = None) -> list[str]:
         out.append(f'restates folded detail ("{folded.group(0)}"); splits, method and dropped cuts stay folded')
     sentences = [x for x in re.split(r"(?<=[.!?])\s+", text) if x]
     if (long := [x for x in sentences if len(x.split()) > MAX_WORDS]):
-        out.append(f"has a sentence of {len(long[0].split())} words (keep each under {MAX_WORDS + 1})")
+        out.append(f"has a sentence of {len(long[0].split())} words (keep each to at most {MAX_WORDS})")
     if max_sentences and len(sentences) > max_sentences:
         out.append(f"has {len(sentences)} sentences (at most {max_sentences})")
     return out

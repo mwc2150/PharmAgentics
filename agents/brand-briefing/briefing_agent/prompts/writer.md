@@ -7,8 +7,8 @@ How the memo is laid out (code builds all of it, from the data):
 - What the data can't tell us, Next checks and Appendix: written by code. Splits by plan, specialty and channel, feed figures, the method, the glossary and "considered and dropped" are folded away from you and from most readers. They are not in the sections below. Do not describe or guess them. Do not repeat the tiles, the table, a headline or a "Next:" step: the reader already sees them.
 
 Your three outputs:
-1. "answer": two or three short sentences that close the Bottom line. Say what the code sentences mean for the question that was asked, and what the reader should do or ask next. Do not restate the code sentences. Whenever you name a comparison (such as "the week before" or "the four weeks before"), use the token of that comparison, as the glossary describes it.
-2. "stories": for each story id, a short paragraph of two to four sentences. First say what moved, in business words. Then say what the checks found: which drivers were ruled out and which one is supported. Then say how sure we are, using the confidence the story states. Use only the story ids shown in [story ...] headings. If the sections have no [story ...] heading, "stories" is an empty object.
+1. "answer": two to four short sentences that close the Bottom line. Say what the code sentences mean for the question that was asked, and what the reader should do or ask next. Do not restate the code sentences. Whenever you name a comparison (such as "the week before" or "the four weeks before"), use the token of that comparison, as the glossary describes it.
+2. "stories": for each story id, a short paragraph of two to five sentences. First say what moved, in business words. Then say what the checks found: which drivers were ruled out and which one is supported. Then say how sure we are, using the confidence the story states. Use only the story ids shown in [story ...] headings. If the sections have no [story ...] heading, "stories" is an empty object.
 3. "charts" (optional): for each [chart ...] heading, one or two sentences on what the chart shows a reader, replacing the explanation code wrote. Use only tokens from that chart's caption and explanation. Leave a chart out to keep the code's explanation.
 
 Question from the brand team: {question}
@@ -20,7 +20,7 @@ What each number measures (written by code from the data; describe a comparison 
 {glossary}
 
 Writing rules:
-- Write short sentences (Simplified Technical English): one idea in each, at most 20 words, active voice, plain words. Use the same word for the same thing every time.
+- Write short sentences (Simplified Technical English): one idea in each, at most 25 words, active voice, plain words. Use the same word for the same thing every time.
 - Each piece is one plain paragraph. No bullets, no numbered lists, no headings, no bold, no line breaks.
 - Every number must be a claim token copied exactly from the sections. Never type a digit. Never spell a number out either (no "two", "half", "percent", "doubled"). If a sentence needs a number you do not have, rewrite it without one. Dates such as 2026-04-06 may stay.
 - Never write the id of a thing. Use the readable name from the sections ("Southeast", "primary care"). No names with capitals and underscores, no "territory:" or "competitor:" prefixes.
@@ -33,4 +33,4 @@ Writing rules:
 - Say "competitive intelligence", never "surveillance". Say "new patients" only for NBRx. Never name or number an individual rep, and write only about territories and the brand.
 
 Reply with JSON only, in this shape:
-{{"answer": "<two or three short sentences>", "stories": {{"<story id>": "<two to four short sentences>"}}, "charts": {{"<chart key>": "<one or two short sentences>"}}}}
+{{"answer": "<two to four short sentences>", "stories": {{"<story id>": "<two to five short sentences>"}}, "charts": {{"<chart key>": "<one or two short sentences>"}}}}
