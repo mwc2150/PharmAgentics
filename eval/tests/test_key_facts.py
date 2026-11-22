@@ -175,3 +175,25 @@ def test_must_say_counts_phrases_with_alternatives_and_skips_cases_without_any()
     assert fb.value == 0.6667 and "rank channels" in fb.rationale
     assert must_say_recall(outputs=out, expectations={"must_say": ["no spend data|spend figures"]}).value == 1.0
     assert must_say_recall(outputs=out, expectations={"must_say": []}).value is None
+
+
+def test_a_percent_fact_is_not_stated_by_a_count():
+    from eval.harness.scorers import fact_stated
+    from eval.harness.numbers import extract
+
+    fact = {"id": "plan_change_pct", "value": 42.0, "tolerance": None, "percent": True}
+    assert not fact_stated(fact, extract("Plan TRx fell to 42 TRx a week."))
+    assert fact_stated(fact, extract("Plan TRx fell 42%."))
+    assert fact_stated({**fact, "percent": None}, extract("42 TRx"))  # unit unknown: either matches
+
+
+def test_fact_units_come_from_the_reference_then_the_id():
+    from eval.harness.cases import fact_percent, load_cases
+
+    assert fact_percent("pacific_backorder", 22.5, "Backorders reached 22.5% of orders.") is True
+    assert fact_percent("plan_trx_before_per_week", 158, "Plan TRx averaged 158 a week.") is False
+    assert fact_percent("pacific_fill_rate_june", 0.7, "about 1% of orders") is None  # coarser text is no evidence
+    assert fact_percent("gl_change_pct", -17.9, "no number here") is True
+    for case in load_cases():  # every must fact the reference states gets a unit it agrees with
+        for f in case.expectations()["key_facts"]:
+            assert f["percent"] in (True, False, None)

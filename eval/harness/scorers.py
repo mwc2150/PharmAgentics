@@ -3,6 +3,7 @@ until their agreement with human labels is measured (Evaluation Pack open item 2
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 
 import duckdb
 from mlflow.entities import Feedback
@@ -120,12 +121,14 @@ def fact_stated(fact: dict, found: list[Number]) -> bool:
     """A must-state fact is stated when an extracted number matches it at its stated precision,
     or within its relative tolerance when one is set."""
     value, tolerance = fact["value"], fact.get("tolerance")
-    target = as_numbers([value])
-    if any(same(n, t) for n in found for t in target):
+    target = [replace(t, percent=fact.get("percent")) for t in as_numbers([value])]
+    if any(matches(n, t) for n in found for t in target):
         return True
     if tolerance is None:
         return False
-    return any(abs(abs(n.value) - abs(value)) <= tolerance * abs(value) for n in found)
+    unit = fact.get("percent")
+    return any(abs(abs(n.value) - abs(value)) <= tolerance * abs(value) for n in found
+               if unit is None or n.percent == unit)
 
 
 def key_fact_counts(outputs, expectations) -> tuple[int, list[str], int]:
