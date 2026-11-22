@@ -237,7 +237,7 @@ def _story(reg, n, s, p) -> tuple[memo.StoryBlock, dict]:
     chart = charts.story(reg, p, t, supported if level != "Low" else [], plan)
     detail = memo.story_detail(reg, p, t)
     block = memo.StoryBlock(story_id(s), name(t), lines, chart=chart, detail=detail,
-                            card=memo.story_card(name(t), facts, level, [c.driver for c in checks]))
+                            card=memo.story_card(name(t), facts, level, [c.driver for c in checks], territory=t, checks=checks))
     return block, {
         "territory": t, "confidence": level, "drivers": supported, "lags": lags}
 

@@ -187,7 +187,8 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
     lines = [f"From {lapse.start} to {lapse.end}, aggregated calls in {name} averaged {during} a week against {before} before. "
              f"Digital impressions averaged {digital} against a release median of {median}."]
     card = {"headline": f"{name}: aggregated calls fell from {before} to {during} a week.", "confidence": "Low",
-            "drivers_checked": ["promotion"]}
+            "drivers_checked": ["promotion"], "territory": t, "direction": "down",  # calls fell: the lapse itself
+            "drivers_supported": [], "drivers_ruled_out": []}  # no TRx comparison: promotion is inconclusive
     detail: list[str] = []
     ok = _reportable(reg, B + W)
     peers = [other for other in ok if other != t]
@@ -209,7 +210,11 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
             gaps.append((gap, abs(gap_value)))
         verb = {"up": "rose", "down": "fell"}.get(stages.word(change), "held flat at")
         card.update(headline=f"{name}: aggregated calls fell from {before} to {during} a week, and {brand} TRx {verb} {pct}.",
-                    confidence="Medium")
+                    confidence="Medium", direction=stages.word(change),  # the territory's own TRx move
+                    # TRx below the other territories' trend is the association the brief tells (the gap it carries to the
+                    # bottom line); TRx that kept pace with them rules the lapse out as the cause of a TRx move.
+                    drivers_supported=["promotion"] if gap_value < 0 else [],
+                    drivers_ruled_out=[] if gap_value < 0 else ["promotion"])
         detail = splits.readable_lines(reg, period, t)
     else:
         lines.append("The feed gate leaves too little like-for-like TRx for this lapse.")
