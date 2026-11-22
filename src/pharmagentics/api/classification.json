@@ -11,6 +11,7 @@
     "briefing.overview": "confidential",
     "briefing.new": "confidential",
     "briefing.approved": "proprietary",
+    "briefing.how": "proprietary",
     "briefing.view.analyst": "confidential",
     "briefing.view.leadership": "proprietary",
     "forecast.new": "confidential",

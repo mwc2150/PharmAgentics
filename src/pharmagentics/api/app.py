@@ -88,6 +88,8 @@ from . import threads  # noqa: E402  (brief-006: follow-up threads; own line to 
 app.include_router(threads.router)
 from . import review  # noqa: E402  (core-008 FR-021: the Feedback review list, tester admin only)
 app.include_router(review.router)
+from . import agents_info  # noqa: E402  (brief-009: the agent team for the How it works tab; before the /{brief_id} route)
+app.include_router(agents_info.router)
 
 Briefing = Depends(rbac.require_briefing)
 
