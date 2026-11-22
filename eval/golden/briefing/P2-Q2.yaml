@@ -15,8 +15,8 @@ given: a regional weakness with one access change and stable promotion, supply a
 when: the brief investigates.
 then: the story names access as the leading driver and lists each alternative with its verdict and evidence link.
 reference_answer: |-
-  Access, supported. Plan SYN_MID_ATLANTIC_MEDICARE_PART_D_1 moved BXA to tier 3 with prior authorization and step therapy from 2025-08-01 to 2025-10-31. On that plan BXA TRx fell 22.5% (183 to 142 a week) while competitors Lipidara gained 19.1% and Vascriva 21.2%.
-  Promotion, ruled out. Mid-Atlantic BXA rep calls held at 50 a week against 53 before.
+  Access, supported. Plan SYN_MID_ATLANTIC_MEDICARE_PART_D_1 moved BXA to tier 3 with prior authorization and step therapy from 2025-08-01 to 2025-10-31. On that plan BXA TRx fell 10.1% (158 to 142 a week) against the four weeks before (2025-07-07 to 2025-07-28), while competitors Lipidara gained 33.4% and Vascriva 36.2%.
+  Promotion, ruled out. Mid-Atlantic BXA rep calls held at 50 a week against 51.5 before.
   Supply, ruled out. BXA inventory fill in Mid-Atlantic averaged 0.98.
   Competitor launch, ruled out. Metacora did not launch until 2026-03-02.
   Data artifact, ruled out. Every Mid-Atlantic cut in those weeks passes the feed gate.
@@ -51,8 +51,8 @@ facts:
   value: 2
   sql: select formulary_tier from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-11-01'
 - id: plan_trx_before_per_week
-  value: 183
-  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'')'
+  value: 158
+  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'')'
   role: must
   reviewed: false
 - id: plan_trx_after_per_week
@@ -61,18 +61,18 @@ facts:
   role: must
   reviewed: false
 - id: plan_change_pct
-  value: -22.5
-  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: -10.1
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'') - 1))'
   role: must
   reviewed: false
 - id: lipidara_change_pct
-  value: 19.1
-  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXC'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXC'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: 33.4
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXC'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXC'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'') - 1))'
   role: context
   reviewed: false
 - id: vascriva_change_pct
-  value: 21.2
-  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXD'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXD'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: 36.2
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXD'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXD'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'') - 1))'
   role: context
   reviewed: false
 - id: ma_rep_calls_after
@@ -81,8 +81,8 @@ facts:
   role: context
   reviewed: false
 - id: ma_rep_calls_before
-  value: 53
-  sql: 'select avg(rep_calls_aggregated) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''MID_ATLANTIC'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'''
+  value: 51.5
+  sql: 'select avg(rep_calls_aggregated) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''MID_ATLANTIC'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'''
   role: context
   reviewed: false
 - id: ma_fill_rate_after
