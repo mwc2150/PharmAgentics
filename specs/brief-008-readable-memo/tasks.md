@@ -41,4 +41,13 @@ Work packets for agents working in parallel (`plan.md` has the file contract and
 - [x] I1 Merge F, M and R; full suite; scripted run and gate against `c65d888fe3e444adab380e509f497a88`; golden-number recall per case.
 - [x] I2 Real-app check: the leader and analyst views of the five anchor briefs, printed to A4.
 - [x] I3 `/code-review` at medium on the diff; fix; push; open the pull request.
-- [ ] I4 After G and W: the Haiku agent run and gate against the agent baseline; update `PROJECT_STATE.md`.
+- [x] I4 After G and W: the Haiku agent run and gate against the agent baseline; update `PROJECT_STATE.md`. Run `727bc0064e75480cbd73dca00748f56e` against `48565a28`: exit 0, all seven gated checks 1.000.
+
+## Polish (FR-014 to FR-018, SC-006)
+- [x] P1 FR-014 the comparison phrase is a code-filled `{cmp}` token; a sentence that words the comparison itself is revised.
+- [x] P2 FR-015 the causal verb is a code-filled `{link}` token ("drove" at High confidence, "moved with" below).
+- [x] P3 FR-016 Briefing percentages: a whole number from 10% up, one decimal below (registry `pct`); Forecast keeps `pct1`.
+- [x] P4 FR-017 the Writer prompts state the limits the code checks.
+- [x] P5 FR-018 `reader.scope_proposal` records the scope the reader proposed, so `scope_match` scores it.
+- [x] P6 Focused suite (371 passed); scripted run `ef64671bd20941cc804e19a665c971dc` gated against `a5a4968270cb47af890796f2c2979c45` (exit 0, all seven 1.000); Haiku run `5307588bff2240af8c7101930cca3c4a` against `727bc0064e75480cbd73dca00748f56e` (one asyncio crash on P2-Q3, which reruns clean alone in `51f0499570054ec6a2fcdf99f26ea4ad`; the other 31 cases pass every gated check).
+- [ ] P7 SC-006 not met: `needed_revision` 0.625 -> 0.531 (target 0.15). Of the revision causes: causal words below High confidence 8, the comparison worded by the model 7, too many sentences 4, spelled-out numbers 2, a long sentence 1. Next: code replaces a known comparison phrase with the `{cmp}` fill before the check (deterministic first); causal-word handling is a decision for Michael.

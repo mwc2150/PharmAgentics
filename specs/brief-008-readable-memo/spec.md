@@ -133,7 +133,7 @@ Every account sees its name in the top-right menu, with sign-out, the survey and
 **Follow-up (2026-11-22 night, deterministic first; branch `feature/brief-008-polish`):**
 
 - **FR-014**: The writer MUST name the comparison only through a code-filled phrase token (`{cmp}`), filled from the window the analyst chose ("the previous four weeks", "the same weeks last year", "the week of 2026-08-24"); the check rejects comparison wording the model writes itself ("the week before", "last week", "the prior weeks").
-- **FR-015**: Each story's causal verb MUST be a code-filled token chosen from the story's confidence ("drove" for High, "is linked with" otherwise); the causal-word rule covers the answer paragraph too; the writer prompt gives no free comparison example.
+- **FR-015**: Each story's causal verb MUST be a code-filled token chosen from the story's confidence ("drove" for High, "moved with" otherwise, which agrees with a singular or plural subject); the causal-word rule covers the answer paragraph too; the writer prompt gives no free comparison example.
 - **FR-016**: Briefing percentages MUST print as whole numbers at 10% and above and with one decimal below 10%; the shared `pct1` format (Forecast) is unchanged.
 - **FR-017**: The agent MUST record the scope it proposes (`trajectory.scope_proposal`: territory, first and last week, comparison, intent) so core-011's `scope_match` scores it.
 - **FR-018**: §1 and §2 MUST read as paragraphs, not one sentence per line, on screen and in print.
