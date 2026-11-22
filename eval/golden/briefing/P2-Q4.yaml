@@ -9,6 +9,10 @@ status: draft
 question: 'Weeks of 2025-08-04 to 2025-10-27: Where is the change concentrated?'
 review_note: null
 period: weeks of 2025-08-04 to 2025-10-27
+comparison:
+  kind: custom
+  start: '2025-06-02'
+  end: '2025-07-28'
 anchor: Mid-Atlantic access change
 story_text: As Marcus, I want a national number broken down to where it actually happens, so that the right team acts.
 given: a plan-level access change hidden inside a rising national trend.
