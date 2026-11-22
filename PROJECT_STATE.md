@@ -2,6 +2,14 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-22 (night), core-011 eval revamp ready for review (Claude Opus with Sonnet packets)._
+- Branch `feature/core-011-eval-revamp`: packets A (key-fact and finding recall, brevity, must-say), B (`eval insights`), C (per-case table on the Evaluation page, analysts and the tester only), D (golden facts and findings, `reviewed: false`), E (story cards carry territory, direction and the drivers supported and ruled out, both engines), F (scorer kinds code/agent/safety/ops, `scope_match`, "numbers lost by the agent", unit-aware matching) and G (golden definitions aligned to the case text or the house four weeks before), plus ten `/code-review` fixes.
+- Decided with Michael (deterministic first): code fills whatever it can; agent checks score inference. "Recall" now means pooled key-fact recall.
+- Scripted run `a5a4968270cb47af890796f2c2979c45` gated against `986836db`: exit 0, all seven gated checks 1.000. Recall (pooled key facts) 0.682; finding recall 0.750; false drivers 0.11 a case; must-say 0.429; golden-number recall 0.677 (unit-aware; was 0.607 on the old golden and matching).
+- Haiku run `727bc0064e75480cbd73dca00748f56e` gated against `48565a28` (brief-008 I4, itself gated against `ae4c68b6`: recall 0.525 -> 0.703): exit 0, all seven at 1.000. Same recall and findings as scripted (no numbers lost); 774 words a brief against 656; needed revision 62.5% (the polish branch targets <= 15%).
+- Full suite on A to E: 855 passed; one Forecast API test failed only under load and passes alone on this branch and on `main`. Later packets touched `eval/` and the Evaluation page only: eval, telemetry, frontend-scope tests 220 passed; `eval check` 180 of 180 facts; tsc and build clean.
+- Next: Michael reviews the golden edits (review page) before `key_fact_recall` and `finding_recall` join `GATED` (FR-006); `feature/brief-008-polish` (FR-014 to FR-018) is in progress; then brief-010 (percent change by segment, channel and specialty; NBRx cuts; restatement detail; peer-trend counterfactual).
+
 _2026-11-22 (evening), core-011 eval revamp planned (Michael, Claude)._
 - `golden_number_recall` is 0.682 per case but 0.593 over all 167 golden numbers; about 12 misses are approximate golden wording and about 45 are analyses the system does not do. Decided: tag golden facts (must or context, exact values, SQL), score `key_fact_recall` and `finding_recall`, add `eval insights` and a per-case Evaluation view; 0.95 recall dropped as a goal; the missing analyses go to brief-010. Spec: `specs/core-011-eval-revamp/`. Packets A (Sonnet) and D, B (Haiku) start now; A, B and D are merged on the branch; brief-008 merged to `main` as PR #20, so C and E start now.
 

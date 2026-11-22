@@ -41,5 +41,5 @@ Packets and file ownership are in `plan.md`.
 
 ## Integration (Opus)
 - [x] I1 Merge A, B, D; full suite; one scripted run; gate (unchanged gated checks); `eval insights` over the brief-008 runs.
-- [ ] I2 After brief-008 merges: C and E; one scripted and one Haiku run; two report-only runs, then propose `GATED` changes to Michael (FR-006).
-- [ ] I3 `/code-review`; pull request; `specs/README.md`, `eval/README.md` and `PROJECT_STATE.md` updated.
+- [x] I2 After brief-008 merges: C and E; one scripted and one Haiku run; two report-only runs, then propose `GATED` changes to Michael (FR-006). Runs a5a49682 and 727bc006; the GATED proposal waits for the golden review (D5, G2).
+- [x] I3 `/code-review`; pull request; `specs/README.md`, `eval/README.md` and `PROJECT_STATE.md` updated.
