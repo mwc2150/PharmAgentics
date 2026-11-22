@@ -64,7 +64,7 @@ facts:
 findings:
 - id: mid_atlantic_plan_access
   territory: MID_ATLANTIC
-  direction: down
+  direction: null
   drivers_supported: [access]
   drivers_ruled_out: []
   withheld: false

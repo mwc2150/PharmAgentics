@@ -27,12 +27,12 @@ facts:
 - id: gl_trend_loss_per_week
   value: 119.5
   sql: 'select -((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') - (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') * (1 + (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1)) / 100.0))'
-  role: must
+  role: context
   reviewed: false
 - id: se_trend_loss_per_week
   value: 199.9
   sql: 'select -((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') - (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') * (1 + (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1)) / 100.0))'
-  role: must
+  role: context
   reviewed: false
 findings:
 - id: great_lakes_promotion_lapse
@@ -48,5 +48,11 @@ findings:
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
+  reviewed: false
+must_say:
+  phrases:
+  - 'keep promotion running|keep promotion'
+  - 'no spend data|without spend data'
+  - 'cannot rank channels|rank channels'
   reviewed: false
 source: docs/planning/user-stories.md#P4-Q6

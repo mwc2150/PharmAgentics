@@ -34,4 +34,10 @@ findings:
   drivers_ruled_out: []
   withheld: false
   reviewed: false
+must_say:
+  phrases:
+  - Southeast story
+  - rep coverage gap
+  - continuing Metacora line
+  reviewed: false
 source: docs/planning/user-stories.md#P1-Q6

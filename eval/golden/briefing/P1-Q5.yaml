@@ -65,7 +65,7 @@ findings:
   reviewed: false
 - id: national_metacora_competitor
   territory: NATIONAL
-  direction: down
+  direction: null
   drivers_supported: [competitor]
   drivers_ruled_out: []
   withheld: false

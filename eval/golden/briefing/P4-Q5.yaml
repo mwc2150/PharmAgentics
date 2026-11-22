@@ -29,7 +29,7 @@ facts:
 - id: gap_points_southeast_vs_others
   value: 31.3
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1)) - (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
-  role: must
+  role: context
   reviewed: false
 - id: southeast_change_pct
   value: -24.8
@@ -50,5 +50,11 @@ findings:
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
+  reviewed: false
+must_say:
+  phrases:
+  - Medium
+  - 'four weeks after any change|re-read four weeks|re-read in four weeks'
+  - association
   reviewed: false
 source: docs/planning/user-stories.md#P4-Q5

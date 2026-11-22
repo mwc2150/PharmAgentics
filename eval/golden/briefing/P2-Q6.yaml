@@ -27,4 +27,10 @@ eval_items:
 - EV-8.4
 - EV-8.5
 facts: []
+must_say:
+  phrases:
+  - 'the run measures it|run measures it'
+  - three feed artifacts
+  - critical error
+  reviewed: false
 source: docs/planning/user-stories.md#P2-Q6
