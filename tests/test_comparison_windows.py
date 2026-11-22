@@ -89,3 +89,12 @@ def test_multiweek_screen_uses_the_explicit_window():
         assert details["SOUTHEAST"]["change"] == pytest.approx(recent / baseline - 1)
     finally:
         reg.close()
+
+
+def test_the_confidence_question_is_not_a_promotion_question():
+    from pharmagentics.tools.window import parse
+
+    first, latest = "2024-10-14", "2026-10-05"
+    asked = parse("How confident is the estimate, and when will we know more?", first, latest, briefing=True)
+    assert not asked["promotion"] and asked["weeks"] == [latest]
+    assert parse("Where should the next dollar go?", first, latest, briefing=True)["promotion"]

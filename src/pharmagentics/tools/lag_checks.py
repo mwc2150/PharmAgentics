@@ -36,8 +36,10 @@ def check_access(reg: Registry, terr: str, W, B) -> Check:
         f"(select sum(covered_lives_weight) from raw.dim_plan where territory_id = '{terr}')", "pct1", plan=e["plan"])
     move = "added restrictions (tier, prior authorization or step therapy)" if e["restricted"] else "removed restrictions"
     trend = "fell" if e["restricted"] else "rose"
+    from .splits import readable  # a reader's name for the plan (brief-008 FR-004); local: splits imports stages, which imports this
+
     return Check("access", "supported",
-                 f"Access: supported. Plan {e['plan']} ({e['channel']}, {lives} of the territory's covered lives) {move} "
+                 f"Access: supported. The {readable(e['plan'])} ({lives} of the territory's covered lives) {move} "
                  f"effective {e['month']}. BXA volume on that plan {trend} {change}. "
                  "The monthly source cannot distinguish a weekly lag.", {"plan": e["plan"], "events": events})
 

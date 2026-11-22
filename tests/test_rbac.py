@@ -183,7 +183,7 @@ def test_leadership_response_carries_no_evidence_query_or_trace():
     assert response.headers["cache-control"] == "no-store"
     assert body["view"] == "leadership" and leaks(body) == []
     assert set(body) == set(views.LEADERSHIP_FIELDS) | {"view", "summary", "sections"}  # sections: brief-003 FR-026
-    assert all(set(s) <= set(views.SECTION_FIELDS) | {"chart"} for s in body["sections"] or [])
+    assert all(set(s) <= set(views.SECTION_FIELDS) | {"chart", "kpis", "territory_table", "card"} for s in body["sections"] or [])
 
 
 def test_analyst_preview_matches_what_the_director_sees():
@@ -244,9 +244,14 @@ def test_real_new_england_week_keeps_the_withheld_cut_for_leaders():
     # brief-003 FR-026: §1 leads with the withheld cut; §4's gate detail and §6 stay with the analyst
     assert summary.split("\n")[2].startswith("Data warning: New England's feed for 2026-05-04 is incomplete")
     assert "No story is given for it." in summary and "6 of 8 territories" in summary
-    assert "## What the data can't tell us" not in summary and "## Appendix" not in summary and "Data version" not in summary
+    assert "## Appendix" not in summary and "Data version" not in summary and "Method:" not in summary  # brief-008: only the Assumptions
+    assert "Feed for New England" not in summary and "not reportable (" not in summary  # the gate detail is folded
     assert "## Next checks" in summary and "New England, week of 2026-05-04: re-run" in summary
-    assert set(summary.splitlines()) <= set(brief["answer"].splitlines())
+    assert "## Assumptions" in summary and "- Comparison weeks:" in summary
+    assert {x for x in summary.splitlines() if x != "## Assumptions"} <= set(brief["answer"].splitlines())
+    sections = body["sections"]
+    assert [k["label"] for k in sections[0]["kpis"]][0] == "National BXA TRx" and sections[1]["territory_table"]["rows"]
+    assert all("detail" not in s and "text_citations" not in s for s in sections)
 
 
 # --- brief-002 Phase A: triage plan review and stage flow (real engine) -----------------------------

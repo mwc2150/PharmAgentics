@@ -156,3 +156,49 @@
   0%, 100% { opacity: 0.35; }
   50% { opacity: 1; }
 }
+
+/* brief-008: print. The memo prints on A4 as a plain light page: the app's chrome and buttons are gone, folded
+   details stay folded, and tiles, table rows, figures and story cards are not split across pages. */
+@media print {
+  @page { size: A4; margin: 12mm 14mm 13mm; }
+  :root {
+    color-scheme: light;
+    --color-paper: #ffffff; --color-sheet: #ffffff; --color-ink: #151a18; --color-muted: #4b5652;
+    --color-rule: #c8cfcc; --color-warn: #444444; --color-warnbg: #f3f4f4;
+    --color-agent: #1f6055; --color-agentdeep: #1f6055; --color-agentbg: #edf4f2;
+    --color-ok: #1d4f9a; --color-okbg: #e8f0fb; --color-amber: #85540a; --color-amberbg: #fbf2de;
+    --color-amberline: #d9b36a; --color-neg: #b02323; --color-human: #5a3fb0; --color-humanbg: #efeafa;
+  }
+  * { animation: none !important; transition: none !important; box-shadow: none !important; }
+  html, body { height: auto !important; overflow: visible !important; background: #ffffff !important; color: var(--color-ink); font-size: 10.5pt; }
+  .h-dvh, main, main > section { display: block !important; height: auto !important; overflow: visible !important; }
+  /* app chrome and anything you press */
+  aside, header, footer, nav, form, textarea, select, dialog, [role="dialog"], [data-sonner-toaster],
+  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]) { display: none !important; }
+  /* the memo */
+  .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pa-memo > * { break-inside: auto; }
+  .pa-memo h3 { break-after: avoid; }
+  .pa-memo .pa-prose { max-width: none; font-size: 10.5pt; line-height: 1.4; orphans: 3; widows: 3; }
+  .pa-memo .pa-kpi-value { font-size: 17pt; }
+  .pa-memo .pa-card, .pa-memo figure { break-inside: auto; }  /* a long card or chart may split; otherwise it leaves a blank half page */
+  .pa-memo tr, .pa-memo dl > div { break-inside: avoid; }
+  .pa-memo figure { border: 0 !important; padding: 0 !important; margin: 0.4rem 0 !important; background: none !important; }
+  .pa-memo > section { margin-block: 0 0.7rem !important; }  /* tighter than the screen's space-y-7 */
+  .pa-memo p, .pa-memo li { font-size: 10pt !important; line-height: 1.35 !important; }
+  .pa-memo .space-y-6 > :not(:last-child) { margin-block-end: 0.6rem !important; }
+  .pa-memo section .mt-4 { margin-top: 0.5rem !important; }
+  .pa-memo dl > div { padding: 0.4rem 0.5rem !important; }
+  .pa-memo dl dd:not(.pa-kpi-value) { font-size: 8.5pt !important; }
+  .pa-memo .pa-card { padding: 0.75rem !important; margin-top: 0.4rem !important; }
+  /* On paper the leader's memo keeps each chart as a small drawing (legend and second panel stay on screen); the
+     analyst's longer memo prints the caption and the sentence under each chart, which carry the numbers. Both fit two
+     A4 pages on the anchor briefs (brief-008 SC-002). */
+  .pa-memo figure > :not(figcaption):not(p):not(svg) { display: none !important; }
+  .pa-memo[data-view="leader"] figure > svg { display: block; height: 22mm !important; width: auto !important; max-width: 100%; }
+  .pa-memo[data-view="analyst"] figure > svg { display: none !important; }
+  .pa-memo table { font-size: 9.5pt; }
+  .pa-memo svg { max-width: 100%; }
+  .pa-cite { text-decoration: none; }
+  .pa-cite sup { display: none; }
+}

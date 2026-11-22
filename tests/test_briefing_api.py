@@ -181,6 +181,46 @@ def test_question_normalization_keeps_week_and_territory_before_colon():
     assert q.split(":")[0] == "Week of 2026-06-08 in Pacific"
 
 
+def test_question_normalization_names_a_multi_week_period_before_the_colon():
+    request = BriefingQuery.model_validate({**VALID, "week_end": "2026-06-22"})
+    assert service.normalize_question(request).split(":")[0] == "Weeks of 2026-06-08 to 2026-06-22 in Pacific"
+    one_week = BriefingQuery.model_validate({**VALID, "week_end": "2026-06-08"})
+    assert service.normalize_question(one_week).split(":")[0] == "Week of 2026-06-08 in Pacific"
+
+
+def test_the_period_must_end_on_a_monday_after_it_starts():
+    assert CLIENT.post("/api/briefing/query", json={**VALID, "week_end": "2026-06-10"}).status_code == 422
+    assert CLIENT.post("/api/briefing/query", json={**VALID, "week_end": "2026-06-01"}).status_code == 422
+
+
+def test_a_multi_week_period_reaches_the_engine_and_the_result():
+    output = {"system": "briefing_scripted", "answer": "TRx 464.", "claims": [{"value": "464", "evidence_id": "e1"}],
+              "evidence": [{"id": "e1", "tool": "get_metric", "params": {}, "query": "select 1", "result": 464, "data_version": "r1"}],
+              "abstained": False}
+    seen = {}
+
+    def fake_answer(question, db, brand_id, **options):
+        seen.update(question=question, options=options)
+        return output
+
+    pkg = types.ModuleType("briefing_baseline")
+    pkg.__path__ = []
+    pipeline = types.ModuleType("briefing_baseline.pipeline")
+    pipeline.answer = fake_answer
+    bounds = ReleaseContext(first_week=date(2024, 10, 14), latest_week=date(2026, 10, 5), territory_ids=["PACIFIC"],
+                            available_weeks=[date(2026, 5, 11), date(2026, 5, 18), date(2026, 5, 25), date(2026, 6, 1),
+                                             date(2026, 6, 8), date(2026, 6, 15), date(2026, 6, 22)])
+    request = BriefingQuery.model_validate({**VALID, "week_end": "2026-06-22", "comparison": {"kind": "previous", "weeks": 4}})
+    with patch.object(service, "release_context", return_value=bounds), patch.dict(
+        sys.modules, {"briefing_baseline": pkg, "briefing_baseline.pipeline": pipeline}
+    ):
+        actual = service.run_briefing(request)
+    assert seen["question"].startswith("Weeks of 2026-06-08 to 2026-06-22 in Pacific:")
+    assert seen["options"] == {"comparison": request.comparison}
+    assert (actual.week_start, actual.week_end) == (date(2026, 6, 8), date(2026, 6, 22))
+    assert actual.question == seen["question"]
+
+
 def test_service_calls_existing_engine_and_preserves_evidence():
     """Tests service adapter without copying or executing pipeline implementation."""
     output = {
@@ -274,3 +314,12 @@ def test_nonrelease_week_is_refused_before_engine_is_called():
     with patch.object(service, "release_context", return_value=bounds):
         with pytest.raises(service.OutsideRelease):
             service.run_briefing(BriefingQuery.model_validate(VALID))
+
+
+@pytest.mark.skipif(not service.DB.is_file(), reason="Build local/pharmagentics.duckdb first")
+def test_the_default_comparison_runs_for_the_releases_first_week():
+    """brief-008 review: the form sends no comparison, so a brief for a week with no earlier week must still run
+    (the server shortens its default baseline), and the result records no explicit comparison."""
+    response = CLIENT.post("/api/briefing/query", json={**VALID, "week_start": "2024-10-14", "question": "What changed?"})
+    assert response.status_code == 200, response.text
+    assert response.json().get("comparison") is None

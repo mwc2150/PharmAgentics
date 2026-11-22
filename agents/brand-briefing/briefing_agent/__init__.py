@@ -121,6 +121,7 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
     n_claims = len(claims)
     story_tokens = {s["id"]: write.tokens(s["section"]) for s in stories}
     story_tokens["_sections"] = write.section_tokens(sections, close)
+    confidences = {s["id"]: write.confidence(s["section"]) for s in stories}  # causal words only for a High story
     shown = write.sections_text(sections, close, stories)
     gloss_text, glosses = write.glossary(shown, claims, evidence)  # what each number measures, written by code
     prompt = (HERE / cfg["prompts"]["writer"]).read_text(encoding="utf-8").format(
@@ -135,7 +136,7 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
         finish(sp, {"reply": raw})
     revised = False
     with span("6_verification") as sp:
-        bad = write.check(reply, story_tokens, n_claims, glosses)
+        bad = write.check(reply, story_tokens, n_claims, glosses, confidences)
         if bad:
             allowed = "\n".join(f"- {k}: {', '.join(sorted(v)) or '(none)'}" for k, v in story_tokens.items() if k != "_sections")
             allowed += "\n- answer: any token above, or " + (", ".join(sorted(story_tokens["_sections"])) or "(none)")
@@ -148,7 +149,7 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
             except Exception:  # noqa: BLE001
                 pass
             revised = True
-        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses)
+        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses, confidences)
         chart_lines, chart_dropped = write.chart_explanations(reply, close, stories, n_claims, glosses)
         dropped += chart_dropped
         finish(sp, {"problems": bad, "revised": revised, "dropped": dropped, "chart_lines": sorted(chart_lines)})

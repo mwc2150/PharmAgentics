@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_host, auth, brand_access, classification, cloud, feedback, forecast, jobs, overview, rbac, service, store, telemetry, views
-from .schemas import (AgentJobRequest, BriefingQuery, InsightMark, ReleaseContext, ReviewRequest, ViewAs, WorkerPoll,
+from .schemas import (AgentJobRequest, BriefingQuery, BriefingScope, BriefingScopeRequest, InsightMark, ReleaseContext, ReviewRequest, ViewAs, WorkerPoll,
                       WorkerResult)
 
 logger = logging.getLogger(__name__)
@@ -162,6 +162,28 @@ async def briefing_triage(payload: BriefingQuery, response: Response, who=Briefi
     return plan
 
 
+@app.post("/api/briefing/scope", tags=["briefing"], response_model=BriefingScope)
+async def briefing_scope(payload: BriefingScopeRequest, response: Response, who=Briefing) -> BriefingScope:
+    """Read a typed question into a proposed scope for the form (brief-008 FR-008). Analysts only. Nothing runs: the
+    analyst confirms the form. A configured Anthropic model proposes it and code validates every field; otherwise,
+    and after any failure, the code parser reads it."""
+    p, role = who
+    rbac.allow(role, "run")
+    brand_access.require_brand(p, payload.brand_id)
+    _no_store(response)
+    try:
+        scope = await run_in_threadpool(service.read_briefing_scope, payload.question, payload.brand_id)
+    except service.MissingDatabase as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except service.OutsideRelease as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Scope reading failed")
+        raise HTTPException(status_code=500, detail="Could not read the question. Set the scope by hand.") from exc
+    store.record_event("scope_read", **_who(p, role), read_by=scope["read_by"])
+    return BriefingScope.model_validate(scope)
+
+
 @app.post("/api/briefing/query", tags=["briefing"])
 async def briefing_query(payload: BriefingQuery, response: Response, who=Briefing) -> dict:
     p, role = who
@@ -197,7 +219,7 @@ async def published(response: Response, who=Briefing) -> list[dict]:
     rbac.allow(role, "read")
     _no_store(response)
     version = await run_in_threadpool(service.current_data_version)
-    return [{k: views.leadership(r)[k] for k in ("brief_id", "brand_id", "week_start", "territory_id", "engine", "reviewed_at", "abstained")}
+    return [{k: views.leadership(r)[k] for k in ("brief_id", "brand_id", "week_start", "week_end", "territory_id", "engine", "reviewed_at", "abstained")}
             for r in store.approved(version, brand_access.allowed_brands(p))]
 
 
@@ -362,6 +384,8 @@ def accept_result(job_id: str, ok: bool, result: dict | None, error: str | None)
             if plan.get("state") != "OUT_OF_SCOPE":
                 service._traceable(plan.get("claims", []), plan.get("evidence", []))
             plan.update(brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start.isoformat())
+            if query.week_end is not None:
+                plan["week_end"] = query.week_end.isoformat()
             _charge_cloud(jobs.complete(job_id, True, plan, None))
         else:
             brief = service.accept_agent_brief(query, result or {})

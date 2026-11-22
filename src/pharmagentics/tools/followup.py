@@ -52,8 +52,8 @@ def _labelled(sections: list[dict], number: str) -> dict[str, str]:
     """Territories §2 marks as projected or estimated: name -> basis."""
     two = next((s for s in sections if s["number"] == number), None)
     found = {}
-    for line in (two or {}).get("text", "").splitlines():
-        m = re.match(r"- ([A-Za-z \-]+): .*\((projected|estimated)\b", line)
+    for line in ((two or {}).get("text", "") + "\n" + (two or {}).get("detail", "")).splitlines():  # levels are folded (brief-008)
+        m = re.match(r"(?:- )?([A-Za-z \-]+): .*\((projected|estimated)\b", line)
         if m:
             found[m.group(1).strip()] = m.group(2)
     return found
@@ -144,7 +144,7 @@ def answer(result: dict, question: str, section: str | None = None) -> dict:
     if match := re.search(r"\bby (plan|specialty|channel)\b", text, re.I):
         dimension = match[1].lower()
         prefix = f"Cuts of the change by {dimension}"
-        lines = (s.get("text") or "").splitlines()
+        lines = ((s.get("text") or "") + "\n" + (s.get("detail") or "")).splitlines()  # the splits are folded (brief-008)
         for i, line in enumerate(lines):
             if line.startswith(prefix):
                 block = [line]

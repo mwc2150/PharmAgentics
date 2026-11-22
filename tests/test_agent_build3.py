@@ -36,7 +36,8 @@ def test_sections_match_the_scripted_brief():
             out.setdefault(current, []).append(line)
         return out
 
-    scripted = by_heading(answer(Q_0713)["answer"])
+    scripted_env = answer(Q_0713)
+    scripted = by_heading(scripted_env["answer"])
     s = RunSession()
     s.open_run(Q_0713)
     sec = s.brief_sections()
@@ -51,16 +52,38 @@ def test_sections_match_the_scripted_brief():
     # every driver tested, so each story's head and checks read as the scripted one's; the closing line names the
     # territory in the agent's wording; neither carries "Next:" (it lives in §5)
     body = lambda lines: [x for x in lines if not x.startswith(("Confidence", "Chart:", "In the week of"))]  # noqa: E731
-    assert body(stories) == body(scripted["What changed and why"])[:len(body(stories))]
-    assert stories[0].startswith("Story one: Pacific. BXA TRx averaged 737") and not any("Next:" in x for x in stories)
     close = s.memo_close(competitor=True)
-    assert render(close["bottom_line"]) == scripted["Bottom line"]
+    folded = [x for lines in close["story_details"].values() for x in render(lines)]  # the splits sit in each story's detail
+    assert folded and all(x in scripted["What changed and why"] for x in folded)
+    assert body(stories) == [x for x in body(scripted["What changed and why"]) if x not in folded][:len(body(stories))]
+    assert stories[0].startswith("Story one: Pacific. BXA TRx averaged 737") and not any("Next:" in x for x in stories)
+    assert render(close["bottom_line"] + close["details"]["1"]) == scripted["Bottom line"]
     assert render(close["next_checks"]) == scripted["Next checks"]
     from pharmagentics.tools.memo import chart_lines  # slice 2: the same charts, by the same builders
-    assert render(sec["numbers"] + chart_lines(close["charts"]["2"])) == scripted["The numbers"]
-    assert render(sec["limits"] + chart_lines(close["charts"]["4"])) == scripted["What the data can't tell us"]
+    assert render(sec["numbers"] + chart_lines(close["charts"]["2"]) + sec["details"]["2"]) == scripted["The numbers"]
+    assert render(sec["limits"] + chart_lines(close["charts"]["4"]) + sec["details"]["4"]) == scripted["What the data can't tell us"]
     assert set(close["charts"]["stories"]) == {"PACIFIC", "MID_ATLANTIC"} and close["charts"]["competitor"]["kind"] == "share"
     assert s.reg.render(s.dropped_line()).startswith("Considered and dropped:")
+    # brief-008: the same blocks as the scripted brief, built by the same functions, once the sections are assembled
+    from briefing_agent import write
+    from pharmagentics.tools.memo import render_sections
+
+    cards = ("territory:PACIFIC", "territory:MID_ATLANTIC")
+    told = [{"id": i, "n": n, "section": s.story_section(t, n), "territory": t}
+            for n, (i, t) in enumerate(zip(cards, ("PACIFIC", "MID_ATLANTIC")), 1)]
+    told.append({"id": "competitor:BXE", "n": 3, "section": s.competitor_section("Story three: competitor Metacora")})
+    close = s.memo_close(competitor=True)
+    _t, built = write.assemble(sec, close, told, "", {}, [], s.dropped_line())
+    agent = {x["number"]: x for x in render_sections(built, s.reg.claims)}
+    ours = {x["number"]: x for x in scripted_env["sections"]}
+    shape = lambda kpis: [(k["label"], k["value"], k["direction"]) for k in kpis]  # noqa: E731
+    assert shape(agent["1"]["kpis"]) == shape(ours["1"]["kpis"])
+    assert agent["2"]["territory_table"]["columns"] == ours["2"]["territory_table"]["columns"]
+    assert [r["cells"] for r in agent["2"]["territory_table"]["rows"]] == [r["cells"] for r in ours["2"]["territory_table"]["rows"]]
+    for number in ("3.1", "3.2", "3.3"):
+        assert agent[number]["card"]["headline"] == ours[number]["card"]["headline"]
+        assert agent[number]["card"]["drivers_checked"] == ours[number]["card"]["drivers_checked"]
+        assert agent[number].get("detail") == ours[number].get("detail")
     s.close()
 
 
@@ -162,6 +185,11 @@ def test_assembly_keeps_code_sections_and_places_story_sentences():
              "next_checks": ["- Pacific: confirm the supply finding. Owner: supply chain and trade. Unlocks: x."]}
     stories = [{"id": "territory:PACIFIC", "n": 1, "section": "Story one: Pacific {c5}.\nChecked, in this order:\n"
                 "- Supply: supported.\nConfidence for Pacific: Medium. Candidate drivers: supply. Next: involve supply chain and trade."}]
+    sections["details"] = {"2": ["Pacific: {c1} BXA TRx a week."]}
+    close["kpis"] = [{"label": "National BXA TRx", "value": "{c1}", "detail": "projected", "direction": None}]
+    close["story_cards"] = {"PACIFIC": {"headline": "Pacific fell {c5}.", "confidence": "Medium", "drivers_checked": ["supply"]}}
+    close["story_details"] = {"PACIFIC": ["Cuts of the change by plan. Total: down {c9} TRx a week."]}
+    stories[0]["territory"] = "PACIFIC"
     t, secs = write.assemble(sections, close, stories, "Pacific fell.", {"territory:PACIFIC": "Supply is the lead."},
                              ["Left out of this brief by the analyst: Mid-Atlantic."], "Considered and dropped: {c8}.")
     lines = t.split("\n")
@@ -170,17 +198,21 @@ def test_assembly_keeps_code_sections_and_places_story_sentences():
     story = lines.index("Story one: Pacific {c5}.")
     assert lines[story - 1] == "## What changed and why" and lines[story + 1] == "Supply is the lead."
     assert lines[story + 4] == "Confidence for Pacific: Medium. Candidate drivers: supply."  # "Next:" moved to §5
-    assert lines[story + 5].startswith("Left out") and lines[story + 6].startswith("Considered")
+    assert lines[story + 5] == "Cuts of the change by plan. Total: down {c9} TRx a week."  # the story's detail follows it
+    assert lines[story + 6].startswith("Left out") and lines[story + 7].startswith("Considered")  # the dropped line is §3's detail
     assert [x for x in lines if x.startswith("## ")] == ["## Bottom line", "## The numbers", "## What changed and why",
                                                         "## What the data can't tell us", "## Next checks", "## Appendix"]
     claims = [{"value": str(i), "evidence_id": f"e{i}"} for i in range(1, 10)]
     text, used, spans, index = write.render(t, claims)
-    assert "{c" not in text and [c["evidence_id"] for c in used] == ["e1", "e4", "e5", "e8", "e2", "e3"]
-    assert all(text[s["start"]:s["end"]] == used[s["claim"]]["value"] for s in spans) and len(spans) == 7
+    assert "{c" not in text and [c["evidence_id"] for c in used] == ["e1", "e4", "e5", "e9", "e8", "e2", "e3"]
+    assert all(text[s["start"]:s["end"]] == used[s["claim"]]["value"] for s in spans) and len(spans) == 9
     rendered = render_sections(secs, claims, index)
     assert [s["number"] for s in rendered] == ["1", "2", "3", "3.1", "4", "5", "6"]
     assert rendered[0]["prose"] == "Pacific fell." and rendered[3]["prose"] == "Supply is the lead."
     assert [used[i]["value"] for i in rendered[0]["claims"]] == ["1", "4"]
+    assert rendered[0]["kpis"][0]["value"] == "1" and rendered[0]["kpis"][0]["value_citation"][0]["claim"] == 0  # blocks are filled and cited
+    assert rendered[3]["card"]["headline"] == "Pacific fell 5." and rendered[3]["detail"].endswith("down 9 TRx a week.")
+    assert rendered[2]["detail"] == "Considered and dropped: 8." and rendered[1]["detail"] == "Pacific: 1 BXA TRx a week."
 
 
 def test_manager_slips_seen_in_eval_run_e994d094():

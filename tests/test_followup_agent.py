@@ -79,3 +79,17 @@ def test_a_rep_question_never_gets_a_rep():
     turn = answer({**env, "brand_id": "BXA", "territory_id": "SOUTHEAST", "week_start": "2026-08-24"},
                   "Which rep stopped calling on Southeast doctors?")
     assert turn["kind"] == "no_individual" and not turn["claims"]
+
+
+def test_a_follow_up_on_a_multi_week_brief_is_scoped_to_every_week():
+    from briefing_agent.followup import _scope_question
+    from pharmagentics.tools.window import parse
+
+    multi = {"week_start": "2026-08-03", "week_end": "2026-08-24", "territory_id": "SOUTHEAST"}
+    text = _scope_question(multi, "Split this by plan")
+    assert text.startswith("Weeks of 2026-08-03 to 2026-08-24 in ")
+    assert parse(text, "2024-10-14", "2026-10-05", briefing=True)["weeks"] == [
+        "2026-08-03", "2026-08-10", "2026-08-17", "2026-08-24"]
+    for single in ({"week_start": "2026-08-03", "territory_id": "NATIONAL"},
+                   {"week_start": "2026-08-03", "week_end": "2026-08-03", "territory_id": "NATIONAL"}):
+        assert _scope_question(single, "Split this by plan") == "Week of 2026-08-03: Split this by plan"
