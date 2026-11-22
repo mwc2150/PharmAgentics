@@ -18,10 +18,12 @@ from mlflow.tracking import MlflowClient
 
 from .insights import DEFAULT_STORE, build
 from .paths import EXPERIMENT, tracking_uri
+from .scorers import kind_of
 
 OUT = Path(__file__).resolve().parents[2] / "src" / "pharmagentics" / "api" / "telemetry.json"
 JUDGE_HINTS = ("judge", "ragas", "faithfulness", "relevan")  # LLM judges are report-only (Evaluation Pack item 2)
 CONTROLS = {"reference", "naive_llm"}
+AGENT_SUFFIXES = ("_agent", "_lowcode")  # systems whose rows carry numbers_lost (insights.numbers_lost)
 MAX_RUNS = 60
 
 
@@ -53,11 +55,15 @@ def cases_block(insights: dict, labels: dict[str, dict]) -> dict:
         stuck[(e["system"], e["case"])].add(e["scorer"])
     for e in insights.get("fallen", []):
         fallen[(e["system"], e["case"])][e["scorer"]] = {"previous": e["previous"], "latest": e["latest"]}
+    lost = defaultdict(dict)
+    for e in insights.get("numbers_lost", []):
+        lost[e["system"]][e["case"]] = e["lost"]
     entries = []
     for system, info in insights.get("systems", {}).items():
         if not info["runs"]:
             continue
         run, scorers = info["runs"][-1], info["scorers"]
+        agent_system = system.partition(":")[0].endswith(AGENT_SUFFIXES)  # numbers_lost is a Briefing figure
         by_lane = defaultdict(list)
         for case_id, row in sorted(insights["matrix"].get(system, {}).items()):
             meta = labels.get(case_id)
@@ -65,16 +71,20 @@ def cases_block(insights: dict, labels: dict[str, dict]) -> dict:
                 continue
             by_lane[meta["lane"]].append({
                 "case": case_id, "story": meta["story"], "persona": meta["persona"],
-                "scores": {k: (row[k][-1] if k in row else None) for k in scorers},
+                "scores": {k: (row[k][-1] if k in row else None) for k in scorers}
+                          | ({"numbers_lost": lost[system].get(case_id)} if agent_system and meta["lane"] == "briefing" else {}),
                 "stuck": sorted(stuck[(system, case_id)]),
                 "fallen": [{"scorer": k, **v} for k, v in sorted(fallen[(system, case_id)].items())],
             })
         for lane, rows in sorted(by_lane.items()):
             used = [k for k in scorers if any(r["scores"][k] is not None for r in rows)]
+            if agent_system and lane == "briefing":
+                used.append("numbers_lost")
             entries.append({
                 "system": system, "lane": lane, "control": system.partition(":")[0] in CONTROLS,
                 "run_id": run["run_id"][:8], "started": run["started"], "golden_version": run["golden_version"],
-                "scorers": used, "report_only": [k for k in used if any(h in k.lower() for h in JUDGE_HINTS)],
+                "scorers": used, "kinds": {k: kind_of(k) for k in used},
+                "report_only": [k for k in used if any(h in k.lower() for h in JUDGE_HINTS)],
                 "rows": [{**r, "scores": {k: r["scores"][k] for k in used}} for r in rows]})
     return {"generated": insights.get("generated"), "systems": entries}
 

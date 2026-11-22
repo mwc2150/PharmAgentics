@@ -141,3 +141,28 @@ def test_a_run_still_going_is_left_out(tmp_path):
     con.close()
     out = build([path], PAIRS)
     assert [r["run_id"] for r in out["systems"]["briefing_scripted"]["runs"]] == ["P1"]
+
+
+def test_numbers_lost_compares_latest_agent_with_latest_scripted_on_the_same_golden(tmp_path):
+    scripted, agent, other = tmp_path / "s.db", tmp_path / "a.db", tmp_path / "o.db"
+    _store(str(scripted), {"S1": ("briefing_scripted", "g1", 1000, [
+        (Q_DOLLAR, {"key_fact_recall": "1.0"}), (Q_CONF, {"key_fact_recall": "0.5"}), (Q_BRIEF, {"key_fact_recall": "0.5"})])})
+    _store(str(agent), {"A1": ("briefing_agent:m", "g1", 2000, [
+        (Q_DOLLAR, {"key_fact_recall": "0.25"}), (Q_CONF, {"key_fact_recall": "0.75"}), (Q_BRIEF, {"golden_number_recall": "1.0"})])})
+    _store(str(other), {"L1": ("briefing_lowcode:q", "g2", 3000, [(Q_DOLLAR, {"key_fact_recall": "0.0"})])})
+    d = build([scripted, agent, other], PAIRS)
+    assert d["numbers_lost"] == [  # C-3 has no agent key_fact_recall; the low-code run is on another golden
+        {"system": "briefing_agent:m", "case": "C-1", "scripted": 1.0, "agent": 0.25, "lost": 0.75},
+        {"system": "briefing_agent:m", "case": "C-2", "scripted": 0.5, "agent": 0.75, "lost": -0.25}]
+    assert d["numbers_lost_mean"] == {"briefing_agent:m": 0.25}
+    section = render_md(d).split("## Numbers lost by the agent")[1].split("\n## ")[0]
+    assert "C-1" in section and "C-2" not in section  # only rows with lost > 0
+    assert "+0.250" in section
+
+
+def test_kinds_group_the_matrix_and_leave_out_run_counters(stores):
+    d = build(stores, PAIRS)
+    assert set(d["kinds"]) == {"code", "agent", "safety"}
+    assert "golden_number_recall" in d["kinds"]["code"] and "claims_reconcile" in d["kinds"]["code"]
+    assert not {"seconds", "llm_calls", "tool_calls", "hit_cap"} & {k for ks in d["kinds"].values() for k in ks}
+    assert "briefing_scripted: Code checks" in render_md(d)

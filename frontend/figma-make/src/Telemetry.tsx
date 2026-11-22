@@ -67,15 +67,26 @@ function InUse({ u }: { u: Usage }) {
 
 const SCORERS: Record<string, string> = {
   claims_reconcile: "Claims reconcile", golden_number_recall: "Number recall", key_fact_recall: "Key facts found",
-  finding_recall: "Findings found",
+  finding_recall: "Findings found", numbers_lost: "Numbers lost",
+}
+const HEADER_TITLES: Record<string, string> = {
+  numbers_lost: "Key-fact recall of the scripted brief minus this agent's, on the same golden version. Positive: the agent stated fewer of the facts code already gets.",
+}
+const KIND_GROUPS = [["code", "Code checks"], ["agent", "Agent checks"], ["safety", "Safety"]] as const
+// Score columns under Code checks, Agent checks and Safety; a snapshot with no kinds keeps one flat header.
+function grouped(t: CaseTable) {
+  const kinds = t.kinds
+  if (!kinds) return null
+  const groups = KIND_GROUPS.map(([kind, title]) => ({ kind, title, cols: t.scorers.filter(k => (kinds[k] ?? "agent") === kind) })).filter(g => g.cols.length)
+  return groups.length ? groups : null
 }
 const scorerName = (k: string) => SCORERS[k] ?? label(k)
 const LANES: Record<string, string> = { briefing: "Briefing", forecast: "Forecast" }
 const MARK = "ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
 
-function CaseScore({ v, stuck, fell }: { v: number | null | undefined, stuck: boolean, fell?: { previous: number; latest: number } }) {
+function CaseScore({ v, stuck, fell, lost }: { v: number | null | undefined, stuck: boolean, fell?: { previous: number; latest: number }, lost?: boolean }) {
   if (v == null) return <span className="text-muted" title="Not scored in this run">{"—"}<span className="sr-only">not scored</span></span>
-  return <>{pct(v)}
+  return <>{lost ? `${Math.round(v * 100)}%` : pct(v)}
     {stuck && <span className={`${MARK} bg-amberbg text-amber`} title="Zero in every listed run">stuck</span>}
     {fell && <span className={`${MARK} bg-amberbg text-amber`} title={`Was ${pct(fell.previous)} in the run before`}>fell from {pct(fell.previous)}</span>}
   </>
@@ -84,6 +95,10 @@ function CaseScore({ v, stuck, fell }: { v: number | null | undefined, stuck: bo
 function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
   const stuck = t.rows.reduce((n, r) => n + r.stuck.length, 0)
   const fallen = t.rows.reduce((n, r) => n + r.fallen.length, 0)
+  const groups = grouped(t)
+  const cols = groups ? groups.flatMap(g => g.cols) : t.scorers
+  const edge = (k: string) => (groups?.some(g => g.cols[0] === k && g !== groups[0]) ? " border-l border-rule" : "")
+  const head = (k: string) => <th key={k} scope="col" title={HEADER_TITLES[k]} className={`px-3 py-2 text-right font-medium${edge(k)}`}>{scorerName(k)}{t.report_only.includes(k) && <span className="block font-normal">report only</span>}</th>
   return <details open={open} className={PANEL}>
     <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60">
       <span className="text-sm font-semibold">{NAMES[t.system.split(":")[0]] ?? t.system}</span>
@@ -91,13 +106,19 @@ function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
     </summary>
     <div className="overflow-x-auto border-t border-rule">
       <table className="w-full min-w-[32rem] text-left text-sm">
-        <thead className="text-xs text-muted"><tr>
-          <th scope="col" className="px-5 py-2 font-medium">Case</th>
-          {t.scorers.map(k => <th key={k} scope="col" className="px-3 py-2 text-right font-medium">{scorerName(k)}{t.report_only.includes(k) && <span className="block font-normal">report only</span>}</th>)}
-        </tr></thead>
+        <thead className="text-xs text-muted">
+          {groups && <tr>
+            <th scope="col" rowSpan={2} className="px-5 py-2 align-bottom font-medium">Case</th>
+            {groups.map((g, i) => <th key={g.kind} scope="colgroup" colSpan={g.cols.length} className={`px-3 pt-2 text-center font-medium${i ? " border-l border-rule" : ""}`}>{g.title}</th>)}
+          </tr>}
+          <tr>
+            {!groups && <th scope="col" className="px-5 py-2 font-medium">Case</th>}
+            {cols.map(head)}
+          </tr>
+        </thead>
         <tbody>{t.rows.map(r => <tr key={r.case} className="border-t border-rule">
           <th scope="row" className="px-5 py-2 text-left font-normal"><span className="tabular-nums">{r.case}</span><span className="block text-xs text-muted">{r.story}{r.persona ? ` · ${r.persona}` : ""}</span></th>
-          {t.scorers.map(k => <td key={k} className="px-3 py-2 text-right tabular-nums"><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} fell={r.fallen.find(f => f.scorer === k)}/></td>)}
+          {cols.map(k => <td key={k} className={`px-3 py-2 text-right tabular-nums${edge(k)}`}><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} fell={r.fallen.find(f => f.scorer === k)} lost={k === "numbers_lost"}/></td>)}
         </tr>)}</tbody>
       </table>
     </div>

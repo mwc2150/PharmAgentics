@@ -17,12 +17,15 @@ from pathlib import Path
 from statistics import pstdev
 
 from .paths import MLFLOW_DIR
+from .scorers import kind_of
 
 OUT_DIR = MLFLOW_DIR / "insights"
 DEFAULT_STORE = MLFLOW_DIR / "mlflow.db"
 PARAM_KEYS = ("system", "lane", "golden_version", "code_version", "data_version")
 # Run counters, not quality scores: kept in the matrix, left out of stuck, fallen, engine and spread lists.
 OPERATIONAL = {"seconds", "llm_calls", "tool_calls", "hit_cap", "needed_revision"}
+KIND_ORDER = ("code", "agent", "safety")  # ops (run counters) stay out, as OPERATIONAL does
+KIND_TITLES = {"code": "Code checks", "agent": "Agent checks", "safety": "Safety"}
 EPS = 0.001
 STD_LIMIT = 0.1
 QUESTION = re.compile(r'"question":\s*"((?:[^"\\]|\\.)*)"')
@@ -139,6 +142,28 @@ def _base(system: str) -> str:
     return system.split(":")[0]
 
 
+def numbers_lost(latest: dict, scripted: dict) -> list[dict]:
+    """Key facts the scripted brief stated and an agent brief did not: per agent system and case,
+    `lost` = scripted key_fact_recall minus agent key_fact_recall (negative: the agent stated more). Only for an
+    agent whose latest run shares the golden version with the latest scripted run of its lane, on cases both scored."""
+    rows = []
+    for s, agent_run in latest.items():
+        lane = s.split("_")[0]
+        if not (_base(s).endswith(("_agent", "_lowcode")) and lane in scripted):
+            continue
+        base_run = latest[scripted[lane]]
+        if base_run["golden_version"] != agent_run["golden_version"]:
+            continue
+        for c in sorted(set(base_run["cases"]) & set(agent_run["cases"])):
+            before = base_run["cases"][c].get("key_fact_recall")
+            now = agent_run["cases"][c].get("key_fact_recall")
+            if before is None or now is None:
+                continue
+            rows.append({"system": s, "case": c, "scripted": round(before[0], 4), "agent": round(now[0], 4),
+                         "lost": round(before[0] - now[0], 4)})
+    return rows
+
+
 def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict | None = None) -> dict:
     """The insights as a dict (insights.json). `pairs` are golden (case_id, question) pairs; `stories` maps case_id to story ID."""
     tails, heads = case_index(pairs)
@@ -227,10 +252,16 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
                        "scripted_run": base_run["run_id"], "agent_run": agent_run["run_id"],
                        "same_golden": base_run["golden_version"] == agent_run["golden_version"], "cases": cases})
 
+    names = {k for info in systems.values() for k in info["scorers"]}
+    kinds = {kind: sorted(k for k in names if kind_of(k) == kind) for kind in KIND_ORDER}
+    lost = numbers_lost(latest, scripted)
     return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stores": [str(p) for p in stores],
             "unmapped_traces": sum(p["unmapped"] for rs in runs.values() for p in rs),
-            "systems": systems, "matrix": matrix, "std": std, "stuck": stuck, "fallen": fallen,
-            "engine": engine, "rerun_spread": spread, "golden_breaks": breaks}
+            "systems": systems, "kinds": kinds, "matrix": matrix, "std": std, "stuck": stuck, "fallen": fallen,
+            "engine": engine, "numbers_lost": lost,
+            "numbers_lost_mean": {s: round(sum(e["lost"] for e in lost if e["system"] == s) / n, 4)
+                                  for s in sorted({e["system"] for e in lost}) if (n := sum(e["system"] == s for e in lost))},
+            "rerun_spread": spread, "golden_breaks": breaks}
 
 
 def _table(lines: list, title: str, cols: list, rows: list, empty: str, cap: int | None = None, note: str = ""):
@@ -282,6 +313,25 @@ def render_md(d: dict) -> str:
             lower = sum(v["delta"] < -EPS for v in vs)
             lines.append(f"| {k} | {len(vs)} | {sum(v['scripted'] for v in vs) / len(vs):.3f} | "
                          f"{sum(v['agent'] for v in vs) / len(vs):.3f} | {lower} |")
+    lost = sorted((e for e in d.get("numbers_lost", []) if e["lost"] > EPS), key=lambda e: -e["lost"])
+    _table(lines, "Numbers lost by the agent (scripted key-fact recall minus agent, latest runs, same golden version)",
+           ["system", "case", "scripted", "agent", "lost"], lost, "None.")
+    for s_name, mean in (d.get("numbers_lost_mean") or {}).items():
+        n = sum(e["system"] == s_name for e in d["numbers_lost"])
+        lines += ["", f"Mean over the {n} case(s) both scored, {s_name}: {mean:+.3f} (positive: the agent states fewer key facts)."]
+    lines += ["", "## Latest score per case, by kind",
+              "", "Code checks are what code can produce; agent checks are the agent's own inference; safety guards wording. "
+              "A dash is not scored."]
+    for s_name, info in d["systems"].items():
+        for kind in KIND_ORDER:
+            cols = [k for k in info["scorers"] if kind_of(k) == kind]
+            rows = [(c, row) for c, row in sorted(d["matrix"].get(s_name, {}).items()) if any(k in row for k in cols)]
+            if not cols or not rows:
+                continue
+            lines += ["", f"### {s_name}: {KIND_TITLES[kind]}", "", "| case | " + " | ".join(cols) + " |", "|" + "---|" * (len(cols) + 1)]
+            for c, row in rows:
+                cells = [("-" if k not in row or row[k][-1] is None else f"{row[k][-1]:.3g}") for k in cols]
+                lines.append(f"| {c} | " + " | ".join(cells) + " |")
     _table(lines, "Rerun spread (std above 0.1, per run)", ["system", "story", "case", "scorer", "mean", "std"],
            sorted(d["rerun_spread"], key=lambda r: -r["std"]), "None.", cap=30)
     return "\n".join(lines) + "\n"

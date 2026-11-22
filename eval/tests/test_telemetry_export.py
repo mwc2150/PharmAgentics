@@ -1,6 +1,7 @@
 """The per-case block of the telemetry export: ids, labels, scores and marks only (core-011 FR-009)."""
 import json
 
+from eval.harness.scorers import kind_of
 from eval.harness.telemetry_export import _labels, cases_block, export
 
 LABELS = {
@@ -61,7 +62,7 @@ def test_block_carries_no_golden_text():
     block = cases_block(INSIGHTS, _labels() | LABELS)
     allowed_row = {"case", "story", "persona", "scores", "stuck", "fallen"}
     for s in block["systems"]:
-        assert set(s) == {"system", "lane", "control", "run_id", "started", "golden_version", "scorers", "report_only", "rows"}
+        assert set(s) == {"system", "lane", "control", "run_id", "started", "golden_version", "scorers", "kinds", "report_only", "rows"}
         assert all(set(r) == allowed_row for r in s["rows"])
     # Nothing from a real golden case beyond its id, story id and persona label reaches the block.
     from eval.harness.cases import load_cases
@@ -77,3 +78,31 @@ def test_export_writes_cases_when_insights_are_given(tmp_path, monkeypatch):
     snap = export(out, uri=f"sqlite:///{(tmp_path / 'none.db').as_posix()}", insights=INSIGHTS)
     assert json.loads(out.read_text(encoding="utf-8"))["cases"] == snap["cases"]
     assert {s["system"] for s in snap["cases"]["systems"]} == {"briefing_scripted", "reference"}
+
+
+def test_every_system_names_the_kind_of_each_column():
+    for s in cases_block(INSIGHTS, LABELS)["systems"]:
+        assert s["kinds"] == {k: kind_of(k) for k in s["scorers"]}
+    s = _system(cases_block(INSIGHTS, LABELS), "briefing_scripted")
+    assert s["kinds"] == {"claims_reconcile": "code", "golden_number_recall": "code"}
+    assert "numbers_lost" not in s["scorers"]  # the scripted baseline is the reference, not an agent
+
+
+def test_agent_systems_carry_numbers_lost_as_an_agent_column():
+    insights = {
+        **INSIGHTS,
+        "systems": {**INSIGHTS["systems"],
+                    "briefing_agent:m": {"runs": [{"run_id": "dddddddd44", "started": "2026-11-22T10:00+00:00", "golden_version": "g1"}],
+                                         "scorers": ["key_fact_recall", "must_not_say"]}},
+        "matrix": {**INSIGHTS["matrix"], "briefing_agent:m": {"C-1": {"key_fact_recall": [0.5], "must_not_say": [1.0]},
+                                                               "C-2": {"must_not_say": [1.0]}}},
+        "numbers_lost": [{"system": "briefing_agent:m", "case": "C-1", "scripted": 1.0, "agent": 0.5, "lost": 0.5}],
+    }
+    block = cases_block(insights, LABELS)
+    s = _system(block, "briefing_agent:m")
+    assert s["scorers"] == ["key_fact_recall", "must_not_say", "numbers_lost"]
+    assert s["kinds"] == {"key_fact_recall": "code", "must_not_say": "safety", "numbers_lost": "agent"}
+    c1, c2 = s["rows"]
+    assert c1["scores"]["numbers_lost"] == 0.5
+    assert c2["scores"]["numbers_lost"] is None  # not computable stays null
+    assert "numbers_lost" not in _system(block, "briefing_scripted")["rows"][0]["scores"]
