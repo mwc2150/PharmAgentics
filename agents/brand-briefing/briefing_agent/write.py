@@ -189,9 +189,13 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
 
     targets = {k: dict(c, explanation=(chart_lines or {}).get(k) or c["explanation"])
                for k, c in chart_targets(close, stories).items()}
+    cards, folded = close.get("story_cards") or {}, close.get("story_details") or {}
+    key = lambda s: "competitor" if s["id"].startswith("competitor:") else (s.get("territory") or "")  # noqa: E731
     blocks = [memo.StoryBlock(s["id"], _story_title(s["id"]), memo.without_next(s["section"]).split("\n"),
-                              sentences.get(s["id"], ""), chart=targets.get(s["id"])) for s in stories]
+                              sentences.get(s["id"], ""), chart=targets.get(s["id"]), card=cards.get(key(s)),
+                              detail=folded.get(key(s), [])) for s in stories]
     notes: list[str] = []
+    dropped: list[str] = []  # folded under §3's detail
     if sections.get("calendar"):
         notes.append("No story is opened for a calendar week. Expect a rebound in the next regular week.")
         blocks = []
@@ -200,13 +204,16 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
         if not stories and not left_out:
             notes.append("Routine week. No material change was found, and territory swings stayed in their normal range.")
         elif dropped_line:
-            notes.append(dropped_line)
+            dropped.append(dropped_line)
     blocks.extend(memo.StoryBlock(**story) for story in sections.get("promotion_stories", []))
     parts = memo.MemoParts(title=sections["title"], bottom_line=close["bottom_line"], numbers=sections["numbers"],
                            limits=sections["limits"], next_checks=close["next_checks"],
                            appendix=sections["appendix"] + close.get("driver_timing", []),
                            stories=blocks, story_notes=notes, answer=answer,
-                           charts={k: targets[k] for k in ("2", "4") if k in targets})
+                           charts={k: targets[k] for k in ("2", "4") if k in targets},
+                           kpis=close.get("kpis") or [], territory_table=sections.get("territory_table"),
+                           details={"1": (close.get("details") or {}).get("1", []), "2": (sections.get("details") or {}).get("2", []),
+                                    "3": dropped, "4": (sections.get("details") or {}).get("4", [])})
     return memo.compose(parts)
 
 
