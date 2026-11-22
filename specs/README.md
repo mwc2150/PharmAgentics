@@ -10,7 +10,7 @@ One Spec Kit feature per component. Specs say WHAT and WHY. Each `plan.md` says 
 
 **Sources, in order of precedence** (all in [`docs/planning/`](../docs/planning/README.md)): the Proposal; each lane's personas and evaluation pack; the [System Architecture](../docs/planning/system-architecture.md); each lane's architecture doc ([Briefing](../docs/planning/briefing-architecture.md)). The [user stories](../docs/planning/user-stories.md) supply the acceptance scenarios.
 
-**Constitutions:** shared [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) v2.0.0 and Briefing lane [`.specify/memory/constitution-briefing.md`](../.specify/memory/constitution-briefing.md) v1.0.0.
+**Constitutions:** shared [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) v2.0.0 and Briefing lane [`.specify/memory/constitution-briefing.md`](../.specify/memory/constitution-briefing.md) v1.1.0.
 
 ## Namespaces (System Architecture §8, S12 Proposed)
 
@@ -43,6 +43,8 @@ A `core` spec records what each lane needs from the shared part. It does not spe
 | [brief-005](brief-005-review-signoff/spec.md) | Review, sign-off and feedback | 7 | EV-6.2, EV-6.3, EV-8.1 | P1-Q1, P1-Q4, P1-Q6, P2-Q5 | brief-004, core-005 | 009 (review part) |
 | [brief-006](brief-006-follow-ups/spec.md) | Follow-ups and threads: the bottom message bar, section-referenced follow-ups, saved and shared threads | 5–7 | EV-1.1, EV-9.1 | P1, P3 | brief-003 v3, core-007, core-008 | new (2026-11-19) |
 | [brief-007](brief-007-windows-and-evidence/spec.md) | Windows, assumptions and evidence: 4-week default baseline and a comparison picker, a release-wide Promotion review, per-territory and split tables, feed-quality counts, lag-tested drivers, an Assumptions block | 3–6 | EV-1.2, EV-2.1, EV-3.2, EV-3.4, EV-4.3, EV-4.5, EV-7.3, EV-7.5 | P1-Q2, P1-Q3, P2-Q4, P2-Q5, P3-Q5, P4-Q1 to P4-Q6 | brief-002, brief-003 v3, brief-006 | new (2026-11-20) |
+| [brief-008](brief-008-readable-memo/spec.md) | A readable memo: two pages at most, paragraphs, a KPI strip, a territory table, charts and story cards for both views; leaders keep the assumptions; first and last week plus a previous-N-weeks comparison; Haiku proposes the scope and the analyst confirms it; brief-007 gaps fixed | 3–7 (rendering) | EV-1.1, EV-7.1 to EV-7.5, EV-9.3 | P1-Q3, P2-Q4, P3-Q5, P4-Q1, P4-Q5, P4-Q6 | brief-003 v3, brief-007 | new (2026-11-22) |
+| [brief-009](brief-009-agent-transparency/spec.md) | Agent transparency: four actors (Manager, Data Forensics, Driver Investigator, Writer), a live timeline of each run with links to the claims it produced, a "How it works" tab | 4a–6 | EV-4.1 to EV-4.5, EV-9.1 | P1-Q4, P2-Q3 | brief-002, brief-008 | new (2026-11-22) |
 
 **Build order** (Briefing Architecture §14, three builds): scripted baseline first (core-001 to core-005, brief-001, a fixed-order brief-002, then brief-003 to brief-005), then low-code, then the Magentic agent. core-006 starts early so every build is scored on the same cases.
 

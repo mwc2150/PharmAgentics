@@ -12,7 +12,7 @@ This file is the single set of instructions for coding agents (Claude Code, Code
 - `conversations/`: dated handoffs between sessions and agents; read the ones that relate to your task. Old handoffs are history, not current instructions
 - `SoT/README.md`: where the source documents come from and how a new drop updates Spec Kit
 - `docs/planning/README.md`: Markdown copies of the source docs and their precedence (Proposal, then each lane's personas and evaluation pack, then the System Architecture, then each lane's architecture doc)
-- `.specify/memory/constitution.md` (shared, v2.0.0) and `.specify/memory/constitution-briefing.md` (Briefing lane, v1.0.0)
+- `.specify/memory/constitution.md` (shared, v2.0.0) and `.specify/memory/constitution-briefing.md` (Briefing lane, v1.1.0)
 - `specs/README.md`: spec index, shared decisions, open items, dev anchor cases
 - `eval/README.md`: golden set, scorers, controls, and how to run and read results
 - `data/agent_visible/README.md`, `data_dictionary.json`, `docs/DUCKDB_FIRST_RUN.md`: the data world
