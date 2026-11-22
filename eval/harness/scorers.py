@@ -230,15 +230,21 @@ def _words(text) -> int:
 
 
 @scorer(name="brief_words",
-        description="Words a reader sees unfolded: section text, card headlines, table cells; not detail (core-011 FR-005). Report only.")
+        description="Words a reader sees unfolded: section text and writer prose, card headlines, table cells, KPI tiles, chart captions and explanations; not the folded detail (core-011 FR-005). Report only.")
 def brief_words(outputs) -> Feedback:
+    """Words a reader sees without unfolding anything: each section's `text` and the writer's `prose`, card headlines,
+    territory-table cells, KPI tile `value` and `detail`, and chart `caption` and `explanation`. The folded `detail`
+    of a section is left out."""
     sections = outputs.get("sections") if isinstance(outputs, dict) else None
     if not sections:
         return _not_scored("the answer has no sections")
     total = 0
     for section in sections:
-        total += _words(section.get("text"))
+        total += _words(section.get("text")) + _words(section.get("prose"))
         total += _words((section.get("card") or {}).get("headline"))
+        total += sum(_words(k.get("value")) + _words(k.get("detail")) for k in section.get("kpis") or [])
+        chart = section.get("chart") or {}
+        total += _words(chart.get("caption")) + _words(chart.get("explanation"))
         for row in (section.get("territory_table") or {}).get("rows") or []:
             total += sum(_words(cell) for cell in row.get("cells") or [])
     return Feedback(value=total, rationale=f"{total} words across {len(sections)} sections, excluding detail.")

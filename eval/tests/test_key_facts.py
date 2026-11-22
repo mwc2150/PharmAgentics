@@ -122,6 +122,15 @@ def test_brief_words_counts_text_headline_and_cells_but_not_detail():
     assert fb.value == 3 + 2 + 4 + 1 + 3
 
 
+def test_brief_words_also_counts_prose_kpi_tiles_and_chart_text_but_not_the_folded_detail():
+    sections = [
+        {"number": "1", "text": "one two", "prose": "three four five", "detail": "never counted " * 50,
+         "kpis": [{"value": "2", "detail": "of 8 reviewed"}, {"value": "10", "detail": None}]},
+        {"number": "3.1", "text": "six", "chart": {"caption": "seven eight", "explanation": "nine ten eleven"}, "detail": "ignored"},
+    ]
+    assert brief_words(outputs={"sections": sections}).value == (2 + 3 + 1 + 3 + 1) + (1 + 2 + 3)
+
+
 def test_brief_words_is_not_scored_without_sections():
     assert brief_words(outputs=text("words")).value is None
     assert brief_words(outputs={"sections": []}).value is None
