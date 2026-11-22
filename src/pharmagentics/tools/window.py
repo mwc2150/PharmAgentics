@@ -14,7 +14,7 @@ _ISO = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _SPAN = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: to (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)? (\d{4})\b")
 _PROMOTION = re.compile(
     r"\b(?:campaigns?|promotions?|promotional|reach(?:ed|ing)?|respond(?:ed|ing)?|response|"
-    r"lift|spend|next dollar|return on investment|ROI|confident is the estimate)\b", re.I
+    r"lift|spend|next dollar|return on investment|ROI)\b", re.I
 )
 
 
