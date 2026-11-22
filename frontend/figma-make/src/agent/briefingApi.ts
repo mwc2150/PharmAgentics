@@ -33,6 +33,7 @@ export type BriefingResult = {
   brand_id: string
   territory_id: string
   week_start: string
+  week_end?: string | null
   answer: string
   claims: Claim[]
   evidence: Evidence[]
@@ -184,8 +185,22 @@ export type BriefingQuery = {
   brand_id: string
   territory_id: string
   week_start: string
+  week_end?: string | null  // brief-008: the last week of a multi-week period; absent for one week
   comparison?: Comparison | null
   question: string
+}
+
+// brief-008 FR-008: a typed question read into a proposed scope for the form. Nothing runs on it.
+export type BriefingScope = {
+  question: string
+  week_start: string
+  week_end: string
+  territory_id: string | null  // null: the question names no territory, so the form keeps its choice
+  comparison_weeks: number
+  promotion_review: boolean
+  notes: string[]
+  read_by: "model" | "rules"
+  model?: string | null
 }
 
 export class NotSignedIn extends Error {}
@@ -306,6 +321,15 @@ function checkPlan(v: unknown): TriagePlan {
     }
   }
   return v as unknown as TriagePlan
+}
+export async function readBriefingScope(req: { question: string; brand_id: string }): Promise<BriefingScope> {
+  const v: unknown = await api("/api/briefing/scope", post(req))
+  expectObject(v)
+  if (typeof v.week_start !== "string" || typeof v.week_end !== "string" || typeof v.comparison_weeks !== "number" ||
+      typeof v.promotion_review !== "boolean" || (v.read_by !== "model" && v.read_by !== "rules") || !Array.isArray(v.notes)) {
+    throw new Error("The question could not be read. Set the scope by hand.")
+  }
+  return v as unknown as BriefingScope
 }
 export async function getBriefing(q: BriefingQuery, triage?: TriageDecision): Promise<BriefingResult> {
   return checkAnalyst(await api("/api/briefing/query", post(triage ? { ...q, triage } : q)))
