@@ -399,9 +399,12 @@ def _line(subject: str, action: str, owner: str, decision: str) -> str:
     return f"- {subject}: {action}. Owner: {owner}. Unlocks: {decision}."
 
 
+_REREAD = re.compile(r"when will we know|know more|firm(?:s|ed)? up", re.I)
+
+
 def next_checks(p, stories: list[dict], competitor: bool) -> list[str]:
     """§5 (research R10): one line per territory story ({territory, confidence, drivers}), per withheld cut,
-    and for a continuing competitor story."""
+    for a continuing competitor story, and a re-read line when the question asks when more will be known."""
     lines = []
     for s in stories:
         name = q.name(s["territory"])
@@ -422,6 +425,9 @@ def next_checks(p, stories: list[dict], competitor: bool) -> list[str]:
                            OWNER["data"], DECISION["data"]))
     if competitor:
         lines.append(_line("Metacora", "track the basket shares each week", OWNER["competitor"], DECISION["competitor"]))
+    if _REREAD.search(p.question or ""):
+        lines.append(_line("Re-read", "re-run this brief four weeks after any change, when the comparison weeks have caught up",
+                           "commercial analytics", "whether the estimate has firmed up"))
     return lines
 
 

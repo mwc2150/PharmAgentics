@@ -126,6 +126,7 @@ def test_the_confidence_question_gets_a_brief_with_confidence_not_a_review(monke
     result = _answer(CONFIDENCE_QUESTION, monkeypatch)
     assert "Promotion review" not in result["answer"]
     assert "Confidence:" in result["answer"]
+    assert "Re-read: re-run this brief four weeks after any change" in result["answer"]
 
 
 def test_lapse_count_query_matches_the_lapse_rule():
