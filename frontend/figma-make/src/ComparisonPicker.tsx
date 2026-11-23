@@ -16,7 +16,7 @@ type Props = {
   labelWeek: (week: string) => string
 }
 
-const field = "block w-full rounded-lg border border-edge bg-sheet px-3 py-2 text-sm text-ink disabled:opacity-50"
+const field = "block w-full rounded-lg border border-edge bg-sheet px-3 py-2 text-sm text-ink placeholder:text-muted disabled:opacity-50"
 
 function shiftWeek(week: string, count: number): string {
   const date = new Date(`${week}T00:00:00Z`)
@@ -63,9 +63,9 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
     <div className="space-y-1">
       <label className="flex flex-wrap items-center gap-2 text-sm text-ink">
         <span>Compare with the previous</span>
-        <input type="number" inputMode="numeric" min={1} max={13} step={1} className={`${field} !w-20 tabular-nums`}
+        <input type="number" inputMode="numeric" min={1} max={13} step={1} className={`${field} !w-28 tabular-nums`}
           value={value?.kind === "previous" && Number.isFinite(value.weeks) ? value.weeks : ""} placeholder="Default"
-          aria-invalid={!!error && value?.kind === "previous"} aria-describedby={error ? "comparison-error" : "comparison-default"}
+          aria-invalid={!!error && value?.kind === "previous"} aria-describedby={error ? "comparison-error" : value === null ? "comparison-default" : undefined}
           onChange={event => onChange(event.target.value === "" ? null : { kind: "previous", weeks: Number(event.target.value) })}/>
         <span>weeks</span>
       </label>
@@ -74,12 +74,14 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
         : `Default: the ${DEFAULT_COMPARISON_WEEKS} weeks before the period, or fewer where the release starts later. A longer period is screened against as many preceding weeks as it has.`}</p>}
       {other && <p className="text-xs text-muted">Using {value.kind === "last_year" ? "the same weeks last year" : "custom weeks"} instead.
         {" "}<button type="button" className="underline" onClick={() => onChange(null)}>Use the default comparison</button></p>}
+      {/* Always in the page, so a screen reader announces the text when it arrives. */}
+      <p id="comparison-error" role="status" className="text-xs text-amber">{error}</p>
     </div>
     <details className="text-xs text-muted" open={other}>
       <summary className="cursor-pointer select-none">Other comparison</summary>
       <div className="mt-2 space-y-2">
         <label className="block space-y-1 text-xs font-medium text-muted">Compare with
-          <select className={field} value={value?.kind ?? "previous"} onChange={event => {
+          <select className={field} value={value?.kind ?? "previous"} aria-describedby={error ? "comparison-error" : undefined} onChange={event => {
             const kind = event.target.value
             if (kind === "last_year") onChange({ kind })
             else if (kind === "custom") onChange({ kind, start: "", end: "" })
@@ -92,13 +94,13 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
         </label>
         {value?.kind === "custom" && <div className="grid gap-2 sm:grid-cols-2">
           <label className="block text-xs text-muted">Start week
-            <select className={field} value={value.start} onChange={event => onChange({ ...value, start: event.target.value })}>
+            <select className={field} value={value.start} aria-invalid={!!error} aria-describedby={error ? "comparison-error" : undefined} onChange={event => onChange({ ...value, start: event.target.value })}>
               <option value="">Select a week</option>
               {earlier.map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
             </select>
           </label>
           <label className="block text-xs text-muted">End week
-            <select className={field} value={value.end} onChange={event => onChange({ ...value, end: event.target.value })}>
+            <select className={field} value={value.end} aria-invalid={!!error} aria-describedby={error ? "comparison-error" : undefined} onChange={event => onChange({ ...value, end: event.target.value })}>
               <option value="">Select a week</option>
               {earlier.map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
             </select>
@@ -106,6 +108,5 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
         </div>}
       </div>
     </details>
-    {error && <p id="comparison-error" role="status" className="text-xs text-amber">{error}</p>}
   </fieldset>
 }

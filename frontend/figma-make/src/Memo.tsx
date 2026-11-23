@@ -16,7 +16,8 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     if (!claim || sp.start < pos || text.slice(sp.start, sp.end) !== claim.value) return
     parts.push(text.slice(pos, sp.start))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
-      className="pa-cite rounded-sm font-medium underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-primary">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
+      className="pa-cite rounded-sm font-medium underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[10px] font-normal text-primary">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(text.slice(pos))
@@ -44,7 +45,7 @@ function scale(values: number[], lo?: number, hi?: number) {
   return {min: min - pad, max: max + pad, y: (v: number) => PAD.t + (H - PAD.t - PAD.b) * (1 - (v - (min - pad)) / ((max + pad) - (min - pad)))}
 }
 
-function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[], series: {name: string, points: ChartPoint[], color: string}[], band?: ChartSpec["band"], unit?: string, label: string}) {
+function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[], series: {name: string, points: ChartPoint[], color: string, dash?: string}[], band?: ChartSpec["band"], unit?: string, label: string}) {
   const values = series.flatMap(s => s.points.map(p => p.value).filter((v): v is number => v !== null))
   if (!values.length) return null
   const sc = scale(values, band?.low, band?.high)
@@ -60,7 +61,7 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
     {series.map((s, si) => {
       const pts = s.points.filter(p => p.value !== null)
       return <g key={si}>
-        <polyline fill="none" stroke={s.color} strokeWidth={2} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
+        <polyline fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
         {pts.map((p, i) => {
           const assumed = p.basis && p.basis !== "observed"
           return <circle key={i} cx={x(p.week)} cy={sc.y(p.value as number)} r={assumed || p.restated ? 4.5 : 3}
@@ -73,10 +74,10 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
   </svg>
 }
 
-function Legend({items}: {items: {label: string, color: string, hollow?: boolean}[]}) {
+function Legend({items}: {items: {label: string, color: string, hollow?: boolean, dash?: string}[]}) {
   return <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
     {items.map((it, i) => <span key={i} className="inline-flex items-center gap-1.5">
-      <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" aria-hidden="true"><circle cx="5" cy="5" r="4" fill={it.hollow ? "none" : it.color} stroke={it.color} strokeWidth="1.5"/></svg>{it.label}</span>)}
+      <svg viewBox={it.dash ? "0 0 24 10" : "0 0 10 10"} className={it.dash ? "h-2.5 w-6" : "h-2.5 w-2.5"} aria-hidden="true">{it.dash && <line x1="0" x2="24" y1="5" y2="5" stroke={it.color} strokeWidth="2" strokeDasharray={it.dash}/>}<circle cx={it.dash ? 12 : 5} cy="5" r="4" fill={it.hollow ? "none" : it.color} stroke={it.color} strokeWidth="1.5"/></svg>{it.label}</span>)}
   </div>
 }
 
@@ -104,11 +105,12 @@ function CoverageStrip({chart}: {chart: ChartSpec}) {
 }
 
 function ChartBlock({chart, onOpen, claims, explanationSpans, bare = false}: {chart: ChartSpec, onOpen?: (id: string) => void, claims?: Claim[], explanationSpans?: Span[], bare?: boolean}) {
-  const series = (chart.series ?? []).map((s, i) => ({...s, color: COLORS[i % COLORS.length]}))
+  // A second line is dashed as well as lavender, so the two never differ by colour alone (WCAG 1.4.1).
+  const series = (chart.series ?? []).map((s, i) => ({...s, color: COLORS[i % COLORS.length], dash: i % COLORS.length ? "7 4" : undefined}))
   return <figure className={`break-inside-avoid ${bare ? "my-3" : "my-4 rounded-xl border border-rule bg-paper/40 p-4"}`}>
     {chart.kind === "coverage" ? <CoverageStrip chart={chart}/> : <>
       <LineChart weeks={chart.weeks} series={series} band={chart.band} unit={chart.kind === "share" ? "percent" : "count"} label={chart.caption}/>
-      <Legend items={series.map((s): {label: string, color: string, hollow?: boolean} => ({label: s.name, color: s.color})).concat(series.some(s => s.points.some(p => p.basis && p.basis !== "observed")) ? [{label: "projected or estimated (an assumption)", color: "var(--color-muted)", hollow: true}] : [])}/>
+      <Legend items={series.map((s): {label: string, color: string, hollow?: boolean, dash?: string} => ({label: s.name, color: s.color, dash: s.dash})).concat(series.some(s => s.points.some(p => p.basis && p.basis !== "observed")) ? [{label: "projected or estimated (an assumption)", color: "var(--color-muted)", hollow: true, dash: undefined}] : [])}/>
       {chart.panel && chart.panel.points.length > 0 && <div className="mt-3 border-t border-rule pt-3">
         <p className="mb-1 text-[11px] uppercase tracking-wider text-muted">{chart.panel.name}</p>
         <LineChart weeks={chart.weeks} series={[{name: chart.panel.name, points: chart.panel.points, color: PANEL_COLOR}]} unit={chart.panel.unit} label={chart.panel.name}/>
@@ -145,7 +147,7 @@ function TableView({table, name}: {table: DataTable, name: string}) {
       </span>
     </div>
     {sql && !perRow && <pre className="overflow-x-auto whitespace-pre-wrap break-all border-b border-rule bg-paper p-3 font-mono text-[11px] leading-relaxed">{table.query}</pre>}
-    <div className="max-h-64 overflow-auto">
+    <div className="max-h-64 overflow-auto" tabIndex={0} role="region" aria-label={`Data table ${table.evidence_id}`}>
       <table className="w-full text-left font-mono text-[11px]">
         <thead className="sticky top-0 bg-sheet text-muted"><tr>{shown.map(j => <th key={j} className="px-3 py-1.5 font-normal">{table.columns[j]}</th>)}</tr></thead>
         <tbody>{table.rows.map((r, i) => <tr key={i} className="border-t border-rule/60 align-top">{shown.map(j => <td key={j} className={`px-3 py-1 ${table.columns[j] === "query" ? "whitespace-pre-wrap break-all text-muted" : ""}`}>{r[j] === null ? "" : String(r[j])}</td>)}</tr>)}</tbody>
@@ -247,7 +249,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
   const basisAt = table.columns.findIndex(c => c.trim().toLowerCase() === "basis")
   const lastData = basisAt > 0 ? basisAt - 1 : table.columns.length - 1
   const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
-  return <div className="my-4 overflow-x-auto">
+  return <div className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
       <caption className="sr-only">Territory figures{table.note ? `. ${table.note}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
@@ -323,11 +325,12 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
         {s.territory_table && <TerritoryTableView table={s.territory_table} claims={claims} onOpen={onOpen}/>}
         {rest(s)}
       </>
-  const heading = (s: MemoSection, sub: boolean) => <div className="flex items-baseline justify-between gap-3">
-    <h3 id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
-      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</h3>
-    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-primary hover:underline">Ask about this</button>}
-  </div>
+  // The page's outline is h1 (the workspace), h2 (the brief), h3 (a section), h4 (a subsection).
+  const heading = (s: MemoSection, sub: boolean) => { const Tag = sub ? "h4" : "h3"; return <div className="flex items-baseline justify-between gap-3">
+    <Tag id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
+      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</Tag>
+    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} aria-label={`Ask about this: section ${s.number}, ${s.title}`} className="pa-noprint shrink-0 text-xs text-primary hover:underline">Ask about this</button>}
+  </div> }
   return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>
     {sections.filter(s => !s.number.includes(".")).map(s => {
       const children = sections.filter(c => c.number.startsWith(`${s.number}.`))

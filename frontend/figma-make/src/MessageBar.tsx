@@ -18,8 +18,8 @@ function TurnView({turn, briefId, mine, onCite, onOpenEvidence, onOfferScope}: {
     <div className="max-w-[92%] rounded-2xl rounded-bl-sm border border-rule bg-sheet px-4 py-3 text-sm">
       <p className="whitespace-pre-wrap break-words font-sans text-[15px] leading-relaxed text-ink">{turn.answer}</p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-        {turn.cited.map(n => <button key={n} type="button" onClick={() => onCite(n)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-primary hover:underline" title={`Go to §${n}`}>§{n}</button>)}
-        {turn.claims.map((c, i) => <button key={i} type="button" onClick={() => onOpenEvidence(c.evidence_id)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-muted hover:text-ink" title={`Open the query behind ${c.value}`}>{c.value}</button>)}
+        {turn.cited.map(n => <button key={n} type="button" onClick={() => onCite(n)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-primary hover:underline" title={`Go to §${n}`} aria-label={`Go to section ${n}`}>§{n}</button>)}
+        {turn.claims.map((c, i) => <button key={i} type="button" onClick={() => onOpenEvidence(c.evidence_id)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-muted hover:text-ink" title={`Open the query behind ${c.value}`} aria-label={`${c.value}, open the query behind it`}>{c.value}</button>)}
         <span className="ml-auto text-muted">{turn.engine === "scripted" ? "Scripted, from this brief only" : "Agent"}</span>
       </div>
       {offer && offer.week && onOfferScope && <button type="button" onClick={() => onOfferScope(offer)} className="mt-2 text-xs font-medium text-primary hover:underline">
@@ -81,7 +81,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, canGenerate, on
     }
     void ask(question)
   }
-  const cite = (n: string) => document.getElementById(`memo-${briefId}-${n}`)?.scrollIntoView({behavior: "smooth", block: "start"})
+  const cite = (n: string) => document.getElementById(`memo-${briefId}-${n}`)?.scrollIntoView({behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start"})
   const tips = !briefId ? [] : (thread?.suggestions[chip?.number ?? "1"] ?? []).slice(0, 3)
   const readOnly = thread && !thread.mine
   const full = thread ? thread.turns.length >= thread.max_turns : false
@@ -97,7 +97,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, canGenerate, on
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-primary hover:underline">{open ? "Collapse" : "Show"}</button>
         </span>
       </div>
-      {open && <ol className="max-h-[50vh] space-y-4 overflow-y-auto px-4 py-4">
+      {open && <ol aria-live="polite" aria-relevant="additions" className="max-h-[50vh] space-y-4 overflow-y-auto px-4 py-4">
         {thread.turns.map(t => <TurnView key={t.n} turn={t} briefId={thread.brief_id} mine={!readOnly} onCite={cite} onOpenEvidence={onOpenEvidence} onOfferScope={onOfferScope}/>)}
       </ol>}
     </div>}
@@ -106,16 +106,16 @@ export function MessageBar({briefId, pending, chip, onClearChip, canGenerate, on
     </div>}
     {error && <p role="alert" className="mb-2 rounded-lg bg-amberbg px-3 py-2 text-xs text-amber">{error}</p>}
     {queued && <p role="status" className="mb-2 text-xs text-muted">Will ask when the brief is ready: “{queued}”</p>}
-    {!readOnly && <form onSubmit={e => { e.preventDefault(); send(text) }} className="flex items-end gap-2 rounded-2xl border border-rule bg-sheet px-3 py-2 focus-within:border-primary/60">
+    {!readOnly && <form onSubmit={e => { e.preventDefault(); send(text) }} className="flex items-end gap-2 rounded-2xl border border-edge bg-sheet px-3 py-2 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-primary">
       {chip && <span className="mb-1 inline-flex shrink-0 items-center gap-1 rounded bg-primarybg px-2 py-1 font-mono text-[11px] text-primary">§{chip.number} {chip.title}
         <button type="button" aria-label="Remove the section" onClick={onClearChip} className="ml-1 text-muted hover:text-ink">×</button></span>}
       <label htmlFor="pa-message" className="sr-only">Ask about this brief</label>
       <textarea id="pa-message" ref={input} rows={1} value={text} maxLength={500} disabled={busy || full}
         onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(text) } }}
         placeholder={full ? "This thread is full. Start a new brief to ask more." : briefId ? (chip ? `Ask about §${chip.number}…` : "Ask a follow-up about this brief…") : "Ask a question to start an agent brief for the scope above…"}
-        className="max-h-32 min-h-[2.25rem] flex-1 resize-none bg-transparent py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none"/>
+        className="max-h-32 min-h-[2.25rem] flex-1 resize-none bg-transparent py-1.5 text-sm text-ink placeholder:text-muted focus-visible:outline-none"/>
       {briefId && agentAvailable && <label className="mb-1 shrink-0 text-[11px] text-muted"><span className="sr-only">Answer with</span>
-        <select value={engine} onChange={e => setEngine(e.target.value as "scripted" | "agent")} className="rounded border border-rule bg-paper px-1.5 py-1 text-[11px] text-ink">
+        <select value={engine} onChange={e => setEngine(e.target.value as "scripted" | "agent")} className="rounded border border-edge bg-paper px-1.5 py-1 text-[11px] text-ink">
           <option value="scripted">Scripted</option><option value="agent">Agent</option></select></label>}
       <button type="submit" disabled={busy || full || !text.trim()} className="rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-onprimary hover:bg-primaryhover disabled:opacity-40">{busy ? (engine === "agent" && agentAvailable ? "Agent working…" : "Asking…") : "Send"}</button>
     </form>}

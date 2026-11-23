@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
-import { BrandMark, Icon, type IconName } from "./agent/primitives"
+import { BrandMark, Icon, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
@@ -51,7 +51,7 @@ const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
 // One vocabulary for every screen: the primary action, a secondary action, a field, its label, a panel.
 const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary shadow-[0_4px_0_var(--color-primarydeep)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-primaryhover active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-primarydeep)] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted disabled:shadow-none"
 const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)] disabled:cursor-not-allowed disabled:text-muted disabled:shadow-none"
-const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink disabled:opacity-60"
+const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-muted disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
 const REVIEW_CHIP = {
@@ -106,7 +106,7 @@ function ViewAsSwitch({me}: {me: Me}) {
     if (busy || view === me.view_as || (view !== "analyst" && view !== "leadership")) return
     setBusy(true)
     try { await setViewAs(view); window.location.reload() }
-    catch (e) { toast.error(message(e)); setBusy(false) }
+    catch (e) { toast.error(message(e), {duration: Infinity}); setBusy(false) }  // an error stays until it is dismissed
   }
   return <>
     <DropdownMenuSeparator/>
@@ -122,7 +122,7 @@ function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
   const name = me.name.trim() || "Account"  // brief-008 FR-012: the name only, never a lane or role list
   return <DropdownMenu>
-    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink outline-none transition hover:bg-paper">
+    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink transition hover:bg-paper">
       {me.tester && <span className="hidden text-xs text-muted sm:inline">Test view ·</span>}
       <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{name}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
@@ -406,19 +406,34 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
 
 // Each workspace keeps its sub-pages (a new run, the approved list) as tabs inside the page, not in the sidebar.
 // The third item of an option is its classification key (core-009); the current tab's label sits at the row's end.
-function SubTabs<T extends string>({label, value, options, onChange}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void}) {
+// Tabs by the APG pattern: one tab stop (the selected tab), Left/Right/Home/End move focus along the row, Enter or
+// Space selects. `panelId` (optional) names the tabpanel the page renders under the row; the selected tab labels it
+// (id `${panelId}-tab`). The slide-in underline is decoration.
+function SubTabs<T extends string>({label, value, options, onChange, panelId}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string}) {
   const current = options.find(o => o[0] === value)
   const list = useRef<HTMLDivElement>(null)
-  const [bar,setBar] = useState<{left: number, width: number} | null>(null)
-  useLayoutEffect(()=>{  // the underline slides to the selected tab
+  const [bar,setBar] = useState<{left: number, top: number, width: number, height: number} | null>(null)
+  const measure = () => {  // the pill sits behind the selected tab, wherever the row has wrapped to
     const el = list.current?.querySelector<HTMLElement>('[aria-selected="true"]')
-    if (el) setBar({left: el.offsetLeft, width: el.offsetWidth})
-  },[value, options.length])
+    if (el) setBar({left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight})
+  }
+  useLayoutEffect(measure,[value, options.length])
+  useEffect(()=>{ const row = list.current; if (!row || typeof ResizeObserver === "undefined") return; const ro = new ResizeObserver(measure); ro.observe(row); return ()=>ro.disconnect() },[])
+  const onKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const tabs = Array.from(list.current?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])
+    const at = tabs.indexOf(document.activeElement as HTMLElement)
+    if (at < 0) return
+    const to = e.key === "ArrowRight" ? (at + 1) % tabs.length : e.key === "ArrowLeft" ? (at + tabs.length - 1) % tabs.length : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : -1
+    if (to < 0) return
+    e.preventDefault(); tabs[to].focus()
+  }
   return <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-    <div ref={list} role="tablist" aria-label={label} className="relative flex min-w-0 gap-0.5 overflow-x-auto pb-1 sm:gap-1">
-      {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} onClick={() => onChange(key)}
+    {/* The row wraps rather than scrolls, so at 320 px or 200% zoom no tab sits past an edge */}
+    <div ref={list} role="tablist" aria-label={label} onKeyDown={onKey} className="pa-noprint relative flex min-w-0 flex-wrap gap-0.5 sm:gap-1">
+      {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} tabIndex={value === key ? 0 : -1}
+        id={panelId ? `${panelId}-tab-${key}` : undefined} aria-controls={panelId && value === key ? panelId : undefined} onClick={() => onChange(key)}
         className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primary" : "text-muted hover:text-ink"}`}>{text}</button>)}
-      {bar && <span aria-hidden="true" className="pa-tabbar absolute bottom-1 top-0 rounded-lg border border-edge bg-paper shadow-[0_3px_0_var(--color-slab)]" style={{left: bar.left, width: bar.width}}/>}
+      {bar && <span aria-hidden="true" className="pa-tabbar absolute rounded-lg border border-edge bg-paper shadow-[0_3px_0_var(--color-slab)]" style={{left: bar.left, top: bar.top, width: bar.width, height: bar.height}}/>}
     </div>
     {current?.[2] && (
       <div className="shrink-0">
@@ -430,9 +445,11 @@ function SubTabs<T extends string>({label, value, options, onChange}: {label: st
 
 // Analyst view / Leadership preview: a small neutral switch; the open view's classification is on the report itself.
 function ViewToggle({value, busy=false, onChange}: {value: "analyst" | "leadership", busy?: boolean, onChange: (v: "analyst" | "leadership") => void}) {
-  return <div role="tablist" aria-label="View" aria-busy={busy} className="inline-flex gap-0.5 rounded-lg border border-edge p-0.5">
-    {(["analyst", "leadership"] as const).map(v => <button key={v} type="button" role="tab" aria-selected={value === v} disabled={busy || value === v} onClick={() => onChange(v)}
-      className={`rounded-[10px] px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-primary font-semibold text-onprimary" : "text-muted hover:text-ink"}`}>
+  // Two toggle buttons in a labelled group (aria-pressed), not tabs: nothing here is a panel. The open view stays
+  // focusable; pressing it again does nothing. While busy, aria-disabled keeps the focused button where it is.
+  return <div role="group" aria-label="View" aria-busy={busy} className="inline-flex gap-0.5 rounded-lg border border-edge p-0.5">
+    {(["analyst", "leadership"] as const).map(v => <button key={v} type="button" aria-pressed={value === v} aria-disabled={busy || undefined} onClick={() => { if (!busy && value !== v) onChange(v) }}
+      className={`rounded-[10px] px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-primary font-semibold text-onprimary" : "text-muted hover:text-ink"} ${busy ? "cursor-not-allowed opacity-70" : ""}`}>
       {v === "analyst" ? "Analyst view" : "Leadership preview"}</button>)}
   </div>
 }
@@ -573,7 +590,8 @@ function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onT
   return <div className="flex h-full flex-col">
     <div className="flex h-16 items-center gap-3 px-[14px]">
       <BrandMark/>
-      {expanded && <span className="pa-fade flex-1 truncate whitespace-nowrap font-display text-[18px] font-bold tracking-tight">PharmAgentics</span>}
+      {/* The mark is decorative; the product's name is spoken once, by the text beside it or, in the narrow rail, here */}
+      {expanded ? <span className="pa-fade flex-1 truncate whitespace-nowrap font-display text-[18px] font-bold tracking-tight">PharmAgentics</span> : <span className="sr-only">PharmAgentics</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
       {onBriefing && item("briefings", "Weekly briefing", !forecast && !telemetry, onBriefing)}
@@ -585,6 +603,15 @@ function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onT
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
     </div>
   </div>
+}
+
+// The phone menu is a modal drawer: focus moves into it, Tab stays in it, Escape or the backdrop closes it, and focus
+// goes back to the button that opened it.
+function MobileNav({onClose, children}: {onClose: () => void, children: ReactNode}) {
+  const drawer = useRef<HTMLDivElement>(null)
+  useModalFocus(drawer, onClose)
+  return <div className="fixed inset-0 z-40 flex md:hidden"><button tabIndex={-1} aria-label="Close navigation" className="pa-fade absolute inset-0 bg-black/60" onClick={onClose}/>
+    <div ref={drawer} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide">{children}</div></div>
 }
 
 function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, onBriefingHome?: () => void, children: ReactNode, startInForecast?: boolean}) {
@@ -605,27 +632,30 @@ function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, o
   const goForecast = () => { setTelemetry(false); setForecast(true); setForecastSection(forecastHome) }
   const goTelemetry = () => setTelemetry(true)
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
+  const title = telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"
+  useEffect(()=>{ document.title = `${title} · PharmAgentics` },[title])  // 2.4.2: the tab names the workspace that is open
+  const content = useRef<HTMLElement>(null)
   // --rail is the width the sidebar occupies; .workspace-content uses it to centre on the whole page (0 on phones).
   return <FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
+    <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
       <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
     </aside>
-    {mobileNav && <div className="fixed inset-0 z-40 flex md:hidden"><button aria-label="Close navigation" className="pa-fade absolute inset-0 bg-black/60" onClick={()=>setMobileNav(false)}/>
-      <div className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide"><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></div></div>}
+    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
     <main className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <button type="button" onClick={toggleNav} aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
             className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="panel" className="h-5 w-5"/></button>
-          <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"}</h1>
+          <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{title}</h1>
           {telemetry && <ClassLabel tab="evaluation.overview"/>}
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section className="min-h-0 flex-1 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecast && !telemetry && <ForecastWorkspace key={forecastSection} me={me} section={forecastSection} onSection={setForecastSection}/>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecast && !telemetry && <ForecastWorkspace key={forecastSection} me={me} section={forecastSection} onSection={setForecastSection}/>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
-    <Toaster theme="dark" position="bottom-right" toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
+    <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
   </div></FeedbackProvider>
 }
 
@@ -667,7 +697,8 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
 function Greeting({detail}: {detail?: string}) {
   const h = new Date().getHours()
   const part = h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"
-  return <div className="pa-fade mb-7"><h2 className="text-[2rem] leading-[1.25]"><span className="pa-mark">{part}.</span></h2>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
+  // A greeting is not a section heading, so it is a paragraph; the h1 in the header names the page.
+  return <div className="pa-fade mb-7"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}.</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
 }
 
 // An agent job's real progress: the server reports queued, then running; the result arrives when it is done and
@@ -1001,16 +1032,22 @@ function AnalystApp({me}: {me: Me}) {
     } catch(e) {if(active()) setRunError(message(e))} finally {if(active()) setPending(false)}
   }
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
+  const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : "new"
+  // When the scope form gives way to the plan or the brief, the button that was pressed is gone: put focus on the
+  // first control of the new view, so a keyboard user does not start again from the top of the page.
+  const scopeBack = useRef<HTMLButtonElement>(null)
+  useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
   return <Shell me={me} onBriefingHome={()=>setView("overview")}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || view==="approved" || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || view==="approved" || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="pa-noprint flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label></div><SubTabs label="Weekly briefing" value={view==="approved" ? "approved" : view==="overview" ? "overview" : "new"} onChange={t=>setView(t==="approved" ? "approved" : t==="overview" ? "overview" : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
+      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>setView(t==="approved" ? "approved" : t==="overview" ? "overview" : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
     {contextError && <div role="alert" className="workspace-content py-4 text-sm text-amber">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></div>}
-    {context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
+    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
+        <h2 className="sr-only">New briefing</h2>
         <QuestionReader question={ask} onQuestion={setAsk} brand={brand} context={context} disabled={!selectable}
           onApply={v=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparison(v.comparison) }}/>
         <label className={LABEL}>Territory
@@ -1033,7 +1070,7 @@ function AnalystApp({me}: {me: Me}) {
     </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
+        <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
         {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · {requestScope.promotion ? "release-wide Promotion review" : requestScope.weekEnd > requestScope.week ? `weeks ${labelWeek(requestScope.week)} to ${labelWeek(requestScope.weekEnd)}` : `week of ${labelWeek(requestScope.week)}`}</span>}
       </div>
       {pending && (jobState
@@ -1043,7 +1080,7 @@ function AnalystApp({me}: {me: Me}) {
       {runError && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber"><strong>{view==="triage" ? "The triage plan could not be built." : "Briefing could not be generated."}</strong><p className="mt-2">{runError}</p><p className="mt-2">No mock result was substituted.</p>{view==="result" && plan && <button className="mt-2 underline" onClick={()=>{setRunError(null);setView("triage")}}>Back to the triage plan</button>}</div>}
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
       {view==="result" && result && <AnalystBrief result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
-    </div>}
+    </div>}</div>
     {brand && view!=="approved" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
       onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparison(o.comparison ?? null); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
