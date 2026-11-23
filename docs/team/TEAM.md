@@ -1,6 +1,6 @@
 # PharmAgentics team guide
 
-How to use, host, run and deploy the PharmAgentics web app. For the design behind it, see `specs/core-007-rbac-uat-deployment/` (accounts, roles, deployment) and `specs/brief-002-triage-investigation/` (triage review, the agent team). Deeper deployment detail is in [`deploy/README.md`](deploy/README.md).
+How to use, host, run and deploy the PharmAgentics web app. For the design behind it, see `specs/core-007-rbac-uat-deployment/` (accounts, roles, deployment) and `specs/brief-002-triage-investigation/` (triage review, the agent team). Deeper deployment detail is in [`deploy/README.md`](../../deploy/README.md).
 
 ## What is live
 
@@ -14,7 +14,7 @@ How to use, host, run and deploy the PharmAgentics web app. For the design behin
 | `uat-forecast-manager` | Brand Manager (BM) | Forecast section (coming soon) |
 | `uat-tester` | Test view (not a persona) | Both lanes. "View as" in the account menu switches between **Analyst** (P1 and CA) and **Leadership** (P3 and BM), with exactly those roles' rights, so one login sees everything the four personas see. For the team and the mentor; its events and feedback are marked `test` |
 
-The five passwords are shared on purpose (toy project, synthetic data): they are in [`deploy/demo-credentials.env`](deploy/demo-credentials.env), and `uv run python deploy/make_env.py` prints them. Never commit `deploy/.env.uat` (it holds the service secrets) or paste those secrets into chat, issues or slides.
+The five passwords are shared on purpose (toy project, synthetic data): they are in [`deploy/demo-credentials.env`](../../deploy/demo-credentials.env), and `uv run python deploy/make_env.py` prints them. Never commit `deploy/.env.uat` (it holds the service secrets) or paste those secrets into chat, issues or slides.
 
 After the app has been idle, the first sign-in takes 15 to 30 seconds while the sign-in service wakes up. A "Starting the sign-in service" page retries by itself.
 

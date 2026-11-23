@@ -1,36 +1,18 @@
 # PharmAgentics
 
-Multi-agent first-pass forensic analyst for pharma brand performance. Course capstone (IEOR4573E, Columbia, Fall 2026; mentor Dr. Fikreab S. Admasu). One shared platform (a shared data layer and orchestration layer), a seven-stage spine, and two use cases: the Weekly Brand-Performance Briefing Agent (Michael, Meghna) and the Forecast-Explanation Agent (Alvin, Sienna). The Proposal dropped two earlier use cases (payer-access impact; HCP segmentation and next-best action); do not bring them back.
+Multi-agent first-pass forensic analyst for pharma brand performance. Course capstone (IEOR4573E, Columbia, Fall 2026; mentor Dr. Fikreab S. Admasu). One shared platform (data layer and orchestration), a seven-stage spine, and two use cases: the Weekly Brand-Performance Briefing Agent (Michael, Meghna) and the Forecast-Explanation Agent (Alvin, Sienna). The Proposal dropped payer-access impact and HCP segmentation / next-best action; do not bring them back.
 
-Since 2026-10-29 development is eval-driven: every version of each agent answers the same 42 golden questions in `eval/` and is scored in MLflow. Specs are written with Spec Kit.
+Development is eval-driven (since 2026-10-29): every version of each agent answers the same 42 golden questions in `eval/` and is scored in MLflow. Specs are written with Spec Kit.
 
-This file is the single set of instructions for coding agents (Claude Code, Codex, Cursor and others); `CLAUDE.md` only imports it. It covers working habits and the hard rules. What each feature does and why lives in the specs and the constitutions; where the project stands lives in `PROJECT_STATE.md`. Where those are more specific than this file, they win.
+This file is the shared instruction set for coding agents; `CLAUDE.md` only imports it. Context is layered, and each layer links to the more detailed one: this file → the code map and the `CLAUDE.md`/README in each folder → `docs/guides/`, specs, ADRs → the code. Where a more specific source disagrees with this file, it wins. Layout decision: `docs/adr/0004-repo-layout-and-context-map.md`.
 
 ## Read first
 
-- `PROJECT_STATE.md`: where the project stands (newest entry first): current tips, last gate, open work, next step
-- `conversations/`: dated handoffs between sessions and agents; read the ones that relate to your task. Old handoffs are history, not current instructions
-- `SoT/README.md`: where the source documents come from and how a new drop updates Spec Kit
-- `docs/planning/README.md`: Markdown copies of the source docs and their precedence (Proposal, then each lane's personas and evaluation pack, then the System Architecture, then each lane's architecture doc)
-- `.specify/memory/constitution.md` (shared, v2.0.0) and `.specify/memory/constitution-briefing.md` (Briefing lane, v1.1.0)
-- `specs/README.md`: spec index, shared decisions, open items, dev anchor cases
-- `eval/README.md`: golden set, scorers, controls, and how to run and read results
-- `data/agent_visible/README.md`, `data_dictionary.json`, `docs/DUCKDB_FIRST_RUN.md`: the data world
-
-## Layout
-
-```text
-src/pharmagentics/             shared data layer and orchestration: data/ (loader, checks), tools/ (governed read-only queries, evidence, claim tokens, the driver checks, question parser, stage steps), mcp_server/ (the tools over MCP; Proposed as the shared interface, S9), llm.py (agent model clients), tracing.py
-agents/brand-briefing/         Briefing lane; briefing_baseline/ is its scripted baseline, briefing_lowcode/ its low-code build (Magentic-One over the MCP server)
-agents/forecast-explanation/   Forecast lane; forecast_baseline/ is the scripted baseline BL-0 (draft for Alvin and Sienna); the rest of Alvin's code is on the alvin-forecast-explanation branch until it merges
-eval/                          golden set (42 cases), scorers, controls, MLflow store (eval/mlflow/, git-ignored)
-SoT/                           dated Drive exports of the source docs; drops git-ignored, README and check.py committed
-docs/planning/                 Markdown copies of the source docs (what Spec Kit reads)
-specs/                         core-### shared, brief-### Briefing, fcst-### Forecast
-conversations/                 dated handoffs (YYYY-MM-DD-topic.md); PROJECT_STATE.md at the root summarises them
-data/agent_visible/            the 14-table synthetic release; local/pharmagentics.duckdb is built from it
-tests/                         data-foundation tests
-```
+- `uv run python -m pharmagentics.devtools.status`: where the project stands, from the handoffs and git (open work first, then the latest on `main`). `docs/open-items.md` holds the known open work
+- `uv run python -m pharmagentics.devtools.codemap`: folders, context files and every module in one page. Run it before crawling the tree
+- `docs/handoffs/`: one dated handoff per branch or session; read the ones for your task. Old handoffs are history, not current instructions
+- `docs/README.md`: what lives where in `docs/`, the constitutions (`.specify/memory/`), and the dot folders
+- `specs/README.md`, `eval/README.md`, `data/agent_visible/README.md`, `SoT/README.md`, `docs/planning/README.md` (source-doc precedence)
 
 ## Hard rules
 
@@ -46,44 +28,22 @@ tests/                         data-foundation tests
 - LLM judges are report-only until their agreement with human labels clears the bar (Evaluation Pack open item 2). Never gate a merge on a judge score before that.
 - Do not push to GitHub or open pull requests unless the user asks.
 
-## Workflow
+## Workflow (full version: `docs/guides/workflow.md`)
 
-**Eval loop.** Change a system, then `uv run python -m eval run --system <name>`, read the result in the MLflow dashboard (`uv run python -m eval ui`), and run `uv run python -m eval gate <candidate-run-id> <baseline-run-id>` before merging. No change merges if a gated check regresses (Briefing B-VII). A new system (the low-code version, then the agents) plugs in through `eval/harness/systems.py` and returns the answer contract in `eval/harness/envelope.py`: answer text, claims, evidence items. Reuse `src/pharmagentics/tools/` so every number stays traceable.
+- **Eval loop:** change a system, `uv run python -m eval run --system <name>`, then `uv run python -m eval gate <candidate-run-id> <baseline-run-id>`. No change merges if a gated check regresses (Briefing B-VII).
+- **Specs and state together:** specs hold what and why, constitutions the rules, `docs/handoffs/` the handoffs. Code may lead its spec; the spec and the handoff catch up in the same pull request. Never delete a spec.
+- **Handoff:** before ending a session, write `docs/handoffs/YYYY-MM-DD-topic.md` with the `branch`, `lane` and `next` header (`docs/handoffs/README.md`). It is a new file, so it never conflicts. Never add status to a file every branch edits (there is no `PROJECT_STATE.md` any more); a golden-set change goes in `eval/golden/changes/`.
+- **Source documents:** a new Drive export goes into `SoT/<YYYY-MM-DD>/`; run `SoT/check.py`, then follow `SoT/README.md`.
 
-**Specs and project state work together.** Each source has one job:
-- Specs (Spec Kit) hold what each feature does and why: requirements, decisions, acceptance.
-- The constitutions hold the rules.
-- `PROJECT_STATE.md` holds where things stand.
-- `conversations/` holds the handoffs.
+## Most-used commands (full reference: `docs/guides/build-and-run.md`)
 
-Code may run ahead of its spec while you iterate. Bring the spec and `PROJECT_STATE.md` up to date in the same pull request, so nothing merges with the spec behind the code. When a spec and the code disagree, the pull request fixes whichever is wrong; an older spec does not win just because it is written down. Never delete a spec; mark a superseded one "History" in `specs/README.md`, with what replaced it.
-
-The Spec Kit flow is `/speckit-specify` → `/speckit-clarify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` (with `/speckit-analyze` and `/speckit-converge` when they help), one spec per component. A `plan.md` can be a short file contract, and a `tasks.md` can hold the work packets for a team of agents. Spec Kit finds the active spec from `.specify/feature.json`, not the branch name:
-
-```powershell
-'{"feature_directory":"specs/core-007-rbac-uat-deployment"}' | Out-File -Encoding ascii .specify/feature.json
-```
-
-**Handoff.** Before ending a session or handing work to another agent, add a dated entry at the top of `PROJECT_STATE.md` (what changed, tests and gate results with run IDs, data version, open issues, the next step) and a handoff file `conversations/YYYY-MM-DD-topic.md`. Two sessions working at once each own their own section of a shared handoff file.
-
-**Source documents.** The masters are in Google Drive. A new export goes into `SoT/<YYYY-MM-DD>/`; run `SoT/check.py`, refresh the changed copies in `docs/planning/`, update the specs and golden cases that cite them, and log the drop in `SoT/README.md`.
-
-## Build and run
-
-Dependencies are managed with uv. `pyproject.toml` declares them, `uv.lock` pins one resolution for Windows, macOS and Linux, and `.python-version` pins Python 3.12 (the shared floor stays 3.11). `uv sync` installs the base plus the `dev`, `agent` and `eval` groups. Change dependencies only with `uv add` or `uv remove` (for example `uv add --group eval <package>`) and commit `uv.lock` with the change. `requirements.txt` is a generated pip fallback for the data foundation: `uv export --no-default-groups --no-hashes --no-emit-project -o requirements.txt`.
+Dependencies are managed with uv (`uv sync`; change them only with `uv add` / `uv remove` and commit `uv.lock`).
 
 - Data: `uv run python src/pharmagentics/data/load_duckdb.py`, then `uv run python src/pharmagentics/data/check_duckdb.py`
-- Tests: `uv run pytest` (data-foundation tests, `tests/test_tools.py` and `eval/tests/`)
-- Golden set: `uv run python -m eval check` validates the 42 cases and recomputes every fact from the data
-- Baselines: `uv run python -m eval run --system briefing_scripted --lane briefing` and `--system forecast_scripted --lane forecast`. They use no model; every number is a claim token filled from a stored SQL query
-- Forecast agent (fcst-002): `uv run python -m eval run --system forecast_rules --lane forecast` (no model) and `--system forecast_agent --model <spec>` (the model reads the question and words the summary; the rules investigate; `forecast_investigator` is the comparison arm where the model also investigates). `python -m eval scopes` and `python -m eval drivers` score question reading and driver recovery (`agents/forecast-explanation/README.md`)
-- Agent (build 3, brief-002 Phase B): `uv run python -m eval run --system briefing_agent --lane briefing`. Code triage, the manager's plan, a bounded Magentic team per story (manager, Data Forensics, Driver Investigator), code-built sections plus the writer's answer and story sentences. Live UAT runs go through the local worker: `uv run python agents/brand-briefing/run_worker.py --app <url>` (deploy/README.md)
-- Agent team on Claude Haiku (core-007 FR-032): add `--model anthropic:claude-haiku-5-5` to the eval run; `ANTHROPIC_API_KEY` comes from the git-ignored `.env`. The web app runs the agent itself (a built-in worker on the same job queue) when started with `PHARMAGENTICS_AGENT_MODEL=anthropic:claude-haiku-5-5` and the key; `compose.yaml` does this, and `deploy/gcp.py anthropic-key` stores the key for Cloud Run. About $0.02 a brief
-- Low-code agent: `uv run python -m eval run --system briefing_lowcode --lane briefing`. Local `qwen3:4b-instruct-2507-q4_K_M` on Ollama by default (needs tool calling: the gemma3 models have none); `--model gemini:` uses `GEMINI_API_KEY` and `GEMINI_MODEL` from the git-ignored `.env`. About a minute or more per case locally. The MCP server alone: `uv run python -m pharmagentics.mcp_server`
-- Controls: `uv run python -m eval run --system reference` (golden answers; must score 1.0 on every code check) and `--system naive_llm` (local model with no data; must fail the numeric checks)
-- Judge: add `--judge` for RAGAS judges on local Ollama `gemma3:4b` (no API credits; needs Ollama running). Later, `--judge gemini:/<model>` switches provider. Expect minutes per case on a laptop GPU, so judge on demand, not on every run
-- Dashboard: `uv run python -m eval ui`, then http://127.0.0.1:5000. The hosted app's Evaluation page shows the same scores plus live use: `deploy/gcp.py telemetry` pushes fresh scores, `deploy/gcp.py uat` pulls live use into MLflow (deploy/README.md)
-- Deploys: a merge to `main` deploys the app to Cloud Run once CI passes (`.github/workflows/deploy-uat.yml`); Keycloak is deployed by hand
-- Briefing web app (core-007): `uv run python deploy/make_env.py` once, then `docker compose up --build` (Keycloak on :8081, app on :8080; sign in as one of the four role logins or `uat-tester`, which switches between the analyst and leadership views of both lanes; the shared passwords are in `deploy/demo-credentials.env`). One image holds the team's UI (`frontend/figma-make`, dark theme only, built with `vite.config.standalone.ts`) and the API (`src/pharmagentics/api`) on one origin, scripted engine only; `.dockerignore` is an allow-list, so `eval/`, `SoT/` and `.env` never enter it. Roles live in `src/pharmagentics/api/roles.json` and the Keycloak realm in `deploy/keycloak/`; the server strips evidence from leadership responses. Without Keycloak: `PHARMAGENTICS_AUTH=dev` gives stand-in identities. Google Cloud: `deploy/README.md` (`deploy/gcp.py`)
-
-MLflow telemetry is turned off in `eval/__init__.py`: it sends usage data to an external service and deadlocks parallel scorer threads in MLflow 3.17.
+- Tests: `uv run pytest`
+- Golden set: `uv run python -m eval check`
+- Baselines: `uv run python -m eval run --system briefing_scripted --lane briefing` (and `--system forecast_scripted --lane forecast`)
+- Agent: `uv run python -m eval run --system briefing_agent --lane briefing` (add `--model anthropic:claude-haiku-5-5` for the Haiku team; key in the git-ignored `.env`)
+- Dashboard: `uv run python -m eval ui`, then http://127.0.0.1:5000
+- Status and code map: `uv run python -m pharmagentics.devtools.status` and `uv run python -m pharmagentics.devtools.codemap` (printed, never committed)
+- Web app: `uv run python deploy/make_env.py` once, then `docker compose up --build` (`deploy/README.md`)

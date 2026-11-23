@@ -5,7 +5,7 @@
 **Created**: 2026-10-16 | **Updated**: 2026-10-23
 **Status**: Draft v2. The foundation (User Story 1) is built and merged (PR #1). The rest is not started.
 **Replaces**: `001-data-generator` (Oct 16)
-**Input**: System Architecture §3.1, §3.6, §3.7, S3, S10; Briefing Architecture §8 (superseded for the world by System §3.1); Evaluation Pack §4, §5, §7; Forecast Personas & Eval Design §3.4; `data/agent_visible/README.md`; `docs/DUCKDB_FIRST_RUN.md`; User stories P1-Q1, P1-Q2, P2-Q1, CA-Q1, CA-Q6
+**Input**: System Architecture §3.1, §3.6, §3.7, S3, S10; Briefing Architecture §8 (superseded for the world by System §3.1); Evaluation Pack §4, §5, §7; Forecast Personas & Eval Design §3.4; `data/agent_visible/README.md`; `docs/guides/duckdb-first-run.md`; User stories P1-Q1, P1-Q2, P2-Q1, CA-Q1, CA-Q6
 
 ## Context
 

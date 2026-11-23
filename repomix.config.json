@@ -1,0 +1,49 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "output": {
+    "filePath": "local/repomix-pack.xml",
+    "style": "xml",
+    "compress": true,
+    "removeEmptyLines": true,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "topFilesLength": 10
+  },
+  "include": [
+    "src/**",
+    "agents/**",
+    "eval/harness/**",
+    "eval/README.md",
+    "README.md",
+    "AGENTS.md",
+    "docs/open-items.md",
+    "GLOSSARY.md",
+    "PRODUCT.md",
+    "DESIGN.md",
+    "specs/README.md",
+    "docs/README.md",
+    "docs/adr/**"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "tests/fixtures/**",
+      "**/tests/**",
+      "uv.lock",
+      "data/**",
+      "frontend/**",
+      ".claude/**",
+      ".agents/**",
+      "SoT/*/**",
+      "**/*.drawio",
+      "**/*.pptx"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

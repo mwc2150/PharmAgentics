@@ -22,7 +22,7 @@ Upload the extracted ZIP contents **under the repository root**, retaining the f
 | `frontend/figma-make/briefingApi.ts` | Typed `fetch()` adapter for exported Figma Make source |
 | `tests/test_briefing_api.py` | API adapter and validation tests, mocked engine |
 | `tests/test_briefing_smoke.py` | Real API-to-DuckDB integration smoke test |
-| `docs/BRIEFING_UI_INTEGRATION.md` | This implementation and test guide |
+| `docs/guides/briefing-ui-integration.md` | This implementation and test guide |
 | `.github/workflows/briefing-ui-integration.yml` | Optional CI job for new API tests |
 
 No existing repository files are overwritten. This package intentionally does not modify the shared `pyproject.toml`, `uv.lock`, the existing agent, the evaluator, or the source data. **Do not upload the enclosing ZIP folder as a directory**, or your Python imports will not resolve.

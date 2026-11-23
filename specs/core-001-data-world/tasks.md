@@ -15,7 +15,7 @@
 
 ## Phase 2: Setup for the rest
 
-- [ ] T007 Create the private store outside the repo; document `PHARMAGENTICS_EVAL_STORE` in `docs/DUCKDB_FIRST_RUN.md` without its location
+- [ ] T007 Create the private store outside the repo; document `PHARMAGENTICS_EVAL_STORE` in `docs/guides/duckdb-first-run.md` without its location
 - [ ] T008 [P] Add pytest to `requirements.txt` and confirm it runs the `unittest` suite unchanged (proposed answer to S15)
 - [ ] T009 [P] Release verifier `src/pharmagentics/data/release.py`: a folder must match its validation report before load
 - [ ] T010 [P] Test: no committed file in the repo matches the ground-truth patterns in `.gitignore` (SC-005; also run by core-006)

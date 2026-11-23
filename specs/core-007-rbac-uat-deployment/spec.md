@@ -8,7 +8,7 @@
 
 ## Context
 
-The Briefing UI on `feature/ui-integration` (Meghna) calls a development-only HTTP API over the scripted Briefing baseline. That API has no identity, no roles and no deployment; its own docs (`docs/BRIEFING_UI_INTEGRATION.md`, `frontend/figma-make/FUTURE_ENHANCEMENTS.md` items 4 and 11) list authenticated roles, permission checks and deployment as missing, and the persona switcher was removed until they exist. This spec adds them.
+The Briefing UI on `feature/ui-integration` (Meghna) calls a development-only HTTP API over the scripted Briefing baseline. That API has no identity, no roles and no deployment; its own docs (`docs/guides/briefing-ui-integration.md`, `frontend/figma-make/FUTURE_ENHANCEMENTS.md` items 4 and 11) list authenticated roles, permission checks and deployment as missing, and the persona switcher was removed until they exist. This spec adds them.
 
 The work goes from the inside out: first who may see what (roles and views, enforced by the server), then sign-in, then the hosted UAT app, then automatic deployment from `main`, then UAT tracking, then agent snapshots.
 

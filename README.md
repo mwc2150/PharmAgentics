@@ -20,7 +20,7 @@ A multi-agent AI platform that helps pharma commercial teams see what moved a br
 
 Both sit on the shared data layer and orchestration in `src/pharmagentics/`.
 
-**Team:** how to use, host, run and deploy the web app is in [TEAM.md](TEAM.md).
+**Team:** how to use, host, run and deploy the web app is in [docs/team/TEAM.md](docs/team/TEAM.md).
 
 ## Hosted app and logins
 
@@ -58,7 +58,7 @@ uv run python -m eval run --system briefing_scripted --lane briefing
 uv run python -m eval ui                                # MLflow dashboard, http://127.0.0.1:5000
 ```
 
-See [DuckDB first-run instructions](docs/DUCKDB_FIRST_RUN.md) for installation, data checks and example queries, and [the eval harness](eval/README.md) for every command, check and result.
+See [DuckDB first-run instructions](docs/guides/duckdb-first-run.md) for installation, data checks and example queries, and [the eval harness](eval/README.md) for every command, check and result.
 
 ## Layout
 
@@ -79,4 +79,4 @@ See [DuckDB first-run instructions](docs/DUCKDB_FIRST_RUN.md) for installation, 
 - No output line identifies an individual rep.
 - "Competitive intelligence", never "surveillance". "New patients" only for NBRx.
 
-`AGENTS.md` holds the full instructions for coding agents (`CLAUDE.md` imports it); `PROJECT_STATE.md` says where the project stands.
+`AGENTS.md` holds the full instructions for coding agents (`CLAUDE.md` imports it); `uv run python -m pharmagentics.devtools.status` prints where the project stands, from the handoffs in `docs/handoffs/`.

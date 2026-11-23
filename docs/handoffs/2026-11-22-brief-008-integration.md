@@ -1,10 +1,10 @@
 # brief-008 integration handoff (2026-11-22, Claude Opus; usage nearly spent)
 
 ## Where things are
-- Integration branch `feature/brief-008-readable-memo` (worktree `C:/Users/micha/test_agent_v1/PharmAgentics-memo`), based on `main` `b694c6e` (PRs #18 and #19 merged). Merged so far: packet M (memo blocks, paragraphs, leader cut), packet F (first and last week, N-week comparison, `/api/briefing/scope` with the Haiku reader, account menu), packet R (KPI strip, territory table, story cards, folded detail, print rules), plus `c0bc982` (week_end in the leader and published views). Packet handoffs: `conversations/2026-11-22-brief-008-packet-{M,F,R}.md`.
+- Integration branch `feature/brief-008-readable-memo` (worktree `C:/Users/micha/test_agent_v1/PharmAgentics-memo`), based on `main` `b694c6e` (PRs #18 and #19 merged). Merged so far: packet M (memo blocks, paragraphs, leader cut), packet F (first and last week, N-week comparison, `/api/briefing/scope` with the Haiku reader, account menu), packet R (KPI strip, territory table, story cards, folded detail, print rules), plus `c0bc982` (week_end in the leader and published views). Packet handoffs: `docs/handoffs/2026-11-22-brief-008-packet-{M,F,R}.md`.
 - Untracked in that worktree: `specs/brief-009-agent-transparency/plan.md` and `tasks.md` (packets E and T). Commit them with this handoff.
 - Running when usage ran out: the scripted eval then the full suite on `c0bc982`. Logs are in Claude's session scratchpad: `eval_008.log` and `pytest_008.log` (the second ends with `CHAIN_DONE`). If they are gone, rerun both.
-- Wave 2, in progress in their own worktrees (they may have stopped mid-task; check `git log` and their `conversations/2026-11-22-brief-008-packet-{G,W}.md`):
+- Wave 2, in progress in their own worktrees (they may have stopped mid-task; check `git log` and their `docs/handoffs/2026-11-22-brief-008-packet-{G,W}.md`):
   - G: DONE at `3a3c9ac` on `feature/brief-008-promotion` (`pa-008-G`); merge it. Open: P4-Q5 still needs a "when to re-read" line in `memo.next_checks` (patch in its handoff); lapse gap range is 116 to 177.
   - W: DONE at `199393d` on `feature/brief-008-writer` (`pa-008-W`); 44 focused tests pass; merge it. Watch `6_verification` dropped/revised counts in the Haiku run (stricter prose checks).
 
