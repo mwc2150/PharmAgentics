@@ -6,7 +6,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from eval.harness.cases import DEFAULT_COMPARISON, Case, Definition, Finding, derive_scope, load_cases
+from eval.harness.cases import DEFAULT_COMPARISON, Case, Comparison, Definition, Finding, derive_scope, load_cases
 from eval.harness.paths import GOLDEN_DIR
 from eval.harness.scorers import finding_recall
 from eval.harness.systems import accepts, definition_option
@@ -45,25 +45,26 @@ def test_period_comes_from_the_question_prefix_and_none_means_latest_closed_week
     assert (by["P3-Q2"].definition.first_week, by["P3-Q2"].definition.last_week) == ("2025-12-22", "2025-12-29")
 
 
-def test_measure_is_trx_except_p1_q4_which_is_both():
-    assert {c.story: c.definition.measure for c in BRIEFING if c.definition.measure != "trx"} == {"P1-Q4": "both"}
+def test_measure_is_trx_except_p1_q4_which_is_both_with_nbrx_primary():
+    assert {c.story: c.definition.measure for c in BRIEFING if c.definition.measure != ["trx"]} == {"P1-Q4": ["nbrx", "trx"]}
 
 
 def test_comparison_is_explicit_and_cases_without_one_use_the_previous_four_weeks():
     by = {c.story: c for c in BRIEFING}
-    assert by["P1-Q1"].definition.comparison == DEFAULT_COMPARISON
-    assert by["P1-Q5"].definition.comparison.kind == "custom"
-    assert by["WIN-1"].definition.comparison.kind == "last_year"
-    assert {c.story for c in BRIEFING if c.comparison} == {"WIN-1", "WIN-2", "P1-Q4", "P1-Q5", "P2-Q3", "P2-Q4", "P4-Q4"}
+    assert by["P1-Q1"].definition.comparison == [DEFAULT_COMPARISON]
+    assert by["P1-Q5"].definition.primary_comparison.kind == "custom"
+    assert by["WIN-1"].definition.primary_comparison.kind == "last_year"
+    assert by["P3-Q1"].definition.primary_comparison.kind == "pre_launch"
+    assert {c.story for c in BRIEFING if c.comparison} == {"WIN-1", "WIN-2", "P1-Q4", "P1-Q5", "P2-Q3", "P2-Q4", "P3-Q1", "P4-Q4"}
 
 
 def test_an_old_top_level_comparison_is_read_into_the_definition():
     old = {"kind": "custom", "start": "2026-07-06", "end": "2026-07-27"}
     case = case_from(comparison=old)
-    assert case.definition.comparison.kind == "custom" and str(case.definition.comparison.start) == "2026-07-06"
-    assert case.definition.territories == "like_for_like" and case.definition.measure == "trx"  # the pre-selected values
+    assert case.definition.primary_comparison.kind == "custom" and str(case.definition.primary_comparison.start) == "2026-07-06"
+    assert case.definition.territories == ["like_for_like"] and case.definition.measure == ["trx"]  # the pre-selected values
     assert case.inputs()["comparison"] == old
-    assert case.inputs()["definition"]["comparison"] == old
+    assert case.inputs()["definition"]["comparison"] == [old]
     assert case.expectations()["scope"]["comparison"] == old
 
 
@@ -77,15 +78,15 @@ def test_the_definition_block_wins_and_an_old_comparison_fills_only_a_missing_on
     old = {"kind": "last_year"}
     explicit = {"measure": "nbrx", "comparison": {"kind": "previous", "weeks": 2}}
     case = case_from(comparison=old, definition=explicit)
-    assert case.definition.comparison.weeks == 2 and case.definition.measure == "nbrx"
+    assert case.definition.primary_comparison.weeks == 2 and case.definition.measure == ["nbrx"]
     filled = case_from(comparison=old, definition={"measure": "nbrx"})
-    assert filled.definition.comparison.kind == "last_year" and filled.definition.measure == "nbrx"
+    assert filled.definition.primary_comparison.kind == "last_year" and filled.definition.measure == ["nbrx"]
 
 
 def test_the_house_comparison_goes_to_a_system_as_none_but_the_expectation_keeps_it_explicit():
     case = next(c for c in BRIEFING if c.story == "P1-Q1")
-    assert case.inputs()["definition"]["comparison"] is None and "comparison" not in case.inputs()
-    assert case.expectations()["definition"]["comparison"] == {"kind": "previous", "weeks": 4}
+    assert case.inputs()["definition"]["comparison"] == [] and "comparison" not in case.inputs()
+    assert case.expectations()["definition"]["comparison"] == [{"kind": "previous", "weeks": 4}]
     assert case.expectations()["scope"]["comparison"] is None  # the default is no scope choice
 
 
@@ -95,7 +96,7 @@ def test_a_definition_rejects_unknown_fields_and_values():
     with pytest.raises(ValidationError):
         Definition.model_validate({"unknown": 1})
     d = Definition()
-    assert d.territories == "like_for_like" and d.measure == "trx" and d.relative_to == "other_territories"
+    assert d.territories == ["like_for_like"] and d.measure == ["trx"] and d.relative_to == ["other_territories"] and d.comparison == []
     assert d.grain == ["national", "territory", "plan", "channel", "specialty"]
 
 
@@ -154,5 +155,56 @@ def test_review_decisions_are_applied():
         "plan_change_pct": -20.7, "ma_other_channels_change_pct": 15.9, "plan_trx_drop_per_week": 38, "plan_primary_care_nbrx_after": 7.7}
     assert "fell 20.7% (about 38 TRx a week)" in p24.reference_answer and "12.1 to 7.7" in p24.reference_answer
     p14 = next(c for c in BRIEFING if c.story == "P1-Q4")
-    assert (p14.definition.comparison.kind, str(p14.definition.comparison.start), str(p14.definition.comparison.end)) == ("custom", "2025-06-02", "2025-07-28")
+    assert (p14.definition.primary_comparison.kind, str(p14.definition.primary_comparison.start), str(p14.definition.primary_comparison.end)) == ("custom", "2025-06-02", "2025-07-28")
     assert not re.search(r"10\.8|467 below", next(c for c in BRIEFING if c.story == "P1-Q5").reference_answer)
+
+
+def test_the_pre_launch_comparison_is_accepted_and_reaches_an_engine_as_its_custom_window():
+    assert Comparison(kind="pre_launch").kind == "pre_launch"
+    for bad in ({"kind": "pre_launch", "weeks": 4}, {"kind": "pre_launch", "start": "2026-02-02"}, {"kind": "yesterday"}):
+        with pytest.raises(ValidationError):
+            Comparison.model_validate(bad)
+    case = case_from(definition={"comparison": {"kind": "pre_launch"}})
+    assert case.definition.primary_comparison.kind == "pre_launch" and case.comparison.kind == "pre_launch"
+    assert case.definition.payload()["comparison"] == [{"kind": "pre_launch"}]
+    assert case.inputs()["definition"]["comparison"] == [{"kind": "pre_launch"}]
+    legacy = case.inputs()["comparison"]  # the keyword the shared engines already take
+    assert legacy == {"kind": "custom", "start": "2026-02-02", "end": "2026-02-23"}
+    from pharmagentics.tools.window import Comparison as EngineComparison
+    EngineComparison.model_validate(legacy)
+    old = case_from(comparison={"kind": "pre_launch"})  # the old top-level field takes it too
+    assert old.definition.primary_comparison.kind == "pre_launch"
+
+
+def test_holiday_weeks_are_out_of_the_period_in_every_fact_that_spans_one():
+    """Michael, 2026-11-22: holiday weeks are always left out of the period. P3-Q2 and WIN-1 are about the holiday weeks
+    themselves (the brief keeps them in calendar mode) and P3-Q4's block 7 is a trend series, not the period."""
+    holidays = ("2025-09-01", "2025-11-24", "2026-09-07")
+    by = {(c.story, f.id): f.sql.replace("''", "'") for c in BRIEFING for f in c.facts}
+    spans = {"P1-Q4": ("2025-08-04", "2025-10-27"), "P2-Q2": ("2025-08-04", "2025-10-27"), "P2-Q3": ("2026-08-31", "2026-09-28"),
+             "P2-Q4": ("2025-08-04", "2025-10-27"), "P4-Q4": ("2025-11-03", "2025-12-15")}
+    for (story, fact), sql in by.items():
+        if story in spans:
+            window = f"between DATE '{spans[story][0]}' and DATE '{spans[story][1]}'"
+            for hol in holidays:
+                if window in sql and spans[story][0] <= hol <= spans[story][1]:
+                    assert f"<> DATE '{hol}'" in sql, f"{story} {fact} counts {hol}"
+
+
+def test_every_selector_but_the_period_takes_a_list_and_the_first_value_is_the_primary():
+    d = Definition.model_validate({"comparison": {"kind": "last_year"}, "territories": "projected", "measure": "both",
+                                   "relative_to": ["national", "none"], "grain": "plan"})
+    assert [c.kind for c in d.comparison] == ["last_year"] and d.territories == ["projected"]
+    assert d.measure == ["trx", "nbrx"] and d.relative_to == ["national", "none"] and d.grain == ["plan"]
+    assert d.primary_comparison.kind == "last_year" and d.payload()["measure"] == ["trx", "nbrx"]
+    several = Definition.model_validate({"comparison": [{"kind": "previous", "weeks": 4}, {"kind": "last_year"}],
+                                         "measure": ["nbrx", "trx", "nbrx"]})
+    assert [c.kind for c in several.comparison] == ["previous", "last_year"] and several.measure == ["nbrx", "trx"]
+    assert several.explicit_comparison is None  # the primary is the house default
+    assert several.payload(engine=True)["comparison"] == [c.model_dump(mode="json", exclude_none=True) for c in several.comparison]
+    assert Definition.model_validate({"comparison": None}).comparison == []
+    with pytest.raises(ValidationError):
+        Definition.model_validate({"measure": []})
+    with pytest.raises(ValidationError):
+        Definition.model_validate({"measure": ["revenue"]})
+    assert next(c for c in BRIEFING if c.story == "P1-Q4").definition.measure[0] == "nbrx"  # its facts follow the primary

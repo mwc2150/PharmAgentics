@@ -14,8 +14,7 @@ definition:
   first_week: '2026-04-27'
   last_week: '2026-04-27'
   comparison:
-    kind: previous
-    weeks: 4
+    kind: pre_launch
   territories: like_for_like
   measure: trx
   grain: [national, territory, plan, channel, specialty]
