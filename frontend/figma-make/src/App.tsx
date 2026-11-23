@@ -8,7 +8,7 @@ import { Memo } from "./Memo"
 import { Timeline, producers, KIND_NAME } from "./Timeline"
 import { HowItWorks } from "./HowItWorks"
 import { ComparisonPicker, comparisonsError } from "./ComparisonPicker"
-import { PeriodPicker, QuestionReader, periodError, periodWeeks } from "./BriefingScope"
+import { PeriodPicker, periodError, periodWeeks, readByLabel, useQuestionReader } from "./BriefingScope"
 import { DEFAULT_CHOICES, DefinitionPicker, choicesError, type DefinitionChoices, type DefinitionField } from "./BriefDefinition"
 import { FeedbackReview } from "./FeedbackReview"
 import { MessageBar, type Chip } from "./MessageBar"
@@ -967,7 +967,10 @@ function AnalystApp({me}: {me: Me}) {
   const [liveEvents,setLiveEvents] = useState<RunEvent[]>([])  // brief-009: the running job's progress, shown as the live timeline
   const [chip,setChip] = useState<Chip | null>(null)  // brief-006: the message bar
   const [barEvidence,setBarEvidence] = useState<{id: string} | null>(null)
-  const [autoAsk,setAutoAsk] = useState(false)
+  // brief-010: the bar on the form reads the question into it; the question then rides with Generate as the brief's question.
+  const reader = useQuestionReader({brand,context,onApply:(v,q)=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparisons(v.comparison)
+    setChoices(c=>({...c,...v.choices})); setProposed(v.proposed); setAsk(q) }})
+  const clearQuestion = () => { setAsk(""); reader.clear() }
   const generation = useRef(0)
   const capabilities = context?.brands.find(b=>b.id===brand)
   const agentSupported = !!capabilities?.engines.includes("agent")
@@ -979,7 +982,7 @@ function AnalystApp({me}: {me: Me}) {
     setEngine(e=>supported.includes(e) ? e : "scripted")
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
     setTriageJob(null); setJobNote(null); setJobState(null); setLiveEvents([]); setPending(false)
-    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparisons([]); setChoices(DEFAULT_CHOICES); setProposed([])
+    setChip(null); setBarEvidence(null); clearQuestion(); setPromotion(false); setComparisons([]); setChoices(DEFAULT_CHOICES); setProposed([])
     setView(v=>v==="triage" || v==="result" ? "home" : v); setRunView(null)
   }
 
@@ -1019,7 +1022,6 @@ function AnalystApp({me}: {me: Me}) {
   useEffect(()=>{void refresh()},[])
   useEffect(()=>{ setWeekEnd(e=>e < week ? week : e) },[week])  // the Overview and the message bar also set the first week
   useEffect(()=>{ const s=sharedFromLocation(); if(s) void openApproved(s.briefId) },[])  // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(()=>{ if(autoAsk && engine==="agent"){ setAutoAsk(false); void submit() } },[autoAsk,engine,ask])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (event?: React.FormEvent) => {
     event?.preventDefault()
@@ -1110,15 +1112,19 @@ function AnalystApp({me}: {me: Me}) {
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
         <h2 className="sr-only">New briefing</h2>
+        {/* The always-present region is announced when the question has been read. */}
+        <div role="status" className="empty:hidden">{reader.read && ask && <div className="space-y-1.5 rounded-lg border border-rule px-4 py-3">
+          <p className="text-sm text-ink">“{ask}”</p>
+          <p className="text-xs text-muted"><span className="font-medium text-ink">{readByLabel(reader.read)}.</span> Check the choices below, then generate.</p>
+          {!!reader.read.notes.length && <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted">{reader.read.notes.map(n=><li key={n}>{n}</li>)}</ul>}
+          <button type="button" onClick={clearQuestion} className="text-xs text-primaryink hover:underline">Clear</button>
+        </div>}</div>
         <fieldset className="space-y-4" aria-label="Brief definition">
           <div><h3 className="text-sm font-semibold">What the brief counts</h3><p className="mt-1 text-xs text-muted">Six choices, each pre-selected. The brief states them in its Assumptions, and the numbers follow them.</p></div>
           <PeriodPicker first={week} last={weekEnd} weeks={releaseWeeks} disabled={!selectable || reviewPromotion} onFirst={w=>{ if(weekEnd===week) setWeekEnd(w); setWeek(w) }} onLast={setWeekEnd} labelWeek={labelWeek}/>
           {!reviewPromotion && <ComparisonPicker value={comparisons} onChange={setComparisons} period={period} weeks={releaseWeeks} disabled={!selectable} labelWeek={labelWeek}/>}
           <DefinitionPicker value={choices} proposed={proposed} disabled={!selectable} onChange={(next,field)=>{ setChoices(next); setProposed(p=>p.filter(f=>f!==field)) }}/>
         </fieldset>
-        <QuestionReader question={ask} onQuestion={setAsk} brand={brand} context={context} disabled={!selectable}
-          onApply={v=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparisons(v.comparison)
-            setChoices(c=>({...c,...v.choices})); setProposed(v.proposed) }}/>
         <label className={LABEL}>Territory
           <select className={FIELD} value={territory} onChange={e=>setTerritory(e.target.value)} disabled={!selectable}>{context?.territory_ids.map(id=><option key={id} value={id}>{labelTerritory(id)}</option>)}</select>
         </label>
@@ -1154,8 +1160,8 @@ function AnalystApp({me}: {me: Me}) {
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
       {view==="result" && result && <AnalystBrief result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </div>}</div>
-    {brand && view!=="approved" && view!=="how" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : tab==="approved" && opened ? opened.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
-      canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
+    {brand && (view==="home" || (view==="result" && (!!result || agentSupported)) || (view==="triage" && agentSupported) || (view==="approved" && !!opened)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : view==="approved" && opened ? opened.brief_id : null} pending={view==="approved" ? false : pending} chip={chip} onClearChip={()=>setChip(null)}
+      onRead={view==="home" ? reader.run : undefined} readBusy={reader.busy} readError={view==="home" ? reader.error : null}
       onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
 }
