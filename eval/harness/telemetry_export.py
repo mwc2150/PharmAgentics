@@ -140,7 +140,7 @@ def export(out: Path = OUT, uri: str | None = None, insights: dict | None = None
     for r in parents:  # newest first, so the first per (system, lane) is the latest
         latest.setdefault(f"{r['system']}|{r['lane']}", r)
     snap = {"exported": datetime.now(timezone.utc).isoformat(timespec="minutes"), "source": "golden set (MLflow)",
-            "note": "Run-level scores only. Judge scores are report-only until judge agreement clears the bar.",
+            "note": "Scores from the golden questions. Scores from a model judge are shown for reference only.",
             "targets": dict(TARGETS), "latest": list(latest.values()), "runs": parents}
     sqlite = [p for p in (_store_for(u) for u in uris) if p is not None and p.exists()]
     if insights is None and sqlite:

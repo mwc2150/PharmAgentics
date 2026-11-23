@@ -1,4 +1,4 @@
-// core-008 FR-021: the Feedback review panel on the Evaluation page, for the tester admin only.
+// core-008 FR-021: the Feedback review list on the Evaluation page, for the tester admin only.
 // `python -m eval improve` proposes lessons and cases; a person approves or rejects each; `eval promote` writes the
 // approved ones and a pull request merges them. Nothing here changes the agents directly.
 import { useEffect, useState } from "react"
@@ -48,11 +48,8 @@ export function FeedbackReview() {
   const [items, setItems] = useState<Proposal[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => { listProposals().then(setItems).catch(e => setError(message(e))) }, [])
-  return <section className="workspace-content space-y-4 pb-10" aria-labelledby="feedback-review">
-    <div className="border-b border-rule pb-3">
-      <h2 id="feedback-review" className="text-xl">Feedback review</h2>
-      <p className="mt-1 text-sm text-muted">Lessons and cases proposed from votes and saved threads by <code>python -m eval improve</code>. Approving queues a proposal; <code>python -m eval promote</code> writes it and a pull request merges it.</p>
-    </div>
+  // Rendered inside TelemetryWorkspace under its own "Feedback review" heading, so it shares that page's width.
+  return <section aria-label="Feedback review" className="space-y-3">
     {error && <p role="alert" className="rounded-xl bg-amberbg px-4 py-3 text-sm text-amber">{error}</p>}
     {items && items.length === 0 && <p className="text-sm text-muted">No proposals yet.</p>}
     {items && items.length > 0 && <ul className="space-y-3">{items.map(p => <Card key={p.id} p={p} onDecided={d => setItems(xs => (xs ?? []).map(x => x.id === d.id ? d : x))}/>)}</ul>}

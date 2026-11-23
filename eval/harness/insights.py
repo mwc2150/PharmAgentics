@@ -17,7 +17,7 @@ from pathlib import Path
 from statistics import pstdev
 
 from .paths import EXPERIMENT, MLFLOW_DIR
-from .scorers import TARGETS, kind_of
+from .scorers import TARGETS, kind_of, unit_of
 
 OUT_DIR = MLFLOW_DIR / "insights"
 DEFAULT_STORE = MLFLOW_DIR / "mlflow.db"
@@ -30,6 +30,11 @@ LOWER_IS_BETTER = {"false_drivers", "brief_words", "needed_revision"}
 KIND_ORDER = ("code", "agent", "safety")  # ops (run counters) stay out, as OPERATIONAL does
 KIND_TITLES = {"code": "Code checks", "agent": "Agent checks", "safety": "Safety"}
 EPS = 0.001
+# core-011 FR-008: a case "falls" only on a move people would notice. A share scorer must be worse by 5 points; a count
+# or flag scorer by 10% of the earlier value, but at least 1 (0 -> 1 false drivers falls; 984 -> 998 words does not).
+FALL_SHARE = 0.05
+FALL_COUNT_RATIO = 0.10
+FALL_COUNT_FLOOR = 1.0
 CONTROLS = {"reference", "naive_llm"}  # controls are not held to the targets
 # core-011 FR-018: scorers whose rationale lists what was missed ("missing: a, b" / "<finding id>: <what>").
 MISS_SCORERS = ("key_fact_recall", "finding_recall")
@@ -148,6 +153,14 @@ def _case_scores(parent: dict, tails: dict, heads: dict) -> tuple[dict, int]:
             parent["why"][case_id][name].append(text)
     cases = {c: {k: (sum(v) / len(v), pstdev(v)) for k, v in row.items()} for c, row in acc.items()}
     return cases, unmapped
+
+
+def has_fallen(scorer: str, before: float, now: float) -> bool:
+    """Is `now` worse than `before` by enough to report (see FALL_SHARE and FALL_COUNT_*)?"""
+    worse = (now - before) if scorer in LOWER_IS_BETTER else (before - now)
+    if unit_of(scorer) == "share":
+        return worse >= FALL_SHARE - 1e-9
+    return worse >= max(FALL_COUNT_FLOOR, FALL_COUNT_RATIO * abs(before)) - 1e-9
 
 
 def _iso(ms: int) -> str:
@@ -275,7 +288,7 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
                         continue
                     before, now = prev["cases"][c][k][0], last_run["cases"][c][k][0]
                     worse = (now - before) if k in LOWER_IS_BETTER else (before - now)  # how much worse the latest is
-                    if worse > EPS:
+                    if has_fallen(k, before, now):
                         fallen.append({"system": s, "story": stories.get(c, ""), "case": c, "scorer": k, "previous": round(before, 4),
                                        "latest": round(now, 4), "drop": round(worse, 4),
                                        "previous_run": prev["run_id"], "latest_run": last_run["run_id"]})
@@ -370,7 +383,7 @@ def render_md(d: dict) -> str:
            "None in the listed runs.")
     _table(lines, "Stuck (a scorer at 0 in every listed run)", ["system", "story", "case", "scorer", "runs"], d["stuck"],
            "None.")
-    _table(lines, "Fallen (worse in the latest run than the one before, by more than 0.001; lower is worse except false_drivers and brief_words, where a rise is worse)",
+    _table(lines, "Fallen (worse in the latest run than the one before: a share by 5 points or more, a count by 10% or at least 1; lower is worse except false_drivers and brief_words, where a rise is worse)",
            ["system", "story", "case", "scorer", "previous", "latest", "drop"], d["fallen"], "None.")
     lines += ["", "## Engine comparison (latest scripted vs latest agent, per lane)"]
     if not d["engine"]:

@@ -10,7 +10,6 @@ import { HowItWorks } from "./HowItWorks"
 import { ComparisonPicker, comparisonsError } from "./ComparisonPicker"
 import { PeriodPicker, periodError, periodWeeks, readByLabel, useQuestionReader } from "./BriefingScope"
 import { DEFAULT_CHOICES, DefinitionPicker, choicesError, type DefinitionChoices, type DefinitionField } from "./BriefDefinition"
-import { FeedbackReview } from "./FeedbackReview"
 import { MessageBar, type Chip } from "./MessageBar"
 import { sharedFromLocation } from "./agent/threadApi"
 import { AnswerFeedback, FeedbackProvider, ShareFeedbackLink, useFeedbackActions } from "./Feedback"
@@ -674,11 +673,10 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
           <button type="button" onClick={toggleNav} aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
             className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="panel" className="h-5 w-5"/></button>
           <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{title}</h1>
-          {telemetry && <ClassLabel tab="evaluation.overview"/>}
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecastVisited && <div hidden={!forecast || telemetry}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={!forecast || telemetry}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
     <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>

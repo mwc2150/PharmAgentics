@@ -182,6 +182,32 @@ def test_lower_is_better_scorers_are_not_stuck_or_spread_and_a_rise_is_a_fall(tm
     assert fallen == {("C-2", 0.0, 1.0)}  # 2 -> 0 is better; 0 -> 1 is worse
 
 
+def test_a_small_move_is_not_a_fall(tmp_path):
+    path = tmp_path / "small.db"
+    _store(str(path), {
+        "P1": ("briefing_scripted", "g1", 1000, [
+            (Q_DOLLAR, {"numbers_match_golden": "0.104", "brief_words": "984.0", "false_drivers": "0.0"}),
+            (Q_CONF, {"numbers_match_golden": "0.80", "brief_words": "100.0", "false_drivers": "0.0"})]),
+        "P2": ("briefing_scripted", "g1", 2000, [
+            (Q_DOLLAR, {"numbers_match_golden": "0.100", "brief_words": "998.0", "false_drivers": "1.0"}),  # tiny dip, +14 words, 0 -> 1
+            (Q_CONF, {"numbers_match_golden": "0.70", "brief_words": "115.0", "false_drivers": "0.0"})])})  # 10 points, +15%
+    d = build([path], PAIRS)
+    fallen = {(r["case"], r["scorer"]) for r in d["fallen"]}
+    assert fallen == {("C-1", "false_drivers"), ("C-2", "numbers_match_golden"), ("C-2", "brief_words")}
+
+
+def test_has_fallen_thresholds():
+    from eval.harness.insights import has_fallen
+
+    assert not has_fallen("numbers_match_golden", 0.104, 0.100)
+    assert has_fallen("numbers_match_golden", 0.50, 0.45)  # exactly 5 points
+    assert not has_fallen("numbers_match_golden", 0.50, 0.46)
+    assert not has_fallen("brief_words", 984, 998)
+    assert has_fallen("brief_words", 100, 110)  # exactly 10%
+    assert has_fallen("false_drivers", 0, 1)
+    assert not has_fallen("false_drivers", 3, 2)  # fewer is better
+
+
 def test_numbers_lost_compares_latest_agent_with_latest_scripted_on_the_same_golden(tmp_path):
     scripted, agent, other = tmp_path / "s.db", tmp_path / "a.db", tmp_path / "o.db"
     _store(str(scripted), {"S1": ("briefing_scripted", "g1", 1000, [
