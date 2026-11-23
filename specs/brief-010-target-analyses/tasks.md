@@ -18,10 +18,10 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [x] G3 `eval check` passes; eval tests.
 
 ## Packet P: plan cuts (FR-001, FR-002, FR-007, FR-008)
-- [ ] P1 Cut screen in `splits.py`: per plan in a story territory, TRx (or NBRx) a week before and after on the comparison weeks and the percent change, as claim tokens; flags a plan against its territory or holding the supported access driver.
-- [ ] P2 `memo.cut_card` and the §3 order (territory card, then its cut cards); at most two cut cards a brief; the budget shrink of territory cards (FR-008).
-- [ ] P3 Triage passes cut cards as candidate stories; the agent's Manager prompt lists them (`briefing_agent/plan.py`).
-- [ ] P4 Tests; scripted run and gate; targets P1-Q4, P2-Q2, P2-Q4, P4-Q4 rise; Haiku run and gate.
+- [x] P1 Cut screen in `splits.py`: per plan in a story territory, TRx (or NBRx) a week before and after on the comparison weeks and the percent change, as claim tokens; flags a plan against its territory or holding the supported access driver.
+- [x] P2 `memo.cut_card` and the §3 order (territory card, then its cut cards); at most two cut cards a brief; the budget shrink of territory cards (FR-008).
+- [x] P3 Triage passes cut cards as candidate stories; the agent's Manager prompt lists them (`briefing_agent/plan.py`).
+- [ ] P4 Tests (`tests/test_plan_cuts.py`: done); scripted run and gate; targets P1-Q4, P2-Q2, P2-Q4, P4-Q4 rise; Haiku run and gate (the integrator's).
 
 ## Packet S: segment and channel percent (FR-003)
 - [ ] S1 Percent movers by channel and specialty (at most two a story, small cells named, not quoted).

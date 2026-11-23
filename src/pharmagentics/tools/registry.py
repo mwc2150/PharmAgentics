@@ -47,6 +47,7 @@ FORMATS = {
     "int": lambda v: _half_up(v, 0),
     "pct1": lambda v: _half_up(v, 1, percent=True),  # Forecast's format, unchanged
     "pct": _pct,  # Briefing's
+    "dec1": lambda v: _half_up(v, 1),
     "dec2": lambda v: _half_up(v, 2),
     "dec3": lambda v: _half_up(v, 3),
 }

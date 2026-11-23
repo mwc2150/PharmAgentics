@@ -128,6 +128,8 @@ def leadership_sections(sections: list[dict] | None) -> list[dict] | None:
         cut = {k: s.get(k) for k in SECTION_FIELDS}
         cut.update(_blocks(s))
         cut["text"] = _leader_text(cut["text"] or "")
+        if (s.get("card") or {}).get("cut"):  # a plan cut card (brief-010 FR-001): a leader reads its headline, nothing under it
+            cut["text"], cut["prose"] = "", ""
         chart = s.get("chart")
         if chart:
             cut["chart"] = {k: chart.get(k) for k in CHART_FIELDS if k in chart}

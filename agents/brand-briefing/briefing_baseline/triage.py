@@ -10,11 +10,11 @@ from __future__ import annotations
 import hashlib
 
 from pharmagentics.tools import queries as qy
-from pharmagentics.tools import stages
+from pharmagentics.tools import splits, stages
 from pharmagentics.tools.checks import launch_date
 from pharmagentics.tools.registry import digits_outside_tokens
 
-from .pipeline import COMPETITOR, MAX_STORIES, Front, story_id
+from .pipeline import COMPETITOR, MAX_STORIES, Front, cut_id, story_id
 
 INVESTIGATE_ACTION = ("Investigate: a data check first, then access, promotion, supply and competitor, "
                       "in a fixed order (manager off).")
@@ -36,6 +36,29 @@ def _population(p) -> str:
     withheld = [t for t in p.terrs if t not in p.ok]
     text = f"Like-for-like territories (every week passes the feed gate): {_names(p.ok)}."
     return text + (f" Withheld: {_names(withheld)}." if withheld else "")
+
+
+CUT_ACTION = "Code builds this card from the plan's own figures and its checks; there is nothing to investigate."
+
+
+def _cut_card(reg, f: Front, cut: dict, rank: int) -> dict:
+    """A plan cut card as a candidate story (brief-010 FR-007): code's screen found a plan that runs against its
+    territory or holds the access change; the manager may keep or drop it, and code fills every number."""
+    p, t, plan = f.p, cut["territory"], cut["plan"]
+    figures = splits.cut_figures(reg, p, t, plan)
+    first = figures["measures"][0]
+    name = splits.readable(plan)
+    name = name[:1].upper() + name[1:]
+    why = " and ".join(x for x, on in (("its change runs against the territory's", cut["against"]),
+                                       ("an access change on this plan falls in or just before the period", cut["access"])) if on)
+    moved = (f"{name} in {qy.name(t)}: {p.brand_id} {first['label']} averaged {first['after']} a week against {first['before']} before "
+             f"({first['word']} {first['pct']}), while {qy.name(t)} was {figures['territory_word']} {figures['territory_pct']}.")
+    return {
+        "id": cut_id(cut), "kind": "cut", "territory": t, "title": f"{name} in {qy.name(t)}", "rank": rank,
+        "proposed": "investigate", "what_moved": moved,
+        "decision": f"A plan cut card beside the {qy.name(t)} story: {why} (code screen). " + CUT_ACTION,
+        "population": _population(p), "granularity": f"Plan {plan}, in {qy.name(t)}.", "time": _time(p),
+    }
 
 
 def _card(reg, f: Front, s: dict | None, rank: int, proposed: str) -> dict:
@@ -83,6 +106,8 @@ def build_plan(reg, f: Front) -> dict:
     if not p.calendar and not p.promotion_review:
         for i, s in enumerate(f.found):
             cards.append(_card(reg, f, s, len(cards) + 1, "investigate" if i < MAX_STORIES else "over_cap"))
+        for c in f.cuts:  # cut cards sit beside their territory stories, never over the cap
+            cards.append(_cut_card(reg, f, c, len(cards) + 1))
         if p.has("national") and stages.competitor_status(reg, p) is not None:
             cards.append(_card(reg, f, None, len(cards) + 1, "investigate"))
     texts = [c[k] for c in cards for k in ("what_moved", "decision", "population", "granularity", "time")]
