@@ -12,7 +12,7 @@ from .cases import golden_fingerprint, load_cases
 from .paths import EXPERIMENT, MLFLOW_DIR, tracking_uri
 from .scorers import (DETERMINISTIC, EVIDENCE, REPORT_ONLY, TARGETS, TRAJECTORY, WORD_BUDGET, count_words, finding_counts,
                       judge_scorers, key_fact_counts, leader_words)
-from .systems import SYSTEMS, definition_option
+from .systems import BRIEFING_SYSTEMS, SYSTEMS, briefing_question, definition_option
 from .versions import code_version, data_fingerprint
 
 
@@ -57,15 +57,17 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
 
     @mlflow.trace(name=f"{system}.predict", span_type="AGENT")
     def predict_fn(question: str, follow_up: str | None = None, section: str | None = None,
-                   comparison: dict | None = None, definition: dict | None = None) -> dict:
+                   comparison: dict | None = None, definition: dict | None = None, intent: str = "brief") -> dict:
         try:
             started = time.perf_counter()
             options = {"comparison": comparison} if comparison and system in ("briefing_scripted", "briefing_agent") else {}
+            # The case's question as the app sends it (its intent); the answer is still filed under the case's own question
+            sent = briefing_question(question, intent) if isinstance(sut, BRIEFING_SYSTEMS) else question
             if follow_up and hasattr(sut, "predict_follow_up"):
                 method = sut.predict_follow_up
-                out = method(question, follow_up, section, **options, **definition_option(method, definition))
+                out = method(sent, follow_up, section, **options, **definition_option(method, definition))
             else:
-                out = sut.predict(question, **options, **definition_option(sut.predict, definition))
+                out = sut.predict(sent, **options, **definition_option(sut.predict, definition))
             timed = (out.get("latency") if isinstance(out, dict) else None) or {"brief": time.perf_counter() - started}
             for kind, secs in timed.items():
                 if kind in latency and secs is not None:

@@ -10,6 +10,7 @@ question: How confident is the estimate, and when will we know more?
 review_note: The story states no period; add the weeks to the question before freezing.
 period: null
 anchor: Great Lakes and Southeast together
+intent: promotion_review
 definition:
   first_week: null
   last_week: null

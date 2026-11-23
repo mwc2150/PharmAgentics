@@ -267,6 +267,8 @@ class Case(BaseModel):
     findings: list[Finding] = []
     follow_up: FollowUp | None = None  # two-turn cases (brief-006 FR-013)
     definition: Definition | None = None  # brief-010 FR-000d; an old top-level `comparison:` is read into it
+    intent: Literal["brief", "promotion_review"] = "brief"  # the app's request intent; "promotion_review" sends the
+    # Promotion review question form (systems.briefing_question), so a question with no campaign word still gets one
     scope: Scope | None = None  # explicit expected scope; absent, expectations() derives it from the question prefix
     source: str
 
@@ -292,14 +294,15 @@ class Case(BaseModel):
     def inputs(self) -> dict:
         """What the system under test receives: the question, and the follow-up for a two-turn case."""
         return {"question": self.question, "follow_up": self.follow_up.question if self.follow_up else None,
-                "section": self.follow_up.section if self.follow_up else None,
+                "section": self.follow_up.section if self.follow_up else None, "intent": self.intent,
                 **({"comparison": self.comparison.for_engine().model_dump(mode="json", exclude_none=True)} if self.comparison else {}),
                 **({"definition": self.definition.payload(engine=True)} if self.definition else {})}
 
     def expected_scope(self) -> Scope:
         comparison = self.comparison.model_dump(mode="json", exclude_none=True) if self.comparison else None
         if self.scope is None:
-            return derive_scope(self.question, comparison)
+            derived = derive_scope(self.question, comparison)
+            return derived.model_copy(update={"intent": "promotion_review"}) if self.intent == "promotion_review" else derived
         return self.scope if self.scope.comparison is not None or comparison is None else self.scope.model_copy(
             update={"comparison": comparison})
 

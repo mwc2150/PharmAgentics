@@ -9,10 +9,13 @@ from __future__ import annotations
 import inspect
 import json
 import os
+import re
 import sys
 import urllib.request
 
 import mlflow
+
+from pharmagentics.api.service import TERRITORIES
 
 from .cases import Case
 from .envelope import AnswerEnvelope
@@ -188,6 +191,25 @@ class BriefingAgent(BriefingLowCode):
         return transcript(f"{self.name}:{self.model}", brief, turn, middle - started, time.perf_counter() - middle)
 
 
+PROMOTION_REVIEW = "Promotion review in "
+
+
+def _focus_label(question: str) -> str:
+    """The label of the territory a question names, else National (the same labels the app's TERRITORIES uses)."""
+    for tid, label in TERRITORIES.items():
+        if tid != "NATIONAL" and re.search(rf"\b{re.escape(label)}\b", question, re.I):
+            return label
+    return TERRITORIES["NATIONAL"]
+
+
+def briefing_question(question: str, intent: str = "brief") -> str:
+    """The question a Briefing system receives, built as the app's API builds it (service.normalize_question): a
+    Promotion review request reads "Promotion review in <territory label>: <question>". Already prefixed: unchanged."""
+    if intent != "promotion_review" or question.startswith(PROMOTION_REVIEW):
+        return question
+    return f"{PROMOTION_REVIEW}{_focus_label(question)}: {question.strip()}"
+
+
 def accepts(fn, name: str) -> bool:
     """Whether `fn` names a parameter `name`. The harness passes a case's `definition` only to engines that take it
     (brief-010 packet D-B adds it), so nothing breaks before the backend lands."""
@@ -256,6 +278,8 @@ class ForecastInvestigator(ForecastAgent):
     name = "forecast_investigator"
     investigator = "model"
 
+
+BRIEFING_SYSTEMS = (BriefingScripted, BriefingLowCode)  # BriefingAgent subclasses BriefingLowCode
 
 SYSTEMS = {"reference": ReferenceSystem, "naive_llm": NaiveLLMSystem, "briefing_scripted": BriefingScripted,
            "forecast_scripted": ForecastScripted, "briefing_lowcode": BriefingLowCode, "briefing_agent": BriefingAgent,
