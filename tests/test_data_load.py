@@ -36,7 +36,8 @@ class DataLoadTests(unittest.TestCase):
         cls.workspace = tempfile.TemporaryDirectory(prefix="pharmagentics-tests-")
         cls.addClassCleanup(cls.workspace.cleanup)
         cls.baseline = Path(cls.workspace.name) / "baseline.duckdb"
-        load_duckdb.load_database(DATA, cls.baseline)
+        # Views, not stored tables: these tests change raw rows and read the gate's answer.
+        load_duckdb.load_database(DATA, cls.baseline, materialize=False)
         cls.release = json.loads((DATA / "DATA_VALIDATION_REPORT.json").read_text())
         cls.csv_rx = read_csv("rx_weekly")
 
@@ -222,6 +223,32 @@ class DataLoadTests(unittest.TestCase):
             self.assertEqual(connection.execute(
                 "SELECT count(*) FROM raw.rx_weekly WHERE source = 'CHANGED_SOURCE'"
             ).fetchone()[0], 0)
+
+    def test_stored_tables_hold_exactly_what_the_views_return(self):
+        """The default load stores every reporting view as a table of the same name; each holds the view's rows,
+        columns and types, and a second load over stored tables rebuilds them."""
+        stored = Path(self.sandbox.name) / "stored.duckdb"
+        load_duckdb.load_database(DATA, stored)
+        load_duckdb.load_database(DATA, stored)  # reloading over stored tables works
+        names = load_duckdb.reporting_names(load_duckdb.REPORTING_SQL.read_text(encoding="utf-8"))
+        self.assertEqual(len(names), 9)
+        with duckdb.connect(str(stored)) as connection:
+            connection.execute(f"ATTACH '{self.db_path.as_posix()}' AS v (READ_ONLY)")
+            kinds = dict(connection.execute(
+                "SELECT table_name, table_type FROM information_schema.tables "
+                "WHERE table_catalog = 'stored' AND table_schema = 'reporting'").fetchall())
+            self.assertEqual(kinds, {n: "BASE TABLE" for n in names})
+            for name in names:
+                with self.subTest(view=name):
+                    columns = "SELECT column_name, data_type FROM information_schema.columns WHERE table_catalog = ? "                               "AND table_schema = 'reporting' AND table_name = ? ORDER BY ordinal_position"
+                    self.assertEqual(connection.execute(columns, ["stored", name]).fetchall(),
+                                     connection.execute(columns, ["v", name]).fetchall())
+                    table, view = f'stored.reporting."{name}"', f'v.reporting."{name}"'
+                    self.assertEqual(connection.execute(f"SELECT count(*) FROM {table}").fetchone(),
+                                     connection.execute(f"SELECT count(*) FROM {view}").fetchone())
+                    for a, b in ((table, view), (view, table)):
+                        self.assertEqual(connection.execute(
+                            f"SELECT count(*) FROM (SELECT * FROM {a} EXCEPT ALL SELECT * FROM {b})").fetchone()[0], 0)
 
     def test_view_failure_rolls_back_the_import(self):
         bad_sql = Path(self.sandbox.name) / "broken.sql"
