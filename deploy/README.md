@@ -111,6 +111,8 @@ uv run python deploy/gcp.py telemetry --project pharmagentics --account <you>   
 uv run python deploy/gcp.py uat       --project pharmagentics --account <you>   # bucket -> local MLflow (experiment pharmagentics-uat)
 ```
 
+Runs in the local MLflow store link to it ("Open in MLflow") only where the API has `PHARMAGENTICS_MLFLOW_URL` set, e.g. `http://127.0.0.1:5000` beside `python -m eval ui` on your own machine. The hosted app leaves it unset, so no login sees the links there.
+
 `gcp.py app` runs `telemetry` after every deploy. CI deploys from `main` have no MLflow store, so they keep the bucket copy (or the copy committed in `src/pharmagentics/api/telemetry.json`); push a fresh one with `gcp.py telemetry` after an eval run.
 
 ## UAT feedback (core-008)

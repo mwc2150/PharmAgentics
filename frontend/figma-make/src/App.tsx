@@ -639,7 +639,6 @@ function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy,
       {item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
     <div className="mt-auto space-y-2 px-3 pb-4">
-      {me.auth_mode==="dev" && expanded && <p className="flex items-center gap-1.5 px-2.5 text-[11px] text-muted"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted" aria-hidden="true"/>Development sign-in</p>}
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
     </div>
   </div>
@@ -918,7 +917,7 @@ function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceI
 // brief-009: story id to its card title, from the triage record, so the timeline names a story the way the memo does.
 const storyTitles = (r: BriefingResult): Record<string, string> => Object.fromEntries((r.triage?.calls ?? []).map(c=>[c.story, c.title]))
 
-function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = false, onStartNew}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null, stepsFolded?: boolean, onStartNew?: () => void}) {
+function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = true, onStartNew}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null, stepsFolded?: boolean, onStartNew?: () => void}) {
   const [evidenceId,setEvidenceId] = useState<string | null>(null)
   useEffect(()=>{ if(openEvidence) setEvidenceId(openEvidence.id) },[openEvidence])
   const [mode,setMode] = useState<"analyst" | "leadership">("analyst")

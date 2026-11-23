@@ -1,7 +1,8 @@
 // Newly approved briefings and Forecast reports: a dot on the "Approved" tab and on the sidebar item, and a "New"
 // word on the rows, for anything approved since this browser last opened that list. What was last seen is kept per
-// person and lane in localStorage (a convenience: a cleared browser simply starts with no dots). The first visit
-// counts everything already approved as seen, and an approval made in this browser never lights its own dot.
+// person, view and lane in localStorage (a convenience: a cleared browser simply starts again). On a first visit,
+// approvals from the last week count as new. An approval made in this view never lights its own dot; the tester's
+// other view ("View as") keeps its own record, so the Leadership view still sees what the Analyst view approved.
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { listPublished, type Me } from "./agent/briefingApi"
 import { listReports } from "./agent/forecastApi"
@@ -11,6 +12,7 @@ type Stamps = Record<NewsLane, string | null>
 type News = { has: (lane: NewsLane) => boolean, seen: (lane: NewsLane) => string | null, latest: (lane: NewsLane) => string | null, markSeen: (lane: NewsLane, at?: string | null) => void }
 
 const POLL_MS = 60_000
+const FIRST_VISIT_DAYS = 7
 const later = (a: string | null | undefined, b: string | null | undefined) => !a ? b ?? null : !b ? a : Date.parse(a) >= Date.parse(b) ? a : b
 const newest = (stamps: (string | null | undefined)[]) => stamps.reduce<string | null>((m, s) => later(m, s), null)
 export const isNewer = (at: string | null | undefined, since: string | null) => !!at && !!since && Date.parse(at) > Date.parse(since)
@@ -48,10 +50,14 @@ export function useApprovedList<T>(lane: NewsLane, enabled: boolean, load: () =>
 }
 
 export function ApprovedNewsProvider({me, children}: {me: Me, children: ReactNode}) {
-  const who = me.name || "me"
+  const who = `${me.name || "me"}:${me.view_as ?? "own"}`
   const lanes = useRef<NewsLane[]>([...(me.lanes.briefing ? ["briefing" as const] : []), ...(me.lanes.forecast?.available ? ["forecast" as const] : [])])
   const [latest, setLatest] = useState<Stamps>({briefing: null, forecast: null})
-  const [seen, setSeen] = useState<Stamps>(() => ({briefing: read(who, "briefing"), forecast: read(who, "forecast")}))
+  const [seen, setSeen] = useState<Stamps>(() => {
+    const start = new Date(Date.now() - FIRST_VISIT_DAYS * 86_400_000).toISOString()
+    const first = (lane: NewsLane) => { const at = read(who, lane); if (at) return at; write(who, lane, start); return start }
+    return {briefing: first("briefing"), forecast: first("forecast")}
+  })
   const markSeen = useCallback((lane: NewsLane, at?: string | null) => {
     setSeen(s => {
       const next = later(s[lane], at ?? new Date().toISOString())
@@ -72,12 +78,7 @@ export function ApprovedNewsProvider({me, children}: {me: Me, children: ReactNod
         } catch { return [lane, undefined] as const }  // a failed check keeps the last answer
       }))
       if (!live) return
-      for (const [lane, at] of got) {
-        if (at === undefined) continue
-        setLatest(l => ({...l, [lane]: at}))
-        // First visit: what is already approved is not news; with nothing approved yet, the first approval will be.
-        if (read(who, lane) === null) markSeen(lane, at ?? "1970-01-01T00:00:00.000Z")
-      }
+      for (const [lane, at] of got) if (at !== undefined) setLatest(l => ({...l, [lane]: at}))
     }
     void poll()
     const timer = window.setInterval(() => void poll(), POLL_MS)
