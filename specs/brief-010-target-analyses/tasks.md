@@ -13,9 +13,9 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [ ] DU2 The Assumptions block shows the definition in both views; tsc, build, frontend-scope test.
 
 ## Packet G: golden definitions and the review (FR-000d; grill 2026-11-22)
-- [ ] G1 `Case.definition` (explicit, all fields) replaces `comparison` (the loader maps old files); the harness passes it to systems; findings take an optional `measure`.
-- [ ] G2 Every Briefing case states its definition; P2-Q3, P2-Q4 and P1-Q5 changes restated like-for-like from SQL with the reference prose; plan cuts on P1-Q4, P2-Q2, P2-Q4, P4-Q4; `needs` tags; must facts and findings `reviewed: true`; CHANGELOG.
-- [ ] G3 `eval check` passes; eval tests.
+- [x] G1 `Case.definition` (explicit, all fields) replaces `comparison` (the loader maps old files); the harness passes it to systems; findings take an optional `measure`.
+- [x] G2 Every Briefing case states its definition; P2-Q3, P2-Q4 and P1-Q5 changes restated like-for-like from SQL with the reference prose; plan cuts on P1-Q4, P2-Q2, P2-Q4, P4-Q4; `needs` tags; must facts and findings `reviewed: true`; CHANGELOG.
+- [x] G3 `eval check` passes; eval tests.
 
 ## Packet P: plan cuts (FR-001, FR-002, FR-007, FR-008)
 - [ ] P1 Cut screen in `splits.py`: per plan in a story territory, TRx (or NBRx) a week before and after on the comparison weeks and the percent change, as claim tokens; flags a plan against its territory or holding the supported access driver.

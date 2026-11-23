@@ -9,16 +9,23 @@ status: draft
 question: 'Weeks of 2025-11-03 to 2025-12-15, Mid-Atlantic: Is the lift real, or was it access, a competitor or the season?'
 review_note: null
 period: weeks of 2025-11-03 to 2025-12-15, Mid-Atlantic
-comparison:
-  kind: custom
-  start: '2025-06-02'
-  end: '2025-07-28'
 anchor: Mid-Atlantic rebound, Nov to Dec 2025
+definition:
+  first_week: '2025-11-03'
+  last_week: '2025-12-15'
+  comparison:
+    kind: custom
+    start: '2025-06-02'
+    end: '2025-07-28'
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Magdalena, I want lifts tested against access, competitors and season, so that I never claim credit for a formulary win.
 given: a lift that follows an access restoration and a seasonal rise, with steady promotion.
 when: the brief tests promotion.
 then: promotion is "ruled out," access is the leading driver, and the seasonal share is noted.
-reference_answer: BXA on the Mid-Atlantic Medicare Part D plan rose 19% (183 to 218 TRx a week) and NBRx 42% against the summer, right after the plan removed prior authorization and step therapy on 2025-11-01. Mid-Atlantic rep calls stayed near 50 a week. National BXA rose 14.4% over the same weeks, so part of the lift is seasonal.
+reference_answer: BXA on the Mid-Atlantic Medicare Part D plan rose 21% (183 to 222 TRx a week) and NBRx 39% against the summer, right after the plan removed prior authorization and step therapy on 2025-11-01. Mid-Atlantic rep calls stayed near 50 a week. National BXA rose 18.2% over the same weeks, so part of the lift is seasonal.
 must_not_say:
   text: '"Q4 promotion lifted Mid-Atlantic."'
   phrases:
@@ -34,25 +41,29 @@ facts:
   value: 183
   sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'')'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_trx_gap_per_week
-  value: 218
-  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'')'
+  value: 222
+  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'' and week_start <> DATE ''2025-11-24'')'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_change_pct
-  value: 19.0
-  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: 21.0
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'' and week_start <> DATE ''2025-11-24'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_nbrx_change_pct
-  value: 42
-  sql: 'select (100.0 * ((select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'') / (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: 39
+  sql: 'select (100.0 * ((select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'' and week_start <> DATE ''2025-11-24'') / (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
   role: context
   reviewed: false
+  needs: plan_cut
 - id: national_change_pct
-  value: 14.4
-  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: 18.2
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2025-11-03'' and DATE ''2025-12-15'' and week_start <> DATE ''2025-11-24'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
   role: context
   reviewed: false
 findings:
@@ -62,5 +73,7 @@ findings:
   drivers_supported: [access]
   drivers_ruled_out: [promotion]
   withheld: false
-  reviewed: false
+  reviewed: true
+  cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1
+  needs: plan_cut
 source: docs/planning/user-stories.md#P4-Q4

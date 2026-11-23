@@ -10,6 +10,16 @@ question: 'Week of 2025-04-21: Which changes are big enough to make the brief?'
 review_note: null
 period: week of 2025-04-21
 anchor: Quiet week, 2025-04-21
+definition:
+  first_week: '2025-04-21'
+  last_week: '2025-04-21'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want normal territory swings left out, so that the brief is consistent week to week and nobody chases noise.
 given: a week with no injected event and normal territory noise.
 when: the brief runs.
@@ -29,14 +39,17 @@ facts:
   role: must
   value: 4822
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-21'
+  reviewed: true
 - id: national_vs_4wk_avg_pct
   role: must
   value: -0.2
   sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-21'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-04-21' - 28 and DATE '2025-04-21' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  reviewed: true
 - id: pacific_wow_pct
   role: must
   value: 24.8
   sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-21' and territory_id = 'PACIFIC') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2025-04-14' and territory_id = 'PACIFIC') - 1)
+  reviewed: true
 - id: ne_wow_pct
   value: 15.1
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''NEW_ENGLAND'' and week_start between DATE ''2025-04-21'' and DATE ''2025-04-21'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''NEW_ENGLAND'' and week_start between DATE ''2025-04-14'' and DATE ''2025-04-14'') - 1))'

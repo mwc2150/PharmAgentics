@@ -6,8 +6,15 @@ status: draft
 question: 'Weeks of 2025-12-22 and 2025-12-29: Compare the holiday weeks with the same reporting weeks last year.'
 period: 2025-12-22 and 2025-12-29
 review_note: Draft for Michael to label.
-comparison:
-  kind: last_year
+definition:
+  first_week: '2025-12-22'
+  last_week: '2025-12-29'
+  comparison:
+    kind: last_year
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: An analyst compares holiday weeks with the corresponding reporting weeks one year earlier.
 given: The holiday weeks of December 2025 and the same reporting weeks last year.
 when: The analyst selects the same weeks last year.
@@ -26,6 +33,7 @@ facts:
         sum(trx) filter (where week_start in (date '2025-12-22', date '2025-12-29')) /
         sum(trx) filter (where week_start in (date '2024-12-23', date '2024-12-30')) - 1), 1)
       from reporting.v_reportable_rx where product_id = 'BXA'
+    reviewed: true
 findings:
 - id: national_like_for_like
   territory: NATIONAL
@@ -33,5 +41,5 @@ findings:
   drivers_supported: []
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: specs/brief-007-windows-and-evidence/spec.md#FR-014
