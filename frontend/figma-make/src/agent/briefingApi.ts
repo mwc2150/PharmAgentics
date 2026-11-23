@@ -228,6 +228,7 @@ export type Classification = { version: string; levels: ClassLevel[]; tabs: Reco
 export type Comparison =
   | { kind: "previous"; weeks: number }
   | { kind: "last_year" }
+  | { kind: "pre_launch" }  // brief-010: the four weeks before Metacora launched; no weeks, start or end
   | { kind: "custom"; start: string; end: string }
 
 // brief-010 FR-000a: the brief definition, JSON names as in plan.md ("The brief definition"). The server fills every

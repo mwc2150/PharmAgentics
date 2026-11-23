@@ -33,6 +33,7 @@ export type FormValues = { territory: string | null; week: string; weekEnd: stri
 function proposedComparison(def: NonNullable<BriefingScope["definition"]>["comparison"], earlier: number, weeks: string[]): Comparison | null | { error: string } {
   if (!def) return null
   if (def.kind === "last_year") return { kind: "last_year" }
+  if (def.kind === "pre_launch") return { kind: "pre_launch" }
   if (def.kind === "custom") {
     if (!def.start || !def.end || def.start > def.end || !weeks.includes(def.start) || !weeks.includes(def.end)) return { error: "The proposed comparison weeks do not fit the release." }
     return { kind: "custom", start: def.start, end: def.end }

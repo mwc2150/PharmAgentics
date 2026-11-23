@@ -62,6 +62,7 @@ export function comparisonWords(c: Comparison | null | undefined, labelWeek: (is
   if (!c) return "the previous 4 weeks"
   if (c.kind === "previous") return `the previous ${c.weeks} week${c.weeks === 1 ? "" : "s"}`
   if (c.kind === "last_year") return "the same weeks last year"
+  if (c.kind === "pre_launch") return "the four weeks before Metacora launched"
   return c.start && c.end ? `the weeks ${labelWeek(c.start)} to ${labelWeek(c.end)}` : "named weeks"
 }
 

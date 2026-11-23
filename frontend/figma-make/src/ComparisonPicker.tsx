@@ -72,7 +72,7 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
       {value === null && <p id="comparison-default" className="text-xs text-muted">{earlierCount === 0 && period.length
         ? "There are no earlier weeks in the release to compare with. The briefing runs without a comparison period."
         : `Default: the ${DEFAULT_COMPARISON_WEEKS} weeks before the period, or fewer where the release starts later. A longer period is screened against as many preceding weeks as it has.`}</p>}
-      {other && <p className="text-xs text-muted">Using {value.kind === "last_year" ? "the same weeks last year" : "custom weeks"} instead.
+      {other && <p className="text-xs text-muted">Using {value.kind === "last_year" ? "the same weeks last year" : value.kind === "pre_launch" ? "the four weeks before Metacora launched" : "custom weeks"} instead.
         {" "}<button type="button" className="underline" onClick={() => onChange(null)}>Use the default comparison</button></p>}
     </div>
     <details className="text-xs text-muted" open={other}>
@@ -81,12 +81,13 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
         <label className="block space-y-1 text-xs font-medium text-muted">Compare with
           <select className={field} value={value?.kind ?? "previous"} onChange={event => {
             const kind = event.target.value
-            if (kind === "last_year") onChange({ kind })
+            if (kind === "last_year" || kind === "pre_launch") onChange({ kind })
             else if (kind === "custom") onChange({ kind, start: "", end: "" })
             else onChange(null)
           }}>
             <option value="previous">The previous weeks, set above (default)</option>
             <option value="last_year">The same weeks last year</option>
+            <option value="pre_launch">Pre-launch weeks</option>
             <option value="custom">Custom weeks</option>
           </select>
         </label>

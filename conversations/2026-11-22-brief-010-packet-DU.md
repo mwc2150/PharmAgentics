@@ -10,6 +10,9 @@ Branch `feature/brief-010-form`. Frontend only (FR-000b). Coded against the plan
 - `Memo.tsx`: optional `definition` and `labelWeek` props; `DefinitionWords` renders under §6 (the Assumptions block; under the last section if there is no §6), in both views. No definition, nothing extra. The leader type carries only the definition fields.
 - `tests/test_frontend_scope.py`: allow-list gains `BriefDefinition.tsx`; new test for form order, field names, pre-selected values and the Memo wiring.
 
+## Follow-up: Pre-launch weeks (integrator, Michael's decision)
+The Comparison selector has a fourth choice, "Pre-launch weeks" (under "Other comparison"), sent as `comparison: {"kind": "pre_launch"}` with no weeks, start or end. `Comparison` in `agent/briefingApi.ts` gains the kind; `scopeToForm` accepts it from the reader; the Assumptions words say "the four weeks before Metacora launched". `comparisonError` allows it without checks (the server owns the launch date). tsc clean, standalone build ok, `tests/test_frontend_scope.py` 4 passed.
+
 ## Fields used
 Request: `definition.{first_week,last_week,comparison,territories,measure,grain,relative_to}` inside the briefing query. Scope response: `definition` (any subset). Brief response (analyst and leadership): `definition`.
 

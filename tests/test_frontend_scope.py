@@ -75,4 +75,7 @@ def test_the_brief_definition_form_sends_the_six_selectors():
         assert label in picker
     assert "Choose at least one level of detail." in picker
     assert "<DefinitionWords" in memo and "definition={brief.definition}" in app and "definition={result.definition}" in app
+    cmp_picker = (SRC / "ComparisonPicker.tsx").read_text(encoding="utf-8")
+    assert '<option value="pre_launch">Pre-launch weeks</option>' in cmp_picker and '{ kind: "pre_launch" }' in api
+    assert "the four weeks before Metacora launched" in picker
     assert "UAT" not in picker and "persona" not in picker.lower()
