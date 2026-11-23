@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
-import { BrandMark, Icon, type IconName } from "./agent/primitives"
+import { BrandMark, Icon, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
@@ -57,41 +57,39 @@ function dataText(input: unknown): string {
   return input === null || input === undefined ? "—" : typeof input === "string" ? input : JSON.stringify(input, null, 2)
 }
 const message = (e: unknown) => e instanceof Error ? e.message : String(e)
-const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
+// Status and actor tags: an outlined word, never a filled pill.
+const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
 // One vocabulary for every screen: the primary action, a secondary action, a field, its label, a panel.
-const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-medium text-onaccent shadow-sm shadow-black/30 transition-[background-color,transform] duration-150 hover:bg-navyhover active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted"
-const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-rule px-4 py-2 text-sm font-medium text-ink transition-[background-color,transform] duration-150 hover:bg-paper active:scale-[0.98] disabled:cursor-not-allowed disabled:text-muted"
-const FIELD = "w-full min-w-0 rounded-lg border border-rule bg-paper px-3 py-2.5 text-sm text-ink disabled:opacity-60"
+const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary shadow-[0_4px_0_var(--color-primarydeep)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-primaryhover active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-primarydeep)] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted disabled:shadow-none"
+const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)] disabled:cursor-not-allowed disabled:text-muted disabled:shadow-none"
+const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-muted disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
-const PANEL = "rounded-xl border border-rule bg-sheet"
+const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
 const REVIEW_CHIP = {
-  pending: [`${chip} bg-amberbg text-amber`, "Draft · Awaiting analyst review"],
-  approved: [`${chip} bg-okbg text-ok`, "Approved · Visible to the Brand Director"],
-  rejected: [`${chip} bg-warnbg text-warn`, "Rejected · Hidden from the Brand Director"],
+  pending: [`${chip} border-amberline text-amber`, "Draft · Awaiting analyst review"],
+  approved: [`${chip} border-ok text-ok`, "Approved · Visible to the Brand Director"],
+  rejected: [`${chip} border-edge text-warn`, "Rejected · Hidden from the Brand Director"],
 } as const
 
 function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, selectedId: string, onClose: () => void}) {
   const made = (id: string) => producers(result.events, result.claims, id)
   const [id, setId] = useState(selectedId)
   useEffect(() => setId(selectedId), [selectedId])
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if(e.key === "Escape") onClose() }
-    document.addEventListener("keydown", esc)
-    return () => document.removeEventListener("keydown", esc)
-  }, [onClose])
+  const drawer = useRef<HTMLElement>(null)
+  useModalFocus(drawer, onClose)
   const claims = result.claims.filter(c=>c.evidence_id===id)
   const selected = result.evidence.find(e=>e.id===id)
   return <div className="fixed inset-0 z-40 flex justify-end">
     <button className="absolute inset-0 bg-black/60" aria-label="Close evidence" onClick={onClose}/>
-    <aside role="dialog" aria-modal="true" aria-label="Source evidence" className="relative z-10 flex h-full w-full max-w-xl flex-col bg-sheet shadow-2xl pa-slide">
+    <aside ref={drawer} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Source evidence" className="relative z-10 flex h-full w-full max-w-xl flex-col border-l border-rule bg-sheet pa-slide">
       <div className="flex items-start justify-between border-b border-rule p-5">
-        <div><div className="text-[11px] tracking-widest uppercase text-muted">Governed evidence</div><h2 className="mt-1 text-lg font-semibold">Source records</h2><p className="mt-1 text-xs text-muted">{result.evidence.length} evidence records · pinned version {result.data_version ?? "unavailable"}</p></div>
-        <button onClick={onClose} aria-label="Close evidence panel" className="rounded-lg p-2 hover:bg-paper"><Icon name="close"/></button>
+        <div><div className="text-xs uppercase tracking-widest text-muted">Governed evidence</div><h2 className="mt-1 text-lg font-semibold">Source records</h2><p className="mt-1 text-xs text-muted">{result.evidence.length} evidence records · pinned version {result.data_version ?? "unavailable"}</p></div>
+        <button onClick={onClose} aria-label="Close evidence panel" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-5 w-5"/></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="border-b border-rule p-3">
-          {result.evidence.map(ev=><button key={ev.id} onClick={()=>setId(ev.id)} aria-current={id===ev.id} className={`flex w-full items-start gap-3 rounded-xl p-3 text-left text-sm ${id===ev.id?"bg-agentbg ring-1 ring-agent/20":"hover:bg-paper"}`}>
-            <span className="font-mono text-xs text-agentdeep">{ev.id}</span><span className="min-w-0 flex-1">{ev.tool}<span className="block text-xs text-muted">{result.claims.filter(c=>c.evidence_id===ev.id).map(c=>c.value).join(", ") || "Context evidence"}</span></span>
+          {result.evidence.map(ev=><button key={ev.id} onClick={()=>setId(ev.id)} aria-current={id===ev.id} className={`flex w-full items-start gap-3 rounded-xl p-3 text-left text-sm ${id===ev.id?"bg-primarybg font-medium":"hover:bg-paper"}`}>
+            <span className="font-mono text-xs text-primary">{ev.id}</span><span className="min-w-0 flex-1">{ev.tool}<span className="block text-xs text-muted">{result.claims.filter(c=>c.evidence_id===ev.id).map(c=>c.value).join(", ") || "Context evidence"}</span></span>
           </button>)}
         </div>
         {selected && <div className="space-y-4 p-5">
@@ -118,7 +116,7 @@ function ViewAsSwitch({me}: {me: Me}) {
     if (busy || view === me.view_as || (view !== "analyst" && view !== "leadership")) return
     setBusy(true)
     try { await setViewAs(view); window.location.reload() }
-    catch (e) { toast.error(message(e)); setBusy(false) }
+    catch (e) { toast.error(message(e), {duration: Infinity}); setBusy(false) }  // an error stays until it is dismissed
   }
   return <>
     <DropdownMenuSeparator/>
@@ -134,7 +132,7 @@ function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
   const name = me.name.trim() || "Account"  // brief-008 FR-012: the name only, never a lane or role list
   return <DropdownMenu>
-    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink outline-none transition hover:bg-paper">
+    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink transition hover:bg-paper">
       {me.tester && <span className="hidden text-xs text-muted sm:inline">Test view ·</span>}
       <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{name}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
@@ -186,24 +184,27 @@ function forecastReviewLabel(status: string): string {
   return status.replace(/_/g, " ")
 }
 
+// A status tag: a word in an outline (with a check mark when it means approved), never a filled coloured pill.
+const TAG = "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium"
+
 function ForecastReport({run}: {run: ForecastRun}) {
   const report = run.report
   return <div className="space-y-4">
-    <article className="rounded-xl border border-rule bg-sheet p-6">
+    <article className="pa-panel rounded-xl border border-rule bg-sheet p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted">
         <span>{forecastReviewLabel(run.review_status)}{report.investigator_mode ? ` · ${report.investigator_mode === "ollama" ? "Agent (local model)" : "Scripted"}` : ""} · written report coming soon</span>
         <ClassLabel tab={`forecast.view.${run.view}`}/>
       </div>
-      {report.abstained && <p className={`${chip} mt-3 inline-block bg-amberbg text-amber`}>Attribution paused</p>}
+      {report.abstained && <p className={`${TAG} mt-3 border-amberline text-amber`}>Attribution paused</p>}
       <h2 className="mt-3 text-2xl">{report.headline}</h2>
       <p className="mt-1.5 text-sm text-muted">{labelTerritory(report.territory_id)} · week ending {labelWeek(report.week_ending)} · {report.window_weeks}-week window</p>
-      <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Variance",report.variance_trx]].map(([label,value])=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 text-lg font-medium tabular-nums">{formatNumber(value as number | null)}</dd></div>)}</dl>
+      <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Variance",report.variance_trx]].map(([label,value])=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums">{formatNumber(value as number | null)}</dd></div>)}</dl>
       {report.variance_pct !== null && report.variance_pct !== undefined && <p className="mt-3 text-sm text-muted tabular-nums">Variance {(report.variance_pct * 100).toFixed(1)}% · residual {formatNumber(report.residual_trx)} TRx · verification {report.verification?.verdict ?? "—"}</p>}
     </article>
-    <section className="rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">Drivers</h3>{report.drivers.length ? <ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={d.driver} className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span className="capitalize">{d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink">{formatNumber(d.impact_trx)} TRx</span> · {d.confidence}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">No driver attribution is shown because the data-quality gate paused this run.</p>}</section>
+    <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">Drivers</h3>{report.drivers.length ? <ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={d.driver} className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span className="capitalize">{d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink">{formatNumber(d.impact_trx)} TRx</span> · {d.confidence}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">No driver attribution is shown because the data-quality gate paused this run.</p>}</section>
     {!!report.caveats.length && <section className="rounded-xl border border-amberline bg-amberbg p-6"><h3 className="text-sm font-semibold text-amber">Caveats</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{report.caveats.map(c=><li key={c}>{c}</li>)}</ul></section>}
-    {!!report.what_to_check.length && <section className="rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">What to check next</h3><ul className="mt-2 divide-y divide-rule">{report.what_to_check.map(c=><li key={c.question} className="py-3 text-sm"><p className="font-medium">{c.question}</p><p className="mt-1 text-muted">{c.why}</p><p className="mt-1 text-xs text-muted">Owner: <span className="text-ink">{c.owner}</span></p></li>)}</ul></section>}
-    {run.view === "analyst" && run.stages && <section className="rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How this explanation was made</h3><ol className="mt-2 divide-y divide-rule">{run.stages.map(s=><li key={s.stage} className="flex items-baseline justify-between gap-3 py-2 text-sm"><span><span className="mr-2 tabular-nums text-muted">{s.stage}</span>{s.name}</span><span className="text-xs text-muted">{s.status}</span></li>)}</ol></section>}
+    {!!report.what_to_check.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">What to check next</h3><ul className="mt-2 divide-y divide-rule">{report.what_to_check.map(c=><li key={c.question} className="py-3 text-sm"><p className="font-medium">{c.question}</p><p className="mt-1 text-muted">{c.why}</p><p className="mt-1 text-xs text-muted">Owner: <span className="text-ink">{c.owner}</span></p></li>)}</ul></section>}
+    {run.view === "analyst" && run.stages && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How this explanation was made</h3><ol className="mt-2 divide-y divide-rule">{run.stages.map(s=><li key={s.stage} className="flex items-baseline justify-between gap-3 py-2 text-sm"><span><span className="mr-2 tabular-nums text-muted">{s.stage}</span>{s.name}</span><span className="text-xs text-muted">{s.status}</span></li>)}</ol></section>}
   </div>
 }
 
@@ -234,7 +235,7 @@ function StepList({progress}: {progress: { tool: string; args: Record<string, un
 
 type Kpis = { forecast: number; actual: number; miss: number; miss_pct?: number; scope: string }
 function KpiBoxes({k}: {k: Kpis}) {
-  return <div className="my-2"><dl className="grid grid-cols-3 divide-x divide-rule border-y border-rule">{([["Forecast", k.forecast], ["Actual", k.actual], ["Miss", k.miss]] as const).map(([label, value])=><div key={label} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 text-lg font-medium tabular-nums">{formatNumber(value)}</dd></div>)}</dl>
+  return <div className="my-2"><dl className="grid grid-cols-3 divide-x divide-rule border-y border-rule">{([["Forecast", k.forecast], ["Actual", k.actual], ["Miss", k.miss]] as const).map(([label, value])=><div key={label} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums">{formatNumber(value)}</dd></div>)}</dl>
     <p className="mt-1.5 text-xs text-muted">{k.scope}{k.miss_pct !== undefined ? ` · ${Math.abs(k.miss_pct).toFixed(1)}% ${k.miss < 0 ? "below" : "above"} forecast` : ""}</p></div>
 }
 
@@ -284,25 +285,25 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
   useEffect(()=>{ if (!drafting) return; const t = setInterval(()=>{ openReport(id).then(setR).catch(()=>{}) }, 2000); return ()=>clearInterval(t) }, [drafting, id])
   // The report follows its pins: when they changed, it redrafts by itself (once per change).
   useEffect(()=>{ if (!r || !editable || drafting || !r.stale) return; const key = `${r.version}:${(r.findings ?? []).map(f=>f.id).join(",")}`; if (autoDrafted.current === key) return; autoDrafted.current = key; void act(()=>draftReport(id)) }, [r?.stale, r?.version, drafting, editable])
-  if (!r) return <div className="space-y-3"><button className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={onBack}><Icon name="back"/>All reports</button>{error ? <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div> : <ListSkeleton/>}</div>
+  if (!r) return <div className="space-y-3"><button className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={onBack}><Icon name="back" className="h-4 w-4"/>All reports</button>{error ? <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div> : <ListSkeleton/>}</div>
   const unpin = async (runId: string, fid?: string) => { if (!fid) return; setBusy(true); setError(null); try { await unpinFollowup(runId, fid); setR(await openReport(id)) } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const reportPane = <div className="min-w-0 space-y-4">
-    <article className="rounded-xl border border-rule bg-sheet p-6">
+    <article className="pa-panel rounded-xl border border-rule bg-sheet p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-muted"><span>{forecastReviewLabel(r.review_status)}{r.version ? ` · version ${r.version}` : ""}{r.author ? ` · ${r.author === "model" ? "drafted by the model" : r.author === "code" ? "assembled by code" : "edited"}` : ""}</span><ClassLabel tab={analyst && !preview ? "forecast.view.analyst" : "forecast.view.leadership"}/></div>
       <h2 className="mt-2 text-2xl">{r.title}</h2>
       {!!r.sources.length && <p className="mt-1 text-xs text-muted">From: {r.sources.map(s=>s.scope).join(" · ")}</p>}
       {r.review_note && <p className="mt-3 rounded-lg bg-amberbg px-3 py-2 text-sm text-amber">Brand Manager: {r.review_note}</p>}
     </article>
-    {drafting && <div className="rounded-xl bg-agentbg px-5 py-4 text-sm text-agentdeep">{r.job?.step ?? "Drafting"}{r.model ? ` (${r.model})` : ""} · {draftSecs} s. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
+    {drafting && <div role="status" className="rounded-xl border border-rule bg-paper px-5 py-4 text-sm text-ink">{r.job?.step ?? "Drafting"}{r.model ? ` (${r.model})` : ""}<span aria-hidden="true"> · {draftSecs} s</span>. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
     {r.job?.status === "failed" && r.job.message && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{r.job.message} The last good version is kept.</div>}
     {!r.sections.length && !drafting && <p className="text-sm text-muted">No draft yet.</p>}
-    {r.sections.map((sec,i)=><section key={i} className="rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text} charts={r.charts} kpis={r.kpis} passages={r.blocks}/></section>)}
+    {r.sections.map((sec,i)=><section key={i} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text} charts={r.charts} kpis={r.kpis} passages={r.blocks}/></section>)}
     {editable && <section className={`${PANEL} space-y-3 p-5`}>
       <form onSubmit={e=>{ e.preventDefault(); const t = instruction.trim(); if (t) void act(async()=>{ const v = await draftReport(id, t); setInstruction(""); return v }) }} className="flex flex-col gap-2 sm:flex-row">
         <input value={instruction} onChange={e=>setInstruction(e.target.value)} maxLength={500} disabled={busy || drafting || !r.model} placeholder={r.model ? "Ask for a revision, e.g. shorter, lead with the Southeast, put the chart first" : "Revising by request needs a language model on the server"} className={`${FIELD} flex-1`}/>
         <button type="submit" disabled={busy || drafting || !r.model || !instruction.trim()} className={BTN2}>Revise</button>
       </form>
-      {!!r.versions?.length && <details><summary className="cursor-pointer text-xs text-muted">Versions ({r.versions.length})</summary><ol className="mt-2 space-y-1 text-xs">{[...r.versions].reverse().map(v=><li key={v.n} className="flex flex-wrap items-baseline justify-between gap-2"><span><span className="tabular-nums">{v.n}</span> · {v.author} · {v.instruction ?? "first draft"}</span>{v.n !== r.version && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>restoreReportVersion(id, v.n))} className="text-agentdeep hover:underline">Restore</button>}</li>)}</ol></details>}
+      {!!r.versions?.length && <details><summary className="cursor-pointer text-xs text-muted">Versions ({r.versions.length})</summary><ol className="mt-2 space-y-1 text-xs">{[...r.versions].reverse().map(v=><li key={v.n} className="flex flex-wrap items-baseline justify-between gap-2"><span><span className="tabular-nums">{v.n}</span> · {v.author} · {v.instruction ?? "first draft"}</span>{v.n !== r.version && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>restoreReportVersion(id, v.n))} className="text-primary hover:underline">Restore</button>}</li>)}</ol></details>}
       <div className="flex justify-end border-t border-rule pt-4"><button type="button" disabled={busy || drafting || !r.version || !!r.stale} onClick={()=>void act(()=>submitReport(id))} className={BTN}>Submit to Brand Manager</button></div>
     </section>}
     {!analyst && r.review_status === "pending_review" && <section className={`${PANEL} p-5`}>
@@ -321,7 +322,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
       <p className="mt-1 text-xs text-muted">Everything pinned on the question pages. The report is drafted from all of it and updates when the pins change.</p>
       {(r.runs ?? []).map(run=><div key={run.run_id} className="mt-4">
         <div className="flex items-baseline justify-between gap-2"><p className="min-w-0 text-xs font-medium text-muted">{run.question}</p>
-          <span className="flex shrink-0 gap-3 text-xs"><button type="button" onClick={()=>onOpenRun(run.run_id)} className="text-agentdeep hover:underline">Pin more</button>{run.run_id !== sourceIds[0] && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>removeReportRun(id, run.run_id))} className="text-muted hover:text-ink">Remove</button>}</span></div>
+          <span className="flex shrink-0 gap-3 text-xs"><button type="button" onClick={()=>onOpenRun(run.run_id)} className="text-primary hover:underline">Pin more</button>{run.run_id !== sourceIds[0] && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>removeReportRun(id, run.run_id))} className="text-muted hover:text-ink">Remove</button>}</span></div>
         <ul className="mt-1 divide-y divide-rule text-sm">{(r.findings ?? []).filter(f=>f.source.run_id === run.run_id).map(f=><li key={f.id} className="flex items-baseline justify-between gap-3 py-2"><span className="min-w-0"><span className="mr-2 text-xs text-muted">{f.id}</span>{f.kind === "run" ? "The investigation" : f.question ?? f.title}<span className="block text-xs text-muted">{KIND_LABEL[f.kind] ?? f.kind} · {f.scope}</span></span>{f.kind !== "run" && editable && <button type="button" disabled={busy || drafting} onClick={()=>void unpin(f.source.run_id, f.source.followup_id)} className="shrink-0 text-xs text-muted hover:text-ink">Unpin</button>}</li>)}</ul>
       </div>)}
       {editable && runs.filter(x=>!sourceIds.includes(x.forecast_run_id)).length > 0 && <div className="mt-5 flex flex-col gap-2 border-t border-rule pt-4 sm:flex-row">
@@ -331,7 +332,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
     </section>
   </aside>
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><button disabled={busy} className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={onBack}><Icon name="back"/>All reports</button>{canPreview && <ViewToggle value={preview ? "leadership" : "analyst"} busy={busy} onChange={v=>setPreview(v === "leadership")}/>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><button disabled={busy} className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={onBack}><Icon name="back" className="h-4 w-4"/>All reports</button>{canPreview && <ViewToggle value={preview ? "leadership" : "analyst"} busy={busy} onChange={v=>setPreview(v === "leadership")}/>}</div>
     {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
     {/* Contents left, report right (like source and preview); on a phone the report comes first. */}
     {editable ? <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]"><div className="order-2 min-w-0 lg:order-1">{contentsPane}</div><div className="order-1 min-w-0 lg:order-2">{reportPane}</div></div> : reportPane}
@@ -350,7 +351,7 @@ function ForecastReports({me, onOpenRun, approvedOnly=false}: {me: Me, onOpenRun
   return <div className="space-y-6">
     {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
     {analyst && !approvedOnly && <p className="text-sm text-muted">A report starts from a question: investigate it under New explanation, pin the follow-ups you want, then choose Create report. The model drafts from everything pinned, you ask for revisions, and code checks every number before the Brand Manager sees it.</p>}
-    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-agent"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
+    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
   </div>
 }
 
@@ -363,21 +364,21 @@ function ForecastFollowups({run, onAsk, onOpen, onPin}: {run: ForecastRun, onAsk
   const [sending,setSending] = useState(false)
   const send = async (q: string) => { if (q.trim().length < 3) return; setSending(true); try { await onAsk(q.trim()); setText("") } finally { setSending(false) } }
   const items = run.followups ?? []
-  return <section className="rounded-xl border border-rule bg-sheet p-6">
+  return <section className="pa-panel rounded-xl border border-rule bg-sheet p-6">
     <h3 className="text-sm font-semibold">Follow-up questions</h3>
     <p className="mt-1 text-xs text-muted">Ask about this answer: rerun it elsewhere, drop control territories, explain a decision, show it by week, plot it, or split an unexplained gap. Code computes every number. The investigation above always goes into this question's report; pin the follow-ups you want in it too.</p>
     {!!items.length && <ol className="mt-4 space-y-4">{items.map(f=><li key={f.id} className="text-sm">
       <p className="font-medium">{f.question}</p>
-      {f.status === "running" ? <p className="mt-1 text-muted">Working…</p> : <div className="mt-1 rounded-lg bg-paper px-3 py-2">{f.chart && f.op === "chart" ? <ForecastChart spec={f.chart}/> : <><SectionText text={f.answer ?? ""}/>{f.chart && <div className="mt-2"><ForecastChart spec={f.chart}/></div>}</>}<div className="mt-2 flex flex-wrap gap-4 text-xs">{f.child_run_id && <button type="button" onClick={()=>onOpen(f.child_run_id!)} className="text-agentdeep hover:underline">Open the full rerun</button>}
+      {f.status === "running" ? <p className="mt-1 text-muted">Working…</p> : <div className="mt-1 rounded-lg bg-paper px-3 py-2">{f.chart && f.op === "chart" ? <ForecastChart spec={f.chart}/> : <><SectionText text={f.answer ?? ""}/>{f.chart && <div className="mt-2"><ForecastChart spec={f.chart}/></div>}</>}<div className="mt-2 flex flex-wrap gap-4 text-xs">{f.child_run_id && <button type="button" onClick={()=>onOpen(f.child_run_id!)} className="text-primary hover:underline">Open the full rerun</button>}
         {onPin && f.status === "done" && f.op && PINNABLE_OPS.has(f.op) && (run.pins?.includes(f.id)
-          ? <button type="button" onClick={()=>void onPin(f.id, false)} className="text-agentdeep">Pinned to the report · unpin</button>
+          ? <button type="button" onClick={()=>void onPin(f.id, false)} className="text-primary">Pinned to the report · unpin</button>
           : <button type="button" onClick={()=>void onPin(f.id, true)} className="text-muted hover:text-ink">Pin to the report</button>)}</div></div>}
     </li>)}</ol>}
     <form onSubmit={e=>{ e.preventDefault(); void send(text) }} className="mt-4 flex flex-col gap-2 sm:flex-row">
       <input value={text} onChange={e=>setText(e.target.value)} maxLength={300} disabled={sending} placeholder="e.g. Drop South Central from the controls and rerun" className={`${FIELD} flex-1`}/>
       <button type="submit" disabled={sending || text.trim().length < 3} className={BTN}>{sending ? "Asking…" : "Ask"}</button>
     </form>
-    <div className="mt-2 flex flex-wrap gap-2">{FOLLOWUP_EXAMPLES.map(q=><button key={q} type="button" disabled={sending} onClick={()=>void send(q)} className="rounded-full border border-rule px-3 py-1 text-xs text-muted transition-colors hover:border-agent hover:text-ink disabled:opacity-60">{q}</button>)}</div>
+    <div className="mt-2 flex flex-wrap gap-2">{FOLLOWUP_EXAMPLES.map(q=><button key={q} type="button" disabled={sending} onClick={()=>void send(q)} className="rounded-lg border border-edge px-3 py-1.5 text-xs text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-60">{q}</button>)}</div>
   </section>
 }
 
@@ -388,29 +389,29 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
   const analystView = run.view === "analyst"
   if (run.job_status === "failed") return <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">The investigation failed: {run.job_error ?? "unknown error"}. Ask again, or rephrase the question.</div>
   return <div className="space-y-4">
-    <article className="rounded-xl border border-rule bg-sheet p-6">
+    <article className="pa-panel rounded-xl border border-rule bg-sheet p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted">
         <span>{forecastReviewLabel(run.review_status)}{report.investigator_mode ? ` · ${ENGINE_LABEL(report.investigator_mode)}` : ""}{report.summary_by === "model" ? " · summary worded by the model" : ""}</span>
         <ClassLabel tab={`forecast.view.${run.view}`}/>
       </div>
       {report.question && <p className="mt-3 text-sm text-muted">“{report.question}”</p>}
-      {report.abstained && !running && <p className={`${chip} mt-3 inline-block bg-amberbg text-amber`}>{report.out_of_scope ? "Out of scope" : "Attribution paused"}</p>}
+      {report.abstained && !running && <p className={`${TAG} mt-3 border-amberline text-amber`}>{report.out_of_scope ? "Out of scope" : "Attribution paused"}</p>}
       <h2 className="mt-2 text-2xl">{running ? "Investigating…" : report.headline}</h2>
       {!running && report.week_start && <p className="mt-1.5 text-sm text-muted">{labelTerritory(report.territory_id)} · {report.window_weeks === 1 ? `week of ${labelWeek(report.week_start)}` : `${report.window_weeks} weeks from ${labelWeek(report.week_start)}`}{report.set_aside_weeks?.length ? ` · ${report.set_aside_weeks.length} provisional week${report.set_aside_weeks.length > 1 ? "s" : ""} set aside` : ""}</p>}
-      {!running && report.forecast_trx !== null && report.forecast_trx !== undefined && <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Miss",report.variance_trx]].map(([label,value])=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 text-lg font-medium tabular-nums">{formatNumber(value as number | null)}</dd></div>)}</dl>}
+      {!running && report.forecast_trx !== null && report.forecast_trx !== undefined && <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Miss",report.variance_trx]].map(([label,value])=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums">{formatNumber(value as number | null)}</dd></div>)}</dl>}
       {!running && report.summary && report.summary.trim() !== report.headline.trim() && <p className="mt-4 text-sm leading-relaxed">{report.summary.startsWith(report.headline) ? report.summary.slice(report.headline.length).trim() : report.summary}</p>}
       {running && <div className="mt-4 space-y-3">
         <p className="text-sm text-muted">Working for {elapsed} s. Steps appear as they finish; every number is computed by code. With local Qwen, the steps marked "with the model" take the longest.</p>
         {analystView && !!run.progress?.length && <StepList progress={run.progress}/>}
       </div>}
     </article>
-    {!running && !!report.charts_shown?.length && <section className="space-y-3">{report.charts_shown.map(k=>report.charts?.[k] && <ForecastChart key={k} spec={report.charts[k]}/>)}{analystView && <p className="text-xs text-muted">{report.charts_by === "model" ? "Chart chosen by the model for this question; drawn from the answer's own numbers." : "Default chart for this kind of question; drawn from the answer's own numbers."}</p>}</section>}
-    {!running && !!report.drivers.length && <section className="rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">Drivers</h3><ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={(d.label ?? d.driver) + d.impact_trx} className="py-2.5 text-sm"><div className="flex flex-wrap items-baseline justify-between gap-2"><span>{d.label ?? d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink">{formatNumber(d.impact_trx)} TRx</span> · <span className={CONF_TONE[d.confidence] ?? ""}>{d.confidence}</span></span></div>{analystView && !!d.confidence_reasons?.length && <p className="mt-1 text-xs text-muted">{d.confidence_reasons.join("; ")}</p>}</li>)}
+    {!running && !!report.charts_shown?.length && <section className="space-y-3">{report.charts_shown.map(k=>report.charts?.[k] && <ForecastChart key={k} spec={report.charts[k]} standalone/>)}{analystView && <p className="text-xs text-muted">{report.charts_by === "model" ? "Chart chosen by the model for this question; drawn from the answer's own numbers." : "Default chart for this kind of question; drawn from the answer's own numbers."}</p>}</section>}
+    {!running && !!report.drivers.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">Drivers</h3><ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={(d.label ?? d.driver) + d.impact_trx} className="py-2.5 text-sm"><div className="flex flex-wrap items-baseline justify-between gap-2"><span>{d.label ?? d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink">{formatNumber(d.impact_trx)} TRx</span> · <span className={CONF_TONE[d.confidence] ?? ""}>{d.confidence}</span></span></div>{analystView && !!d.confidence_reasons?.length && <p className="mt-1 text-xs text-muted">{d.confidence_reasons.join("; ")}</p>}</li>)}
       {report.bias_trx !== null && report.bias_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm text-muted"><span>Usual forecast bias</span><span className="tabular-nums">{formatNumber(report.bias_trx)} TRx</span></li>}
       {report.residual_trx !== null && report.residual_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span>Unexplained residual</span><span className="tabular-nums">{formatNumber(report.residual_trx)} TRx</span></li>}</ul></section>}
-    {!running && report.sections?.map(sec=><section key={sec.id} className="rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text}/></section>)}
-    {!running && analystView && !!report.decisions?.length && <section className="rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How the investigation decided</h3><p className="mt-1 text-xs text-muted">Each decision, who made it and why. Reasons are words only: the agent cannot write a number.</p><ol className="mt-3 space-y-2">{report.decisions.map((d,i)=><li key={i} className="text-sm"><span className={`${chip} mr-2 ${d.by.startsWith("agent") ? "bg-agentbg text-agentdeep" : "bg-paper text-muted"}`}>{d.by}</span><span className="font-medium">{d.action.replace(/_/g, " ")}</span> <span className="text-muted">{d.target}</span><p className="mt-0.5 text-muted">{d.reason}</p></li>)}</ol></section>}
-    {!running && analystView && !!report.comparisons?.length && <details className="rounded-xl border border-rule bg-sheet p-6"><summary className="cursor-pointer text-sm font-semibold">Comparisons run ({report.comparisons.length})</summary><ul className="mt-3 space-y-3 text-xs">{report.comparisons.map(c=><li key={c.id}><p className="font-medium">{c.id} · {c.episode} · {c.method.replace(/_/g, " ")}{c.flags.length ? ` · flags: ${c.flags.join(", ")}` : ""}</p>{!!c.controls.length && <p className="text-muted">Controls: {c.controls.map(labelTerritory).join(", ")}</p>}<p className="text-muted tabular-nums">{Object.entries(c.stats).flatMap(([k,v])=>v && typeof v === "object" && !Array.isArray(v) ? Object.entries(v as Record<string, unknown>) : [[k,v] as [string, unknown]]).filter(([,v])=>v !== null && v !== undefined && typeof v !== "object").map(([k,v])=>`${k.replace(/_/g, " ")} ${String(v)}`).join(" · ")}</p></li>)}</ul></details>}
+    {!running && report.sections?.map(sec=><section key={sec.id} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text}/></section>)}
+    {!running && analystView && !!report.decisions?.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How the investigation decided</h3><p className="mt-1 text-xs text-muted">Each decision, who made it and why. Reasons are words only: the agent cannot write a number.</p><ol className="mt-3 space-y-2">{report.decisions.map((d,i)=><li key={i} className="text-sm"><span className={`${TAG} mr-2 ${d.by.startsWith("agent") ? "border-edge text-ink" : "border-rule text-muted"}`}>{d.by}</span><span className="font-medium">{d.action.replace(/_/g, " ")}</span> <span className="text-muted">{d.target}</span><p className="mt-0.5 text-muted">{d.reason}</p></li>)}</ol></section>}
+    {!running && analystView && !!report.comparisons?.length && <details className="pa-panel rounded-xl border border-rule bg-sheet p-6"><summary className="cursor-pointer text-sm font-semibold">Comparisons run ({report.comparisons.length})</summary><ul className="mt-3 space-y-3 text-xs">{report.comparisons.map(c=><li key={c.id}><p className="font-medium">{c.id} · {c.episode} · {c.method.replace(/_/g, " ")}{c.flags.length ? ` · flags: ${c.flags.join(", ")}` : ""}</p>{!!c.controls.length && <p className="text-muted">Controls: {c.controls.map(labelTerritory).join(", ")}</p>}<p className="text-muted tabular-nums">{Object.entries(c.stats).flatMap(([k,v])=>v && typeof v === "object" && !Array.isArray(v) ? Object.entries(v as Record<string, unknown>) : [[k,v] as [string, unknown]]).filter(([,v])=>v !== null && v !== undefined && typeof v !== "object").map(([k,v])=>`${k.replace(/_/g, " ")} ${String(v)}`).join(" · ")}</p></li>)}</ul></details>}
     {!running && analystView && report.verification?.checks && <p className="text-xs text-muted">Verification {report.verification.verdict}: {report.verification.checks.map(c=>`${c.detail} (${c.status})`).join("; ")}.</p>}
     {!running && analystView && run.job_status === "done" && onFollowup && onOpen && <ForecastFollowups run={run} onAsk={onFollowup} onOpen={onOpen} onPin={onPin}/>}
   </div>
@@ -418,22 +419,37 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
 
 // Each workspace keeps its sub-pages (a new run, the approved list) as tabs inside the page, not in the sidebar.
 // The third item of an option is its classification key (core-009); the current tab's label sits at the row's end.
-function SubTabs<T extends string>({label, value, options, onChange}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void}) {
+// Tabs by the APG pattern: one tab stop (the selected tab), Left/Right/Home/End move focus along the row, Enter or
+// Space selects. `panelId` (optional) names the tabpanel the page renders under the row; the selected tab labels it
+// (id `${panelId}-tab-${key}`). The sliding pill is decoration.
+function SubTabs<T extends string>({label, value, options, onChange, panelId}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string}) {
   const current = options.find(o => o[0] === value)
   const list = useRef<HTMLDivElement>(null)
-  const [bar,setBar] = useState<{left: number, width: number} | null>(null)
-  useLayoutEffect(()=>{  // the underline slides to the selected tab
+  const [bar,setBar] = useState<{left: number, top: number, width: number, height: number} | null>(null)
+  const measure = () => {  // the pill sits behind the selected tab, wherever the row has wrapped to
     const el = list.current?.querySelector<HTMLElement>('[aria-selected="true"]')
-    if (el) setBar({left: el.offsetLeft, width: el.offsetWidth})
-  },[value, options.length])
-  return <div className="flex items-end justify-between gap-4 border-b border-rule">
-    <div ref={list} role="tablist" aria-label={label} className="relative -mb-px flex min-w-0 gap-6 overflow-x-auto">
-      {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} onClick={() => onChange(key)}
-        className={`whitespace-nowrap pb-3 pt-1 text-sm font-medium transition-colors duration-200 ${value === key ? "text-ink" : "text-muted hover:text-ink"}`}>{text}</button>)}
-      {bar && <span aria-hidden="true" className="pa-tabbar absolute bottom-0 h-0.5 rounded-full bg-agent" style={{left: bar.left, width: bar.width}}/>}
+    if (el) setBar({left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight})
+  }
+  useLayoutEffect(measure,[value, options.length])
+  useEffect(()=>{ const row = list.current; if (!row || typeof ResizeObserver === "undefined") return; const ro = new ResizeObserver(measure); ro.observe(row); return ()=>ro.disconnect() },[])
+  const onKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const tabs = Array.from(list.current?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])
+    const at = tabs.indexOf(document.activeElement as HTMLElement)
+    if (at < 0) return
+    const to = e.key === "ArrowRight" ? (at + 1) % tabs.length : e.key === "ArrowLeft" ? (at + tabs.length - 1) % tabs.length : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : -1
+    if (to < 0) return
+    e.preventDefault(); tabs[to].focus()
+  }
+  return <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+    {/* The row wraps rather than scrolls, so at 320 px or 200% zoom no tab sits past an edge */}
+    <div ref={list} role="tablist" aria-label={label} onKeyDown={onKey} className="pa-noprint relative flex min-w-0 flex-wrap gap-0.5 sm:gap-1">
+      {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} tabIndex={value === key ? 0 : -1}
+        id={panelId ? `${panelId}-tab-${key}` : undefined} aria-controls={panelId && value === key ? panelId : undefined} onClick={() => onChange(key)}
+        className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primary" : "text-muted hover:text-ink"}`}>{text}</button>)}
+      {bar && <span aria-hidden="true" className="pa-tabbar absolute rounded-lg border border-edge bg-paper shadow-[0_3px_0_var(--color-slab)]" style={{left: bar.left, top: bar.top, width: bar.width, height: bar.height}}/>}
     </div>
     {current?.[2] && (
-      <div className="shrink-0 pb-3">
+      <div className="shrink-0">
         <ClassLabel tab={current[2]}/>
       </div>
     )}
@@ -442,9 +458,11 @@ function SubTabs<T extends string>({label, value, options, onChange}: {label: st
 
 // Analyst view / Leadership preview: a small neutral switch; the open view's classification is on the report itself.
 function ViewToggle({value, busy=false, onChange}: {value: "analyst" | "leadership", busy?: boolean, onChange: (v: "analyst" | "leadership") => void}) {
-  return <div role="tablist" aria-label="View" aria-busy={busy} className="inline-flex rounded-lg border border-rule p-0.5">
-    {(["analyst", "leadership"] as const).map(v => <button key={v} type="button" role="tab" aria-selected={value === v} disabled={busy || value === v} onClick={() => onChange(v)}
-      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-paper text-ink" : "text-muted hover:text-ink"}`}>
+  // Two toggle buttons in a labelled group (aria-pressed), not tabs: nothing here is a panel. The open view stays
+  // focusable; pressing it again does nothing. While busy, aria-disabled keeps the focused button where it is.
+  return <div role="group" aria-label="View" aria-busy={busy} className="inline-flex gap-0.5 rounded-lg border border-edge p-0.5">
+    {(["analyst", "leadership"] as const).map(v => <button key={v} type="button" aria-pressed={value === v} aria-disabled={busy || undefined} onClick={() => { if (!busy && value !== v) onChange(v) }}
+      className={`rounded-[10px] px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-primary font-semibold text-onprimary" : "text-muted hover:text-ink"} ${busy ? "cursor-not-allowed opacity-70" : ""}`}>
       {v === "analyst" ? "Analyst view" : "Leadership preview"}</button>)}
   </div>
 }
@@ -522,9 +540,9 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
     {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
     {selected ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={()=>setSelected(null)}><Icon name="back"/>All forecast questions</button>
+        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={()=>setSelected(null)}><Icon name="back" className="h-4 w-4"/>All forecast questions</button>
       </div>
-      {selected.parent_run_id && <button type="button" disabled={busy} onClick={()=>void open(selected.parent_run_id!)} className="text-xs text-agentdeep hover:underline">Follow-up rerun · back to the original report</button>}
+      {selected.parent_run_id && <button type="button" disabled={busy} onClick={()=>void open(selected.parent_run_id!)} className="text-xs text-primary hover:underline">Follow-up rerun · back to the original report</button>}
       {selected.kind === "question" ? <ForecastQuestionReport run={selected} onFollowup={analyst ? followup : undefined} onOpen={id=>void open(id)} onPin={analyst && selected.view === "analyst" ? pin : undefined}/> : <ForecastReport run={selected}/>}
       {analyst && selected.view === "analyst" && selected.kind === "question" && selected.job_status === "done" && !selected.report.out_of_scope && <div className="flex flex-wrap items-center justify-end gap-3"><span className="text-xs text-muted">{(selected.pins?.length ?? 0) + 1} item{(selected.pins?.length ?? 0) ? "s" : ""} pinned for the report</span><button type="button" disabled={busy} onClick={()=>void toReport()} className={BTN2}>{selected.report_id ? "Open report" : "Create report"}</button></div>}
       <AnswerFeedback lane="forecast" refId={selected.forecast_run_id} view={selected.view} agent={!!selected.report.investigator_mode && !/scripted/i.test(selected.report.investigator_mode)}/>
@@ -542,7 +560,7 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
       <p className="text-sm text-muted">Ask about forecast versus actual TRx for {context?.brand ?? "BXA Cardiovela"}: how big a miss is, where it sits, what drove it, and what to check.</p>
       <form onSubmit={onAsk} className={`${PANEL} space-y-4 p-6`}>
         <label className={LABEL}>Your question<textarea value={question} onChange={e=>{ setQuestion(e.target.value); setScope(null) }} disabled={busy} rows={2} maxLength={400} placeholder="e.g. Why did we miss forecast in the week of 2026-08-24?" className={`${FIELD} mt-0.5`}/></label>
-        <div className="flex flex-wrap gap-2">{FORECAST_EXAMPLES.map(q=><button key={q} type="button" disabled={busy} onClick={()=>{ setQuestion(q); void readScope(q) }} className="rounded-full border border-rule px-3 py-1 text-xs text-muted transition-colors hover:border-agent hover:text-ink disabled:opacity-60">{q}</button>)}</div>
+        <div className="flex flex-wrap gap-2">{FORECAST_EXAMPLES.map(q=><button key={q} type="button" disabled={busy} onClick={()=>{ setQuestion(q); void readScope(q) }} className="rounded-lg border border-edge px-3 py-1.5 text-xs text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-60">{q}</button>)}</div>
         {!scope && <div className="flex justify-end border-t border-rule pt-4"><button type="submit" disabled={busy || question.trim().length < 3} className={BTN}>{busy ? "Reading…" : "Read my question"}</button></div>}
       </form>
       {scope && <section className={`${PANEL} space-y-4 p-6 pa-rise`}>
@@ -566,7 +584,7 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
       </section>}
     </>}
     {!analyst && section === "workbench" && <p className="text-sm text-muted">Forecast reports waiting for your review are under the Reports tab.</p>}
-    <section><h3 className="text-sm font-semibold">{analyst ? "Your forecast questions" : "Waiting for your review"}</h3>{loading ? <div className="mt-2"><ListSkeleton/></div> : runs.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{runs.map(run=><li key={run.forecast_run_id}><button disabled={busy} onClick={()=>void open(run.forecast_run_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{run.question ?? run.headline}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{run.job_status === "running" ? "Investigating…" : run.job_status === "failed" ? "Failed" : <>{labelTerritory(run.territory_id)} · miss {formatNumber(run.variance_trx)} TRx · {forecastReviewLabel(run.review_status)}</>}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-agent"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{analyst ? "No forecast questions yet. Ask one above, or start from an example." : "Nothing is waiting for your review."}</p>}</section></>}
+    <section><h3 className="text-sm font-semibold">{analyst ? "Your forecast questions" : "Waiting for your review"}</h3>{loading ? <div className="mt-2"><ListSkeleton/></div> : runs.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{runs.map(run=><li key={run.forecast_run_id}><button disabled={busy} onClick={()=>void open(run.forecast_run_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{run.question ?? run.headline}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{run.job_status === "running" ? "Investigating…" : run.job_status === "failed" ? "Failed" : <>{labelTerritory(run.territory_id)} · miss {formatNumber(run.variance_trx)} TRx · {forecastReviewLabel(run.review_status)}</>}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{analyst ? "No forecast questions yet. Ask one above, or start from an example." : "Nothing is waiting for your review."}</p>}</section></>}
     </>}
   </div>
 }
@@ -578,14 +596,15 @@ const OPEN_KEY = "pa_sidebar_open"
 const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
 
 function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onTelemetry, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onAnyClick?: () => void}) {
-  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-paper text-ink" : "text-muted hover:bg-paper/60 hover:text-ink"}`
+  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-primarybg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   const item = (icon: IconName, text: string, active: boolean, go: () => void) =>
-    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-agent" : "group-hover:text-agent"}`}/>{label(text)}</button>
+    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-primary" : "group-hover:text-primary"}`}/>{label(text)}</button>
   return <div className="flex h-full flex-col">
     <div className="flex h-16 items-center gap-3 px-[14px]">
       <BrandMark/>
-      {expanded && <span className="pa-fade flex-1 truncate whitespace-nowrap font-serif text-[18px] font-medium">PharmAgentics</span>}
+      {/* The mark is decorative; the product's name is spoken once, by the text beside it or, in the narrow rail, here */}
+      {expanded ? <span className="pa-fade flex-1 truncate whitespace-nowrap font-display text-[18px] font-bold tracking-tight">PharmAgentics</span> : <span className="sr-only">PharmAgentics</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
       {onBriefing && item("briefings", "Weekly briefing", !forecast && !telemetry, onBriefing)}
@@ -597,6 +616,15 @@ function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onT
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
     </div>
   </div>
+}
+
+// The phone menu is a modal drawer: focus moves into it, Tab stays in it, Escape or the backdrop closes it, and focus
+// goes back to the button that opened it.
+function MobileNav({onClose, children}: {onClose: () => void, children: ReactNode}) {
+  const drawer = useRef<HTMLDivElement>(null)
+  useModalFocus(drawer, onClose)
+  return <div className="fixed inset-0 z-40 flex md:hidden"><button tabIndex={-1} aria-label="Close navigation" className="pa-fade absolute inset-0 bg-black/60" onClick={onClose}/>
+    <div ref={drawer} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide">{children}</div></div>
 }
 
 function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, onBriefingHome?: () => void, children: ReactNode, startInForecast?: boolean}) {
@@ -617,32 +645,35 @@ function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, o
   const goForecast = () => { setTelemetry(false); setForecast(true); setForecastSection(forecastHome) }
   const goTelemetry = () => setTelemetry(true)
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
+  const title = telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"
+  useEffect(()=>{ document.title = `${title} · PharmAgentics` },[title])  // 2.4.2: the tab names the workspace that is open
+  const content = useRef<HTMLElement>(null)
   // --rail is the width the sidebar occupies; .workspace-content uses it to centre on the whole page (0 on phones).
   return <FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
+    <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
       <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
     </aside>
-    {mobileNav && <div className="fixed inset-0 z-40 flex md:hidden"><button aria-label="Close navigation" className="pa-fade absolute inset-0 bg-black/60" onClick={()=>setMobileNav(false)}/>
-      <div className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide"><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></div></div>}
+    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
     <main className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <button type="button" onClick={toggleNav} aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
             className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="panel" className="h-5 w-5"/></button>
-          <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-base sm:text-lg">{telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"}</h1>
+          <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{title}</h1>
           {telemetry && <ClassLabel tab="evaluation.overview"/>}
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section className="min-h-0 flex-1 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecast && !telemetry && <ForecastWorkspace key={forecastSection} me={me} section={forecastSection} onSection={setForecastSection}/>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecast && !telemetry && <ForecastWorkspace key={forecastSection} me={me} section={forecastSection} onSection={setForecastSection}/>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
-    <Toaster theme="dark" position="bottom-right" toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
+    <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
   </div></FeedbackProvider>
 }
 
 function Centered({children}: {children: ReactNode}) {
-  return <div className="grid h-dvh place-items-center px-5 text-ink"><div className="max-w-md rounded-xl bg-sheet p-7 text-center border border-rule"><div className="flex justify-center"><BrandMark size="lg"/></div>{children}</div></div>
+  return <div className="grid h-dvh place-items-center px-5 text-ink"><div className="pa-panel max-w-md rounded-xl border border-rule bg-sheet p-7 text-center"><div className="flex justify-center"><BrandMark size="lg"/></div>{children}</div></div>
 }
 
 function InsightButton({briefId, view}: {briefId: string, view: "analyst" | "leadership"}) {
@@ -665,12 +696,12 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
       <h2 className="mt-2 text-2xl">{labelTerritory(brief.territory_id)}, {periodLabel(brief.week_start, brief.week_end)}</h2>
       <p className="mt-1.5 text-sm text-muted">{brief.brand_id} · data version {brief.data_version ?? "unavailable"}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {brief.review_status==="approved" ? <span className={`${chip} inline-flex items-center gap-1 bg-okbg text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Approved by the Commercial Analyst · {labelTime(brief.reviewed_at)}</span> : <span className={REVIEW_CHIP[brief.review_status][0]}>{REVIEW_CHIP[brief.review_status][1]}</span>}
-        {brief.abstained && <span className={`${chip} bg-amberbg text-amber`}>Unresolved findings</span>}
+        {brief.review_status==="approved" ? <span className={`${TAG} border-ok text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Approved by the Commercial Analyst · {labelTime(brief.reviewed_at)}</span> : <span className={`${TAG} border-edge text-ink`}>{REVIEW_CHIP[brief.review_status][1]}</span>}
+        {brief.abstained && <span className={`${TAG} border-amberline text-amber`}>Unresolved findings</span>}
       </div>
       {brief.process_summary && <p className="mt-3 text-xs text-muted">{processLine(brief.process_summary, brief.reviewed_at)}</p>}
     </div>
-    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink">{brief.summary}</pre>}</div>
+    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink">{brief.summary}</pre>}</div>
     <div className="border-t border-rule px-6 py-4 text-xs text-muted">Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst.</div>
   </article>
   <AnswerFeedback lane="briefing" refId={brief.brief_id} view="leadership" agent={brief.engine==="agent"}/></>
@@ -680,7 +711,8 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
 function Greeting({detail}: {detail?: string}) {
   const h = new Date().getHours()
   const part = h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"
-  return <div className="pa-fade mb-7"><h2 className="text-[1.75rem] leading-tight">{part}.</h2>{detail && <p className="mt-1 text-sm text-muted">{detail}</p>}</div>
+  // A greeting is not a section heading, so it is a paragraph; the h1 in the header names the page.
+  return <div className="pa-fade mb-7"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}.</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
 }
 
 // An agent job's real progress: the server reports queued, then running; the result arrives when it is done and
@@ -698,10 +730,10 @@ function JobProgress({kind, status, note}: {kind: "triage" | "brief", status: "q
   const at = status === "queued" ? 0 : 1
   return <section role="status" aria-live="polite" className={`${PANEL} pa-fade p-6`}>
     <div className="flex items-baseline justify-between gap-3"><h3 className="text-sm font-semibold">{kind === "triage" ? "Preparing the plan" : "Writing the briefing"}</h3><span className="text-xs tabular-nums text-muted">{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</span></div>
-    <ol className="mt-4 space-y-3">{steps.map(([id, text], i) => <li key={id} className={`flex items-center gap-3 text-sm transition-colors duration-300 ${i < at ? "text-muted" : i === at ? "text-ink" : "text-muted/60"}`}>
+    <ol className="mt-4 space-y-3">{steps.map(([id, text], i) => <li key={id} className={`flex items-center gap-3 text-sm transition-colors duration-300 ${i < at ? "text-muted" : i === at ? "font-medium text-ink" : "text-muted"}`}>
       <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center">
-        {i < at ? <svg viewBox="0 0 24 24" className="pa-draw h-4 w-4 text-agent" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-          : i === at ? <span className="h-2 w-2 rounded-full bg-agent pa-pulse"/> : <span className="h-1.5 w-1.5 rounded-full bg-rule"/>}
+        {i < at ? <svg viewBox="0 0 24 24" className="pa-draw h-4 w-4 text-primary" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          : i === at ? <span className="h-2 w-2 rounded-full bg-primary pa-pulse"/> : <span className="h-2 w-2 rounded-full border border-edge"/>}
       </span>{text}</li>)}</ol>
     {note && <p className="mt-4 text-xs text-muted">{note}</p>}
   </section>
@@ -720,7 +752,7 @@ function PublishedList({onOpen}: {onOpen: (id: string) => void}) {
   if (!items.length) return <p className="text-sm text-muted">No approved briefings yet. A briefing appears here once the Commercial Analyst approves it.</p>
   return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={()=>onOpen(b.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
     <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
-    <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-agent"/></button></li>)}</ul>
+    <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary"/></button></li>)}</ul>
 }
 
 function ReviewPanel({result, onChange}: {result: BriefingResult, onChange: (r: BriefingResult) => void}) {
@@ -739,9 +771,9 @@ function ReviewPanel({result, onChange}: {result: BriefingResult, onChange: (r: 
     {rejecting ? <div className="mt-3 space-y-2">
       <label className="block text-xs font-medium text-muted" htmlFor="reject-reason">Reason for rejecting (required)</label>
       <textarea id="reject-reason" value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} rows={2} className={FIELD}/>
-      <div className="flex justify-end gap-2"><button onClick={()=>setRejecting(false)} className={BTN2}>Cancel</button><button disabled={busy || !reason.trim()} onClick={()=>void decide("rejected")} className={`${BTN2} border-neg/50 text-neg hover:bg-neg/10`}>Reject briefing</button></div>
+      <div className="flex justify-end gap-2"><button onClick={()=>setRejecting(false)} className={BTN2}>Cancel</button><button disabled={busy || !reason.trim()} onClick={()=>void decide("rejected")} className={`${BTN2} border-neg text-neg! hover:bg-paper`}>Reject briefing</button></div>
     </div> : <div className="mt-3 flex flex-wrap justify-end gap-2">
-      <button disabled={busy || result.review_status==="rejected"} onClick={()=>setRejecting(true)} className={`${BTN2} text-neg`}>Reject…</button>
+      <button disabled={busy || result.review_status==="rejected"} onClick={()=>setRejecting(true)} className={`${BTN2} text-neg!`}>Reject…</button>
       <button disabled={busy || result.review_status==="approved"} onClick={()=>void decide("approved")} className={BTN}>Approve for the Brand Director</button>
     </div>}
     {error && <p role="alert" className="mt-2 text-xs text-amber">{error}</p>}
@@ -766,12 +798,12 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
   const changed = decision.stories.join() !== start.join()
   const over = plan.stories.filter(c=>c.proposed==="over_cap")
   return <div className="space-y-5 pa-rise">
-    <div className="rounded-xl bg-sheet px-6 py-5 border border-rule">
-      <div className="flex flex-wrap items-center gap-2"><span className={`${chip} bg-humanbg text-human`}>Triage review · your decision</span><span className={`${chip} bg-paper text-muted border border-rule`}>Proposed by code</span></div>
+    <div className="pa-panel rounded-xl bg-sheet px-6 py-5 border border-rule">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"><span className="font-semibold uppercase tracking-[0.06em] text-human">Triage review · your decision</span><span className="text-muted">Proposed by code</span></div>
       <h2 className="mt-3 text-lg font-semibold">What should this brief investigate?</h2>
       <p className="mt-1 text-sm text-muted">Code screened every territory and proposes the stories below, ranked by impact. Keep, drop or reorder them; investigation runs only on what you approve, in your order.</p>
       <details className="mt-4 rounded-xl bg-paper p-4 text-sm"><summary className="cursor-pointer font-medium">What stages 1 to 3 found (data health, restatements, KPIs)</summary><pre className="mt-3 whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-ink">{plan.context}</pre></details>
-      {plan.engine==="agent" && plan.state==="TRIAGE_REVIEW" && <div className={`mt-4 rounded-xl p-4 text-sm ${plan.flagged?"bg-amberbg text-amber":"bg-agentbg text-agentdeep"}`}>
+      {plan.engine==="agent" && plan.state==="TRIAGE_REVIEW" && <div className={`mt-4 rounded-xl p-4 text-sm ${plan.flagged?"bg-amberbg text-amber":"border border-rule bg-paper text-ink"}`}>
         <p className="font-medium">{plan.flagged ? "The manager's plan is flagged for your review" : "The manager kept code's plan"}<span className="font-normal"> · agent ({plan.model})</span></p>
         {plan.flags?.map((f,i)=><p key={i} className="mt-1">{f}</p>)}
         {plan.corrections?.map((f,i)=><p key={`c${i}`} className="mt-1 text-ink"><span className="font-medium">Rule applied by code:</span> {f}</p>)}
@@ -779,21 +811,21 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
       </div>}
     </div>
     {plan.state==="OUT_OF_SCOPE" ? <div className="rounded-xl bg-amberbg px-6 py-5 text-sm text-amber ring-1 ring-amberline"><p className="font-medium">The data cannot answer this question as asked.</p><p className="mt-1">{plan.scope}</p><p className="mt-2 text-ink">The brief will state this and give the scripted brief for the week. No investigation runs.</p></div> :
-    plan.state!=="TRIAGE_REVIEW" ? <div className="rounded-xl bg-sheet px-6 py-5 text-sm border border-rule">{plan.promotion_review ? "The review will compare coverage lapses and recoveries across the release." : plan.state==="CALENDAR" ? "Calendar week: lower volume is expected, so code opens no story." : "Routine week: code found no material change, so there is no story to triage."}</div> :
-    <ol className="space-y-3">{order.map((id, i)=>{ const c=byId.get(id)!; const on=kept.has(id); return <li key={id} className={`rounded-xl bg-sheet p-5 ring-1 transition ${on?"ring-rule":"opacity-60 ring-rule"}`}>
+    plan.state!=="TRIAGE_REVIEW" ? <div className="pa-panel rounded-xl bg-sheet px-6 py-5 text-sm border border-rule">{plan.promotion_review ? "The review will compare coverage lapses and recoveries across the release." : plan.state==="CALENDAR" ? "Calendar week: lower volume is expected, so code opens no story." : "Routine week: code found no material change, so there is no story to triage."}</div> :
+    <ol className="space-y-3">{order.map((id, i)=>{ const c=byId.get(id)!; const on=kept.has(id); return <li key={id} className={`${on ? PANEL : "rounded-xl border border-dashed border-edge bg-sheet"} p-5`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0"><div className="text-[11px] uppercase tracking-widest text-muted">{on ? `Story ${decision.stories.indexOf(id)+1}` : "Left out"} · code rank {c.rank}</div><h3 className="mt-1 text-base font-semibold">{c.title}</h3></div>
+        <div className="min-w-0"><div className="text-xs uppercase tracking-widest text-muted">{on ? `Story ${decision.stories.indexOf(id)+1}` : "Left out"} · code rank {c.rank}</div><h3 className={`mt-1 text-base font-semibold ${on ? "" : "text-muted"}`}>{c.title}</h3></div>
         <div className="flex shrink-0 items-center gap-1">
-          <button aria-label={`Move ${c.title} up`} disabled={i===0} onClick={()=>move(id,-1)} className="rounded-lg px-2 py-1 text-sm border border-rule disabled:opacity-30">↑</button>
-          <button aria-label={`Move ${c.title} down`} disabled={i===order.length-1} onClick={()=>move(id,1)} className="rounded-lg px-2 py-1 text-sm border border-rule disabled:opacity-30">↓</button>
-          <label className="ml-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={on} onChange={()=>toggle(id)}/>Investigate</label>
+          <button aria-label={`Move ${c.title} up`} disabled={i===0} onClick={()=>move(id,-1)} className="grid h-9 w-9 place-items-center rounded-lg border border-edge text-sm transition-colors hover:bg-paper disabled:border-rule disabled:text-muted">↑</button>
+          <button aria-label={`Move ${c.title} down`} disabled={i===order.length-1} onClick={()=>move(id,1)} className="grid h-9 w-9 place-items-center rounded-lg border border-edge text-sm transition-colors hover:bg-paper disabled:border-rule disabled:text-muted">↓</button>
+          <label className="ml-2 flex min-h-9 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={on} onChange={()=>toggle(id)} className="h-4 w-4"/>Investigate</label>
         </div>
       </div>
       <p className="mt-3 text-sm leading-relaxed">{c.what_moved}</p>
-      {c.manager && <p className="mt-2 rounded-lg bg-agentbg px-3 py-2 text-[13px] text-agentdeep"><span className="font-medium">Manager (agent):</span> {c.manager.keep ? `keeps it as story ${c.manager.position}` : `drops it${c.manager.why ? `: ${c.manager.why}` : ""}`}{c.manager.hypotheses.length ? ` · tests in this order: ${c.manager.hypotheses.join(", ")}` : ""}</p>}
+      {c.manager && <p className="mt-2 rounded-lg bg-paper px-3 py-2 text-[13px] text-ink"><span className="font-medium">Manager (agent):</span> {c.manager.keep ? `keeps it as story ${c.manager.position}` : `drops it${c.manager.why ? `: ${c.manager.why}` : ""}`}{c.manager.hypotheses.length ? ` · tests in this order: ${c.manager.hypotheses.join(", ")}` : ""}</p>}
       <dl className="mt-3 grid gap-x-4 gap-y-2 text-[13px] sm:grid-cols-[110px_1fr]">{QUESTIONS.map(([k,label])=><div key={k} className="contents"><dt className="font-medium text-muted">{label}</dt><dd className="leading-relaxed">{c[k]}</dd></div>)}</dl>
     </li>})}</ol>}
-    {(over.length>0 || plan.dropped.length>0) && <div className="rounded-xl bg-sheet/70 px-6 py-5 text-sm border border-rule">
+    {(over.length>0 || plan.dropped.length>0) && <div className={`${PANEL} px-6 py-5 text-sm`}>
       <h3 className="font-semibold">Dropped by code</h3><p className="mt-1 text-xs text-muted">These follow the rules; they cannot be added back to this brief.</p>
       <ul className="mt-3 space-y-1.5">{over.map(c=><li key={c.id}><span className="font-medium">{c.title}</span> <span className="text-muted">· over the story cap of this brief</span></li>)}{plan.dropped.map(d=><li key={d.territory}><span className="font-medium">{d.territory}</span> <span className="text-muted">· {d.reason}</span></li>)}</ul>
     </div>}
@@ -805,10 +837,10 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
 }
 
 // brief-002 US7: who did each of the seven stages (Briefing Architecture §6 states, §9 modes).
-const ACTOR = {code:["Code","bg-paper text-ink border border-rule"], agent:["Agent","bg-agentbg text-agentdeep"], llm:["LLM step","bg-amberbg text-amber"], human:["Person","bg-humanbg text-human"]} as const
+const ACTOR = {code:["Code","border-edge text-ink"], agent:["Agent","border-edge text-ink"], llm:["LLM step","border-amberline text-amber"], human:["Person","border-human/60 text-human"]} as const
 
 function FlowPanel({flow, triage}: {flow: Stage[], triage?: TriageRecord | null}) {
-  return <details className="rounded-xl bg-sheet px-6 py-5 border border-rule">
+  return <details className="pa-panel rounded-xl bg-sheet px-6 py-5 border border-rule">
     <summary className="cursor-pointer text-sm font-semibold">How this brief was made</summary>
     <ol className="mt-4 space-y-3">{flow.map(s=><li key={s.stage} className="grid gap-1 sm:grid-cols-[28px_1fr]">
       <span className="font-mono text-xs text-muted">{s.stage}</span>
@@ -831,8 +863,8 @@ function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceI
     const claim: Claim | undefined = result.claims[sp.claim]
     if (!claim || sp.start < pos || result.answer.slice(sp.start, sp.end) !== claim.value) return
     parts.push(result.answer.slice(pos, sp.start))
-    parts.push(<button key={i} type="button" onClick={()=>onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
-      className="rounded-sm font-medium underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-agentdeep">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+    parts.push(<button key={i} type="button" onClick={()=>onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`} aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
+      className="rounded-sm font-medium underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[9px] font-normal text-primary">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(result.answer.slice(pos))
@@ -861,12 +893,12 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted"><span>{result.engine==="agent" ? "Agent team · experimental" : "Scripted"}</span><ClassLabel tab="briefing.view.analyst"/></div>
         <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : result.week_end && result.week_end > result.week_start ? `weeks ${labelWeek(result.week_start)} to ${labelWeek(result.week_end)}` : `week of ${labelWeek(result.week_start)}`}</h2>
         <p className="mt-1.5 text-sm text-muted">{result.brand_id}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <span className={`${chip} bg-amberbg text-amber`}>Unresolved findings</span>}</div>
+        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <span className={`${chip} border-amberline text-amber`}>Unresolved findings</span>}</div>
       </div>
-      <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk} definition={result.definition} labelWeek={labelWeek}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
+      <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk} definition={result.definition} labelWeek={labelWeek}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
         <p className="mt-4 text-[11px] text-muted">Each underlined number is a claim: click it, or its source number, to open the query and record behind it.</p></div>
       <section className="flex flex-wrap items-center justify-between gap-2 border-t border-rule bg-paper/60 px-6 py-3">
-        {result.evidence.length>0 ? <button className="flex items-center gap-2 text-xs font-medium text-agentdeep underline-offset-4 hover:underline" onClick={()=>setEvidenceId(result.evidence[0].id)}><Icon name="evidence"/>All {result.evidence.length} sources ({result.claims.length} numbers)</button> : <span className="text-xs text-muted">No numeric claims in this brief.</span>}
+        {result.evidence.length>0 ? <button className="flex items-center gap-2 text-xs font-medium text-primary underline-offset-4 hover:underline" onClick={()=>setEvidenceId(result.evidence[0].id)}><Icon name="evidence"/>All {result.evidence.length} sources ({result.claims.length} numbers)</button> : <span className="text-xs text-muted">No numeric claims in this brief.</span>}
         <span className="rounded bg-sheet px-2 py-1 font-mono text-[11px] text-muted border border-rule" title="Pinned data version">{result.data_version??"Version unavailable"}</span>
       </section>
       <ReviewPanel result={result} onChange={onChange}/>
@@ -1025,16 +1057,22 @@ function AnalystApp({me}: {me: Me}) {
     } catch(e) {if(active()) setRunError(message(e))} finally {if(active()) setPending(false)}
   }
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
+  const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : view==="how" ? "how" : "new"
+  // When the scope form gives way to the plan or the brief, the button that was pressed is gone: put focus on the
+  // first control of the new view, so a keyboard user does not start again from the top of the page.
+  const scopeBack = useRef<HTMLButtonElement>(null)
+  useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
   return <Shell me={me} onBriefingHome={()=>setView("overview")}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || view==="approved" || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || view==="approved" || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="pa-noprint flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label></div><SubTabs label="Weekly briefing" value={view==="approved" || view==="overview" || view==="how" ? view : "new"} onChange={t=>setView(t==="approved" || t==="overview" || t==="how" ? t : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/></div>
+      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>setView(t==="approved" || t==="overview" || t==="how" ? t : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/></div>
     {contextError && <div role="alert" className="workspace-content py-4 text-sm text-amber">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></div>}
-    {context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
+    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
+        <h2 className="sr-only">New briefing</h2>
         <fieldset className="space-y-4" aria-label="Brief definition">
           <div><h3 className="text-sm font-semibold">What the brief counts</h3><p className="mt-1 text-xs text-muted">Six choices, each pre-selected. The brief states them in its Assumptions, and the numbers follow them.</p></div>
           <PeriodPicker first={week} last={weekEnd} weeks={releaseWeeks} disabled={!selectable || reviewPromotion} onFirst={w=>{ if(weekEnd===week) setWeekEnd(w); setWeek(w) }} onLast={setWeekEnd} labelWeek={labelWeek}/>
@@ -1062,7 +1100,7 @@ function AnalystApp({me}: {me: Me}) {
     </div> : view==="how" ? <div key="how" className="workspace-content pa-fade py-8"><HowItWorks/></div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
+        <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
         {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · {requestScope.promotion ? "release-wide Promotion review" : requestScope.weekEnd > requestScope.week ? `weeks ${labelWeek(requestScope.week)} to ${labelWeek(requestScope.weekEnd)}` : `week of ${labelWeek(requestScope.week)}`}</span>}
       </div>
       {pending && (jobState
@@ -1073,7 +1111,7 @@ function AnalystApp({me}: {me: Me}) {
       {runError && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber"><strong>{view==="triage" ? "The triage plan could not be built." : "Briefing could not be generated."}</strong><p className="mt-2">{runError}</p><p className="mt-2">No mock result was substituted.</p>{view==="result" && plan && <button className="mt-2 underline" onClick={()=>{setRunError(null);setView("triage")}}>Back to the triage plan</button>}</div>}
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
       {view==="result" && result && <AnalystBrief result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
-    </div>}
+    </div>}</div>
     {brand && view!=="approved" && view!=="how" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
       onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
@@ -1092,7 +1130,7 @@ function LeaderApp({me}: {me: Me}) {
   return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null);setTab("list")}}>
     <div className="workspace-content space-y-6 py-8 sm:py-10">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
-        <button className="flex items-center gap-2 text-sm text-agentdeep hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
+        <button className="flex items-center gap-2 text-sm text-primary hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
         {brief && <><SummaryCard brief={brief}/><InsightButton briefId={brief.brief_id} view="leadership"/></>}
@@ -1115,7 +1153,7 @@ export default function App() {
     return <Centered>
       <h1 className="mt-5 text-lg font-semibold">No access</h1>
       <p className="mt-2 text-sm text-muted">Your account has no authorized workspace. Ask the project owner to assign a workspace role and brand access.</p>
-      <a className="mt-5 inline-block text-sm font-medium text-agentdeep hover:underline" href="/auth/logout">Sign out</a>
+      <a className="mt-5 inline-block text-sm font-medium text-primary hover:underline" href="/auth/logout">Sign out</a>
     </Centered>
   }
   return briefing.actions.includes("run") ? <AnalystApp me={me}/> : <LeaderApp me={me}/>

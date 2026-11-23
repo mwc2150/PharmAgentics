@@ -1,6 +1,7 @@
 {
   "realm": "pharmagentics",
-  "displayName": "PharmAgentics UAT",
+  "displayName": "PharmAgentics",
+  "loginTheme": "pharmagentics",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,

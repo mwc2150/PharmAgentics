@@ -1,3 +1,5 @@
+import { useEffect, useRef, type RefObject } from "react"
+
 /* Visual identity and SVG icon geometry. One icon set, outline style, stroke 1.6 next to 14px text.
    Always pass a size class (h-4 w-4, h-5 w-5): a className without one lets the SVG grow to fill its row. */
 const PATHS={
@@ -19,9 +21,40 @@ export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string
   return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATHS[name]}/></svg>
 }
 
-/* The "Pa" mark (public/pa-mark.png): the product owner's artwork, with the "a" lowered like a subscript, the
-   way Rx is set. The source is 64px; ask for a vector before using it larger than the sign-in card. */
+/* The "Pa" mark (public/pa-mark.svg): styled like a periodic-table tile, with the version "v1" where an element's
+   number would sit. Space Grotesk outlines on lime with the lime-button shadow; it scales to any size.
+   public/favicon.svg drops the version for 16px. */
 const MARK={sm:"h-9 w-9",lg:"h-14 w-14"} as const
 export function BrandMark({size="sm"}:{size?:keyof typeof MARK}){
-  return <img src="/pa-mark.png" alt="" width={64} height={64} draggable={false} className={`shrink-0 select-none ${MARK[size]}`}/>
+  return <img src="/pa-mark.svg" alt="" width={64} height={64} draggable={false} className={`shrink-0 select-none ${MARK[size]}`}/>
+}
+
+/* A modal drawer or dialog: on open, focus moves inside; Tab and Shift+Tab wrap within it; Escape closes it; on close,
+   focus returns to the control that opened it (WCAG 2.4.3, 2.1.2). Call it from the component that renders the
+   drawer, with a ref to the drawer's root element (give that element tabIndex={-1} so it can take focus if it holds
+   nothing focusable). `onClose` may change between renders. */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])'
+export function useModalFocus(root: RefObject<HTMLElement | null>, onClose: () => void) {
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    const el = root.current
+    if (!el) return
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const items = () => Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(n => n.getClientRects().length > 0)
+    ;(items()[0] ?? el).focus()
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); close.current(); return }
+      if (e.key !== "Tab") return
+      if (!el.getClientRects().length) return  // hidden by a breakpoint (the phone drawer on a wide window): leave Tab alone
+      const list = items()
+      if (!list.length) { e.preventDefault(); el.focus(); return }
+      const first = list[0], last = list[list.length - 1], at = document.activeElement
+      if (!el.contains(at)) { e.preventDefault(); (e.shiftKey ? last : first).focus() }
+      else if (e.shiftKey && at === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus() }
+    }
+    document.addEventListener("keydown", key)
+    return () => { document.removeEventListener("keydown", key); if (opener?.isConnected) opener.focus() }
+  }, [root])
 }

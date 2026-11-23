@@ -7,7 +7,7 @@ import type { Comparison } from "./agent/briefingApi"
 // weeks as a longer period has). The same rule runs in the eval, so a brief made here matches what is scored.
 export const DEFAULT_COMPARISON_WEEKS = 4
 
-const field = "block w-full rounded-lg border border-rule bg-sheet px-3 py-2 text-sm text-ink disabled:opacity-50"
+const field = "block w-full rounded-lg border border-edge bg-sheet px-3 py-2 text-sm text-ink placeholder:text-muted disabled:opacity-50"
 
 function shiftWeek(week: string, count: number): string {
   const date = new Date(`${week}T00:00:00Z`)
@@ -127,7 +127,7 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
         </div>
       : <ol className="space-y-2">{value.map(row)}</ol>}
     <div className="flex flex-wrap items-center gap-3 text-xs">
-      <button type="button" className="text-agentdeep hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined}
+      <button type="button" className="text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined}
         onClick={() => unused && onChange(value.length === 0 ? [blank(unused)] : [...value, blank(unused)])}>
         {value.length === 0 ? "Choose a different comparison" : "Add another comparison"}</button>
       {value.length > 1 && <span className="text-muted">The first is the primary. The others add labelled figures beside it.</span>}

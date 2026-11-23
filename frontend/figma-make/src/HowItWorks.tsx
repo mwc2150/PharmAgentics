@@ -8,7 +8,8 @@ import { KIND_NAME, KIND_STYLE } from "./Timeline"
 // engine. Prompts arrive only for analyst roles; the server never sends them to leadership, so this page cannot show them.
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
-const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
+// An outlined word, never a filled pill (DESIGN.md).
+const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
 const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 
 function show(row: CompareRow, v: number | null): string {

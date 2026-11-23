@@ -7,9 +7,9 @@ import { asList, proposedChoices, type DefinitionChoices, type DefinitionField }
 // "Read my question" asks the API for a proposed scope (a configured model proposes, code validates, the rules read
 // it otherwise) and fills the form. Nothing runs on a proposal: the analyst checks the form and builds as usual.
 
-const FIELD = "w-full min-w-0 rounded-lg border border-rule bg-paper px-3 py-2.5 text-sm text-ink disabled:opacity-60"
+const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-muted disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
-const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-rule px-4 py-2 text-sm font-medium text-ink transition-[background-color,transform] duration-150 hover:bg-paper active:scale-[0.98] disabled:cursor-not-allowed disabled:text-muted"
+const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)] disabled:cursor-not-allowed disabled:text-muted disabled:shadow-none"
 
 /** An error for the chosen period, or null. The weeks are the release's Mondays. */
 export function periodError(first: string, last: string, weeks: string[]): string | null {
@@ -91,7 +91,8 @@ export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, la
   const newestFirst = [...weeks].reverse()
   return <div className="grid gap-4 sm:grid-cols-2">
     <label className={LABEL}>First week
-      <select className={FIELD} value={first} onChange={event => onFirst(event.target.value)} disabled={disabled}>
+      <select className={FIELD} value={first} onChange={event => onFirst(event.target.value)} disabled={disabled}
+        aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined}>
         {newestFirst.map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
       </select>
     </label>
@@ -102,7 +103,7 @@ export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, la
           {newestFirst.filter(w => w >= first).map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
         </select>
       </label>
-      {error && <p id="period-error" role="status" className="text-xs text-amber">{error}</p>}
+      <p id="period-error" role="status" className="text-xs text-amber">{error}</p>
     </div>
   </div>
 }
@@ -140,8 +141,9 @@ export function QuestionReader({ question, onQuestion, brand, context, disabled,
       <button type="button" onClick={() => void run()} disabled={disabled || busy || !context || typed.length < 3} className={BTN2}>{busy ? "Reading…" : "Read my question"}</button>
       <span className="text-xs text-muted">Fills the weeks, territory, comparison and the other choices from your question. You confirm them.</span>
     </div>
-    {read && <div role="status" className="text-xs text-muted"><p><span className="font-medium text-ink">{readByLabel(read)}.</span> Check the form, then generate the briefing.</p>
-      {!!read.notes.length && <ul className="mt-1 list-disc space-y-0.5 pl-5">{read.notes.map(n => <li key={n}>{n}</li>)}</ul>}</div>}
+    {/* The region is always in the page, so a screen reader announces the text when it arrives. */}
+    <div role="status" className="text-xs text-muted">{read && <><p><span className="font-medium text-ink">{readByLabel(read)}.</span> Check the form, then generate the briefing.</p>
+      {!!read.notes.length && <ul className="mt-1 list-disc space-y-0.5 pl-5">{read.notes.map(n => <li key={n}>{n}</li>)}</ul>}</>}</div>
     {error && <p role="alert" className="text-xs text-amber">{error}</p>}
   </div>
 }

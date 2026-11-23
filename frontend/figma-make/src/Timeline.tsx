@@ -6,12 +6,13 @@ import type { Claim, RunEvent } from "./agent/briefingApi"
 // in the memo, and a claim opened in the memo names its producer through `producers`. Every word and number shown
 // here was written by the server's code from a tool result; the UI adds none.
 
-const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
+// An outlined word, never a filled pill (DESIGN.md).
+const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
 export const KIND_STYLE: Record<RunEvent["kind"], string> = {
-  agent: "bg-agentbg text-agentdeep",
-  llm: "bg-amberbg text-amber",
-  code: "bg-paper text-ink border border-rule",
-  person: "bg-humanbg text-human",
+  agent: "border-edge text-ink",
+  llm: "border-amberline text-amber",
+  code: "border-edge text-ink",
+  person: "border-human/60 text-human",
 }
 export const KIND_NAME: Record<RunEvent["kind"], string> = { agent: "Agent", llm: "LLM step", code: "Code", person: "Person" }
 const VERDICT: Record<string, [string, string]> = {
@@ -63,8 +64,8 @@ export function jumpToClaim(claim: Claim | undefined, openSource?: (evidenceId: 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
   el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" })
   el.focus({ preventScroll: true })
-  el.classList.add("bg-agentbg", "ring-2", "ring-agent")
-  window.setTimeout(() => el.classList.remove("bg-agentbg", "ring-2", "ring-agent"), 2000)
+  el.classList.add("bg-primarybg", "ring-2", "ring-primary")
+  window.setTimeout(() => el.classList.remove("bg-primarybg", "ring-2", "ring-primary"), 2000)
 }
 
 function Row({ e, claims, onJump }: { e: RunEvent, claims?: Claim[], onJump: (c: Claim | undefined) => void }) {
@@ -86,7 +87,7 @@ function Row({ e, claims, onJump }: { e: RunEvent, claims?: Claim[], onJump: (c:
         {e.claims.length > 0 && <span className="flex flex-wrap items-center gap-1.5 text-muted">Produced
           {e.claims.map(i => claims?.[i]
             ? <button key={i} type="button" onClick={() => onJump(claims[i])} title="Show this number in the brief"
-                className="rounded-sm font-medium text-agentdeep underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claims[i].value}</button>
+                className="rounded-sm font-medium text-primary underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg focus:outline-none">{claims[i].value}</button>
             : <span key={i}>claim {i + 1}</span>)}
         </span>}
         {e.prompt && <span className="font-mono text-[11px] text-muted" title="The prompt file and version this step ran on">{e.prompt}</span>}
@@ -109,7 +110,7 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource }:
       <span className="text-xs text-muted">{events.length} step{events.length === 1 ? "" : "s"}{checks ? ` · ${checks} check${checks === 1 ? "" : "s"}` : ""}{produced ? ` · ${produced} number${produced === 1 ? "" : "s"} produced` : ""}</span>
     </div>
     {live && <p role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-xs text-muted">
-      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-agent pa-pulse"/>
+      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-primary pa-pulse"/>
       {last ? `Now: ${last.actor}, ${last.step.toLowerCase()}` : "Waiting for the first step…"}
     </p>}
     {!events.length && !live && <p className="mt-3 text-sm text-muted">No steps were recorded for this brief.</p>}
@@ -127,7 +128,7 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource }:
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">{g.key.startsWith("_") ? g.title : `Story: ${g.title}`}</h4>
           <ol className="divide-y divide-rule/60">{shown.map(e => <Row key={e.seq} e={e} claims={claims} onJump={c => jumpToClaim(c, onOpenSource)}/>)}</ol>
           {Object.entries(hidden).map(([actor, n]) => <button key={actor} type="button" onClick={() => setOpen(o => ({ ...o, [`${g.key}|${actor}`]: true }))}
-            className="mt-1 text-xs font-medium text-agentdeep underline-offset-4 hover:underline">Show {n} more {actor} step{n === 1 ? "" : "s"}</button>)}
+            className="mt-1 text-xs font-medium text-primary underline-offset-4 hover:underline">Show {n} more {actor} step{n === 1 ? "" : "s"}</button>)}
         </div>
       })}
     </div>

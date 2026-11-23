@@ -2,6 +2,27 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-23, UI refresh ready for review: Positivus dark theme, element-tile logo, accessibility pass (Claude Opus, Sonnet and Haiku packets)._
+- Branch `feature/ui-refresh` (frontend and docs only; no Python changed):
+  - Michael compared three live directions and picked "Positivus dark": lime #b9ff66 on near-black, Space Grotesk headings, chunky controls with hard offset shadows.
+  - The logo is a lime "Pa" element tile with "v1" in the corner; the tab icon is a plain "Pa" tile.
+  - Colour tokens renamed to `primary*`; the old names stay as aliases for core-011 and brief-010.
+  - DESIGN.md rewritten for the new theme.
+  - Accessibility pass: APG tabs, focus traps, a visible focus ring everywhere, reduced motion, forced colours, black-on-white print.
+  - The unchecked screens were restyled: triage, review, leadership view, evidence drawer, feedback, Forecast charts, Overview.
+- Checks:
+  - `tsc` and the Vite build pass; `test_frontend_scope` and `test_classification` pass (12).
+  - axe: 0 violations before and after. The keyboard walk went from 38 stops without a visible indicator to 0.
+  - Bombadil 5m: exit 0, no violations.
+  - `/code-review medium`: 4 important and 5 nits, all fixed; the fixes were checked on the running app with Playwright.
+- Local UI: `PHARMAGENTICS_UI_PORT=<port> npx vite --config vite.config.standalone.ts` against `PHARMAGENTICS_AUTH=dev uvicorn` on :8000 (see the handoff).
+- Open:
+  - No Spec Kit spec covers the theme (DESIGN.md does).
+  - The Evaluation page restyle waits for core-011.
+  - Drop the token aliases once the other branches merge.
+- 2026-11-23: the sign-in pages match the theme. The Keycloak login theme (realm `loginTheme`, display name without "UAT", compose mount and Dockerfile copy) and the API's dev and starting pages are done. 160 focused tests passed.
+- PR #26; brief-010 (PR #25) merged in on 2026-11-23: App, ComparisonPicker and Memo resolved (the theme, fonts and accessibility headings kept, with brief-010's six selectors and Assumptions block); build and frontend-scope tests pass. Handoff: `conversations/2026-11-22-ui-refresh.md`.
+
 _2026-11-23 (early morning), brief-010 ready to merge: the brief definition and the analyses the targets need (Michael, Claude Opus with Sonnet and Haiku packets)._
 - Branch `feature/brief-010-targets` (PR #25): the six-selector brief definition; plan cut cards, segment and channel percent, restatement detail and data notes, a national card on every brief (TRx direction, holiday rule, story-territory ruled-out rule), continuing cards, the golden `intent` field. The word budget is no longer a target (Michael, 2026-11-23); it stays report-only.
 - Scripted run `60927c3280374d748a44c55ca309b8d1` gated against `1b8eaaafd97f438f90e8b0e8528a4884`: exit 0, all seven 1.000. Finding recall pooled 1.000 (was 0.618), key facts pooled 1.000 (was 0.857), false drivers 0.074 (was 0.12).
