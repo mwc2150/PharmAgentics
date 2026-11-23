@@ -291,7 +291,7 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
         # crashed case scores trivially (no numbers match no golden numbers), so a crashed run is no baseline.
         prev = next((r for r in reversed(rs[:-1]) if r["golden_version"] == rs[-1]["golden_version"]
                      and not r.get("run_errors")), None) if len(rs) >= 2 else None
-        if prev is not None:
+        if prev is not None and not rs[-1].get("run_errors"):  # a crashed latest run is no fair test either
             last_run = rs[-1]
             for c in set(prev["cases"]) & set(last_run["cases"]):
                 for k in set(prev["cases"][c]) & set(last_run["cases"][c]):

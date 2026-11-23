@@ -226,6 +226,15 @@ def test_uat_events_are_pseudonymous(tmp_path):
     assert next(e for e in events if e["kind"] == "requested")["latency_ms"] >= 0
 
 
+def test_only_the_first_decision_records_the_insight(tmp_path):
+    analyst = signed_in("dev-analyst")
+    bid = run_brief(analyst)["brief_id"]
+    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "rejected", "reason": "Wrong week."})
+    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
+    events = [json.loads(p.read_text()) for p in (tmp_path / "events").rglob("*.json")]
+    assert sum(e["kind"] == "insight" for e in events) == 1 and sum(e["kind"] == "reviewed" for e in events) == 2
+
+
 def test_insight_route_still_records_for_older_clients(tmp_path):
     analyst = signed_in("dev-analyst")
     bid = run_brief(analyst)["brief_id"]

@@ -259,3 +259,15 @@ def test_a_run_in_two_stores_counts_once(tmp_path):
     d = build([a, b], PAIRS)
     assert [r["run_id"] for r in d["systems"]["briefing_scripted"]["runs"]] == ["P1", "P2"]
     assert {(r["case"], r["previous"], r["latest"]) for r in d["fallen"]} == {("C-1", 1.0, 0.5)}
+
+
+def test_a_crashed_latest_run_is_not_compared(tmp_path):
+    path = tmp_path / "crash-latest.db"
+    _store(str(path), {"P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"golden_number_recall": "1.0"})]),
+                       "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"golden_number_recall": "0.0"})])})
+    con = sqlite3.connect(str(path))
+    con.execute("create table metrics (key text, value real, run_uuid text)")
+    con.execute("insert into metrics values ('run_errors/mean', 20.0, 'P2')")
+    con.commit()
+    con.close()
+    assert build([path], PAIRS)["fallen"] == []  # the drop is the crash, not a regression

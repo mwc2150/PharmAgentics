@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import { FeedbackReview } from "./FeedbackReview"
 import { Notice } from "./agent/primitives"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
-import { modelName } from "./agent/primitives"
+import { modelName, when } from "./agent/primitives"
 import { getTelemetry, getUsage, type CaseTable, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
@@ -26,7 +26,6 @@ const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toF
 const fmt = (v: number, unit?: "share" | "count" | "flag") =>
   unit === "count" ? String(Math.round(v)) : unit === "flag" ? (v >= 0.5 ? "Yes" : "No") : pct(v)
 // Exported: Forecast driver recovery prints its dates the same way.
-export const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 const name = (r: TelemetryRun) => NAMES[r.system] ?? r.system
 // "briefing_agent:anthropic:claude-haiku-5-5" -> "Briefing agent · Haiku"
 const baseOf = (system: string) => system.split(":")[0]
@@ -153,13 +152,14 @@ function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
   </details>
 }
 
-// Tables from before this date are from an earlier golden set and build; they go under "Older runs".
-const CURRENT_FROM = "2026-11-01"
 const tableKey = (t: CaseTable) => `${baseOf(t.system)}|${t.lane}`
 function PerCase({ tables, targets }: { tables: CaseTable[], targets?: Record<string, number> }) {
-  // The newest table of each system and lane leads; controls, earlier tables and pre-November ones fold away.
+  // The newest table of each system and lane leads, if it ran on the lane's current golden set (the golden version of
+  // the lane's most recent run); controls, earlier tables and runs on an older golden set fold away.
+  const current = new Map<string, { started: string, golden: string | null }>()
+  for (const t of tables) if (!t.control && (current.get(t.lane)?.started ?? "") < t.started) current.set(t.lane, { started: t.started, golden: t.golden_version })
   const newest = new Map<string, CaseTable>()
-  for (const t of tables) if (!t.control && t.started >= CURRENT_FROM && (newest.get(tableKey(t))?.started ?? "") < t.started) newest.set(tableKey(t), t)
+  for (const t of tables) if (!t.control && t.golden_version === current.get(t.lane)?.golden && (newest.get(tableKey(t))?.started ?? "") < t.started) newest.set(tableKey(t), t)
   const main = tables.filter(t => newest.get(tableKey(t)) === t)
   const older = tables.filter(t => !main.includes(t))
   return <>

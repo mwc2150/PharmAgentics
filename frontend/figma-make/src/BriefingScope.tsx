@@ -111,11 +111,12 @@ export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, la
 type ReaderOptions = {
   brand: string; context: ReleaseContext | null
   onApply: (values: FormValues, question: string) => void
+  onStart?: () => void  // a new read begins: the earlier question no longer applies, even if this read fails
 }
 
 /** Reads a question into form values (brief-010: the bar on the form is the one question box). `run` resolves true when
  *  the form was filled; on a failed read the form keeps its values and `error` says why. `read` names who read it. */
-export function useQuestionReader({ brand, context, onApply }: ReaderOptions) {
+export function useQuestionReader({ brand, context, onApply, onStart }: ReaderOptions) {
   const [busy, setBusy] = useState(false)
   const [read, setRead] = useState<BriefingScope | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -124,7 +125,7 @@ export function useQuestionReader({ brand, context, onApply }: ReaderOptions) {
     if (busy) return false
     if (!context) { setError("The data release is not loaded yet."); return false }
     if (typed.length < 3) { setError("Ask in a few words, for example: how did the Southeast do in August?"); return false }
-    setBusy(true); setError(null); setRead(null)
+    setBusy(true); setError(null); setRead(null); onStart?.()
     try {
       const scope = await readBriefingScope({ question: typed.slice(0, 300), brand_id: brand })
       const checked = scopeToForm(scope, context, brand)

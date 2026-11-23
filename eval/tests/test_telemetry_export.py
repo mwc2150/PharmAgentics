@@ -154,3 +154,12 @@ def test_run_carries_the_pooled_recalls_the_targets_use():
     assert m["key_fact_recall"] == 0.95 and m["key_fact_recall_pooled"] == 1.0 and m["finding_recall_pooled"] == 0.9706
     assert m["key_fact_target_met"] == 1.0 and m["over_word_budget"] == 8.0
     assert "some_other_total" not in m  # only the named run-level scores, nothing else unaveraged
+
+
+def test_a_mistyped_store_fails_instead_of_creating_an_empty_one(tmp_path):
+    import pytest
+
+    missing = tmp_path / "nope" / "mlflow.db"
+    with pytest.raises(FileNotFoundError):
+        export(tmp_path / "out.json", stores=[missing])
+    assert not missing.exists()

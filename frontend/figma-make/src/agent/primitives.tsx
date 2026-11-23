@@ -79,11 +79,11 @@ export function useModalFocus(root: RefObject<HTMLElement | null>, onClose: () =
 // "Haiku"). Raw ids are plumbing: the UI never prints one.
 export function modelName(model: string | null | undefined): string {
   if (!model) return ""
+  const provider = /^(ollama|anthropic|gemini):/.exec(model.toLowerCase())?.[1]
   const m = model.toLowerCase().replace(/^(ollama|anthropic|gemini):/, "")
-  if (m.includes("claude-haiku")) return "Haiku"
-  if (m.includes("claude-sonnet")) return "Sonnet"
-  if (m.includes("claude-opus")) return "Opus"
-  if (m.startsWith("gemini")) return "Gemini"
+  if (m.startsWith("claude")) return m.includes("haiku") ? "Haiku" : m.includes("sonnet") ? "Sonnet" : m.includes("opus") ? "Opus" : "Claude"
+  if (m.startsWith("gemini") || (provider === "gemini")) return "Gemini"
+  if (!m) return provider === "anthropic" ? "Claude" : ""
   const local = /^(qwen|gemma|llama)(\d+(?:\.\d+)?):(\d+(?:\.\d+)?b)/.exec(m)
   if (local) return `${local[1][0].toUpperCase()}${local[1].slice(1)} ${local[2]} ${local[3].toUpperCase()}`
   return m === "none" ? "" : model
@@ -93,3 +93,6 @@ const MODEL_ID = /(?:(?:ollama|anthropic|gemini):)?(?:claude-[\w.-]+|(?:qwen|ge
 export function plainModels(text: string): string {
   return text.replace(MODEL_ID, id => modelName(id))
 }
+
+/** A date as the app prints it everywhere ("Nov 23, 2026"); a bare ISO date is read as local midnight. */
+export const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })

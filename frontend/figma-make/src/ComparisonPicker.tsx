@@ -86,8 +86,11 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
     else change(i, blank(kind as Comparison["kind"]))
   }
   const rowError = (c: Comparison) => comparisonError(c, period, weeks)
-  // Adding to the default makes it explicit, so the whole list can be sent.
-  const seed: Comparison = { kind: "previous", weeks: Math.max(1, Math.min(DEFAULT_COMPARISON_WEEKS, earlierCount)) }
+  // Adding to the default makes it explicit, so the whole list can be sent: the same weeks the server's default uses
+  // (the four before the period, fewer where the release starts later; stages.BASELINE_WEEKS). With no earlier week
+  // there is nothing to make explicit, so the analyst picks a main comparison first.
+  const seed: Comparison = { kind: "previous", weeks: Math.min(DEFAULT_COMPARISON_WEEKS, earlierCount) }
+  const cannotSeed = isDefault && earlierCount === 0
   const base = isDefault ? [seed] : value
   const unused = KINDS.map(([k]) => k).find(k => !base.some(c => c.kind === k))
 
@@ -128,8 +131,9 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
     <legend className="text-xs font-medium text-muted">Compare with</legend>
     <ol className="space-y-2">{rows.map(row)}</ol>
     <div className="text-xs">
-      <button type="button" className="text-primaryink hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined}
-        onClick={() => unused && onChange([...base, blank(unused)])}>Add a comparison</button>
+      <button type="button" className="text-primaryink hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined || cannotSeed}
+        title={cannotSeed ? "The release has no earlier weeks for the default. Choose a main comparison first." : undefined}
+        onClick={() => unused && !cannotSeed && onChange([...base, blank(unused)])}>Add a comparison</button>
     </div>
     {error && <p id="comparison-error" role="status" className="text-xs text-neg">{error}</p>}
   </fieldset>

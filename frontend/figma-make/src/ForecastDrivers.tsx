@@ -3,8 +3,7 @@
 // Shown only to Forecast roles: anyone else gets 403 from the route and this renders nothing.
 import { useEffect, useState } from "react"
 import { forecastDrivers, type DriverBoard } from "./agent/forecastApi"
-import { Icon, modelName } from "./agent/primitives"
-import { when } from "./Telemetry"
+import { Icon, modelName, when } from "./agent/primitives"
 
 // Mirrors PANEL in App.tsx (not exported from there).
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"

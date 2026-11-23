@@ -124,6 +124,9 @@ def export(out: Path = OUT, uri: str | None = None, insights: dict | None = None
     """Write the snapshot. `insights` is the dict `insights.build` returns; without it the per-case block is built from
     the SQLite store(s) behind `uri` and `stores` (the default local store when both are absent), and left out for any
     other kind of store. `stores` adds more SQLite stores; a run found in several is counted once."""
+    missing = [str(s) for s in stores or [] if not Path(s).is_file()]
+    if missing:  # MLflow would create an empty store at a mistyped path and the export would quietly lose its runs
+        raise FileNotFoundError(f"No MLflow store at: {', '.join(missing)}")
     uris = [f"sqlite:///{Path(s).resolve().as_posix()}" for s in stores or []]
     if uri or not uris:
         uris.insert(0, uri or tracking_uri())

@@ -245,14 +245,17 @@ async def review(brief_id: str, decision: ReviewRequest, response: Response, who
     brand_access.brief_for(p, role, brief_id)
     if decision.decision == "rejected" and not decision.reason:
         raise HTTPException(status_code=422, detail="A rejection needs a reason.")
+    earlier = store.get_brief(brief_id)
+    first_decision = bool(earlier) and not earlier.get("reviewed_at")
     try:
         record = store.set_review(brief_id, decision.decision, decision.reason, by=rbac.pseudonym(p.sub))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="No such briefing.") from exc
     store.record_event("reviewed", **_who(p, role), brief_id=brief_id, decision=decision.decision, reason=decision.reason)
-    # core-007 FR-025 (2026-11-23): the analyst's approve or reject is the moment they have what they need, so it
-    # records the insight time; the separate "I have what I need" button is gone from the app.
-    store.record_event("insight", **_who(p, role), brief_id=brief_id, view="analyst")
+    # core-007 FR-025 (2026-11-23): the analyst's first approve or reject is the moment they have what they need, so
+    # it records the insight time, once per brief; the separate "I have what I need" button is gone from the app.
+    if first_decision:
+        store.record_event("insight", **_who(p, role), brief_id=brief_id, view="analyst")
     return views.analyst(record)
 
 

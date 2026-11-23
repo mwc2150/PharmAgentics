@@ -509,7 +509,10 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   const isRunning = (rs: ForecastSummary[]) => rs.some(x=>x.job_status === "running")
   // Match the Briefing workspace: the analyst can always return to the list of
   // their own runs, while the approved view is a strictly filtered list.
-  const refresh = async () => { setLoading(true); setError(null); try { const status = sectionRef.current === "approved" ? "approved" : analyst ? undefined : "pending_review"; const values = await Promise.all([listForecasts(status), analyst && sectionRef.current === "workbench" ? forecastContext() : Promise.resolve(null)]); setRuns(values[0]); if (values[1]) setContext(values[1]); if (analyst && !status) setBgRunning(isRunning(values[0])) } catch(e) { setError(message(e)) } finally { setLoading(false) } }
+  // The workspace stays mounted, so a slow list from a section the analyst has left must not land: each refresh takes
+  // a token and only the latest one may write.
+  const refreshToken = useRef(0)
+  const refresh = async () => { const token = ++refreshToken.current, live = () => token === refreshToken.current; setLoading(true); setError(null); try { const status = sectionRef.current === "approved" ? "approved" : analyst ? undefined : "pending_review"; const values = await Promise.all([listForecasts(status), analyst && sectionRef.current === "workbench" ? forecastContext() : Promise.resolve(null)]); if (!live()) return; setRuns(values[0]); if (values[1]) setContext(values[1]); if (analyst && !status) setBgRunning(isRunning(values[0])) } catch(e) { if (live()) setError(message(e)) } finally { if (live()) setLoading(false) } }
   useEffect(()=>{ void refresh() }, [analyst, section])
   // With no run open, a list that still shows one investigating is polled quietly until it finishes.
   useEffect(()=>{ if (!analyst || selected || !bgRunning) return; const t = setInterval(()=>{ listForecasts().then(rs=>{ setBgRunning(isRunning(rs)); if (sectionRef.current === "workbench") setRuns(rs) }).catch(()=>{}) }, 3000); return ()=>clearInterval(t) }, [analyst, selected, bgRunning])
@@ -985,7 +988,7 @@ function AnalystApp({me}: {me: Me}) {
   const [barEvidence,setBarEvidence] = useState<{id: string} | null>(null)
   // brief-010: the bar on the form reads the question into it; the question then rides with Generate as the brief's question.
   const reader = useQuestionReader({brand,context,onApply:(v,q)=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparisons(v.comparison)
-    setChoices(c=>({...c,...v.choices})); setProposed(v.proposed); setAsk(q) }})
+    setChoices(c=>({...c,...v.choices})); setProposed(v.proposed); setAsk(q) }, onStart:()=>setAsk("")})
   const clearQuestion = () => { setAsk(""); reader.clear() }
   const generation = useRef(0)
   const capabilities = context?.brands.find(b=>b.id===brand)
@@ -1134,7 +1137,7 @@ function AnalystApp({me}: {me: Me}) {
       </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
-    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
+    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <IntroWithHow introId="new-briefing-intro">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</IntroWithHow>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
@@ -1195,7 +1198,7 @@ function AnalystApp({me}: {me: Me}) {
     </div>}</div>
     {brand && (view==="home" || (view==="result" && (!!result || agentSupported)) || (view==="triage" && agentSupported) || (view==="approved" && !!opened)) && <div className="workspace-content sticky bottom-0 z-20"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : view==="approved" && opened ? opened.brief_id : null} pending={view==="approved" ? false : pending} chip={chip} onClearChip={()=>setChip(null)}
       onRead={view==="home" ? reader.run : undefined} readBusy={reader.busy} readError={view==="home" ? reader.error : null}
-      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
+      onOfferScope={o=>{ clearQuestion(); if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
 }
 
