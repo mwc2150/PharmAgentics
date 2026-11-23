@@ -3,7 +3,7 @@
 // The server stores everything under a pseudonymous ID; this file only collects it and shows what has been given.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "sonner"
-import { Icon } from "./agent/primitives"
+import { Icon, Notice } from "./agent/primitives"
 import {
   getFeedbackStatus, getMyVote, getMySurvey, getQuestionnaire, sendComment, sendPulse, sendSurvey, sendVote,
   type AnswerLane, type AnswerView, type Answers, type FeedbackStatus, type PulseWhere, type QItem, type Questionnaire,
@@ -17,7 +17,7 @@ const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border bo
 const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink"
 const CLOSE = "grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"
 const LABEL: Record<Rating, string> = { good: "Good", fine: "Fine", bad: "Bad" }
-const TONE: Record<Rating, string> = { good: "text-ok", fine: "text-amber", bad: "text-neg" }
+const TONE: Record<Rating, string> = { good: "text-ok", fine: "text-muted", bad: "text-neg" }
 const RATINGS: Rating[] = ["good", "fine", "bad"]
 
 function Face({ kind, className = "h-5 w-5" }: { kind: Rating; className?: string }) {
@@ -130,7 +130,7 @@ export function AnswerFeedback({ lane, refId, view, agent = false }: { lane: Ans
       <button type="button" disabled={busy || noted || !comment.trim()} onClick={() => void send(vote, comment)}
         className={BTN2}>{noted ? "Comment saved" : "Send comment"}</button>
     </div>}
-    {error && <p role="alert" className="text-xs text-amber">{error}</p>}
+    {error && <p role="alert" className="text-xs text-neg">{error}</p>}
     {agent && <SessionRating refId={refId} />}
   </div>
 }
@@ -176,7 +176,7 @@ function SessionRating({ refId }: { refId: string }) {
         <button type="button" onClick={() => setEditing(false)} className="rounded-lg px-3 py-2 text-sm text-muted hover:text-ink">Done</button>
       </div>
     </div>}
-    {error && <p role="alert" className="text-xs text-amber">{error}</p>}
+    {error && <p role="alert" className="text-xs text-neg">{error}</p>}
   </div>
 }
 
@@ -213,7 +213,7 @@ function SuggestModal({ onClose, onSurvey, surveyDone }: { onClose: () => void; 
         <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">Your suggestion
           <textarea autoFocus value={text} onChange={e => setText(e.target.value)} maxLength={1000} rows={4} placeholder="No names or personal details, please" className={FIELD} />
         </label>
-        {error && <p role="alert" className="text-xs text-amber">{error}</p>}
+        {error && <p role="alert" className="text-xs text-neg">{error}</p>}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-6 py-3">
         <button type="button" onClick={onSurvey} className="text-xs text-primaryink underline underline-offset-4 hover:no-underline">{surveyDone ? "Update your questionnaire answers" : "Or take the five-minute questionnaire"}</button>
@@ -300,7 +300,7 @@ function SurveyModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitte
         <div><h2 id="survey-title" className="text-lg font-semibold">{q?.title ?? "Platform questionnaire"}</h2>{q && <p className="mt-1 text-sm text-muted">{q.intro}</p>}</div>
         <button type="button" onClick={onClose} aria-label="Close questionnaire" className={CLOSE}><Icon name="close" className="h-5 w-5"/></button>
       </div>
-      {loadError && <div role="alert" className="m-6 rounded-xl bg-amberbg p-4 text-sm text-amber">{loadError}<button type="button" onClick={load} className="mt-2 block underline">Try again</button></div>}
+      {loadError && <Notice tone="error" role="alert" className="m-6">{loadError}<button type="button" onClick={load} className="mt-2 block underline">Try again</button></Notice>}
       {!q && !loadError && <p role="status" className="px-6 py-8 text-sm text-muted">Loading the questionnaire…</p>}
       {q && done && <div className="px-6 py-10 text-center"><p className="text-lg font-semibold">Thank you.</p>
         <p className="mt-1 text-sm text-muted">Your answers are saved. You can reopen the questionnaire from the sidebar or your account menu to change them.</p>
@@ -316,7 +316,7 @@ function SurveyModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitte
         <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-t border-rule bg-sheet px-6 py-3">
           <span className="text-xs text-muted">{count} of {total} answered. Every question is optional.</span>
           <span className="flex items-center gap-3">
-            {error && <span role="alert" className="max-w-[18rem] text-xs text-amber">{error}{error.includes("changed") && <button type="button" onClick={load} className="ml-1 underline">Reload</button>}</span>}
+            {error && <span role="alert" className="max-w-[18rem] text-xs text-neg">{error}{error.includes("changed") && <button type="button" onClick={load} className="ml-1 underline">Reload</button>}</span>}
             <button type="button" disabled={busy || count === 0} onClick={() => void submit()} className={BTN}>{busy ? "Sending…" : updating ? "Send updated answers" : "Send"}</button>
           </span>
         </div>

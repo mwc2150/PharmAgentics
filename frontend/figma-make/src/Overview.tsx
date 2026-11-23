@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
-import { Icon } from "./agent/primitives"
+import { Icon, Notice } from "./agent/primitives"
 
 // These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
@@ -205,8 +205,8 @@ export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: st
         </select>
       </label>
     </div>
-    {error && <div role="alert" className="rounded-xl bg-amberbg p-4 text-sm text-amber">{error}</div>}
-    {o?.note && <p className="text-sm text-amber">{o.note}</p>}
+    {error && <Notice tone="error" role="alert">{error}</Notice>}
+    {o?.note && <Notice tone="warn">{o.note}</Notice>}
     {!o && !error && <div className="pa-skeleton h-32 rounded-xl"/>}
     {o && <StatBar stats={o.stats} onOpen={s => setOpen({ kind: "stat", s })}/>}
     {o && <Territories o={o} onOpen={t => setOpen({ kind: "territory", t })}/>}

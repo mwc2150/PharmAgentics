@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { FeedbackReview } from "./FeedbackReview"
+import { Notice } from "./agent/primitives"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
 import { getTelemetry, getUsage, type CaseTable, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
 
@@ -112,13 +113,14 @@ function belowText(b: NonNullable<CaseRowBelow>[number]) {
 type CaseRowBelow = CaseTable["rows"][number]["below"]
 const scorerName = (k: string) => SCORERS[k] ?? label(k)
 const LANES: Record<string, string> = { briefing: "Briefing", forecast: "Forecast" }
-const MARK = "ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
+const MARK = "ml-1.5 whitespace-nowrap text-xs text-muted underline decoration-dotted underline-offset-2"
 
 function CaseScore({ v, stuck, worse, lost, unit }: { v: number | null | undefined, stuck: boolean, worse?: { previous: number; latest: number }, lost?: boolean, unit?: "share" | "count" | "flag" }) {
   if (v == null) return <span className="text-muted" title="Not scored in this run">{"—"}<span className="sr-only">not scored</span></span>
-  return <>{lost ? `${Math.round(v * 100)}%` : fmt(v, unit)}
-    {stuck && <span className={`${MARK} bg-amberbg text-amber`} title="Zero in every listed run">stuck</span>}
-    {worse && <span className={`${MARK} bg-amberbg text-amber`} title={`Was ${fmt(worse.previous, unit)} in the last run`}>worse<span className="sr-only"> than the last run, was {fmt(worse.previous, unit)}</span></span>}
+  const score = lost ? `${Math.round(v * 100)}%` : fmt(v, unit)
+  return <>{stuck ? <span className="text-muted">{score}</span> : score}
+    {stuck && <span className={MARK} title="Zero in every listed run">stuck</span>}
+    {worse && <span className={MARK} title={`Was ${fmt(worse.previous, unit)} in the last run`}>worse<span className="sr-only"> than the last run, was {fmt(worse.previous, unit)}</span></span>}
   </>
 }
 
@@ -223,7 +225,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
   return <div className="workspace-wide pa-stagger space-y-6 pb-12 pt-8 sm:pt-10">
     <header className="flex items-baseline justify-between gap-4"><h2 className="sr-only">Evaluation</h2>
       <p className="text-sm text-muted">How PharmAgentics is used, and how each version scored on the golden questions.</p>{label}</header>
-    {err.map(e => <div key={e} role="alert" className="rounded-xl bg-amberbg p-4 text-sm text-amber">{e}</div>)}
+    {err.map(e => <Notice key={e} tone="error" role="alert">{e}</Notice>)}
     {!t && !u && !err.length && <div className="pa-skeleton h-32 rounded-xl"/>}
     {u && b && <Figures items={[
       [u.lanes.briefing ? "Briefs requested" : "Explanations run", String(b.requests), u.since ? `since ${when(u.since)}` : "none yet"],

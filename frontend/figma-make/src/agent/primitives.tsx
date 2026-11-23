@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from "react"
+import { useEffect, useRef, type ReactNode, type RefObject } from "react"
 
 /* Visual identity and SVG icon geometry. One icon set, outline style, stroke 1.6 next to 14px text.
    Always pass a size class (h-4 w-4, h-5 w-5): a className without one lets the SVG grow to fill its row. */
@@ -15,11 +15,26 @@ const PATHS={
   user:"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0",
   help:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01",
   clipboard:"M8 4h8v3H8zM8 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-2M9 12h6M9 16h6",
-  briefcase:"M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"
+  briefcase:"M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18",
+  warning:"M12 4L2.8 19.5a1 1 0 0 0 .9 1.5h16.6a1 1 0 0 0 .9-1.5zM12 10v4.5M12 17.5h.01",
+  alert:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5M12 16h.01"
 } as const
 export type IconName = keyof typeof PATHS
 export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string}) {
   return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATHS[name]}/></svg>
+}
+
+/* A warning or an error: a hairline border, a leading icon and a toned title; never a tinted fill or a side bar.
+   The words carry the meaning, the tone only helps. Keep role="alert" for a failure the person must hear about. */
+export function Notice({tone,title,children,role,className="",action}:{tone:"warn"|"error",title?:ReactNode,children?:ReactNode,role?:"alert"|"status",className?:string,action?:ReactNode}){
+  const warn=tone==="warn"
+  // a caller's own padding or text size replaces the default, so the two never fight over CSS order
+  const pad=/(^|\s)p[xy]?-/.test(className)?"":"px-4 py-3", size=/(^|\s)text-(xs|sm)(\s|$)/.test(className)?"":"text-sm"
+  return <div role={role} className={`flex gap-3 rounded-xl border bg-sheet ${pad} ${size} ${warn?"border-amberline":"border-negline"} ${className}`}>
+    <Icon name={warn?"warning":"alert"} className={`mt-0.5 h-4 w-4 shrink-0 ${warn?"text-amber":"text-neg"}`}/>
+    <div className="min-w-0 flex-1 text-ink">{title&&<p className={`font-semibold ${warn?"text-amber":"text-neg"}`}>{title}</p>}{children}</div>
+    {action}
+  </div>
 }
 
 /* The "Pa" mark (public/pa-mark.svg): styled like a periodic-table tile, with the version "v1" where an element's

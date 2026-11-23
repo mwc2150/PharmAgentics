@@ -276,7 +276,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
 
 const CONFIDENCE = {
   High: "bg-okbg text-ok",
-  Medium: "bg-amberbg text-amber",
+  Medium: "bg-paper text-ink",
   Low: "bg-warnbg text-neg",
 } as const
 

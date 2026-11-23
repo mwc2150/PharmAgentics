@@ -103,7 +103,7 @@ export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, la
           {newestFirst.filter(w => w >= first).map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
         </select>
       </label>
-      <p id="period-error" role="status" className="text-xs text-amber">{error}</p>
+      <p id="period-error" role="status" className="text-xs text-neg">{error}</p>
     </div>
   </div>
 }

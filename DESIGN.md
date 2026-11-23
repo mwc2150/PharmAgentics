@@ -24,8 +24,11 @@ Tokens (Tailwind `@theme`; use as `bg-primary`, `text-muted`, `border-edge`). Th
 | `primarybg` | #0f2622 | Current sidebar row, hovered citation | `ink` 14.3:1 |
 | `onprimary` | #0b0c10 | Text on seafoam fills (button, highlight block, active view switch, selection) | 10.0:1 on `primary` |
 | `ok` / `okbg` | #8ab4f8 / #14233f | Verified and approved, always with a word or a check mark | 7.4:1 |
-| `amber` / `amberbg` / `amberline` | #fbbf24 / #2d2209 / #5c4513 | Data-health warnings, uncertainty, review required | 9.4:1 on `amberbg`, 10.1:1 on `sheet` |
+| `amber` | #e3b47d | Warnings only: the text, icon and title of a warning, ochre; never a fill | 8.9:1 on `sheet`, 10.0:1 on `paper` |
+| `amberline` | #7f6852 | The hairline border of a warning (ochre at 50% over `sheet`) | border only |
+| `amberbg` | #2d2209 | Deprecated: no tinted fills; kept so other branches resolve | not used |
 | `neg` | #f87171 | Adverse change, rejection, Sensitive data | 6.1:1 on `sheet`, 6.8:1 on `paper` |
+| `negline` | #8a474c | The hairline border of an error (`neg` at 50% over `sheet`) | border only |
 | `warn` / `warnbg` | #c9ccd8 / #23253a | Rejected and withheld states (neutral grey, a word carries it) | 9.4:1 |
 | `human` / `humanbg` | #c4b5fd / #26213f | Leaders and human review | 8.3:1 on `humanbg`, 9.1:1 on `sheet` |
 
@@ -38,6 +41,7 @@ Every text pair clears WCAG AA (4.5:1), and control borders and focus rings clea
 - Links and citations: a cited figure is underlined with a dotted seafoam line and carries a seafoam evidence number; "Ask about this" is a seafoam text link.
 - One seafoam block per view section: the greeting at the top of a workspace, and the top-level heading of each memo section (`.pa-mark`, `onprimary` text, 8px radius, `box-decoration-break: clone` so a wrapped heading keeps its block). Sub-sections (§3.1 and below) stay plain text with a 2px `rule` bar on the left.
 - The one data series of a chart, and the filled dot for a material change (hollow = not material).
+- Status: a label that is not a problem is neutral (`text-muted` or `text-ink`; no colour, no fill). A warning or an error is a `Notice` (`agent/primitives.tsx`): a 1px hairline border (`amberline` or `negline`), a leading icon, a title in `amber` or `neg`, body in `ink`, on `sheet`. Never a tinted fill, never a bar down one side. A bare ochre or red line of text is for a validation message or a one-word caveat, not a box.
 - Seafoam never means state. Approved, warning, adverse, paused and rejected come from `ok`, `amber`, `neg`, `warn` and always carry a word.
 
 ## Type

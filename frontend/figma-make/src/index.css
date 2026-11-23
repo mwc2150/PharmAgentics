@@ -43,11 +43,12 @@
   /* Verified and successful states: soft blue, always with a word or a check mark */
   --color-ok: #8ab4f8;
   --color-okbg: #14233f;
-  /* Data-health alerts, uncertainty, review required */
-  --color-amber: #fbbf24;
-  --color-amberbg: #2d2209;
-  --color-amberline: #5c4513;
+  /* Warnings: ochre. Text, icon and title of a warning; never a fill. Its border is amberline. */
+  --color-amber: #e3b47d;
+  --color-amberbg: #2d2209;  /* deprecated: no tinted fills; kept so other branches' code resolves */
+  --color-amberline: #7f6852;  /* ochre at 50% over sheet: the hairline border of a warning */
   --color-neg: #f87171;
+  --color-negline: #8a474c;  /* neg at 50% over sheet: the hairline border of an error */
   /* Deprecated names, kept so other branches' code still resolves. Use the primary* names in new code. */
   --color-navy: var(--color-primary);
   --color-navyhover: var(--color-primaryhover);
@@ -195,7 +196,7 @@
     --color-rule: #c8cfcc; --color-warn: #444444; --color-warnbg: #f3f4f4;
     --color-primary: #1f6055; --color-edge: #6b7280; --color-slab: #c8cfcc; --color-primarybg: #edf4f2;
     --color-ok: #1d4f9a; --color-okbg: #e8f0fb; --color-amber: #85540a; --color-amberbg: #fbf2de;
-    --color-amberline: #d9b36a; --color-neg: #b02323; --color-human: #5a3fb0; --color-humanbg: #efeafa;
+    --color-amberline: #d9b36a; --color-neg: #b02323; --color-negline: #e3a5a5; --color-human: #5a3fb0; --color-humanbg: #efeafa;
   }
   * { animation: none !important; transition: none !important; box-shadow: none !important; }
   html, body { height: auto !important; overflow: visible !important; background: #ffffff !important; color: var(--color-ink); font-size: 10.5pt; }

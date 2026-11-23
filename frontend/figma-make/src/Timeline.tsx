@@ -10,7 +10,7 @@ import type { Claim, RunEvent } from "./agent/briefingApi"
 const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
 export const KIND_STYLE: Record<RunEvent["kind"], string> = {
   agent: "border-edge text-ink",
-  llm: "border-amberline text-amber",
+  llm: "border-edge text-ink",
   code: "border-edge text-ink",
   person: "border-human/60 text-human",
 }
@@ -18,8 +18,8 @@ export const KIND_NAME: Record<RunEvent["kind"], string> = { agent: "Agent", llm
 const VERDICT: Record<string, [string, string]> = {
   supported: ["Supported", "bg-okbg text-ok"],
   "ruled out": ["Ruled out", "bg-paper text-muted border border-rule"],
-  inconclusive: ["Inconclusive", "bg-amberbg text-amber"],
-  abstained: ["Abstained", "bg-amberbg text-amber"],
+  inconclusive: ["Inconclusive", "bg-paper text-ink border border-rule"],
+  abstained: ["Abstained", "bg-paper text-ink border border-rule"],
   done: ["Done", "bg-paper text-muted border border-rule"],
 }
 // A check is a test of the data or of a driver. Counted exactly as the server counts it for leaders (views.process_summary).

@@ -131,6 +131,6 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
       <button type="button" className="text-primaryink hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined}
         onClick={() => unused && onChange([...base, blank(unused)])}>Add a comparison</button>
     </div>
-    {error && <p id="comparison-error" role="status" className="text-xs text-amber">{error}</p>}
+    {error && <p id="comparison-error" role="status" className="text-xs text-neg">{error}</p>}
   </fieldset>
 }

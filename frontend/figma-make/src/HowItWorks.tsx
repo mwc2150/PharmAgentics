@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react"
 import { getAgentsInfo, type AgentCard, type AgentComparison, type AgentsInfo, type CompareRow } from "./agent/briefingApi"
 import { KIND_NAME, KIND_STYLE } from "./Timeline"
+import { Notice } from "./agent/primitives"
 
 // brief-009 FR-006: how the briefing is made. The flow from question to brief, the four actors the architecture names
 // (Manager, Data Forensics, Driver Investigator, and the Writer, which is an LLM step and not an agent), what each
@@ -99,7 +100,7 @@ export function HowItWorks() {
     getAgentsInfo().then(v => { if (live) setInfo(v) }).catch(e => { if (live) setError(e instanceof Error ? e.message : String(e)) })
     return () => { live = false }
   }, [attempt])
-  if (error) return <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}<button type="button" className="ml-2 underline" onClick={() => setAttempt(n => n + 1)}>Try again</button></div>
+  if (error) return <Notice tone="error" role="alert">{error}<button type="button" className="ml-2 underline" onClick={() => setAttempt(n => n + 1)}>Try again</button></Notice>
   if (!info) return <div role="status" className={`${PANEL} space-y-3 p-6`}><span className="sr-only">Loading how it works…</span><div className="pa-skeleton h-5 w-2/5"/><div className="pa-skeleton h-3 w-full"/><div className="pa-skeleton h-3 w-4/5"/></div>
   const lim = info.limits
   return <div className="space-y-5">

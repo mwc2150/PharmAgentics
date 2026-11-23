@@ -4,6 +4,7 @@
 // own thread. Answers come from the server only.
 import { useEffect, useRef, useState } from "react"
 import { AnswerFeedback } from "./Feedback"
+import { Notice } from "./agent/primitives"
 import { askThread, continueShared, getThread, openShared, saveThread, shareLink, sharedFromLocation, type Thread, type Turn } from "./agent/threadApi"
 
 export type Chip = { number: string; title: string }
@@ -105,7 +106,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
     {tips.length > 0 && !readOnly && <div className="mb-2 flex flex-wrap gap-2">
       {tips.map(t => <button key={t} type="button" disabled={busy || full} onClick={() => send(t)} className="rounded-full border border-rule bg-sheet px-3 py-1 text-xs text-ink hover:border-primary/50 disabled:opacity-40">{t}</button>)}
     </div>}
-    {shownError && <p role="alert" className="mb-2 rounded-lg bg-amberbg px-3 py-2 text-xs text-amber">{shownError}</p>}
+    {shownError && <Notice tone="error" role="alert" className="mb-2 px-3 py-2 text-xs">{shownError}</Notice>}
     {queued && <p role="status" className="mb-2 text-xs text-muted">Will ask when the brief is ready: “{queued}”</p>}
     {!readOnly && <form onSubmit={e => { e.preventDefault(); send(text) }} className="flex items-end gap-2 rounded-2xl border border-edge bg-sheet px-3 py-2 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-primary">
       {chip && <span className="mb-1 inline-flex shrink-0 items-center gap-1 rounded bg-primarybg px-2 py-1 font-mono text-[11px] text-primaryink">§{chip.number} {chip.title}

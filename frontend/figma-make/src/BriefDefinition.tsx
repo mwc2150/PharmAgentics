@@ -127,7 +127,7 @@ export function DefinitionWords({ definition, labelWeek }: { definition: BriefDe
 }
 
 export function Proposed({ show }: { show: boolean }) {
-  return show ? <span className="ml-2 rounded bg-okbg px-1.5 py-0.5 text-[11px] font-medium text-ok">Proposed, check it</span> : null
+  return show ? <span className="ml-2 text-xs font-normal text-muted">proposed, check it</span> : null
 }
 
 type Shared = { label: string; proposed: boolean; disabled: boolean; error: string | null; id: string }
@@ -163,7 +163,7 @@ function MainChoice<T extends string>({ label, options, notes, value, onChange, 
             onChange={() => onChange(extras.includes(opt) ? [main, ...extras.filter(v => v !== opt)] : [main, ...extras, opt])}/>{name}</label>)}
       </div>
     </fieldset>}
-    {error && <p id={`${id}-error`} role="status" className="text-xs text-amber">{error}</p>}
+    {error && <p id={`${id}-error`} role="status" className="text-xs text-neg">{error}</p>}
   </fieldset>
 }
 
@@ -176,7 +176,7 @@ function GrainChoice({ value, onChange, label, proposed, disabled, error, id }: 
         onChange={() => onChange(value.includes(level) ? value.filter(v => v !== level) : [...value, level])}/>
       <span className="text-sm text-ink">{name}</span><span className="text-xs text-muted">{GRAIN_NOTES[level]}</span>
     </label>)}
-    {error && <p id={`${id}-error`} role="status" className="text-xs text-amber">{error}</p>}
+    {error && <p id={`${id}-error`} role="status" className="text-xs text-neg">{error}</p>}
   </fieldset>
 }
 
