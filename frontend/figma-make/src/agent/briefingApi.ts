@@ -43,6 +43,23 @@ export type BriefingResult = {
   flow?: Stage[] | null         // brief-002: the seven stages, run states and actors (analyst view only)
   citations?: { start: number; end: number; claim: number }[] | null  // where each claim sits in the answer
   sections?: MemoSection[] | null  // brief-003: the memo's sections, charts and the data behind them
+  events?: RunEvent[] | null  // brief-009: the saved event log (analyst view only); absent on briefs made before it
+}
+// brief-009 (plan.md): one step of a run. `claims` are indexes into the brief's claims; `args` are analyst view only;
+// `summary` is written by code from the tool result. The agent engine and the scripted engine (actor Code) share this shape.
+export type RunEvent = {
+  seq: number
+  t: string
+  actor: "Manager" | "Data Forensics" | "Driver Investigator" | "Writer" | "Code" | "Person"
+  kind: "agent" | "llm" | "code" | "person"
+  step: string
+  story: string | null
+  tool: string | null
+  args: Record<string, unknown> | null
+  verdict: "supported" | "ruled out" | "inconclusive" | "abstained" | "done" | null
+  summary: string
+  claims: number[]
+  prompt: string | null  // "<prompt file>@<short hash>", model steps only
 }
 // brief-003: the memo outline. Every number in `text`, `prose`, a caption or an explanation is a claim of the
 // same brief; every plotted point comes from `table`, a governed query recorded as an evidence item.
@@ -147,6 +164,7 @@ export type AgentJob = {
   status: "queued" | "running" | "done" | "failed"
   error: string | null
   host_kind?: "cloud_cpu" | "teammate" | "builtin" | null
+  progress?: RunEvent[] | null  // brief-009: the events so far while the job runs
   result?: unknown
 }
 export type TriageRecord = {
@@ -179,6 +197,7 @@ export type LeadershipBrief = {
   reviewed_at: string | null
   summary: string
   sections?: MemoSection[] | null  // brief-003 FR-026: §1, §2, §3 without checks, §5; no claims, tables or queries
+  process_summary?: string | null  // brief-009 FR-005: one line on how it was built; leaders never get the events
 }
 export type PublishedBrief = {
   brief_id: string
@@ -400,3 +419,32 @@ export async function waitAgentJob(id: string, onUpdate: (j: AgentJob) => void):
 }
 export function agentPlan(job: AgentJob): TriagePlan { return checkPlan(job.result) }
 export function agentBrief(job: AgentJob): BriefingResult { return checkAnalyst(job.result) }
+
+// brief-009 FR-006: the agent team for the "How it works" tab (GET /api/briefing/agents). `prompts` is present only for
+// roles that hold the analyst view; a leadership role never gets it.
+export type AgentPrompt = { id: string; step: string; file: string; hash: string; ref: string; text: string }
+export type AgentCard = {
+  id: string; name: string; kind: "agent" | "llm"; job: string; lands: string
+  tools: { name: string; does: string }[]; tools_note?: string; steps: string[]; prompts?: AgentPrompt[]
+}
+export type FlowStep = { n: number; actor: string; kind: "agent" | "llm" | "code" | "person"; title: string; note: string }
+export type CompareRow = { group: string; label: string; unit: "share" | "count" | "seconds" | "cost"; scripted: number | null; agent: number | null; note?: string }
+export type CompareRun = { run_id: string; started: string; cases: number; model: string | null }
+export type AgentComparison = { available: boolean; note: string; rows: CompareRow[]; scripted?: CompareRun; agent?: CompareRun }
+export type AgentsInfo = {
+  model: { spec: string | null; source: "app" | "evaluation" | null }
+  limits: { rounds_a_story: number; seconds_a_story: number; seconds_a_run: number } | null
+  engines: { scripted: string; agent: string }
+  flow: FlowStep[]
+  actors: AgentCard[]
+  comparison: AgentComparison
+  prompts_shown: boolean
+}
+export async function getAgentsInfo(): Promise<AgentsInfo> {
+  const v: unknown = await api("/api/briefing/agents")
+  expectObject(v)
+  if (!Array.isArray(v.actors) || !Array.isArray(v.flow) || !v.engines || typeof v.engines !== "object" || !v.comparison || typeof v.comparison !== "object") {
+    throw new Error("The backend agent description is incompatible with this frontend.")
+  }
+  return v as unknown as AgentsInfo
+}

@@ -118,7 +118,7 @@ def test_multibrand_scripted_request_passes_its_brand_and_window():
     package.__path__ = []
     pipeline = types.ModuleType("briefing_baseline.pipeline")
 
-    def answer(question, db, brand_id, *, comparison):
+    def answer(question, db, brand_id, *, comparison, events=None):
         assert brand_id == "BXC" and comparison == request.comparison
         return {"system": "briefing_scripted", "answer": "Lipidara", "brand_id": brand_id}
 
@@ -199,7 +199,7 @@ def test_a_multi_week_period_reaches_the_engine_and_the_result():
               "abstained": False}
     seen = {}
 
-    def fake_answer(question, db, brand_id, **options):
+    def fake_answer(question, db, brand_id, events=None, **options):  # events: brief-009's run log, not an engine option
         seen.update(question=question, options=options)
         return output
 
@@ -235,7 +235,7 @@ def test_service_calls_existing_engine_and_preserves_evidence():
     pipeline = types.ModuleType("briefing_baseline.pipeline")
     seen = {}
 
-    def fake_answer(question, db, brand_id):
+    def fake_answer(question, db, brand_id, events=None):
         seen.update(question=question, db=db, brand_id=brand_id)
         return output
 
