@@ -390,6 +390,34 @@ def test_workbook_keeps_a_legacy_response_with_its_sus_score(tmp_path):
     assert summary["SUS from questionnaire version 1 (mean, 0 to 100)"] == 100.0 and summary["Responses by questionnaire version"] == "v1: 1, v2: 1"
 
 
+def test_workbook_stores_text_never_a_formula_and_drops_characters_excel_refuses(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    out = tmp_path / "unsafe.xlsx"
+    note = {"ts": "2026-11-14T10:00:00.000+00:00", "user": "u-cccccccccccc", "roles": ["briefing-director"], "topic": "other",
+            "text": '=HYPERLINK("http://example.invalid","click") pasted'}
+    _report_module().write_xlsx(out, Q, [], [survey2("P1", 4, 4, 8, o_change="=1+1")], [], [note])
+    wb = openpyxl.load_workbook(out)
+    cell = wb["Comments"]["E2"]
+    assert cell.data_type == "s" and cell.value == '=HYPERLINK("http://example.invalid","click") pasted'
+    header = [c.value for c in wb["Questionnaire"][1]]
+    change = wb["Questionnaire"].cell(row=2, column=header.index("What one thing would you change?") + 1)
+    assert change.data_type == "s" and change.value == "=1+1"
+
+
+def test_updating_from_an_older_questionnaire_keeps_the_older_answers(tmp_path):
+    user = rbac.pseudonym("dev-analyst")
+    old = {**survey("P1", 5, 1, 10, x_fix="The export."), "kind": "survey", "user": user, "roles": ["briefing-analyst"], "updates": 0}
+    store.backend().write(feedback._survey_key(user), json.dumps(old))
+    r = signed_in("dev-analyst").post("/api/feedback/survey", json={"version": Q["version"], "answers": {"umux_needs": 4, "umux_easy": 4}})
+    assert r.status_code == 200
+    (doc,) = stored(tmp_path, "feedback/survey")
+    assert doc["version"] == 2 and doc["previous"]["version"] == 1 and doc["previous"]["answers"]["x_fix"] == "The export."
+    assert doc["sus"] == 100.0 and doc["umux"]["raw"] == 75.0  # the version 1 SUS still counts in the version 1 figure
+    summary = feedback.summarize([], [doc], Q)
+    summary["surveys"] = [doc]
+    assert "x_fix: The export." in feedback.to_markdown(summary, Q)
+
+
 # --- the tester admin's read-only panel -----------------------------------------------------------
 
 def test_responses_endpoint_is_for_the_tester_admin_only():

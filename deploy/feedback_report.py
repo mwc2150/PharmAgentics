@@ -42,6 +42,22 @@ def _cell(value):
     return "; ".join(value) if isinstance(value, list) else value
 
 
+def _clean(value):
+    """Control characters pasted from Word make openpyxl refuse the whole workbook; drop them."""
+    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+
+    return ILLEGAL_CHARACTERS_RE.sub("", value) if isinstance(value, str) else value
+
+
+def _plain(ws) -> None:
+    """Participants' text stays text: a cell starting with "=" would otherwise be saved as a live formula in a file the
+    public repository carries."""
+    for row in ws.iter_rows():
+        for cell in row:
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
+
+
 def _sheet(wb, title: str, header: list[str], rows: list[list], widths: list[int]):
     """A sheet with a bold, frozen header row and set column widths; text wraps so free answers stay readable."""
     from openpyxl.styles import Alignment, Font
@@ -50,7 +66,7 @@ def _sheet(wb, title: str, header: list[str], rows: list[list], widths: list[int
     ws = wb.create_sheet(title)
     ws.append(header)
     for row in rows:
-        ws.append(row)
+        ws.append([_clean(v) for v in row])
     for n, width in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(n)].width = width
     for row in ws.iter_rows():
@@ -59,6 +75,7 @@ def _sheet(wb, title: str, header: list[str], rows: list[list], widths: list[int
     for cell in ws[1]:
         cell.font = Font(bold=True)
     ws.freeze_panes = "A2"
+    _plain(ws)
     return ws
 
 
@@ -97,12 +114,13 @@ def write_xlsx(path: Path, q: dict, pulses: list[dict], surveys: list[dict], vot
               ("Suggestions", len(comments), None)]
     ws.append(["Measure", "Value", "Responses"])
     for line in lines:
-        ws.append(list(line))
+        ws.append([_clean(v) for v in line])
     for cell in ws[1]:
         cell.font = Font(bold=True)
     for col, width in zip("ABC", (62, 30, 12)):
         ws.column_dimensions[col].width = width
     ws.freeze_panes = "A2"
+    _plain(ws)
 
     by_id = {i["id"]: i for i in feedback.items(q)}
     item_ids = list(by_id)
@@ -111,7 +129,7 @@ def write_xlsx(path: Path, q: dict, pulses: list[dict], surveys: list[dict], vot
     body = []
     for s in sorted(surveys, key=lambda d: d["ts"]):
         u = s.get("umux")
-        old = "; ".join(f"{k}: {_cell(v)}" for k, v in s["answers"].items() if k not in by_id)
+        old = feedback.earlier_answers_text(s, set(by_id))
         body.append([_when(s["ts"]), s["user"], feedback.role_label(s), s["version"], *(_cell(s["answers"].get(i)) for i in item_ids),
                      u["raw"] if u else None, round(u["sus_equivalent"], 1) if u else None, s.get("sus"), old or None])
     _sheet(wb, "Questionnaire", header, body, [18, 20, 22, 14, *([30] * len(item_ids)), 14, 16, 12, 50])
@@ -147,6 +165,7 @@ def main(argv: list[str] | None = None) -> int:
     votes = feedback.load_votes(backend)
     summary = feedback.summarize(pulses, surveys, q, votes)
     summary["comments"] = feedback.load_comments(backend)
+    summary["surveys"] = surveys  # for the answers to earlier questionnaire versions
     report = feedback.to_markdown(summary, q)
     if a.out:
         a.out.parent.mkdir(parents=True, exist_ok=True)
@@ -164,9 +183,10 @@ def main(argv: list[str] | None = None) -> int:
                    [[v["ts"], v["user"], "/".join(v["personas"]), v["lane"], v["ref"], v["view"], v["vote"], v.get("engine") or "",
                      v.get("data_version") or "", v.get("comment") or ""] for v in sorted(votes, key=lambda d: d["ts"])])
         item_ids = [i["id"] for i in feedback.items(q)]
-        _write_csv(a.csv / "survey.csv", ["user", "ts", "version", "personas", "sus", *item_ids],
+        _write_csv(a.csv / "survey.csv", ["user", "ts", "version", "personas", "sus", *item_ids, "earlier_answers"],
                    [[s["user"], s["ts"], s["version"], "/".join(s["personas"]), "" if s["sus"] is None else s["sus"],
-                     *(("; ".join(v) if isinstance(v, list) else v) if (v := s["answers"].get(i)) is not None else "" for i in item_ids)]
+                     *(("; ".join(v) if isinstance(v, list) else v) if (v := s["answers"].get(i)) is not None else "" for i in item_ids),
+                     feedback.earlier_answers_text(s, set(item_ids))]
                     for s in sorted(surveys, key=lambda d: d["ts"])])
         print(f"CSV files written to {a.csv}")
     if a.xlsx:

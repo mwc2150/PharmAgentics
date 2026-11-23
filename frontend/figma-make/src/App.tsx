@@ -313,7 +313,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <button disabled={busy || !note.trim()} onClick={()=>void act(()=>reviewReport(id, "rejected", note))} className={BTN2}>Reject</button>
         <button disabled={busy || !note.trim()} onClick={()=>void act(()=>reviewReport(id, "returned", note))} className={BTN2}>Return</button>
-        <button disabled={busy} onClick={()=>void act(async()=>{ const v = await reviewReport(id, "approved", note); news.markSeen("forecast", v.reviewed_at); return v })} className={BTN}>Approve</button>
+        <button disabled={busy} onClick={()=>void act(async()=>{ const v = await reviewReport(id, "approved", note); news.markOwn("forecast", v.reviewed_at); return v })} className={BTN}>Approve</button>
       </div>
     </section>}
   </div>
@@ -803,7 +803,7 @@ function ReviewPanel({result, onChange}: {result: BriefingResult, onChange: (r: 
   const [error,setError] = useState<string | null>(null)
   const decide = async (decision: "approved" | "rejected") => {
     setBusy(true); setError(null)
-    try { const r = await reviewBrief(result.brief_id, decision, reason); if (decision==="approved") news.markSeen("briefing", r.reviewed_at); onChange(r); setRejecting(false); setReason(""); toast.success(decision==="approved" ? "Approved. The Brand Director can now open it." : "Rejected. It stays hidden from the Brand Director.") }
+    try { const r = await reviewBrief(result.brief_id, decision, reason); if (decision==="approved") news.markOwn("briefing", r.reviewed_at); onChange(r); setRejecting(false); setReason(""); toast.success(decision==="approved" ? "Approved. The Brand Director can now open it." : "Rejected. It stays hidden from the Brand Director.") }
     catch(e) { setError(message(e)) } finally { setBusy(false) }
   }
   return <section className="border-t border-rule px-6 py-5">

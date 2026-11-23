@@ -9,7 +9,10 @@ import { listReports } from "./agent/forecastApi"
 
 export type NewsLane = "briefing" | "forecast"
 type Stamps = Record<NewsLane, string | null>
-type News = { has: (lane: NewsLane) => boolean, seen: (lane: NewsLane) => string | null, latest: (lane: NewsLane) => string | null, markSeen: (lane: NewsLane, at?: string | null) => void }
+// Stamps are always the server's reviewed_at, never this browser's clock. `markOwn` is for an approval made here: it
+// moves the mark only when nothing else is waiting to be seen, so it never swallows someone else's approval.
+type News = { has: (lane: NewsLane) => boolean, seen: (lane: NewsLane) => string | null, latest: (lane: NewsLane) => string | null,
+  markSeen: (lane: NewsLane, at: string | null | undefined) => void, markOwn: (lane: NewsLane, at: string | null | undefined) => void }
 
 const POLL_MS = 60_000
 const FIRST_VISIT_DAYS = 7
@@ -21,7 +24,7 @@ const key = (who: string, lane: NewsLane) => `pa_seen_approved:${who}:${lane}`
 const read = (who: string, lane: NewsLane) => { try { return window.localStorage.getItem(key(who, lane)) } catch { return null } }
 const write = (who: string, lane: NewsLane, at: string) => { try { window.localStorage.setItem(key(who, lane), at) } catch { /* a convenience only */ } }
 
-const Ctx = createContext<News>({has: () => false, seen: () => null, latest: () => null, markSeen: () => {}})
+const Ctx = createContext<News>({has: () => false, seen: () => null, latest: () => null, markSeen: () => {}, markOwn: () => {}})
 export const useApprovedNews = () => useContext(Ctx)
 
 // The workspace on screen. The Shell keeps a visited workspace mounted but hidden, so a list cannot tell from its own
@@ -32,15 +35,17 @@ export const ActiveWorkspace = createContext<"briefing" | "forecast" | "evaluati
 // view; marks what it shows as seen only while in view; `isNew` is true for rows approved since the previous look.
 export function useApprovedList<T>(lane: NewsLane, enabled: boolean, load: () => Promise<T[]>, stamp: (x: T) => string | null | undefined) {
   const news = useApprovedNews()
-  const active = useContext(ActiveWorkspace) === lane && enabled
+  const shown = useContext(ActiveWorkspace) === lane
+  const active = shown && enabled
   const [items, setItems] = useState<T[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [since, setSince] = useState(() => news.seen(lane))
-  const inView = useRef(false)
+  const wasShown = useRef(shown)
   const latest = news.latest(lane)
+  // "New" holds for one visit to the workspace: opening a report and coming back keeps it; leaving the workspace ends it.
+  useEffect(() => { if (shown && !wasShown.current) setSince(news.seen(lane)); wasShown.current = shown }, [shown])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!active) { inView.current = false; return }
-    if (!inView.current) { inView.current = true; setSince(news.seen(lane)) }
+    if (!active) return
     let live = true
     load().then(xs => { if (!live) return; setItems(xs); setError(null); for (const x of xs) news.markSeen(lane, stamp(x)) })
       .catch(e => { if (live) setError(e instanceof Error ? e.message : String(e)) })
@@ -58,14 +63,20 @@ export function ApprovedNewsProvider({me, children}: {me: Me, children: ReactNod
     const first = (lane: NewsLane) => { const at = read(who, lane); if (at) return at; write(who, lane, start); return start }
     return {briefing: first("briefing"), forecast: first("forecast")}
   })
-  const markSeen = useCallback((lane: NewsLane, at?: string | null) => {
+  const latestRef = useRef(latest)
+  latestRef.current = latest
+  const advance = useCallback((lane: NewsLane, at: string | null | undefined, own: boolean) => {
+    if (!at) return
     setSeen(s => {
-      const next = later(s[lane], at ?? new Date().toISOString())
+      if (own && isNewer(latestRef.current[lane], s[lane])) return s
+      const next = later(s[lane], at)
       if (next === s[lane] || !next) return s
       write(who, lane, next)
       return {...s, [lane]: next}
     })
   }, [who])
+  const markSeen = useCallback((lane: NewsLane, at: string | null | undefined) => advance(lane, at, false), [advance])
+  const markOwn = useCallback((lane: NewsLane, at: string | null | undefined) => advance(lane, at, true), [advance])
   useEffect(() => {
     let live = true
     const poll = async () => {
@@ -91,6 +102,7 @@ export function ApprovedNewsProvider({me, children}: {me: Me, children: ReactNod
     seen: lane => seen[lane],
     latest: lane => latest[lane],
     markSeen,
+    markOwn,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

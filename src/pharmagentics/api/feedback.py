@@ -299,6 +299,12 @@ def submit_survey(body: SurveyIn, response: Response, who=Depends(participant)) 
     before = _read_survey(user)
     doc = {"kind": "survey", "ts": store.now(), "version": q["version"], **_who(p, roles), "answers": answers,
            "sus": sus_score(q, answers), "umux": umux_lite(q, answers), "updates": (before["updates"] + 1) if before else 0}
+    if before and before.get("version") != q["version"]:  # an older questionnaire's answers are kept, not overwritten
+        doc["previous"] = {k: before[k] for k in ("version", "ts", "answers", "sus") if k in before}
+    elif before and before.get("previous"):
+        doc["previous"] = before["previous"]
+    if doc["sus"] is None and doc.get("previous", {}).get("sus") is not None:
+        doc["sus"] = doc["previous"]["sus"]  # the version 1 SUS score still counts in the version 1 figure
     _write(_survey_key(user), doc)
     return {"submitted_at": doc["ts"], "answered": len(answers)}
 
@@ -457,6 +463,18 @@ def responses_view(surveys: list[dict], q: dict) -> dict:
             "nps": ({"mean": nps["mean"], "nps": nps["nps"], "n": nps["n"]} if nps else None), "rows": rows}
 
 
+def earlier_answers(doc: dict, current: set[str]) -> dict[str, Any]:
+    """Answers to items the current questionnaire no longer asks: from a response to an older version, or kept under
+    `previous` when that person later answered the new one."""
+    out = {k: v for k, v in doc.get("answers", {}).items() if k not in current}
+    out.update({k: v for k, v in doc.get("previous", {}).get("answers", {}).items() if k not in current and k not in out})
+    return out
+
+
+def earlier_answers_text(doc: dict, current: set[str]) -> str:
+    return "; ".join(f"{k}: {'; '.join(v) if isinstance(v, list) else v}" for k, v in earlier_answers(doc, current).items())
+
+
 def load_comments(backend) -> list[dict]:
     """Every platform suggestion in a state backend, oldest first."""
     return sorted((json.loads(t) for k in backend.keys(COMMENT_PREFIX) if (t := backend.read(k))), key=lambda d: d["ts"])
@@ -546,6 +564,12 @@ def to_markdown(summary: dict, q: dict) -> str:
                   *(f"| {role} | {c['good']} | {c['fine']} | {c['bad']} |" for role, c in sorted(pulse["by_role"].items(), key=lambda kv: _role_order(kv[0]))), ""]
         if pulse["comments"]:
             lines += ["Comments:", "", *(f"- {c['ts']} · {c['role']} · {c['rating']} · {c['where']}: {c['comment']}" for c in pulse["comments"]), ""]
+    earlier = [(d, earlier_answers(d, {i["id"] for i in items(q)})) for d in summary.get("surveys", [])]
+    earlier = [(d, e) for d, e in earlier if e]
+    if earlier:
+        lines += ["## Answers to earlier questionnaire versions", "",
+                  *(f"- {d['ts']} · {_role_key(d)}: " + "; ".join(f"{k}: {'; '.join(v) if isinstance(v, list) else v}" for k, v in e.items())
+                    for d, e in earlier), ""]
     if summary.get("comments") is not None:
         c = summary["comments"]
         lines += ["## Suggestions for the platform", ""]
