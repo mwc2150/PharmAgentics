@@ -224,14 +224,16 @@ class RunSession:
         come from this run's Registry, through the same builders as the scripted brief (tools/memo.py)."""
         reg, p = self._reg(), self.p
         health = stages.data_health(reg, p)
-        restated = stages.restatements(reg, p)
+        restated_facts: list[dict] = []
+        restated = stages.restatements(reg, p, restated_facts)
         facts: dict = {}
         stages.kpis(reg, p, facts)
         self.proj, self.restated, self.facts = projection.build(reg, p), bool(restated), facts
         nums, lim = memo.numbers(self.proj, facts, restated, p), memo.limits(p, self.proj, health, reg)
         return {"title": memo.title_lines(p), "numbers": nums["lines"], "limits": lim["lines"],
-                "appendix": memo.appendix(reg, p=p, proj=self.proj), "calendar": bool(p.calendar),
+                "appendix": memo.appendix(reg, p=p, proj=self.proj, restated=bool(restated)), "calendar": bool(p.calendar),
                 "territory_table": nums["territory_table"], "details": {"2": nums["detail"], "4": lim["detail"]},
+                "restatement_stories": [asdict(b) for b in [memo.restatement_block(restated_facts)] if b],  # brief-010 FR-005
                 "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 
     def memo_close(self, competitor: bool) -> dict:

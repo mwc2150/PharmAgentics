@@ -1226,7 +1226,7 @@
   "abstained": false
  },
  "Week of 2026-07-13 in Mid-Atlantic: Generate the weekly brand-performance briefing.": {
-  "answer": "Brief for week of 2026-07-13. Product: BXA.\n## Bottom line\nData note: an earlier week was restated. The new value and the reason are in The numbers.\nProjected national BXA TRx is 4,240 for the week of 2026-07-13.\nLike for like on 7 of 8 territories, BXA TRx is up 3.3% against the four weeks before (2026-06-15 to 2026-07-06).\nBXA held 32.6% of the four-brand market basket.\nLeast sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories.\nBefore Metacora launched, BXA held 35.4% of the four-brand basket.\n## The numbers\nScope: week of 2026-07-13, compared with the four weeks before (2026-06-15 to 2026-07-06).\nLike for like, BXA TRx averaged 3,618 a week across 7 of 8 territories, up 3.3% against the comparison weeks.\nWeek over week, BXA TRx is 4,240 against 3,665 the week before (up 15.7%).\nOn the 7 territories that report both weeks, BXA TRx went from 3,665 to 3,618 (down 1.3%).\nAgainst the comparison weeks, New England fell most (down 14.6%) and Pacific rose most (up 45.3%).\nRestated: Mid-Atlantic BXA TRx for the week of 2026-04-06 was 692 when first reported and is now 742 (restated 2026-07-13; reason: synthetic late claims adjustment). Quote the new value with this note.\nChart: BXA TRx a week, 2026-04-20 to 2026-07-13: projected national and Mid-Atlantic. Hollow points are projected or estimated, an assumption (weeks of 2026-05-04, 2026-07-06). No forecast is drawn.\nProjected national moved from 4,728 in the week of 2026-04-20 to 4,240 in the week of 2026-07-13.\nBy territory, all observed.\nGreat Lakes: 622 BXA TRx a week; no change is given, because a week compared failed the feed gate.\nMid-Atlantic: 636 BXA TRx a week; down 6.9% on the week before; down 6.5% on the comparison weeks.\nMountain: 383 BXA TRx a week; up 20.8% on the week before; up 20.1% on the comparison weeks.\nNew England: 336 BXA TRx a week; down 20.6% on the week before; down 14.6% on the comparison weeks.\nNorthwest: 384 BXA TRx a week; down 2.5% on the week before; down 1.9% on the comparison weeks.\nPacific: 737 BXA TRx a week; up 5.4% on the week before; up 45.3% on the comparison weeks.\nSouth Central: 533 BXA TRx a week; flat 0.4% on the week before; down 7.4% on the comparison weeks.\nSoutheast: 609 BXA TRx a week; down 0.8% on the week before; down 4.1% on the comparison weeks.\n## What changed and why\nStory one: Pacific. BXA TRx averaged 737 a week against 507 before (up 45.3%), while the other territories were down 3.8%.\nChecked, in this order:\n- Data artifact: ruled out. Every Pacific cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Pacific plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 50 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 1.00.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Pacific BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (406 to 699). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Pacific had 737 BXA TRx, above its baseline band.\nCuts of the change by plan, weekly TRx. Total: up 230 TRx a week.\n- Commercial plan one: up 86 TRx a week.\n- Medicare Part D plan one: up 63 TRx a week.\n- Commercial plan two: up 28 TRx a week.\n- Medicare Part D plan two: up 22 TRx a week.\n- Medicaid plan one: up 12 TRx a week.\nCuts of the change by specialty, weekly TRx. Total: up 230 TRx a week.\n- Primary care: up 95 TRx a week.\n- Internal medicine: up 79 TRx a week.\n- Cardiology: up 35 TRx a week.\n- Endocrinology: up 22 TRx a week.\nCuts of the change by channel, weekly TRx. Total: up 230 TRx a week.\n- Commercial: up 114 TRx a week.\n- Medicare Part D: up 85 TRx a week.\n- Medicaid: up 16 TRx a week.\n- Cash: up 15 TRx a week (small cell: noisy).\nStory two: Mid-Atlantic. BXA TRx averaged 636 a week against 680 before (down 6.5%), while the other territories were up 5.7%.\nChecked, in this order:\n- Data artifact: ruled out. Every Mid-Atlantic cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Mid-Atlantic plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 54 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 0.97.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Mid-Atlantic BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (640 to 712). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Mid-Atlantic had 636 BXA TRx, below its baseline band.\nCuts of the change by plan, weekly TRx. Total: down 44 TRx a week.\n- Medicare Part D plan two: up 41 TRx a week.\n- Commercial plan two: down 30 TRx a week.\n- Commercial plan one: down 23 TRx a week.\n- Cash plan one: down 14 TRx a week (small cell: noisy).\n- Medicaid plan two: down 13 TRx a week (small cell: noisy).\nCuts of the change by specialty, weekly TRx. Total: down 44 TRx a week.\n- Internal medicine: down 38 TRx a week.\n- Cardiology: down 21 TRx a week.\n- Primary care: up 17 TRx a week.\n- Endocrinology: down 2 TRx a week.\nCuts of the change by channel, weekly TRx. Total: down 44 TRx a week.\n- Commercial: down 53 TRx a week.\n- Medicare Part D: up 35 TRx a week.\n- Cash: down 18 TRx a week (small cell: noisy).\n- Medicaid: down 9 TRx a week.\nStory three: competitor Metacora (launched 2026-03-02). This is a continuing story, week 19 since launch, still growing. Metacora held 13.2% of the four-brand basket and BXA held 32.6%, against 35.4% for BXA in the four weeks before launch. Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers.\nChart: Shares of the four-brand basket, 2026-04-20 to 2026-07-13, every reportable territory.\nMetacora held 13.2% of the basket in the week of 2026-07-13.\nConsidered and dropped: 5 territories moved within their normal range.\n## What the data can't tell us\nData health: 8 of 8 territories pass the feed gate for 2026-07-13. No cut is withheld.\nChart: Feed coverage by territory and week, 2026-04-20 to 2026-07-13. Hollow cells are projected and crossed cells are estimated, both assumptions.\n2 territory-weeks in this window are not observed counts.\nFeed for Mid-Atlantic in these weeks: 128 rows received against 128 expected; lowest panel coverage 1.000.\n## Next checks\n- Pacific: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Mid-Atlantic: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Metacora: track the basket shares each week. Owner: marketing and sales. Unlocks: whether to adjust the response to Metacora.\n## Appendix\nData version <DATA_VERSION>. Product: BXA (Cardiovela), synthetic data.\nAssumptions:\n- Comparison weeks: the four weeks before (2026-06-15 to 2026-07-06). Source: the brief's default rule, the four weeks before the period.\n- Like for like: changes use only territories whose feed passed the gate in every week compared. Withheld cuts are left out of every change and story, and never read as zero demand. Source: the feed gate.\n- Drivers: the checks evaluate the same week and delays of one and two weeks. A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.\nMethod: like-for-like figures use only territories whose feed passed the gate in every week compared. The projected national divides each territory's observed TRx by its panel coverage, and estimates a territory that cannot be read from its recent share of national. Changes, stories and drivers use like-for-like cuts only.\nGlossary:\n- Like for like: a comparison that uses only territories whose feed passed its checks in every week compared.\n- Panel coverage: the share of a territory's expected prescription records that arrived in a given week.\n- Projected national: national TRx built territory by territory, each territory's observed TRx divided by its panel coverage, summed.\n- Withheld cut: a territory or week whose data failed its checks, so no story or driver is given for it.",
+  "answer": "Brief for week of 2026-07-13. Product: BXA.\n## Bottom line\nData note: an earlier week was restated. The new value and the reason are in The numbers.\nProjected national BXA TRx is 4,240 for the week of 2026-07-13.\nLike for like on 7 of 8 territories, BXA TRx is up 3.3% against the four weeks before (2026-06-15 to 2026-07-06).\nBXA held 32.6% of the four-brand market basket.\nLeast sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories.\nBefore Metacora launched, BXA held 35.4% of the four-brand basket.\n## The numbers\nScope: week of 2026-07-13, compared with the four weeks before (2026-06-15 to 2026-07-06).\nLike for like, BXA TRx averaged 3,618 a week across 7 of 8 territories, up 3.3% against the comparison weeks.\nWeek over week, BXA TRx is 4,240 against 3,665 the week before (up 15.7%).\nOn the 7 territories that report both weeks, BXA TRx went from 3,665 to 3,618 (down 1.3%).\nAgainst the comparison weeks, New England fell most (down 14.6%) and Pacific rose most (up 45.3%).\nRestated: Mid-Atlantic BXA TRx for the week of 2026-04-06 was 692 when first reported and is now 742, up 50 TRx (7.2%). It was restated 2026-07-13; reason: synthetic late claims adjustment. Quote the new value with this note.\nChart: BXA TRx a week, 2026-04-20 to 2026-07-13: projected national and Mid-Atlantic. Hollow points are projected or estimated, an assumption (weeks of 2026-05-04, 2026-07-06). No forecast is drawn.\nProjected national moved from 4,728 in the week of 2026-04-20 to 4,240 in the week of 2026-07-13.\nBy territory, all observed.\nGreat Lakes: 622 BXA TRx a week; no change is given, because a week compared failed the feed gate.\nMid-Atlantic: 636 BXA TRx a week; down 6.9% on the week before; down 6.5% on the comparison weeks.\nMountain: 383 BXA TRx a week; up 20.8% on the week before; up 20.1% on the comparison weeks.\nNew England: 336 BXA TRx a week; down 20.6% on the week before; down 14.6% on the comparison weeks.\nNorthwest: 384 BXA TRx a week; down 2.5% on the week before; down 1.9% on the comparison weeks.\nPacific: 737 BXA TRx a week; up 5.4% on the week before; up 45.3% on the comparison weeks.\nSouth Central: 533 BXA TRx a week; flat 0.4% on the week before; down 7.4% on the comparison weeks.\nSoutheast: 609 BXA TRx a week; down 0.8% on the week before; down 4.1% on the comparison weeks.\n## What changed and why\nStory one: Pacific. BXA TRx averaged 737 a week against 507 before (up 45.3%), while the other territories were down 3.8%.\nChecked, in this order:\n- Data artifact: ruled out. Every Pacific cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Pacific plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 50 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 1.00.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Pacific BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (406 to 699). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Pacific had 737 BXA TRx, above its baseline band.\nCuts of the change by plan, weekly TRx. Total: up 230 TRx a week.\n- Commercial plan one: up 86 TRx a week.\n- Medicare Part D plan one: up 63 TRx a week.\n- Commercial plan two: up 28 TRx a week.\n- Medicare Part D plan two: up 22 TRx a week.\n- Medicaid plan one: up 12 TRx a week.\nCuts of the change by specialty, weekly TRx. Total: up 230 TRx a week.\n- Primary care: up 95 TRx a week.\n- Internal medicine: up 79 TRx a week.\n- Cardiology: up 35 TRx a week.\n- Endocrinology: up 22 TRx a week.\nCuts of the change by channel, weekly TRx. Total: up 230 TRx a week.\n- Commercial: up 114 TRx a week.\n- Medicare Part D: up 85 TRx a week.\n- Medicaid: up 16 TRx a week.\n- Cash: up 15 TRx a week (small cell: noisy).\nStory two: Mid-Atlantic. BXA TRx averaged 636 a week against 680 before (down 6.5%), while the other territories were up 5.7%.\nChecked, in this order:\n- Data artifact: ruled out. Every Mid-Atlantic cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Mid-Atlantic plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 54 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 0.97.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Mid-Atlantic BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (640 to 712). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Mid-Atlantic had 636 BXA TRx, below its baseline band.\nCuts of the change by plan, weekly TRx. Total: down 44 TRx a week.\n- Medicare Part D plan two: up 41 TRx a week.\n- Commercial plan two: down 30 TRx a week.\n- Commercial plan one: down 23 TRx a week.\n- Cash plan one: down 14 TRx a week (small cell: noisy).\n- Medicaid plan two: down 13 TRx a week (small cell: noisy).\nCuts of the change by specialty, weekly TRx. Total: down 44 TRx a week.\n- Internal medicine: down 38 TRx a week.\n- Cardiology: down 21 TRx a week.\n- Primary care: up 17 TRx a week.\n- Endocrinology: down 2 TRx a week.\nCuts of the change by channel, weekly TRx. Total: down 44 TRx a week.\n- Commercial: down 53 TRx a week.\n- Medicare Part D: up 35 TRx a week.\n- Cash: down 18 TRx a week (small cell: noisy).\n- Medicaid: down 9 TRx a week.\nStory three: competitor Metacora (launched 2026-03-02). This is a continuing story, week 19 since launch, still growing. Metacora held 13.2% of the four-brand basket and BXA held 32.6%, against 35.4% for BXA in the four weeks before launch. Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers.\nChart: Shares of the four-brand basket, 2026-04-20 to 2026-07-13, every reportable territory.\nMetacora held 13.2% of the basket in the week of 2026-07-13.\nData story: Mid-Atlantic restated its week of 2026-04-06 on 2026-07-13, from 692 to 742 TRx (up 7.2%). Confidence: High. Leading driver: data.\nConsidered and dropped: 5 territories moved within their normal range.\n## What the data can't tell us\nData health: 8 of 8 territories pass the feed gate for 2026-07-13. No cut is withheld.\nChart: Feed coverage by territory and week, 2026-04-20 to 2026-07-13. Hollow cells are projected and crossed cells are estimated, both assumptions.\n2 territory-weeks in this window are not observed counts.\nFeed for Mid-Atlantic in these weeks: 128 rows received against 128 expected; lowest panel coverage 1.000.\n## Next checks\n- Pacific: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Mid-Atlantic: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Metacora: track the basket shares each week. Owner: marketing and sales. Unlocks: whether to adjust the response to Metacora.\n## Appendix\nData version <DATA_VERSION>. Product: BXA (Cardiovela), synthetic data.\nAssumptions:\n- Comparison weeks: the four weeks before (2026-06-15 to 2026-07-06). Source: the brief's default rule, the four weeks before the period.\n- Like for like: changes use only territories whose feed passed the gate in every week compared. Withheld cuts are left out of every change and story, and never read as zero demand. A restatement is reported when the restated week is inside the period or the restatement was published inside it. Source: the feed gate and the vendor's restatement record.\n- Drivers: the checks evaluate the same week and delays of one and two weeks. A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.\nMethod: like-for-like figures use only territories whose feed passed the gate in every week compared. The projected national divides each territory's observed TRx by its panel coverage, and estimates a territory that cannot be read from its recent share of national. Changes, stories and drivers use like-for-like cuts only.\nGlossary:\n- Like for like: a comparison that uses only territories whose feed passed its checks in every week compared.\n- Panel coverage: the share of a territory's expected prescription records that arrived in a given week.\n- Projected national: national TRx built territory by territory, each territory's observed TRx divided by its panel coverage, summed.\n- Withheld cut: a territory or week whose data failed its checks, so no story or driver is given for it.",
   "claims": [
    {
     "value": "8",
@@ -1245,436 +1245,444 @@
     "evidence_id": "e4"
    },
    {
-    "value": "7",
+    "value": "50",
     "evidence_id": "e5"
    },
    {
-    "value": "3,618",
+    "value": "7.2%",
     "evidence_id": "e6"
    },
    {
-    "value": "8",
-    "evidence_id": "e7"
-   },
-   {
-    "value": "3.3%",
-    "evidence_id": "e8"
-   },
-   {
-    "value": "4,240",
-    "evidence_id": "e9"
-   },
-   {
-    "value": "3,665",
-    "evidence_id": "e10"
-   },
-   {
-    "value": "15.7%",
-    "evidence_id": "e11"
-   },
-   {
     "value": "7",
-    "evidence_id": "e12"
-   },
-   {
-    "value": "3,665",
-    "evidence_id": "e13"
+    "evidence_id": "e7"
    },
    {
     "value": "3,618",
-    "evidence_id": "e14"
-   },
-   {
-    "value": "1.3%",
-    "evidence_id": "e15"
-   },
-   {
-    "value": "6.5%",
-    "evidence_id": "e16"
-   },
-   {
-    "value": "6.9%",
-    "evidence_id": "e17"
-   },
-   {
-    "value": "20.1%",
-    "evidence_id": "e18"
-   },
-   {
-    "value": "20.8%",
-    "evidence_id": "e19"
-   },
-   {
-    "value": "14.6%",
-    "evidence_id": "e20"
-   },
-   {
-    "value": "20.6%",
-    "evidence_id": "e21"
-   },
-   {
-    "value": "1.9%",
-    "evidence_id": "e22"
-   },
-   {
-    "value": "2.5%",
-    "evidence_id": "e23"
-   },
-   {
-    "value": "45.3%",
-    "evidence_id": "e24"
-   },
-   {
-    "value": "5.4%",
-    "evidence_id": "e25"
-   },
-   {
-    "value": "7.4%",
-    "evidence_id": "e26"
-   },
-   {
-    "value": "0.4%",
-    "evidence_id": "e27"
-   },
-   {
-    "value": "4.1%",
-    "evidence_id": "e28"
-   },
-   {
-    "value": "0.8%",
-    "evidence_id": "e29"
-   },
-   {
-    "value": "4,240",
-    "evidence_id": "e30"
-   },
-   {
-    "value": "622",
-    "evidence_id": "e31"
-   },
-   {
-    "value": "636",
-    "evidence_id": "e32"
-   },
-   {
-    "value": "383",
-    "evidence_id": "e33"
-   },
-   {
-    "value": "336",
-    "evidence_id": "e34"
-   },
-   {
-    "value": "384",
-    "evidence_id": "e35"
-   },
-   {
-    "value": "737",
-    "evidence_id": "e36"
-   },
-   {
-    "value": "533",
-    "evidence_id": "e37"
-   },
-   {
-    "value": "609",
-    "evidence_id": "e38"
-   },
-   {
-    "value": "50",
-    "evidence_id": "e39"
-   },
-   {
-    "value": "52",
-    "evidence_id": "e40"
-   },
-   {
-    "value": "1.00",
-    "evidence_id": "e41"
-   },
-   {
-    "value": "11.2%",
-    "evidence_id": "e42"
-   },
-   {
-    "value": "10.8%",
-    "evidence_id": "e43"
-   },
-   {
-    "value": "737",
-    "evidence_id": "e44"
-   },
-   {
-    "value": "507",
-    "evidence_id": "e45"
-   },
-   {
-    "value": "45.3%",
-    "evidence_id": "e24"
-   },
-   {
-    "value": "3.8%",
-    "evidence_id": "e46"
-   },
-   {
-    "value": "406",
-    "evidence_id": "e48"
-   },
-   {
-    "value": "699",
-    "evidence_id": "e49"
-   },
-   {
-    "value": "737",
-    "evidence_id": "e50"
-   },
-   {
-    "value": "230",
-    "evidence_id": "e51"
-   },
-   {
-    "value": "86",
-    "evidence_id": "e52"
-   },
-   {
-    "value": "63",
-    "evidence_id": "e53"
-   },
-   {
-    "value": "28",
-    "evidence_id": "e54"
-   },
-   {
-    "value": "22",
-    "evidence_id": "e55"
-   },
-   {
-    "value": "12",
-    "evidence_id": "e56"
-   },
-   {
-    "value": "230",
-    "evidence_id": "e57"
-   },
-   {
-    "value": "95",
-    "evidence_id": "e58"
-   },
-   {
-    "value": "79",
-    "evidence_id": "e59"
-   },
-   {
-    "value": "35",
-    "evidence_id": "e60"
-   },
-   {
-    "value": "22",
-    "evidence_id": "e61"
-   },
-   {
-    "value": "230",
-    "evidence_id": "e62"
-   },
-   {
-    "value": "114",
-    "evidence_id": "e63"
-   },
-   {
-    "value": "85",
-    "evidence_id": "e64"
-   },
-   {
-    "value": "16",
-    "evidence_id": "e65"
-   },
-   {
-    "value": "15",
-    "evidence_id": "e66"
-   },
-   {
-    "value": "54",
-    "evidence_id": "e67"
-   },
-   {
-    "value": "52",
-    "evidence_id": "e68"
-   },
-   {
-    "value": "0.97",
-    "evidence_id": "e69"
-   },
-   {
-    "value": "11.2%",
-    "evidence_id": "e70"
-   },
-   {
-    "value": "10.8%",
-    "evidence_id": "e71"
-   },
-   {
-    "value": "636",
-    "evidence_id": "e72"
-   },
-   {
-    "value": "680",
-    "evidence_id": "e73"
-   },
-   {
-    "value": "6.5%",
-    "evidence_id": "e16"
-   },
-   {
-    "value": "5.7%",
-    "evidence_id": "e74"
-   },
-   {
-    "value": "640",
-    "evidence_id": "e76"
-   },
-   {
-    "value": "712",
-    "evidence_id": "e77"
-   },
-   {
-    "value": "636",
-    "evidence_id": "e78"
-   },
-   {
-    "value": "44",
-    "evidence_id": "e79"
-   },
-   {
-    "value": "41",
-    "evidence_id": "e80"
-   },
-   {
-    "value": "30",
-    "evidence_id": "e81"
-   },
-   {
-    "value": "23",
-    "evidence_id": "e82"
-   },
-   {
-    "value": "14",
-    "evidence_id": "e83"
-   },
-   {
-    "value": "13",
-    "evidence_id": "e84"
-   },
-   {
-    "value": "44",
-    "evidence_id": "e85"
-   },
-   {
-    "value": "38",
-    "evidence_id": "e86"
-   },
-   {
-    "value": "21",
-    "evidence_id": "e87"
-   },
-   {
-    "value": "17",
-    "evidence_id": "e88"
-   },
-   {
-    "value": "2",
-    "evidence_id": "e89"
-   },
-   {
-    "value": "44",
-    "evidence_id": "e90"
-   },
-   {
-    "value": "53",
-    "evidence_id": "e91"
-   },
-   {
-    "value": "35",
-    "evidence_id": "e92"
-   },
-   {
-    "value": "18",
-    "evidence_id": "e93"
-   },
-   {
-    "value": "9",
-    "evidence_id": "e94"
-   },
-   {
-    "value": "19",
-    "evidence_id": "e95"
-   },
-   {
-    "value": "13.2%",
-    "evidence_id": "e96"
-   },
-   {
-    "value": "32.6%",
-    "evidence_id": "e97"
-   },
-   {
-    "value": "35.4%",
-    "evidence_id": "e98"
-   },
-   {
-    "value": "13.2%",
-    "evidence_id": "e96"
-   },
-   {
-    "value": "5",
-    "evidence_id": "e100"
-   },
-   {
-    "value": "7",
-    "evidence_id": "e5"
-   },
-   {
-    "value": "8",
-    "evidence_id": "e7"
-   },
-   {
-    "value": "3.3%",
     "evidence_id": "e8"
    },
    {
-    "value": "32.6%",
-    "evidence_id": "e97"
+    "value": "8",
+    "evidence_id": "e9"
    },
    {
-    "value": "35.4%",
-    "evidence_id": "e98"
-   },
-   {
-    "value": "45.3%",
-    "evidence_id": "e24"
-   },
-   {
-    "value": "128",
-    "evidence_id": "e101"
-   },
-   {
-    "value": "128",
-    "evidence_id": "e102"
-   },
-   {
-    "value": "1.000",
-    "evidence_id": "e103"
-   },
-   {
-    "value": "4,728",
-    "evidence_id": "e105"
+    "value": "3.3%",
+    "evidence_id": "e10"
    },
    {
     "value": "4,240",
+    "evidence_id": "e11"
+   },
+   {
+    "value": "3,665",
+    "evidence_id": "e12"
+   },
+   {
+    "value": "15.7%",
+    "evidence_id": "e13"
+   },
+   {
+    "value": "7",
+    "evidence_id": "e14"
+   },
+   {
+    "value": "3,665",
+    "evidence_id": "e15"
+   },
+   {
+    "value": "3,618",
+    "evidence_id": "e16"
+   },
+   {
+    "value": "1.3%",
+    "evidence_id": "e17"
+   },
+   {
+    "value": "6.5%",
+    "evidence_id": "e18"
+   },
+   {
+    "value": "6.9%",
+    "evidence_id": "e19"
+   },
+   {
+    "value": "20.1%",
+    "evidence_id": "e20"
+   },
+   {
+    "value": "20.8%",
+    "evidence_id": "e21"
+   },
+   {
+    "value": "14.6%",
+    "evidence_id": "e22"
+   },
+   {
+    "value": "20.6%",
+    "evidence_id": "e23"
+   },
+   {
+    "value": "1.9%",
+    "evidence_id": "e24"
+   },
+   {
+    "value": "2.5%",
+    "evidence_id": "e25"
+   },
+   {
+    "value": "45.3%",
+    "evidence_id": "e26"
+   },
+   {
+    "value": "5.4%",
+    "evidence_id": "e27"
+   },
+   {
+    "value": "7.4%",
+    "evidence_id": "e28"
+   },
+   {
+    "value": "0.4%",
+    "evidence_id": "e29"
+   },
+   {
+    "value": "4.1%",
     "evidence_id": "e30"
    },
    {
+    "value": "0.8%",
+    "evidence_id": "e31"
+   },
+   {
+    "value": "4,240",
+    "evidence_id": "e32"
+   },
+   {
+    "value": "622",
+    "evidence_id": "e33"
+   },
+   {
+    "value": "636",
+    "evidence_id": "e34"
+   },
+   {
+    "value": "383",
+    "evidence_id": "e35"
+   },
+   {
+    "value": "336",
+    "evidence_id": "e36"
+   },
+   {
+    "value": "384",
+    "evidence_id": "e37"
+   },
+   {
+    "value": "737",
+    "evidence_id": "e38"
+   },
+   {
+    "value": "533",
+    "evidence_id": "e39"
+   },
+   {
+    "value": "609",
+    "evidence_id": "e40"
+   },
+   {
+    "value": "50",
+    "evidence_id": "e41"
+   },
+   {
+    "value": "52",
+    "evidence_id": "e42"
+   },
+   {
+    "value": "1.00",
+    "evidence_id": "e43"
+   },
+   {
+    "value": "11.2%",
+    "evidence_id": "e44"
+   },
+   {
+    "value": "10.8%",
+    "evidence_id": "e45"
+   },
+   {
+    "value": "737",
+    "evidence_id": "e46"
+   },
+   {
+    "value": "507",
+    "evidence_id": "e47"
+   },
+   {
+    "value": "45.3%",
+    "evidence_id": "e26"
+   },
+   {
+    "value": "3.8%",
+    "evidence_id": "e48"
+   },
+   {
+    "value": "406",
+    "evidence_id": "e50"
+   },
+   {
+    "value": "699",
+    "evidence_id": "e51"
+   },
+   {
+    "value": "737",
+    "evidence_id": "e52"
+   },
+   {
+    "value": "230",
+    "evidence_id": "e53"
+   },
+   {
+    "value": "86",
+    "evidence_id": "e54"
+   },
+   {
+    "value": "63",
+    "evidence_id": "e55"
+   },
+   {
+    "value": "28",
+    "evidence_id": "e56"
+   },
+   {
+    "value": "22",
+    "evidence_id": "e57"
+   },
+   {
+    "value": "12",
+    "evidence_id": "e58"
+   },
+   {
+    "value": "230",
+    "evidence_id": "e59"
+   },
+   {
+    "value": "95",
+    "evidence_id": "e60"
+   },
+   {
+    "value": "79",
+    "evidence_id": "e61"
+   },
+   {
+    "value": "35",
+    "evidence_id": "e62"
+   },
+   {
+    "value": "22",
+    "evidence_id": "e63"
+   },
+   {
+    "value": "230",
+    "evidence_id": "e64"
+   },
+   {
+    "value": "114",
+    "evidence_id": "e65"
+   },
+   {
+    "value": "85",
+    "evidence_id": "e66"
+   },
+   {
+    "value": "16",
+    "evidence_id": "e67"
+   },
+   {
+    "value": "15",
+    "evidence_id": "e68"
+   },
+   {
+    "value": "54",
+    "evidence_id": "e69"
+   },
+   {
+    "value": "52",
+    "evidence_id": "e70"
+   },
+   {
+    "value": "0.97",
+    "evidence_id": "e71"
+   },
+   {
+    "value": "11.2%",
+    "evidence_id": "e72"
+   },
+   {
+    "value": "10.8%",
+    "evidence_id": "e73"
+   },
+   {
+    "value": "636",
+    "evidence_id": "e74"
+   },
+   {
+    "value": "680",
+    "evidence_id": "e75"
+   },
+   {
+    "value": "6.5%",
+    "evidence_id": "e18"
+   },
+   {
+    "value": "5.7%",
+    "evidence_id": "e76"
+   },
+   {
+    "value": "640",
+    "evidence_id": "e78"
+   },
+   {
+    "value": "712",
+    "evidence_id": "e79"
+   },
+   {
+    "value": "636",
+    "evidence_id": "e80"
+   },
+   {
+    "value": "44",
+    "evidence_id": "e81"
+   },
+   {
+    "value": "41",
+    "evidence_id": "e82"
+   },
+   {
+    "value": "30",
+    "evidence_id": "e83"
+   },
+   {
+    "value": "23",
+    "evidence_id": "e84"
+   },
+   {
+    "value": "14",
+    "evidence_id": "e85"
+   },
+   {
+    "value": "13",
+    "evidence_id": "e86"
+   },
+   {
+    "value": "44",
+    "evidence_id": "e87"
+   },
+   {
+    "value": "38",
+    "evidence_id": "e88"
+   },
+   {
+    "value": "21",
+    "evidence_id": "e89"
+   },
+   {
+    "value": "17",
+    "evidence_id": "e90"
+   },
+   {
     "value": "2",
+    "evidence_id": "e91"
+   },
+   {
+    "value": "44",
+    "evidence_id": "e92"
+   },
+   {
+    "value": "53",
+    "evidence_id": "e93"
+   },
+   {
+    "value": "35",
+    "evidence_id": "e94"
+   },
+   {
+    "value": "18",
+    "evidence_id": "e95"
+   },
+   {
+    "value": "9",
+    "evidence_id": "e96"
+   },
+   {
+    "value": "19",
+    "evidence_id": "e97"
+   },
+   {
+    "value": "13.2%",
+    "evidence_id": "e98"
+   },
+   {
+    "value": "32.6%",
+    "evidence_id": "e99"
+   },
+   {
+    "value": "35.4%",
+    "evidence_id": "e100"
+   },
+   {
+    "value": "13.2%",
+    "evidence_id": "e98"
+   },
+   {
+    "value": "5",
+    "evidence_id": "e102"
+   },
+   {
+    "value": "7",
+    "evidence_id": "e7"
+   },
+   {
+    "value": "8",
+    "evidence_id": "e9"
+   },
+   {
+    "value": "3.3%",
+    "evidence_id": "e10"
+   },
+   {
+    "value": "32.6%",
+    "evidence_id": "e99"
+   },
+   {
+    "value": "35.4%",
+    "evidence_id": "e100"
+   },
+   {
+    "value": "45.3%",
+    "evidence_id": "e26"
+   },
+   {
+    "value": "128",
+    "evidence_id": "e103"
+   },
+   {
+    "value": "128",
+    "evidence_id": "e104"
+   },
+   {
+    "value": "1.000",
+    "evidence_id": "e105"
+   },
+   {
+    "value": "4,728",
     "evidence_id": "e107"
+   },
+   {
+    "value": "4,240",
+    "evidence_id": "e32"
+   },
+   {
+    "value": "2",
+    "evidence_id": "e109"
    }
   ],
   "evidence": [
@@ -1705,7 +1713,7 @@
      "week": "2026-04-06",
      "territory": "MID_ATLANTIC"
     },
-    "query": "select sum(trx_prior) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'",
+    "query": "select trx_signed_off from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-07-13') or restated_at between DATE '2026-07-13' and DATE '2026-07-19') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
     "result": 692.0,
     "data_version": "<DATA_VERSION>"
    },
@@ -1716,12 +1724,34 @@
      "week": "2026-04-06",
      "territory": "MID_ATLANTIC"
     },
-    "query": "select sum(trx_revised) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'",
+    "query": "select trx_restated from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-07-13') or restated_at between DATE '2026-07-13' and DATE '2026-07-19') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
     "result": 742.0,
     "data_version": "<DATA_VERSION>"
    },
    {
     "id": "e5",
+    "tool": "get_restatement",
+    "params": {
+     "week": "2026-04-06",
+     "territory": "MID_ATLANTIC"
+    },
+    "query": "select abs(trx_restated - trx_signed_off) from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-07-13') or restated_at between DATE '2026-07-13' and DATE '2026-07-19') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
+    "result": 50.0,
+    "data_version": "<DATA_VERSION>"
+   },
+   {
+    "id": "e6",
+    "tool": "get_restatement",
+    "params": {
+     "week": "2026-04-06",
+     "territory": "MID_ATLANTIC"
+    },
+    "query": "select 100.0 * abs(trx_restated - trx_signed_off) / trx_signed_off from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-07-13') or restated_at between DATE '2026-07-13' and DATE '2026-07-19') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
+    "result": 7.22543352601156,
+    "data_version": "<DATA_VERSION>"
+   },
+   {
+    "id": "e7",
     "tool": "get_metric",
     "params": {},
     "query": "select count(distinct territory_id) from reporting.v_reportable_rx where week_start in (DATE '2026-07-13') and territory_id in ('MID_ATLANTIC','MOUNTAIN','NEW_ENGLAND','NORTHWEST','PACIFIC','SOUTHEAST','SOUTH_CENTRAL')",
@@ -1729,7 +1759,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e6",
+    "id": "e8",
     "tool": "get_metric",
     "params": {
      "scope": "like-for-like national"
@@ -1739,7 +1769,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e7",
+    "id": "e9",
     "tool": "get_metric",
     "params": {},
     "query": "select count(*) from raw.dim_territory",
@@ -1747,7 +1777,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e8",
+    "id": "e10",
     "tool": "get_metric",
     "params": {
      "scope": "like-for-like national"
@@ -1757,7 +1787,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e9",
+    "id": "e11",
     "tool": "get_metric",
     "params": {
      "week": "2026-07-13"
@@ -1767,7 +1797,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e10",
+    "id": "e12",
     "tool": "get_metric",
     "params": {
      "week": "2026-07-06"
@@ -1777,7 +1807,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e11",
+    "id": "e13",
     "tool": "get_metric",
     "params": {
      "scope": "week over week, reportable cuts"
@@ -1787,7 +1817,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e12",
+    "id": "e14",
     "tool": "get_metric",
     "params": {
      "scope": "territories reporting both weeks"
@@ -1797,7 +1827,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e13",
+    "id": "e15",
     "tool": "get_metric",
     "params": {
      "week": "2026-07-06",
@@ -1808,7 +1838,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e14",
+    "id": "e16",
     "tool": "get_metric",
     "params": {
      "week": "2026-07-13",
@@ -1819,7 +1849,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e15",
+    "id": "e17",
     "tool": "get_metric",
     "params": {
      "scope": "week over week, like for like"
@@ -1829,7 +1859,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e16",
+    "id": "e18",
     "tool": "get_metric",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -1840,7 +1870,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e17",
+    "id": "e19",
     "tool": "get_metric",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -1851,7 +1881,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e18",
+    "id": "e20",
     "tool": "get_metric",
     "params": {
      "territory": "MOUNTAIN",
@@ -1862,7 +1892,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e19",
+    "id": "e21",
     "tool": "get_metric",
     "params": {
      "territory": "MOUNTAIN",
@@ -1873,7 +1903,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e20",
+    "id": "e22",
     "tool": "get_metric",
     "params": {
      "territory": "NEW_ENGLAND",
@@ -1884,7 +1914,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e21",
+    "id": "e23",
     "tool": "get_metric",
     "params": {
      "territory": "NEW_ENGLAND",
@@ -1895,7 +1925,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e22",
+    "id": "e24",
     "tool": "get_metric",
     "params": {
      "territory": "NORTHWEST",
@@ -1906,7 +1936,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e23",
+    "id": "e25",
     "tool": "get_metric",
     "params": {
      "territory": "NORTHWEST",
@@ -1917,7 +1947,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e24",
+    "id": "e26",
     "tool": "get_metric",
     "params": {
      "territory": "PACIFIC",
@@ -1928,7 +1958,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e25",
+    "id": "e27",
     "tool": "get_metric",
     "params": {
      "territory": "PACIFIC",
@@ -1939,7 +1969,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e26",
+    "id": "e28",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTH_CENTRAL",
@@ -1950,7 +1980,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e27",
+    "id": "e29",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTH_CENTRAL",
@@ -1961,7 +1991,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e28",
+    "id": "e30",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTHEAST",
@@ -1972,7 +2002,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e29",
+    "id": "e31",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTHEAST",
@@ -1983,7 +2013,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e30",
+    "id": "e32",
     "tool": "project_national",
     "params": {
      "scope": "projected national"
@@ -1993,7 +2023,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e31",
+    "id": "e33",
     "tool": "project_national",
     "params": {
      "territory": "GREAT_LAKES",
@@ -2004,7 +2034,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e32",
+    "id": "e34",
     "tool": "project_national",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2015,7 +2045,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e33",
+    "id": "e35",
     "tool": "project_national",
     "params": {
      "territory": "MOUNTAIN",
@@ -2026,7 +2056,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e34",
+    "id": "e36",
     "tool": "project_national",
     "params": {
      "territory": "NEW_ENGLAND",
@@ -2037,7 +2067,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e35",
+    "id": "e37",
     "tool": "project_national",
     "params": {
      "territory": "NORTHWEST",
@@ -2048,7 +2078,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e36",
+    "id": "e38",
     "tool": "project_national",
     "params": {
      "territory": "PACIFIC",
@@ -2059,7 +2089,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e37",
+    "id": "e39",
     "tool": "project_national",
     "params": {
      "territory": "SOUTH_CENTRAL",
@@ -2070,7 +2100,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e38",
+    "id": "e40",
     "tool": "project_national",
     "params": {
      "territory": "SOUTHEAST",
@@ -2081,7 +2111,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e39",
+    "id": "e41",
     "tool": "lookup_promo",
     "params": {
      "territory": "PACIFIC",
@@ -2094,7 +2124,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e40",
+    "id": "e42",
     "tool": "lookup_promo",
     "params": {
      "territory": "PACIFIC",
@@ -2119,7 +2149,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e41",
+    "id": "e43",
     "tool": "lookup_inventory",
     "params": {
      "territory": "PACIFIC",
@@ -2132,7 +2162,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e42",
+    "id": "e44",
     "tool": "compare_competitors",
     "params": {
      "territory": "PACIFIC",
@@ -2143,7 +2173,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e43",
+    "id": "e45",
     "tool": "compare_competitors",
     "params": {
      "scope": "other territories",
@@ -2154,7 +2184,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e44",
+    "id": "e46",
     "tool": "get_metric",
     "params": {
      "territory": "PACIFIC"
@@ -2164,7 +2194,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e45",
+    "id": "e47",
     "tool": "get_metric",
     "params": {
      "territory": "PACIFIC"
@@ -2174,7 +2204,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e46",
+    "id": "e48",
     "tool": "get_metric",
     "params": {
      "scope": "other territories"
@@ -2184,7 +2214,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e47",
+    "id": "e49",
     "tool": "chart_story",
     "params": {
      "territory": "PACIFIC"
@@ -2194,7 +2224,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e48",
+    "id": "e50",
     "tool": "chart_story",
     "params": {
      "territory": "PACIFIC",
@@ -2205,7 +2235,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e49",
+    "id": "e51",
     "tool": "chart_story",
     "params": {
      "territory": "PACIFIC",
@@ -2216,7 +2246,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e50",
+    "id": "e52",
     "tool": "chart_story",
     "params": {
      "territory": "PACIFIC",
@@ -2227,7 +2257,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e51",
+    "id": "e53",
     "tool": "split_change",
     "params": {
      "measure": "total weekly TRx change",
@@ -2239,7 +2269,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e52",
+    "id": "e54",
     "tool": "split_change",
     "params": {
      "cut": "SYN_PACIFIC_COMMERCIAL_1",
@@ -2253,7 +2283,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e53",
+    "id": "e55",
     "tool": "split_change",
     "params": {
      "cut": "SYN_PACIFIC_MEDICARE_PART_D_1",
@@ -2267,7 +2297,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e54",
+    "id": "e56",
     "tool": "split_change",
     "params": {
      "cut": "SYN_PACIFIC_COMMERCIAL_2",
@@ -2281,7 +2311,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e55",
+    "id": "e57",
     "tool": "split_change",
     "params": {
      "cut": "SYN_PACIFIC_MEDICARE_PART_D_2",
@@ -2295,7 +2325,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e56",
+    "id": "e58",
     "tool": "split_change",
     "params": {
      "cut": "SYN_PACIFIC_MEDICAID_1",
@@ -2309,7 +2339,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e57",
+    "id": "e59",
     "tool": "split_change",
     "params": {
      "measure": "total weekly TRx change",
@@ -2321,7 +2351,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e58",
+    "id": "e60",
     "tool": "split_change",
     "params": {
      "cut": "PRIMARY_CARE",
@@ -2335,7 +2365,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e59",
+    "id": "e61",
     "tool": "split_change",
     "params": {
      "cut": "INTERNAL_MEDICINE",
@@ -2349,7 +2379,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e60",
+    "id": "e62",
     "tool": "split_change",
     "params": {
      "cut": "CARDIOLOGY",
@@ -2363,7 +2393,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e61",
+    "id": "e63",
     "tool": "split_change",
     "params": {
      "cut": "ENDOCRINOLOGY",
@@ -2377,7 +2407,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e62",
+    "id": "e64",
     "tool": "split_change",
     "params": {
      "measure": "total weekly TRx change",
@@ -2389,7 +2419,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e63",
+    "id": "e65",
     "tool": "split_change",
     "params": {
      "cut": "COMMERCIAL",
@@ -2403,7 +2433,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e64",
+    "id": "e66",
     "tool": "split_change",
     "params": {
      "cut": "MEDICARE_PART_D",
@@ -2417,7 +2447,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e65",
+    "id": "e67",
     "tool": "split_change",
     "params": {
      "cut": "MEDICAID",
@@ -2431,7 +2461,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e66",
+    "id": "e68",
     "tool": "split_change",
     "params": {
      "cut": "CASH",
@@ -2445,7 +2475,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e67",
+    "id": "e69",
     "tool": "lookup_promo",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2458,7 +2488,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e68",
+    "id": "e70",
     "tool": "lookup_promo",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2483,7 +2513,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e69",
+    "id": "e71",
     "tool": "lookup_inventory",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2496,7 +2526,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e70",
+    "id": "e72",
     "tool": "compare_competitors",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2507,7 +2537,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e71",
+    "id": "e73",
     "tool": "compare_competitors",
     "params": {
      "scope": "other territories",
@@ -2518,7 +2548,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e72",
+    "id": "e74",
     "tool": "get_metric",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2528,7 +2558,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e73",
+    "id": "e75",
     "tool": "get_metric",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2538,7 +2568,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e74",
+    "id": "e76",
     "tool": "get_metric",
     "params": {
      "scope": "other territories"
@@ -2548,7 +2578,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e75",
+    "id": "e77",
     "tool": "chart_story",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2558,7 +2588,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e76",
+    "id": "e78",
     "tool": "chart_story",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2569,7 +2599,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e77",
+    "id": "e79",
     "tool": "chart_story",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2580,7 +2610,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e78",
+    "id": "e80",
     "tool": "chart_story",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -2591,7 +2621,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e79",
+    "id": "e81",
     "tool": "split_change",
     "params": {
      "measure": "total weekly TRx change",
@@ -2603,7 +2633,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e80",
+    "id": "e82",
     "tool": "split_change",
     "params": {
      "cut": "SYN_MID_ATLANTIC_MEDICARE_PART_D_2",
@@ -2617,7 +2647,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e81",
+    "id": "e83",
     "tool": "split_change",
     "params": {
      "cut": "SYN_MID_ATLANTIC_COMMERCIAL_2",
@@ -2631,7 +2661,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e82",
+    "id": "e84",
     "tool": "split_change",
     "params": {
      "cut": "SYN_MID_ATLANTIC_COMMERCIAL_1",
@@ -2645,7 +2675,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e83",
+    "id": "e85",
     "tool": "split_change",
     "params": {
      "cut": "SYN_MID_ATLANTIC_CASH_1",
@@ -2659,7 +2689,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e84",
+    "id": "e86",
     "tool": "split_change",
     "params": {
      "cut": "SYN_MID_ATLANTIC_MEDICAID_2",
@@ -2673,7 +2703,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e85",
+    "id": "e87",
     "tool": "split_change",
     "params": {
      "measure": "total weekly TRx change",
@@ -2685,7 +2715,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e86",
+    "id": "e88",
     "tool": "split_change",
     "params": {
      "cut": "INTERNAL_MEDICINE",
@@ -2699,7 +2729,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e87",
+    "id": "e89",
     "tool": "split_change",
     "params": {
      "cut": "CARDIOLOGY",
@@ -2713,7 +2743,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e88",
+    "id": "e90",
     "tool": "split_change",
     "params": {
      "cut": "PRIMARY_CARE",
@@ -2727,7 +2757,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e89",
+    "id": "e91",
     "tool": "split_change",
     "params": {
      "cut": "ENDOCRINOLOGY",
@@ -2741,7 +2771,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e90",
+    "id": "e92",
     "tool": "split_change",
     "params": {
      "measure": "total weekly TRx change",
@@ -2753,7 +2783,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e91",
+    "id": "e93",
     "tool": "split_change",
     "params": {
      "cut": "COMMERCIAL",
@@ -2767,7 +2797,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e92",
+    "id": "e94",
     "tool": "split_change",
     "params": {
      "cut": "MEDICARE_PART_D",
@@ -2781,7 +2811,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e93",
+    "id": "e95",
     "tool": "split_change",
     "params": {
      "cut": "CASH",
@@ -2795,7 +2825,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e94",
+    "id": "e96",
     "tool": "split_change",
     "params": {
      "cut": "MEDICAID",
@@ -2809,7 +2839,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e95",
+    "id": "e97",
     "tool": "compare_competitors",
     "params": {},
     "query": "select datediff('week', DATE '2026-03-02', week_start) from raw.calendar where week_start = DATE '2026-07-13'",
@@ -2817,7 +2847,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e96",
+    "id": "e98",
     "tool": "compare_competitors",
     "params": {
      "product": "BXE"
@@ -2827,7 +2857,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e97",
+    "id": "e99",
     "tool": "compare_competitors",
     "params": {
      "product": "BXA"
@@ -2837,7 +2867,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e98",
+    "id": "e100",
     "tool": "compare_competitors",
     "params": {
      "product": "BXA",
@@ -2848,7 +2878,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e99",
+    "id": "e101",
     "tool": "chart_competitor",
     "params": {},
     "query": "select week_start::varchar, 100.0 * sum(trx) filter (where product_id = 'BXA') / nullif(sum(trx), 0), 100.0 * sum(trx) filter (where product_id = 'BXE') / nullif(sum(trx), 0) from reporting.v_reportable_rx where week_start in (DATE '2026-04-20',DATE '2026-04-27',DATE '2026-05-04',DATE '2026-05-11',DATE '2026-05-18',DATE '2026-05-25',DATE '2026-06-01',DATE '2026-06-08',DATE '2026-06-15',DATE '2026-06-22',DATE '2026-06-29',DATE '2026-07-06',DATE '2026-07-13') group by 1 order by 1",
@@ -2856,7 +2886,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e100",
+    "id": "e102",
     "tool": "detect_changes",
     "params": {
      "scope": "territories with no material change"
@@ -2866,7 +2896,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e101",
+    "id": "e103",
     "tool": "validate_feed",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2876,7 +2906,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e102",
+    "id": "e104",
     "tool": "validate_feed",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2886,7 +2916,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e103",
+    "id": "e105",
     "tool": "validate_feed",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2896,7 +2926,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e104",
+    "id": "e106",
     "tool": "chart_trend",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2906,7 +2936,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e105",
+    "id": "e107",
     "tool": "project_national",
     "params": {
      "week": "2026-04-20",
@@ -2917,7 +2947,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e106",
+    "id": "e108",
     "tool": "chart_coverage",
     "params": {},
     "query": "select v.territory_id, v.week_start::varchar, v.basis, exists (select 1 from raw.restatement_log r where r.product_id = 'BXA' and r.week_start = v.week_start and r.territory_id = v.territory_id and r.revised_at <= DATE '2026-07-20') from reporting.v_rx_projection v where v.product_id = 'BXA' and v.week_start in (DATE '2026-04-20',DATE '2026-04-27',DATE '2026-05-04',DATE '2026-05-11',DATE '2026-05-18',DATE '2026-05-25',DATE '2026-06-01',DATE '2026-06-08',DATE '2026-06-15',DATE '2026-06-22',DATE '2026-06-29',DATE '2026-07-06',DATE '2026-07-13') order by 1, 2",
@@ -2925,7 +2955,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e107",
+    "id": "e109",
     "tool": "chart_coverage",
     "params": {
      "scope": "territory-weeks not observed"
@@ -3799,7 +3829,7 @@
   "abstained": false
  },
  "Week of 2026-04-06: Generate the weekly brand-performance briefing.": {
-  "answer": "Brief for week of 2026-04-06. Product: BXA.\n## Bottom line\nData warning: Mid-Atlantic's feed for 2026-04-06 failed its checks, so its TRx is estimated from its recent share of national, an assumption. No story is given for it.\nData note: an earlier week was restated. The new value and the reason are in The numbers.\nProjected national BXA TRx is 4,571 for the week of 2026-04-06.\nLike for like on 7 of 8 territories, BXA TRx is down 4.7% against the four weeks before (2026-03-09 to 2026-03-30).\nBXA held 33.7% of the four-brand market basket.\nLeast sure: Mid-Atlantic's TRx of 711 is an assumption, estimated from its recent share of national, because its feed failed its checks.\nBefore Metacora launched, BXA held 35.4% of the four-brand basket.\n## The numbers\nScope: week of 2026-04-06, compared with the four weeks before (2026-03-09 to 2026-03-30). Levels marked projected or estimated are assumptions.\nLike for like, BXA TRx averaged 3,860 a week across 7 of 8 territories, down 4.7% against the comparison weeks.\nWeek over week, BXA TRx is 3,860 against 4,729 the week before (down 18.4%).\nOn the 7 territories that report both weeks, BXA TRx went from 4,005 to 3,860 (down 3.6%).\nAgainst the comparison weeks, Northwest fell most (down 12.8%) and South Central rose most (up 13.5%).\nThe headline total of reportable cuts is down 19.5%, but that move comes mostly from withheld cuts, so it is a data artifact, not a business change.\nRestated: Mid-Atlantic BXA TRx for the week of 2026-04-06 was 692 when first reported and is now 742 (restated 2026-07-13; reason: synthetic late claims adjustment). Quote the new value with this note.\nChart: BXA TRx a week, 2026-01-12 to 2026-04-06: projected national. Hollow points are projected or estimated, an assumption (weeks of 2026-04-06). No forecast is drawn.\nProjected national moved from 5,141 in the week of 2026-01-12 to 4,571 in the week of 2026-04-06.\nBy territory, observed unless marked; a projected or estimated level is an assumption, not an observed count.\nGreat Lakes: 503 BXA TRx a week; down 2.9% on the week before; down 8.8% on the comparison weeks.\nMid-Atlantic: 711 BXA TRx a week (estimated, an assumption: its share of national in the four clean weeks before; its feed failed the gate); no change is given, because a week compared failed the feed gate.\nMountain: 346 BXA TRx a week; down 9.7% on the week before; down 11.7% on the comparison weeks.\nNew England: 422 BXA TRx a week; up 5.8% on the week before; up 1.4% on the comparison weeks.\nNorthwest: 380 BXA TRx a week; down 13.0% on the week before; down 12.8% on the comparison weeks.\nPacific: 728 BXA TRx a week; down 13.2% on the week before; down 9.6% on the comparison weeks.\nSouth Central: 752 BXA TRx a week; up 24.9% on the week before; up 13.5% on the comparison weeks.\nSoutheast: 729 BXA TRx a week; down 11.9% on the week before; down 7.3% on the comparison weeks.\n## What changed and why\nStory one: competitor Metacora (launched 2026-03-02). This is a continuing story, week 5 since launch, still growing. Metacora held 6.4% of the four-brand basket and BXA held 33.7%, against 35.4% for BXA in the four weeks before launch. Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers.\nChart: Shares of the four-brand basket, 2026-01-12 to 2026-04-06, every reportable territory.\nMetacora held 6.4% of the basket in the week of 2026-04-06.\nConsidered and dropped: 7 territories moved within their normal range.\n## What the data can't tell us\nData health: 7 of 8 territories pass the feed gate for 2026-04-06. Withheld cuts are left out of every like-for-like figure and story, and never read as zero demand.\nChart: Feed coverage by territory and week, 2026-01-12 to 2026-04-06. Crossed cells are estimated, an assumption.\n1 territory-week in this window is not an observed count.\n- Mid-Atlantic, week of 2026-04-06: not reportable (restatement review).\nMid-Atlantic's observed BXA TRx ranged from 721 to 777 a week in the comparison weeks, which is what its estimated level stands in for.\nMid-Atlantic is estimated from its share of national in the four latest weeks in which every territory passed the gate, because the cut failed for reasons that make its own count unusable (restatement review).\nAssumption: a projected or estimated level is not an observed count, so the projected national rests on it. It is a level only: no story or driver is given for it.\n## Next checks\n- Mid-Atlantic, week of 2026-04-06: re-run when the corrected feed lands, and disclose the restated week. Owner: the data vendor and commercial analytics. Unlocks: whether the restated week changes any figure already reported.\n- Metacora: track the basket shares each week. Owner: marketing and sales. Unlocks: whether to adjust the response to Metacora.\n## Appendix\nData version <DATA_VERSION>. Product: BXA (Cardiovela), synthetic data.\nAssumptions:\n- Comparison weeks: the four weeks before (2026-03-09 to 2026-03-30). Source: the brief's default rule, the four weeks before the period.\n- Like for like: changes use only territories whose feed passed the gate in every week compared. Withheld cuts are left out of every change and story, and never read as zero demand. Source: the feed gate.\n- Not observed: Mid-Atlantic is projected or estimated, not counted. Source: panel coverage and each territory's recent share of national.\n- Drivers: the checks evaluate the same week and delays of one and two weeks. A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.\nMethod: like-for-like figures use only territories whose feed passed the gate in every week compared. The projected national divides each territory's observed TRx by its panel coverage, and estimates a territory that cannot be read from its recent share of national. Changes, stories and drivers use like-for-like cuts only.\nGlossary:\n- Like for like: a comparison that uses only territories whose feed passed its checks in every week compared.\n- Panel coverage: the share of a territory's expected prescription records that arrived in a given week.\n- Projected national: national TRx built territory by territory, each territory's observed TRx divided by its panel coverage, summed.\n- Estimated territory: a territory whose coverage is too low to project, or whose count failed its checks, filled from its own recent share of national and labelled as estimated, an assumption.\n- Withheld cut: a territory or week whose data failed its checks, so no story or driver is given for it.",
+  "answer": "Brief for week of 2026-04-06. Product: BXA.\n## Bottom line\nData warning: Mid-Atlantic's feed for 2026-04-06 failed its checks, so its TRx is estimated from its recent share of national, an assumption. No story is given for it.\nData note: an earlier week was restated. The new value and the reason are in The numbers.\nProjected national BXA TRx is 4,571 for the week of 2026-04-06.\nLike for like on 7 of 8 territories, BXA TRx is down 4.7% against the four weeks before (2026-03-09 to 2026-03-30).\nBXA held 33.7% of the four-brand market basket.\nLeast sure: Mid-Atlantic's TRx of 711 is an assumption, estimated from its recent share of national, because its feed failed its checks.\nBefore Metacora launched, BXA held 35.4% of the four-brand basket.\n## The numbers\nScope: week of 2026-04-06, compared with the four weeks before (2026-03-09 to 2026-03-30). Levels marked projected or estimated are assumptions.\nLike for like, BXA TRx averaged 3,860 a week across 7 of 8 territories, down 4.7% against the comparison weeks.\nWeek over week, BXA TRx is 3,860 against 4,729 the week before (down 18.4%).\nOn the 7 territories that report both weeks, BXA TRx went from 4,005 to 3,860 (down 3.6%).\nAgainst the comparison weeks, Northwest fell most (down 12.8%) and South Central rose most (up 13.5%).\nThe headline total of reportable cuts is down 19.5%, but that move comes mostly from withheld cuts, so it is a data artifact, not a business change.\nRestated: Mid-Atlantic BXA TRx for the week of 2026-04-06 was 692 when first reported and is now 742, up 50 TRx (7.2%). It was restated 2026-07-13; reason: synthetic late claims adjustment. Quote the new value with this note.\nChart: BXA TRx a week, 2026-01-12 to 2026-04-06: projected national. Hollow points are projected or estimated, an assumption (weeks of 2026-04-06). No forecast is drawn.\nProjected national moved from 5,141 in the week of 2026-01-12 to 4,571 in the week of 2026-04-06.\nBy territory, observed unless marked; a projected or estimated level is an assumption, not an observed count.\nGreat Lakes: 503 BXA TRx a week; down 2.9% on the week before; down 8.8% on the comparison weeks.\nMid-Atlantic: 711 BXA TRx a week (estimated, an assumption: its share of national in the four clean weeks before; its feed failed the gate); no change is given, because a week compared failed the feed gate.\nMountain: 346 BXA TRx a week; down 9.7% on the week before; down 11.7% on the comparison weeks.\nNew England: 422 BXA TRx a week; up 5.8% on the week before; up 1.4% on the comparison weeks.\nNorthwest: 380 BXA TRx a week; down 13.0% on the week before; down 12.8% on the comparison weeks.\nPacific: 728 BXA TRx a week; down 13.2% on the week before; down 9.6% on the comparison weeks.\nSouth Central: 752 BXA TRx a week; up 24.9% on the week before; up 13.5% on the comparison weeks.\nSoutheast: 729 BXA TRx a week; down 11.9% on the week before; down 7.3% on the comparison weeks.\n## What changed and why\nStory one: competitor Metacora (launched 2026-03-02). This is a continuing story, week 5 since launch, still growing. Metacora held 6.4% of the four-brand basket and BXA held 33.7%, against 35.4% for BXA in the four weeks before launch. Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers.\nChart: Shares of the four-brand basket, 2026-01-12 to 2026-04-06, every reportable territory.\nMetacora held 6.4% of the basket in the week of 2026-04-06.\nData story: Mid-Atlantic restated its week of 2026-04-06 on 2026-07-13, from 692 to 742 TRx (up 7.2%). Confidence: High. Leading driver: data.\nConsidered and dropped: 7 territories moved within their normal range.\n## What the data can't tell us\nData health: 7 of 8 territories pass the feed gate for 2026-04-06. Withheld cuts are left out of every like-for-like figure and story, and never read as zero demand.\nChart: Feed coverage by territory and week, 2026-01-12 to 2026-04-06. Crossed cells are estimated, an assumption.\n1 territory-week in this window is not an observed count.\n- Mid-Atlantic, week of 2026-04-06: not reportable (restatement review).\nMid-Atlantic's observed BXA TRx ranged from 721 to 777 a week in the comparison weeks, which is what its estimated level stands in for.\nMid-Atlantic is estimated from its share of national in the four latest weeks in which every territory passed the gate, because the cut failed for reasons that make its own count unusable (restatement review).\nAssumption: a projected or estimated level is not an observed count, so the projected national rests on it. It is a level only: no story or driver is given for it.\n## Next checks\n- Mid-Atlantic, week of 2026-04-06: re-run when the corrected feed lands, and disclose the restated week. Owner: the data vendor and commercial analytics. Unlocks: whether the restated week changes any figure already reported.\n- Metacora: track the basket shares each week. Owner: marketing and sales. Unlocks: whether to adjust the response to Metacora.\n## Appendix\nData version <DATA_VERSION>. Product: BXA (Cardiovela), synthetic data.\nAssumptions:\n- Comparison weeks: the four weeks before (2026-03-09 to 2026-03-30). Source: the brief's default rule, the four weeks before the period.\n- Like for like: changes use only territories whose feed passed the gate in every week compared. Withheld cuts are left out of every change and story, and never read as zero demand. A restatement is reported when the restated week is inside the period or the restatement was published inside it. Source: the feed gate and the vendor's restatement record.\n- Not observed: Mid-Atlantic is projected or estimated, not counted. Source: panel coverage and each territory's recent share of national.\n- Drivers: the checks evaluate the same week and delays of one and two weeks. A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.\nMethod: like-for-like figures use only territories whose feed passed the gate in every week compared. The projected national divides each territory's observed TRx by its panel coverage, and estimates a territory that cannot be read from its recent share of national. Changes, stories and drivers use like-for-like cuts only.\nGlossary:\n- Like for like: a comparison that uses only territories whose feed passed its checks in every week compared.\n- Panel coverage: the share of a territory's expected prescription records that arrived in a given week.\n- Projected national: national TRx built territory by territory, each territory's observed TRx divided by its panel coverage, summed.\n- Estimated territory: a territory whose coverage is too low to project, or whose count failed its checks, filled from its own recent share of national and labelled as estimated, an assumption.\n- Withheld cut: a territory or week whose data failed its checks, so no story or driver is given for it.",
   "claims": [
    {
     "value": "7",
@@ -3818,208 +3848,216 @@
     "evidence_id": "e4"
    },
    {
-    "value": "7",
+    "value": "50",
     "evidence_id": "e5"
    },
    {
-    "value": "3,860",
+    "value": "7.2%",
     "evidence_id": "e6"
    },
    {
-    "value": "8",
+    "value": "7",
     "evidence_id": "e7"
    },
    {
-    "value": "4.7%",
+    "value": "3,860",
     "evidence_id": "e8"
    },
    {
-    "value": "19.5%",
+    "value": "8",
     "evidence_id": "e9"
    },
    {
-    "value": "3,860",
+    "value": "4.7%",
     "evidence_id": "e10"
    },
    {
-    "value": "4,729",
+    "value": "19.5%",
     "evidence_id": "e11"
    },
    {
-    "value": "18.4%",
+    "value": "3,860",
     "evidence_id": "e12"
    },
    {
-    "value": "7",
+    "value": "4,729",
     "evidence_id": "e13"
    },
    {
-    "value": "4,005",
+    "value": "18.4%",
     "evidence_id": "e14"
    },
    {
-    "value": "3,860",
+    "value": "7",
     "evidence_id": "e15"
    },
    {
-    "value": "3.6%",
+    "value": "4,005",
     "evidence_id": "e16"
    },
    {
-    "value": "8.8%",
+    "value": "3,860",
     "evidence_id": "e17"
    },
    {
-    "value": "2.9%",
+    "value": "3.6%",
     "evidence_id": "e18"
    },
    {
-    "value": "11.7%",
+    "value": "8.8%",
     "evidence_id": "e19"
    },
    {
-    "value": "9.7%",
+    "value": "2.9%",
     "evidence_id": "e20"
    },
    {
-    "value": "1.4%",
+    "value": "11.7%",
     "evidence_id": "e21"
    },
    {
-    "value": "5.8%",
+    "value": "9.7%",
     "evidence_id": "e22"
    },
    {
-    "value": "12.8%",
+    "value": "1.4%",
     "evidence_id": "e23"
    },
    {
-    "value": "13.0%",
+    "value": "5.8%",
     "evidence_id": "e24"
    },
    {
-    "value": "9.6%",
+    "value": "12.8%",
     "evidence_id": "e25"
    },
    {
-    "value": "13.2%",
+    "value": "13.0%",
     "evidence_id": "e26"
    },
    {
-    "value": "13.5%",
+    "value": "9.6%",
     "evidence_id": "e27"
    },
    {
-    "value": "24.9%",
+    "value": "13.2%",
     "evidence_id": "e28"
    },
    {
-    "value": "7.3%",
+    "value": "13.5%",
     "evidence_id": "e29"
    },
    {
-    "value": "11.9%",
+    "value": "24.9%",
     "evidence_id": "e30"
    },
    {
-    "value": "4,571",
+    "value": "7.3%",
     "evidence_id": "e31"
    },
    {
-    "value": "503",
+    "value": "11.9%",
     "evidence_id": "e32"
    },
    {
-    "value": "711",
+    "value": "4,571",
     "evidence_id": "e33"
    },
    {
-    "value": "346",
+    "value": "503",
     "evidence_id": "e34"
    },
    {
-    "value": "422",
+    "value": "711",
     "evidence_id": "e35"
    },
    {
-    "value": "380",
+    "value": "346",
     "evidence_id": "e36"
    },
    {
-    "value": "728",
+    "value": "422",
     "evidence_id": "e37"
    },
    {
-    "value": "752",
+    "value": "380",
     "evidence_id": "e38"
    },
    {
-    "value": "729",
+    "value": "728",
     "evidence_id": "e39"
    },
    {
-    "value": "5",
+    "value": "752",
     "evidence_id": "e40"
    },
    {
-    "value": "6.4%",
+    "value": "729",
     "evidence_id": "e41"
    },
    {
-    "value": "33.7%",
+    "value": "5",
     "evidence_id": "e42"
    },
    {
-    "value": "35.4%",
+    "value": "6.4%",
     "evidence_id": "e43"
    },
    {
-    "value": "6.4%",
-    "evidence_id": "e41"
+    "value": "33.7%",
+    "evidence_id": "e44"
    },
    {
-    "value": "7",
+    "value": "35.4%",
     "evidence_id": "e45"
    },
    {
-    "value": "7",
-    "evidence_id": "e5"
-   },
-   {
-    "value": "8",
-    "evidence_id": "e7"
-   },
-   {
-    "value": "4.7%",
-    "evidence_id": "e8"
-   },
-   {
-    "value": "33.7%",
-    "evidence_id": "e42"
-   },
-   {
-    "value": "35.4%",
+    "value": "6.4%",
     "evidence_id": "e43"
    },
    {
-    "value": "721",
-    "evidence_id": "e46"
-   },
-   {
-    "value": "777",
+    "value": "7",
     "evidence_id": "e47"
    },
    {
-    "value": "5,141",
+    "value": "7",
+    "evidence_id": "e7"
+   },
+   {
+    "value": "8",
+    "evidence_id": "e9"
+   },
+   {
+    "value": "4.7%",
+    "evidence_id": "e10"
+   },
+   {
+    "value": "33.7%",
+    "evidence_id": "e44"
+   },
+   {
+    "value": "35.4%",
+    "evidence_id": "e45"
+   },
+   {
+    "value": "721",
+    "evidence_id": "e48"
+   },
+   {
+    "value": "777",
     "evidence_id": "e49"
    },
    {
+    "value": "5,141",
+    "evidence_id": "e51"
+   },
+   {
     "value": "4,571",
-    "evidence_id": "e31"
+    "evidence_id": "e33"
    },
    {
     "value": "1",
-    "evidence_id": "e51"
+    "evidence_id": "e53"
    }
   ],
   "evidence": [
@@ -4050,7 +4088,7 @@
      "week": "2026-04-06",
      "territory": "MID_ATLANTIC"
     },
-    "query": "select sum(trx_prior) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'",
+    "query": "select trx_signed_off from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-04-06') or restated_at between DATE '2026-04-06' and DATE '2026-04-12') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
     "result": 692.0,
     "data_version": "<DATA_VERSION>"
    },
@@ -4061,12 +4099,34 @@
      "week": "2026-04-06",
      "territory": "MID_ATLANTIC"
     },
-    "query": "select sum(trx_revised) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'",
+    "query": "select trx_restated from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-04-06') or restated_at between DATE '2026-04-06' and DATE '2026-04-12') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
     "result": 742.0,
     "data_version": "<DATA_VERSION>"
    },
    {
     "id": "e5",
+    "tool": "get_restatement",
+    "params": {
+     "week": "2026-04-06",
+     "territory": "MID_ATLANTIC"
+    },
+    "query": "select abs(trx_restated - trx_signed_off) from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-04-06') or restated_at between DATE '2026-04-06' and DATE '2026-04-12') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
+    "result": 50.0,
+    "data_version": "<DATA_VERSION>"
+   },
+   {
+    "id": "e6",
+    "tool": "get_restatement",
+    "params": {
+     "week": "2026-04-06",
+     "territory": "MID_ATLANTIC"
+    },
+    "query": "select 100.0 * abs(trx_restated - trx_signed_off) / trx_signed_off from reporting.v_restatements where product_id = 'BXA' and (week_start in (DATE '2026-04-06') or restated_at between DATE '2026-04-06' and DATE '2026-04-12') and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and restated_at = DATE '2026-07-13'",
+    "result": 7.22543352601156,
+    "data_version": "<DATA_VERSION>"
+   },
+   {
+    "id": "e7",
     "tool": "get_metric",
     "params": {},
     "query": "select count(distinct territory_id) from reporting.v_reportable_rx where week_start in (DATE '2026-04-06') and territory_id in ('GREAT_LAKES','MOUNTAIN','NEW_ENGLAND','NORTHWEST','PACIFIC','SOUTHEAST','SOUTH_CENTRAL')",
@@ -4074,7 +4134,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e6",
+    "id": "e8",
     "tool": "get_metric",
     "params": {
      "scope": "like-for-like national"
@@ -4084,7 +4144,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e7",
+    "id": "e9",
     "tool": "get_metric",
     "params": {},
     "query": "select count(*) from raw.dim_territory",
@@ -4092,7 +4152,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e8",
+    "id": "e10",
     "tool": "get_metric",
     "params": {
      "scope": "like-for-like national"
@@ -4102,7 +4162,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e9",
+    "id": "e11",
     "tool": "get_metric",
     "params": {
      "scope": "headline total of reportable cuts"
@@ -4112,7 +4172,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e10",
+    "id": "e12",
     "tool": "get_metric",
     "params": {
      "week": "2026-04-06"
@@ -4122,7 +4182,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e11",
+    "id": "e13",
     "tool": "get_metric",
     "params": {
      "week": "2026-03-30"
@@ -4132,7 +4192,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e12",
+    "id": "e14",
     "tool": "get_metric",
     "params": {
      "scope": "week over week, reportable cuts"
@@ -4142,7 +4202,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e13",
+    "id": "e15",
     "tool": "get_metric",
     "params": {
      "scope": "territories reporting both weeks"
@@ -4152,7 +4212,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e14",
+    "id": "e16",
     "tool": "get_metric",
     "params": {
      "week": "2026-03-30",
@@ -4163,7 +4223,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e15",
+    "id": "e17",
     "tool": "get_metric",
     "params": {
      "week": "2026-04-06",
@@ -4174,7 +4234,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e16",
+    "id": "e18",
     "tool": "get_metric",
     "params": {
      "scope": "week over week, like for like"
@@ -4184,7 +4244,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e17",
+    "id": "e19",
     "tool": "get_metric",
     "params": {
      "territory": "GREAT_LAKES",
@@ -4195,7 +4255,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e18",
+    "id": "e20",
     "tool": "get_metric",
     "params": {
      "territory": "GREAT_LAKES",
@@ -4206,7 +4266,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e19",
+    "id": "e21",
     "tool": "get_metric",
     "params": {
      "territory": "MOUNTAIN",
@@ -4217,7 +4277,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e20",
+    "id": "e22",
     "tool": "get_metric",
     "params": {
      "territory": "MOUNTAIN",
@@ -4228,7 +4288,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e21",
+    "id": "e23",
     "tool": "get_metric",
     "params": {
      "territory": "NEW_ENGLAND",
@@ -4239,7 +4299,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e22",
+    "id": "e24",
     "tool": "get_metric",
     "params": {
      "territory": "NEW_ENGLAND",
@@ -4250,7 +4310,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e23",
+    "id": "e25",
     "tool": "get_metric",
     "params": {
      "territory": "NORTHWEST",
@@ -4261,7 +4321,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e24",
+    "id": "e26",
     "tool": "get_metric",
     "params": {
      "territory": "NORTHWEST",
@@ -4272,7 +4332,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e25",
+    "id": "e27",
     "tool": "get_metric",
     "params": {
      "territory": "PACIFIC",
@@ -4283,7 +4343,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e26",
+    "id": "e28",
     "tool": "get_metric",
     "params": {
      "territory": "PACIFIC",
@@ -4294,7 +4354,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e27",
+    "id": "e29",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTH_CENTRAL",
@@ -4305,7 +4365,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e28",
+    "id": "e30",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTH_CENTRAL",
@@ -4316,7 +4376,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e29",
+    "id": "e31",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTHEAST",
@@ -4327,7 +4387,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e30",
+    "id": "e32",
     "tool": "get_metric",
     "params": {
      "territory": "SOUTHEAST",
@@ -4338,7 +4398,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e31",
+    "id": "e33",
     "tool": "project_national",
     "params": {
      "scope": "projected national"
@@ -4348,7 +4408,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e32",
+    "id": "e34",
     "tool": "project_national",
     "params": {
      "territory": "GREAT_LAKES",
@@ -4359,7 +4419,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e33",
+    "id": "e35",
     "tool": "project_national",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -4370,7 +4430,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e34",
+    "id": "e36",
     "tool": "project_national",
     "params": {
      "territory": "MOUNTAIN",
@@ -4381,7 +4441,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e35",
+    "id": "e37",
     "tool": "project_national",
     "params": {
      "territory": "NEW_ENGLAND",
@@ -4392,7 +4452,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e36",
+    "id": "e38",
     "tool": "project_national",
     "params": {
      "territory": "NORTHWEST",
@@ -4403,7 +4463,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e37",
+    "id": "e39",
     "tool": "project_national",
     "params": {
      "territory": "PACIFIC",
@@ -4414,7 +4474,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e38",
+    "id": "e40",
     "tool": "project_national",
     "params": {
      "territory": "SOUTH_CENTRAL",
@@ -4425,7 +4485,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e39",
+    "id": "e41",
     "tool": "project_national",
     "params": {
      "territory": "SOUTHEAST",
@@ -4436,7 +4496,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e40",
+    "id": "e42",
     "tool": "compare_competitors",
     "params": {},
     "query": "select datediff('week', DATE '2026-03-02', week_start) from raw.calendar where week_start = DATE '2026-04-06'",
@@ -4444,7 +4504,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e41",
+    "id": "e43",
     "tool": "compare_competitors",
     "params": {
      "product": "BXE"
@@ -4454,7 +4514,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e42",
+    "id": "e44",
     "tool": "compare_competitors",
     "params": {
      "product": "BXA"
@@ -4464,7 +4524,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e43",
+    "id": "e45",
     "tool": "compare_competitors",
     "params": {
      "product": "BXA",
@@ -4475,7 +4535,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e44",
+    "id": "e46",
     "tool": "chart_competitor",
     "params": {},
     "query": "select week_start::varchar, 100.0 * sum(trx) filter (where product_id = 'BXA') / nullif(sum(trx), 0), 100.0 * sum(trx) filter (where product_id = 'BXE') / nullif(sum(trx), 0) from reporting.v_reportable_rx where week_start in (DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26',DATE '2026-02-02',DATE '2026-02-09',DATE '2026-02-16',DATE '2026-02-23',DATE '2026-03-02',DATE '2026-03-09',DATE '2026-03-16',DATE '2026-03-23',DATE '2026-03-30',DATE '2026-04-06') group by 1 order by 1",
@@ -4483,7 +4543,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e45",
+    "id": "e47",
     "tool": "detect_changes",
     "params": {
      "scope": "territories with no material change"
@@ -4493,7 +4553,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e46",
+    "id": "e48",
     "tool": "get_metric",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -4504,7 +4564,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e47",
+    "id": "e49",
     "tool": "get_metric",
     "params": {
      "territory": "MID_ATLANTIC",
@@ -4515,7 +4575,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e48",
+    "id": "e50",
     "tool": "chart_trend",
     "params": {
      "territory": "NATIONAL"
@@ -4525,7 +4585,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e49",
+    "id": "e51",
     "tool": "project_national",
     "params": {
      "week": "2026-01-12",
@@ -4536,7 +4596,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e50",
+    "id": "e52",
     "tool": "chart_coverage",
     "params": {},
     "query": "select v.territory_id, v.week_start::varchar, v.basis, exists (select 1 from raw.restatement_log r where r.product_id = 'BXA' and r.week_start = v.week_start and r.territory_id = v.territory_id and r.revised_at <= DATE '2026-04-13') from reporting.v_rx_projection v where v.product_id = 'BXA' and v.week_start in (DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26',DATE '2026-02-02',DATE '2026-02-09',DATE '2026-02-16',DATE '2026-02-23',DATE '2026-03-02',DATE '2026-03-09',DATE '2026-03-16',DATE '2026-03-23',DATE '2026-03-30',DATE '2026-04-06') order by 1, 2",
@@ -4544,7 +4604,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e51",
+    "id": "e53",
     "tool": "chart_coverage",
     "params": {
      "scope": "territory-weeks not observed"
