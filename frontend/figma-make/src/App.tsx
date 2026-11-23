@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
 import { BrandMark, Icon, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "./components/ui/dropdown-menu"
 import {
-  getContext, getBriefing, getMe, getTriage, listPublished, markInsight, openBrief, reviewBrief, NotSignedIn,
+  getContext, getBriefing, getMe, getTriage, listPublished, openBrief, reviewBrief, NotSignedIn,
   getAgentStatus, submitAgentJob, waitAgentJob, agentPlan, agentBrief, getClassification, setViewAs,
   type AgentStatus, type AgentJob, type Classification,
   type BriefDefinition, type BriefingResult, type Claim, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext, type RunEvent,
@@ -540,7 +540,8 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   const submit = async () => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await submitForecast(selected.forecast_run_id)); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const decide = async (decision: "approved" | "rejected" | "returned") => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await reviewForecast(selected.forecast_run_id, decision, note)); setNote(""); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   return <div className={`${section === "reports" ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
-    {(!selected || section !== "workbench") && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
+    {/* One greeting per lane: on its landing section (the same one Shell opens), with no run open */}
+    {section === (analyst ? "workbench" : "reports") && !selected && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
     <SubTabs label="Forecast explanation" value={section} onChange={onSection} options={(analyst
       ? [["workbench", "New explanation", "forecast.new"], ["reports", "Reports", "forecast.reports"], ["approved", "Approved reports", "forecast.approved"]]
       : [["reports", "Reports to review", "forecast.review"], ["approved", "Approved reports", "forecast.approved"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
@@ -617,9 +618,9 @@ function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy,
       {expanded ? <span className="pa-fade flex-1 truncate whitespace-nowrap font-display text-[18px] font-bold tracking-tight">PharmAgentics</span> : <span className="sr-only">PharmAgentics</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
-      {onBriefing && item("briefings", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy)}
+      {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy)}
       {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast, forecastBusy)}
-      {item("layers", "Evaluation", telemetry, onTelemetry)}
+      {item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
     <div className="mt-auto space-y-2 px-3 pb-4">
       {me.auth_mode==="dev" && expanded && <p className="rounded-lg bg-amberbg px-2.5 py-1 text-[11px] text-amber">Development sign-in</p>}
@@ -688,13 +689,23 @@ function Centered({children}: {children: ReactNode}) {
   return <div className="grid h-dvh place-items-center px-5 text-ink"><div className="pa-panel max-w-md rounded-xl border border-rule bg-sheet p-7 text-center"><div className="flex justify-center"><BrandMark size="lg"/></div>{children}</div></div>
 }
 
-function InsightButton({briefId, view}: {briefId: string, view: "analyst" | "leadership"}) {
-  const [state,setState] = useState<"idle" | "saving" | "done" | string>("idle")
-  useEffect(()=>setState("idle"),[briefId, view])
-  if (state==="done") return <p role="status" className="text-xs text-ok">Recorded. Thank you.</p>
-  return <div className="flex flex-wrap items-center gap-3">
-    <button disabled={state==="saving"} onClick={async()=>{setState("saving");try{await markInsight(briefId, view);setState("done")}catch(e){setState(message(e))}}} className={BTN2}>I have what I need</button>
-    {state!=="idle" && state!=="saving" && <span role="alert" className="text-xs text-amber">{state}</span>}
+// The intro line of a landing page, with a "How it works" disclosure at its right end: the button toggles an inline
+// panel below it (aria-expanded/aria-controls); Escape inside the panel closes it and puts focus back on the button.
+// `introId` lets the page send focus to the intro (tabIndex -1) after "Start a new briefing".
+function IntroWithHow({introId, children}: {introId?: string, children: ReactNode}) {
+  const [open,setOpen] = useState(false)
+  const panel = useId()
+  const button = useRef<HTMLButtonElement>(null)
+  const close = () => { setOpen(false); button.current?.focus() }
+  return <div className="space-y-3">
+    <div className="flex items-start justify-between gap-3">
+      <p id={introId} tabIndex={introId ? -1 : undefined} className="min-w-0 text-sm text-muted outline-none">{children}</p>
+      <button ref={button} type="button" aria-expanded={open} aria-controls={open ? panel : undefined} onClick={()=>open ? close() : setOpen(true)} className="flex shrink-0 items-center gap-1.5 rounded-lg text-sm text-primaryink hover:underline"><Icon name="help" className="h-4 w-4"/><span className="max-sm:sr-only">How it works</span></button>
+    </div>
+    {open && <section id={panel} aria-label="How it works" onKeyDown={e=>{ if (e.key==="Escape") { e.stopPropagation(); close() } }} className="space-y-3 border-y border-rule py-4">
+      <div className="flex items-center justify-between gap-3"><ClassLabel tab="briefing.how"/><button type="button" onClick={close} aria-label="Close How it works" className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-4 w-4"/></button></div>
+      <HowItWorks/>
+    </section>}
   </div>
 }
 
@@ -728,7 +739,7 @@ function Greeting({detail}: {detail?: string}) {
   const first = useContext(SignedInName).trim().split(/\s+/)[0]
   const part = (h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + (first ? `, ${first}` : "")
   // A greeting is not a section heading, so it is a paragraph; the h1 in the header names the page.
-  return <div className="pa-fade mb-7"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}.</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
+  return <div className="pa-fade mb-4"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}.</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
 }
 
 // An agent job's real progress: the server reports queued, then running; the result arrives when it is done and
@@ -921,7 +932,6 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
     </article>}
     {mode==="analyst" && <AnswerFeedback lane="briefing" refId={result.brief_id} view="analyst" agent={result.engine==="agent"}/>}
     {mode==="analyst" && (result.events?.length ? <Timeline events={result.events} claims={result.claims} titles={storyTitles(result)} onOpenSource={setEvidenceId}/> : result.flow && <FlowPanel flow={result.flow} triage={result.triage}/>)}
-    <InsightButton briefId={result.brief_id} view={mode}/>
     {evidenceId && <EvidenceDrawer result={result} selectedId={evidenceId} onClose={()=>setEvidenceId(null)}/>}
   </>
 }
@@ -937,7 +947,7 @@ function AnalystApp({me}: {me: Me}) {
   const [pending,setPending] = useState(false)
   const [result,setResult] = useState<BriefingResult | null>(null)
   const [runError,setRunError] = useState<string | null>(null)
-  const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved" | "how">("overview")
+  const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved">("overview")
   // The current run's own view: the New briefing tab returns to it, so a run keeps going while the analyst looks elsewhere.
   const [runView,setRunView] = useState<"triage" | "result" | null>(null)
   const [looked,setLooked] = useState(true)  // false from the moment a run starts until its finished plan or brief has been on screen
@@ -1083,13 +1093,15 @@ function AnalystApp({me}: {me: Me}) {
   }
   const closeOpened = () => { openedToken.current++; setOpened(null);setOpenedError(null);setOpenedLoading(false);setChip(null);setBarEvidence(null) }
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
-  const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : view==="how" ? "how" : "new"
+  const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : "new"
   const scopeText = (s: NonNullable<typeof requestScope>) => `${s.brand} · ${labelTerritory(s.territory)} · ${s.promotion ? "release-wide Promotion review" : s.weekEnd > s.week ? `weeks ${labelWeek(s.week)} to ${labelWeek(s.weekEnd)}` : `week of ${labelWeek(s.week)}`}`
   // Back on the form with nothing running, the last run is let go; while one runs, the New briefing tab still leads back to it.
-  useEffect(()=>{ if (view==="home" && !pending) setRunView(null) },[view])  // eslint-disable-line react-hooks/exhaustive-deps
+  // A run "holds" the New briefing tab while it is going, while its plan waits for review, or while its finished brief or error has not been looked at.
+  const held = pending || (runView==="triage" && !!plan) || !looked
+  useEffect(()=>{ if (view==="home" && !held) setRunView(null) },[view])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{ if (pending) setLooked(false); else if (view==="triage" || view==="result") setLooked(true) },[pending,view])
   // One quiet line on the other tabs while a run is going, or has finished and not been looked at yet.
-  const awayFromRun = view==="home" || view==="overview" || view==="approved" || view==="how"
+  const awayFromRun = view==="home" || view==="overview" || view==="approved"
   const runLine = !awayFromRun || !runView ? null
     : pending ? {text: `A briefing is being prepared${requestScope ? ` · ${scopeText(requestScope)}` : ""}`, go: "View progress"}
     : runView==="triage" && plan ? {text: "The plan for your briefing is ready for review", go: "Review it"}
@@ -1097,6 +1109,15 @@ function AnalystApp({me}: {me: Me}) {
     : runError && !looked ? {text: "Your briefing could not be generated", go: "See why"}
     : null
   const openedShown = !!(opened || openedLoading || openedError)
+  // "Start a new briefing": the form again, from a brief just read. The analyst's choices stay; the read question and
+  // the message bar's chip go. A run that is still held (see above) stays in the status line.
+  const introFocus = useRef(false)
+  const startNew = () => {
+    clearQuestion(); closeOpened(); introFocus.current = true
+    if (!held) setRunView(null)
+    setView("home")
+  }
+  useEffect(()=>{ if (view==="home" && introFocus.current) { introFocus.current = false; document.getElementById("new-briefing-intro")?.focus() } },[view])
   const openedBack = useRef<HTMLButtonElement>(null)
   useEffect(()=>{ if (view==="approved" && openedShown) openedBack.current?.focus() },[view, openedShown])
   // When the scope form gives way to the plan or the brief, the button that was pressed is gone: put focus on the
@@ -1104,14 +1125,14 @@ function AnalystApp({me}: {me: Me}) {
   const scopeBack = useRef<HTMLButtonElement>(null)
   useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
   return <Shell me={me} onBriefingHome={()=>setView("overview")} briefingBusy={pending}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || (view==="approved" && !openedShown) || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="pa-noprint flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{view==="overview" && <Greeting/>}<div className="pa-noprint flex items-center justify-between gap-3 py-2">{/* the data line sits here on every tab, so the tabs start higher */}<p className="min-w-0 text-xs text-muted">{context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : ""}</p><label className="ml-auto flex shrink-0 items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>setView(t==="approved" || t==="overview" || t==="how" ? t : runView ?? "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/></div>
+      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
     {contextError && <div role="alert" className="workspace-content py-4 text-sm text-amber">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
-      <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
+      <IntroWithHow introId="new-briefing-intro">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</IntroWithHow>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
         <h2 className="sr-only">New briefing</h2>
@@ -1143,16 +1164,22 @@ function AnalystApp({me}: {me: Me}) {
           <button type="submit" disabled={!selectable || !!invalidComparison || !!invalidPeriod || !!invalidChoices} className={BTN}>Generate briefing</button>
         </div>
       </form>
-    </div> : view==="how" ? <div key="how" className="workspace-content pa-fade py-8"><HowItWorks/></div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8">{openedShown ? <>
-      <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={closeOpened}><Icon name="back" className="h-4 w-4"/>All approved briefings</button>
+    </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8">{openedShown ? <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={closeOpened}><Icon name="back" className="h-4 w-4"/>All approved briefings</button>
+        {opened && <button type="button" onClick={startNew} className={BTN2}>Start a new briefing</button>}
+      </div>
       {openedLoading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
       {openedError && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{openedError}</div>}
       {opened && <AnalystBrief result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </> : <><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></>}</div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
-        {requestScope && <span className="text-xs text-muted">{scopeText(requestScope)}</span>}
+        <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>{ setView("home"); if (!pending) setRunView(null) }}><Icon name="back"/>Change scope</button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {requestScope && <span className="text-xs text-muted">{scopeText(requestScope)}</span>}
+          {view==="result" && result && !pending && <button type="button" onClick={startNew} className={BTN2}>Start a new briefing</button>}
+        </div>
       </div>
       {pending && (jobState
         ? <JobProgress kind={jobState.kind} status={jobState.status} note={jobNote}/>
@@ -1173,19 +1200,18 @@ function LeaderApp({me}: {me: Me}) {
   const [brief,setBrief] = useState<LeadershipBrief | null>(null)
   const [error,setError] = useState<string | null>(null)
   const [loading,setLoading] = useState(false)
-  const [tab,setTab] = useState<"list" | "how">("list")
   const open = async (id: string) => {
     setLoading(true); setError(null)
     try { setBrief(await openBrief(id, "leadership")) } catch(e) { setError(message(e)) } finally { setLoading(false) }
   }
-  return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null);setTab("list")}}>
+  return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}}>
     <div className="workspace-content space-y-6 py-8 sm:py-10">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
-        {brief && <><SummaryCard brief={brief}/><InsightButton briefId={brief.brief_id} view="leadership"/></>}
-      </> : <><Greeting detail="Executive summaries the Commercial Analyst has reviewed and approved."/><SubTabs label="Weekly briefing" value={tab} onChange={setTab} options={[["list","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/>{tab==="how" ? <HowItWorks/> : <PublishedList onOpen={id=>void open(id)}/>}</>}
+        {brief && <SummaryCard brief={brief}/>}
+      </> : <><Greeting/><IntroWithHow>Executive summaries the Commercial Analyst has reviewed and approved.</IntroWithHow><PublishedList onOpen={id=>void open(id)}/></>}
     </div>
   </Shell>
 }

@@ -431,9 +431,6 @@ export async function listPublished(): Promise<PublishedBrief[]> {
 export async function reviewBrief(id: string, decision: "approved" | "rejected", reason?: string): Promise<BriefingResult> {
   return checkAnalyst(await api(`/api/briefing/${encodeURIComponent(id)}/review`, post({ decision, reason: reason || null })))
 }
-export async function markInsight(id: string, view: "analyst" | "leadership"): Promise<void> {
-  await api("/api/uat/insight", post({ brief_id: id, view }))
-}
 
 // Agent jobs (core-007 FR-028/FR-031): run by teammate or cloud CPU hosts; the app only queues and checks them.
 export async function getAgentStatus(): Promise<AgentStatus> {
