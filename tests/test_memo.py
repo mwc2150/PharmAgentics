@@ -320,7 +320,9 @@ def test_blocks_follow_the_schema_for_a_one_week_brief():
     assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"][0] == "competitor"  # the national competitor story (brief-010 FR-006)
     assert "Metacora holds 15.9%" in story["card"]["headline"] and story["card"]["headline_citations"]
     card = story["card"]  # brief-010 FR-006: the national card
-    assert (card["territory"], card["cut"], card["drivers_supported"], card["drivers_ruled_out"]) == ("NATIONAL", None, ["competitor"], [])
+    assert (card["territory"], card["cut"], card["drivers_supported"]) == ("NATIONAL", None, ["competitor"])
+    assert set(card["drivers_ruled_out"]) <= {"access", "promotion", "supply"}  # only drivers every territory rules out (packet N)
+    assert card["drivers_checked"] == ["competitor"] + card["drivers_ruled_out"]
     assert card["direction"] == card["directions"]["bxa_share"] in ("up", "down", "flat")
     assert "detail" in by_number(env)["6"] and "Glossary" in by_number(env)["6"]["detail"]
 
