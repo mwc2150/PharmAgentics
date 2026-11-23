@@ -46,6 +46,7 @@ export function useModalFocus(root: RefObject<HTMLElement | null>, onClose: () =
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.stopPropagation(); close.current(); return }
       if (e.key !== "Tab") return
+      if (!el.getClientRects().length) return  // hidden by a breakpoint (the phone drawer on a wide window): leave Tab alone
       const list = items()
       if (!list.length) { e.preventDefault(); el.focus(); return }
       const first = list[0], last = list[list.length - 1], at = document.activeElement

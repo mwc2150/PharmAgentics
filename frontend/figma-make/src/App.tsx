@@ -282,7 +282,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
       {!!r.sources.length && <p className="mt-1 text-xs text-muted">From: {r.sources.map(s=>s.scope).join(" · ")}</p>}
       {r.review_note && <p className="mt-3 rounded-lg bg-amberbg px-3 py-2 text-sm text-amber">Brand Manager: {r.review_note}</p>}
     </article>
-    {drafting && <div role="status" className="rounded-xl border border-rule bg-paper px-5 py-4 text-sm text-ink">{r.job?.step ?? "Drafting"}{r.model ? ` (${r.model})` : ""} · {draftSecs} s. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
+    {drafting && <div role="status" className="rounded-xl border border-rule bg-paper px-5 py-4 text-sm text-ink">{r.job?.step ?? "Drafting"}{r.model ? ` (${r.model})` : ""}<span aria-hidden="true"> · {draftSecs} s</span>. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
     {r.job?.status === "failed" && r.job.message && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{r.job.message} The last good version is kept.</div>}
     {!r.sections.length && !drafting && <p className="text-sm text-muted">No draft yet.</p>}
     {r.sections.map((sec,i)=><section key={i} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text} charts={r.charts} kpis={r.kpis} passages={r.blocks}/></section>)}
@@ -409,7 +409,7 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
 // The third item of an option is its classification key (core-009); the current tab's label sits at the row's end.
 // Tabs by the APG pattern: one tab stop (the selected tab), Left/Right/Home/End move focus along the row, Enter or
 // Space selects. `panelId` (optional) names the tabpanel the page renders under the row; the selected tab labels it
-// (id `${panelId}-tab`). The slide-in underline is decoration.
+// (id `${panelId}-tab-${key}`). The sliding pill is decoration.
 function SubTabs<T extends string>({label, value, options, onChange, panelId}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string}) {
   const current = options.find(o => o[0] === value)
   const list = useRef<HTMLDivElement>(null)

@@ -45,7 +45,7 @@ Every text pair clears WCAG AA (4.5:1), and control borders and focus rings clea
 - **IBM Plex Sans** (self-hosted variable, 100 to 700) for the interface, labels, tables, data and brief prose. Numbers use `tabular-nums`. Body is 15px.
 - Brief prose is Plex Sans now (it was a serif): 16px, line height 1.65, at most 68 characters a line. One reading face keeps a figure inside a sentence in the same digits as the tables and tiles beside it, and Space Grotesk's wide, geometric letters tire over a paragraph.
 - Scale in use: page title 18px (20px from `sm`) bold; greeting 32px, line height 1.25; memo section heading 20px bold, line height 1.5, with a 14px mono `§n` marker in `muted`; memo sub-section 16px semibold; panel heading 14px semibold; KPI value 28px bold; button and field text 14px; field label 12px medium `muted`; KPI label and classification 11px uppercase (0.05em and 0.06em tracking); chips 11px medium; chart text 9 to 11px.
-- Source Serif 4 is no longer used (its files remain in `public/fonts`, unreferenced).
+- Source Serif 4 is no longer used; its font files were removed from `public/fonts`.
 
 ## Components
 

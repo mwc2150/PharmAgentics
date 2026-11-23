@@ -16,12 +16,12 @@ const LIME = "var(--color-primary)", LAV = "var(--color-human)", RED = "var(--co
 const fmt = (v: number, unit?: string) => unit === "%" ? `${v.toFixed(1)}%` : Math.round(v).toLocaleString("en-US")
 const short = (s: string, n = 26) => (s.length > n ? s.slice(0, n - 1) + "…" : s)
 
-type LegendItem = [label: string, color: string, style?: "hollow" | "dashed"]
+type LegendItem = [label: string, color: string, style?: "hollow" | "dashed" | "dashed-outline"]
 function Legend({ items }: { items: LegendItem[] }) {
   return <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted">{items.map(([label, color, style]) =>
     <span key={label} className="inline-flex items-center gap-1.5">
       {style === "dashed" ? <svg viewBox="0 0 20 10" className="h-2.5 w-5" aria-hidden="true"><path d="M1 5h18" stroke={color} strokeWidth="2" strokeDasharray="4 3" fill="none"/></svg>
-        : <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" aria-hidden="true"><rect x="1" y="1" width="8" height="8" rx="1.5" fill={style === "hollow" ? "none" : color} stroke={color} strokeWidth="1.5"/></svg>}
+        : <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" aria-hidden="true"><rect x="1" y="1" width="8" height="8" rx="1.5" fill={style === "hollow" || style === "dashed-outline" ? "none" : color} stroke={color} strokeWidth="1.5" strokeDasharray={style === "dashed-outline" ? "2 1.5" : undefined}/></svg>}
       {label}</span>)}</div>
 }
 
@@ -44,7 +44,7 @@ function SignedBars({ rows, series, unit }: { rows: { label: string; values: num
           const w = Math.max(1, Math.abs(v) * scale), y = y0 + (series.length > 1 ? j * (h + 2) : (band - h) / 2 - 3)
           const x = v < 0 ? zero - w : zero
           return <g key={j}>
-            <rect x={x} y={y} width={w} height={h} rx={2} fill={series.length > 1 && j === 1 ? "none" : color(j, v)} stroke={color(j, v)} strokeWidth={series.length > 1 && j === 1 ? 1.5 : 0}><title>{`${r.label}${series.length > 1 ? ` · ${series[j]}` : ""}: ${fmt(v, unit)}${unit === "%" ? "" : ` ${unit}`}${r.note ? ` (${r.note})` : ""}`}</title></rect>
+            <rect x={x} y={y} width={w} height={h} rx={2} fill={series.length > 1 && j === 1 ? "none" : color(j, v)} pointerEvents="all" stroke={color(j, v)} strokeWidth={series.length > 1 && j === 1 ? 1.5 : 0}><title>{`${r.label}${series.length > 1 ? ` · ${series[j]}` : ""}: ${fmt(v, unit)}${unit === "%" ? "" : ` ${unit}`}${r.note ? ` (${r.note})` : ""}`}</title></rect>
             {(series.length === 1 || j === 0) && <text x={v < 0 ? x - 4 : x + w + 4} y={y + h / 2} dominantBaseline="middle" textAnchor={v < 0 ? "end" : "start"} className="fill-ink text-[12px] tabular-nums">{fmt(v, unit)}</text>}
           </g>
         })}
@@ -70,7 +70,7 @@ function WeekColumns({ rows, unit }: { rows: { label: string; a: number; flag?: 
       const hgt = Math.max(1, Math.abs(r.a) * scale), x = left + i * step + (step - bw) / 2, y = r.a < 0 ? zero : zero - hgt
       const c = r.a < 0 ? RED : LIME
       return <g key={r.label}>
-        <rect x={x} y={y} width={bw} height={hgt} rx={2} fill={r.flag ? "none" : c} stroke={r.flag ? c : "none"} strokeWidth={1.5} strokeDasharray={r.flag ? "3 2" : undefined}>
+        <rect x={x} y={y} width={bw} height={hgt} rx={2} fill={r.flag ? "none" : c} pointerEvents="all" stroke={r.flag ? c : "none"} strokeWidth={1.5} strokeDasharray={r.flag ? "3 2" : undefined}>
           <title>{`${r.label}: ${fmt(r.a)} ${unit}${r.flag ? " (provisional actual)" : ""}`}</title></rect>
         {i % every === 0 && <text x={x + bw / 2} y={H - 10} textAnchor="middle" className="fill-muted text-[11px]">{r.label.slice(5)}</text>}
       </g>
@@ -123,7 +123,7 @@ export function ForecastChart({ spec, standalone = false }: { spec: ChartSpec; s
     body = two ? <SignedBars rows={spec.rows.map(r => ({ label: r.label, values: [r.a, r.b ?? 0] }))} series={spec.series ?? []} unit={unit}/>
       : <WeekColumns rows={spec.rows} unit={unit}/>
     legend = two ? (spec.series ?? []).map((s, i) => [s, [LIME, LAV][i], i === 1 ? "hollow" : undefined] as LegendItem) : [["Below forecast", RED], ["Above forecast", LIME]]
-    if (!two && spec.rows.some(r => r.flag)) legend.push(["Provisional actual (outline)", AXIS, "hollow"])
+    if (!two && spec.rows.some(r => r.flag)) legend.push(["Provisional actual (dashed outline)", AXIS, "dashed-outline"])
     table = spec.rows.map(r => [r.label, two ? `${fmt(r.a, unit)} · ${fmt(r.b ?? 0, unit)}` : fmt(r.a, unit) + (r.flag ? " (provisional)" : "")])
   } else if (spec.kind === "lines" && spec.rows) {
     body = <TwoLines rows={spec.rows} series={spec.series ?? ["Forecast", "Actual"]} unit={unit}/>
