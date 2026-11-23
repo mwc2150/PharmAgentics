@@ -3,7 +3,7 @@
 **Spec ID**: `brief-010-target-analyses` (Briefing lane; owners: Michael, Meghna)
 **Feature Branch**: `feature/brief-010-targets`
 **Created**: 2026-11-22 | **Updated**: 2026-11-22
-**Status**: Specified; code waits for the golden review (core-011 FR-006) and the brief-009 merge. Work packets in `tasks.md`, file contract in `plan.md`.
+**Status**: Building. Packet D (the brief definition) first; the golden review was done in the grill of 2026-11-22. Work packets in `tasks.md`, file contract in `plan.md`.
 **Input**: Grill with Michael, 2026-11-22 (night). core-011 SC-002 (key-fact recall ≥ 0.85, finding recall ≥ 0.90, inside the word budget) and FR-016 to FR-021. Scripted run `ef64671bd20941cc804e19a665c971dc` (brief-008 polish) scored on exact values. Briefing constitution B-II, B-III, B-VI, B-VII.
 
 ## Why
@@ -29,6 +29,9 @@ Some of it is already computed. The plan, specialty and channel splits are in ea
 - Q: A plan that fell inside a territory that rose? → A: **A cut card beside the territory card** (core-011 FR-017). When the brief is near its word budget the territory card shrinks to its headline; the cut card is never dropped.
 - Q: National card? → A: **Built by code, at most one a brief**, when a check is supported at national level (competitor share first).
 - Q: Who finds the cuts? → A: **Code** (deterministic first). Code screens plans, channels and specialties, builds the cut and national cards and fills every number. The agent's Manager sees cut cards as candidate stories and chooses what to tell; the Writer words them around claim tokens.
+- Q: Why do golden and brief disagree? → A: **Unstated assumptions** (raw or deduplicated, which territories count, TRx or NBRx, plan or territory, against what). Every brief is built from an explicit **brief definition** the analyst selects at the start, and the golden set and the scorer read the same definition.
+- Q: Which choices? → A: **Six selectors, always shown at the start of the form, whatever the question**: period (first and last week), comparison (previous N weeks, last year, named weeks), territories counted (like-for-like, all reportable, projected national), measure (TRx, NBRx, or both), grain (any of national, territory, plan, channel, specialty) and relative to (the other territories, national, or nothing). Each has a pre-selected value; nothing is enforced or hidden; there is no team setting. The scope reader proposes values from the question and the analyst confirms them. Data basis is not a choice: metrics come only from the governed views; raw figures appear only as labelled tie-outs.
+- Q: Golden cases? → A: Each case carries the **same explicit definition** (it replaces `comparison`); its facts are computed under it; a finding names its measure (BXA TRx unless it says BXA share or a competitor's share).
 - Q: Merge bar? → A: Each packet, on the scripted engine: pooled key-fact recall and finding recall do not fall, no case goes over the word budget, and the packet raises its own target cases. The Haiku agent runs after the plan-cut packet and at the end; "numbers lost by the agent" (core-011 FR-013) must be 0.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -72,6 +75,10 @@ A leader asks whether the issue is new or continuing. The competitor story is a 
 
 ## Requirements *(mandatory)*
 
+- **FR-000a**: A brief MUST be built from a **brief definition** (`tools/definition.py`): `first_week`, `last_week`, `comparison`, `territories` (`like_for_like` | `all_reportable` | `projected`), `measure` (`trx` | `nbrx` | `both`), `grain` (subset of `national`, `territory`, `plan`, `channel`, `specialty`) and `relative_to` (`other_territories` | `national` | `none`). The pre-selected values (like-for-like, TRx, all five grains, other territories, the house comparison) reproduce today's brief exactly.
+- **FR-000b**: The brief form MUST show the six selectors before the question is answered, pre-selected and editable; the scope reader only proposes values. The request carries the definition; the stored brief keeps it; the Assumptions block (both views) prints it in words.
+- **FR-000c**: Both engines MUST honour every field: `territories` sets which territories a national figure counts; `measure` sets the KPI strip, territory table and story figures (both: NBRx beside TRx, labelled "new patients (NBRx)"); `grain` sets which levels get lines, stories, cut cards and splits; `relative_to` sets what a story's change is set against. Every claim records the definition fields it was made under plus its own grain and cut.
+- **FR-000d**: The golden set MUST carry an explicit definition per Briefing case; the harness passes it to the system; facts are computed under it.
 - **FR-001**: Code MUST screen each story territory's plans on the brief's comparison weeks and build a **cut card** for a plan whose change runs against its territory's, or that holds the access driver the checks support, at most two a brief, largest first. The card carries `territory`, `cut` (`plan:<id>`), `direction`, `drivers_supported`, `drivers_ruled_out` and a headline with the plan's readable name (brief-008 FR-004).
 - **FR-002**: A cut card's unfolded text MUST state the cut's TRx a week before and after and its change in percent (Briefing percent format, brief-008 FR-016); for a new-patients question, NBRx instead. Every number is a claim token filled from a stored SQL query.
 - **FR-003**: Each story's unfolded text MUST name its largest channel and specialty movers in percent, at most two, above the small-cell floor. The Promotion review MUST do the same for each lapsed territory.

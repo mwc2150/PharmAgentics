@@ -30,3 +30,22 @@ P and S both touch `splits.py` and `memo.py`: run them one after the other, not 
 ## Checks per packet
 
 Focused tests; the scripted run and gate against the previous packet's run (exit 0; all seven at 1.000); the merge bar (core-011 FR-019): `key_fact_recall_pooled` and `finding_recall_pooled` do not fall, `over_word_budget` 0, the packet's target cases rise. The Haiku agent run after P and after the last packet. A real-app look at one cut card and the national card in both views.
+
+## The brief definition (packet D, the contract D-B, D-U and G build against)
+
+```python
+# src/pharmagentics/tools/definition.py
+class Definition(BaseModel):
+    first_week: str | None = None          # ISO Monday; None: the question's weeks, else the latest closed week
+    last_week: str | None = None
+    comparison: Comparison | None = None   # tools/window.py; None: the previous four weeks
+    territories: Literal["like_for_like", "all_reportable", "projected"] = "like_for_like"
+    measure: Literal["trx", "nbrx", "both"] = "trx"
+    grain: list[Literal["national", "territory", "plan", "channel", "specialty"]] = [all five]
+    relative_to: Literal["other_territories", "national", "none"] = "other_territories"
+```
+
+- Engines: `answer(question, ..., definition: dict | None = None)` for the scripted pipeline and the agent; the MCP session holds the definition beside the period. Today's `comparison` keyword keeps working and maps into `definition.comparison`.
+- API: `BriefRequest.definition`, `AgentJobRequest.definition`, `BriefingScopeRequest` returns a proposed `definition`. JSON field names as above.
+- Golden YAML: a `definition:` block with every field; the old top-level `comparison:` is read into it. The harness (`eval/harness/systems.py`) passes `definition` to `predict`.
+- Owners: D-B owns `src/` and `agents/` (except the frontend) and their tests; D-U owns `frontend/figma-make/` and `tests/test_frontend_scope.py`; G owns `eval/` (harness, golden, tests).

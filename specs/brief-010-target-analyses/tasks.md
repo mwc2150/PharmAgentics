@@ -1,6 +1,21 @@
 # Tasks: brief-010 The Analyses the Targets Need
 
-Starts after the golden review (core-011 FR-006) and the brief-009 merge. Packets in order: P, then S, then R and N side by side. Built by Sonnet in their own worktrees; Opus integrates.
+Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeline`. Packets D-B, D-U and G first, side by side; then N and R side by side; then P, then S. Built by Sonnet in their own worktrees; Opus integrates.
+
+## Packet D-B: the brief definition, backend (FR-000a, FR-000c)
+- [ ] DB1 `tools/definition.py`: the `Definition` model, its pre-selected values, validation, and words for the Assumptions block.
+- [ ] DB2 Both engines take `definition` (None means the pre-selected values) and honour every field; claims record the fields plus grain and cut.
+- [ ] DB3 API: brief and job requests carry `definition`; the stored brief keeps it; the scope reader proposes it; the Assumptions block prints it.
+- [ ] DB4 Tests: pre-selected definition gives today's brief unchanged (answer, claims, evidence); each field changes what it should.
+
+## Packet D-U: the brief definition, form (FR-000b)
+- [ ] DU1 Six selectors at the start of the Briefing form, pre-selected, editable; the scope reader's proposal fills them; the request sends `definition`.
+- [ ] DU2 The Assumptions block shows the definition in both views; tsc, build, frontend-scope test.
+
+## Packet G: golden definitions and the review (FR-000d; grill 2026-11-22)
+- [ ] G1 `Case.definition` (explicit, all fields) replaces `comparison` (the loader maps old files); the harness passes it to systems; findings take an optional `measure`.
+- [ ] G2 Every Briefing case states its definition; P2-Q3, P2-Q4 and P1-Q5 changes restated like-for-like from SQL with the reference prose; plan cuts on P1-Q4, P2-Q2, P2-Q4, P4-Q4; `needs` tags; must facts and findings `reviewed: true`; CHANGELOG.
+- [ ] G3 `eval check` passes; eval tests.
 
 ## Packet P: plan cuts (FR-001, FR-002, FR-007, FR-008)
 - [ ] P1 Cut screen in `splits.py`: per plan in a story territory, TRx (or NBRx) a week before and after on the comparison weeks and the percent change, as claim tokens; flags a plan against its territory or holding the supported access driver.
