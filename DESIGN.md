@@ -1,6 +1,6 @@
 # Design
 
-The web app (`frontend/figma-make`) is an analyst's tool: quiet, precise, consistent. The interface recedes so the evidence and the decision lead. The theme is "Positivus dark": a near-black page, one teal accent (teal until 2026-11-23), chunky controls and panels that sit on a hard offset slab instead of a soft shadow. Product context is in [PRODUCT.md](PRODUCT.md); tokens live in `frontend/figma-make/src/index.css`.
+The web app (`frontend/figma-make`) is an analyst's tool: quiet, precise, consistent. The interface recedes so the evidence and the decision lead. The theme is "Positivus dark": a near-black page, one teal accent (lime until 2026-11-23), chunky controls and panels that sit on a hard offset slab instead of a soft shadow. Product context is in [PRODUCT.md](PRODUCT.md); tokens live in `frontend/figma-make/src/index.css`.
 
 ## Theme
 
