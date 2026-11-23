@@ -23,7 +23,7 @@
   --color-ink: #f3f3f3;        /* body text (Positivus grey) */
   --color-muted: #a6aabf;      /* secondary text */
   --color-rule: #373a52;       /* panel borders and dividers */
-  --color-edge: #8a8ea6;       /* borders of controls (fields, secondary buttons): 3:1 on every surface */
+  --color-edge: #8a8ea6;       /* borders of controls (fields, secondary buttons): 5.8:1 on paper, 5.2:1 on sheet, 4.8:1 on primarybg (3:1 is the floor for UI boundaries) */
   --color-slab: #3a3e58;       /* the hard offset shadow under panels and secondary buttons */
   --color-warn: #c9ccd8;
   --color-warnbg: #23253a;
@@ -59,7 +59,7 @@
   color-scheme: dark;                   /* native selects, scrollbars and pickers render dark */
   accent-color: var(--color-primary);     /* radios and checkboxes */
   caret-color: var(--color-primary);
-  scrollbar-color: var(--color-rule) transparent;
+  scrollbar-color: var(--color-edge) transparent;   /* thumb 5.8:1 on the page; the old rule colour was 1.7:1 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -81,6 +81,8 @@
   ::selection { background: var(--color-primary); color: var(--color-onprimary); }
   :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
   a { text-underline-offset: 0.2em; }
+  /* A region that script focuses (the skip link's target) needs no ring; controls keep theirs. */
+  section[tabindex="-1"]:focus, div[tabindex="-1"]:focus { outline: none; }
 }
 
 @layer utilities {
@@ -105,7 +107,7 @@
   }
   /* Motion: state only, 150-300 ms, exponential ease-out from a visible default. */
   .pa-fade { animation: pa-fade 220ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .pa-tabbar { transition: left 280ms cubic-bezier(0.16, 1, 0.3, 1), width 280ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .pa-tabbar { transition: left 280ms cubic-bezier(0.16, 1, 0.3, 1), top 280ms cubic-bezier(0.16, 1, 0.3, 1), width 280ms cubic-bezier(0.16, 1, 0.3, 1); }
   .pa-stagger > * { animation: pa-rise 260ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-stagger > *:nth-child(2) { animation-delay: 40ms; }
   .pa-stagger > *:nth-child(3) { animation-delay: 80ms; }
@@ -137,10 +139,21 @@
   .pa-rise { animation: pa-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-slide { animation: pa-slide 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-pulse { animation: pa-pulse 1.2s ease-in-out infinite; }
+  /* Reduced motion (WCAG 2.3.3): no slides, rises, travelling underline, sidebar width glide or press-down.
+     State still shows: the button's shadow flattens on press, the tab keeps its pill, the sidebar snaps. */
   @media (prefers-reduced-motion: reduce) {
     .pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-stagger > *, .pa-skeleton { animation: none; }
     .pa-draw path { animation: none; stroke-dashoffset: 0; }
     .workspace-content, .workspace-wide, .pa-tabbar { transition: none; }
+    *, ::before, ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    [class*="active:translate"]:active { translate: none !important; }
+  }
+  /* Forced colours (Windows High Contrast): the lime block behind a heading drops away, so the heading keeps a
+     rule under it, and buttons that rely on a fill or a shadow for their edge get a border. */
+  @media (forced-colors: active) {
+    .pa-mark { background: transparent; color: CanvasText; border-bottom: 3px solid Highlight; border-radius: 0; padding-inline: 0; }
+    button, select, input, textarea { border: 1px solid ButtonText; }
+    [aria-current="page"], [aria-pressed="true"], [aria-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
   }
 }
 
@@ -190,7 +203,7 @@
   /* the memo */
   .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pa-memo > * { break-inside: auto; }
-  .pa-memo h3 { break-after: avoid; }
+  .pa-memo h3, .pa-memo h4 { break-after: avoid; }
   .pa-memo .pa-prose { max-width: none; font-size: 10.5pt; line-height: 1.4; orphans: 3; widows: 3; }
   .pa-memo .pa-kpi-value { font-size: 17pt; }
   .pa-memo .pa-card, .pa-memo figure { break-inside: auto; }  /* a long card or chart may split; otherwise it leaves a blank half page */
