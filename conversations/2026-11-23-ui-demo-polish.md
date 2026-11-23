@@ -27,7 +27,7 @@ Michael asked for a clean demo: six UI items, planned first and approved as reco
 
 ## Round 2 (same day)
 - Seafoam #3ecfb2 (Michael picked option A of five; `primaryink` now equals `primary`). Favicon PNG and ICO regenerated from the SVG (app and Keycloak theme).
-- Greeting on one landing page per lane; data line in the Brand row; tighter top spacing.
+- Greeting on one landing page per lane; in Weekly briefing the data line sits under the Overview greeting only, and the Brand picker sits left of the classification label in the tab row.
 - "I have what I need" removed; `POST /api/briefing/{id}/review` records the `insight` event (core-007 FR-025 amended). The old route stays.
 - "Start a new briefing" (result header, opened approved brief). The New briefing tab returns to a run only while it is pending, its plan waits for review, or its result is unseen (`held` in AnalystApp).
 - How it works: `IntroWithHow` disclosure (button with a `help` icon, inline panel, Escape closes) on the New briefing intro and Diana's list; the tab is gone (`briefing.how` stays classified on the panel).

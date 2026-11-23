@@ -422,7 +422,7 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
 // Tabs by the APG pattern: one tab stop (the selected tab), Left/Right/Home/End move focus along the row, Enter or
 // Space selects. `panelId` (optional) names the tabpanel the page renders under the row; the selected tab labels it
 // (id `${panelId}-tab-${key}`). The sliding pill is decoration.
-function SubTabs<T extends string>({label, value, options, onChange, panelId}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string}) {
+function SubTabs<T extends string>({label, value, options, onChange, panelId, aside}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string, aside?: ReactNode}) {
   const current = options.find(o => o[0] === value)
   const list = useRef<HTMLDivElement>(null)
   const [bar,setBar] = useState<{left: number, top: number, width: number, height: number} | null>(null)
@@ -448,9 +448,11 @@ function SubTabs<T extends string>({label, value, options, onChange, panelId}: {
         className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primaryink" : "text-muted hover:text-ink"}`}>{text}</button>)}
       {bar && <span aria-hidden="true" className="pa-tabbar absolute rounded-lg border border-edge bg-paper shadow-[0_3px_0_var(--color-slab)]" style={{left: bar.left, top: bar.top, width: bar.width, height: bar.height}}/>}
     </div>
-    {current?.[2] && (
-      <div className="shrink-0">
-        <ClassLabel tab={current[2]}/>
+    {/* `aside` (the Briefing brand picker) sits left of the classification label */}
+    {(aside || current?.[2]) && (
+      <div className="flex shrink-0 items-center gap-4">
+        {aside}
+        {current?.[2] && <ClassLabel tab={current[2]}/>}
       </div>
     )}
   </div>
@@ -1131,10 +1133,10 @@ function AnalystApp({me}: {me: Me}) {
   const scopeBack = useRef<HTMLButtonElement>(null)
   useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
   return <Shell me={me} onBriefingHome={()=>setView("overview")} briefingBusy={pending}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{view==="overview" && <Greeting/>}<div className="pa-noprint flex items-center justify-between gap-3 py-2">{/* the data line sits here on every tab, so the tabs start higher */}<p className="min-w-0 text-xs text-muted">{context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : ""}</p><label className="ml-auto flex shrink-0 items-center gap-2 text-xs text-muted">Brand
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets with the data line under it, as the Forecast lane does; other tabs start at the tab row */}{view==="overview" && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<SubTabs aside={<label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
+      </select></label>} label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
