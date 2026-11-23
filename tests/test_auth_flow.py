@@ -90,9 +90,14 @@ def test_ui_page_is_revalidated_and_hashed_assets_are_kept(monkeypatch):
     async def _asset():
         return Response("1", media_type="text/javascript")
 
+    @app.get("/__cache_probe.svg", include_in_schema=False)
+    async def _logo():
+        return Response("<svg/>", media_type="image/svg+xml")
+
     try:
         c = TestClient(app)
         assert c.get("/__cache_probe.html").headers["cache-control"] == "no-cache"
         assert "immutable" in c.get("/assets/__cache_probe.js").headers["cache-control"]
+        assert c.get("/__cache_probe.svg").headers["cache-control"] == "no-cache"  # a fixed-name file such as the logo
     finally:
         app.router.routes[:] = [r for r in app.router.routes if "__cache_probe" not in getattr(r, "path", "")]

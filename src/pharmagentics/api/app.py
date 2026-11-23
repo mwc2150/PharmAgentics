@@ -85,12 +85,13 @@ app.add_middleware(
 async def _ui_cache(request: Request, call_next):
     """The UI page is revalidated on every load, so a deploy shows at once; the built files under /assets carry a
     content hash in their names, so a browser may keep them for good. Without a header a browser guesses, and kept
-    showing the previous release for hours after a deploy (2026-11-23)."""
+    showing the previous release for hours after a deploy (2026-11-23). Files with fixed names (the logo, the
+    favicons) are revalidated too: a browser kept the old logo after the v1 logo change."""
     response = await call_next(request)
     if "cache-control" not in response.headers:
         if request.url.path.startswith("/assets/"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        elif response.headers.get("content-type", "").startswith("text/html"):
+        elif not request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-cache"
     return response
 app.include_router(auth.router)
