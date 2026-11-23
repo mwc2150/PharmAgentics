@@ -207,11 +207,29 @@ def _cut(value) -> str | None:
     return text or None
 
 
+def _measure(finding: dict) -> str:
+    """The measure a finding's direction belongs to: trx (BXA TRx) unless it names another (brief-010 FR-006)."""
+    return str(finding.get("measure") or "trx").strip().lower()
+
+
+def _covers(card: dict, measure: str) -> bool:
+    """A card covers the measures in its `directions`; a card with no `directions` covers `trx` only."""
+    directions = card.get("directions")
+    return measure in directions if directions else measure == "trx"
+
+
+def _seen(card: dict, measure: str):
+    """The card's direction for a measure it covers."""
+    return (card.get("directions") or {}).get(measure) if card.get("directions") else card.get("direction")
+
+
 def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[str]]:
     """(points, possible, notes) for one expected finding. A finding with a cut is met only by a card with the same
-    territory and cut; a finding without one only by a card with no cut (core-011 FR-017)."""
+    territory and cut; a finding without one only by a card with no cut (core-011 FR-017). A card must cover the
+    finding's measure (`trx` when the finding names none) and its direction for that measure is the one compared."""
+    measure = _measure(finding)
     same_territory = [c for c in cards if _territory(c["territory"]) == _territory(finding["territory"])
-                      and _cut(c.get("cut")) == _cut(finding.get("cut"))]
+                      and _cut(c.get("cut")) == _cut(finding.get("cut")) and _covers(c, measure)]
     if finding.get("withheld"):
         return (0 if same_territory else 1), 1, ([] if not same_territory else [f"{finding['id']}: should be withheld"])
     direction = finding.get("direction")
@@ -220,7 +238,7 @@ def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[st
     where = finding["territory"] + (f" ({finding['cut']})" if _cut(finding.get("cut")) else "")
     best, notes = 0, [f"{finding['id']}: no {direction or 'any'}-direction card for {where}"]
     for card in same_territory:
-        if direction is not None and card.get("direction") != direction:
+        if direction is not None and _seen(card, measure) != direction:
             continue
         have_s, have_r = card.get("drivers_supported") or [], card.get("drivers_ruled_out") or []
         points = 1 + sum(d in have_s for d in supported) + sum(d in have_r for d in ruled_out)
@@ -266,15 +284,21 @@ def false_drivers(outputs, expectations) -> Feedback:
         return _not_scored("the case has no expected findings")
     if not cards:
         return _not_scored("the answer has no story cards with a territory")
-    expected: dict[tuple, set] = {}
-    for f in findings:
-        expected.setdefault((_territory(f["territory"]), _cut(f.get("cut"))), set()).update(f.get("drivers_supported") or [])
     # Only territories (and cuts) the case has a finding for: a correct story the golden answer does not mention is
-    # not a wrong attribution. A cut card is held to the finding with the same cut, a whole-territory card to the one without.
-    extra = [f"{card['territory']}{' (' + card['cut'] + ')' if _cut(card.get('cut')) else ''}: {d}" for card in cards
-             if (_territory(card["territory"]), _cut(card.get("cut"))) in expected
-             for d in card.get("drivers_supported") or []
-             if d not in expected[(_territory(card["territory"]), _cut(card.get("cut")))]]
+    # not a wrong attribution. A cut card is held to the findings with the same cut, a whole-territory card to those
+    # without; and only to findings on a measure the card covers (a national share card is not held to a TRx finding).
+    def expected_for(card) -> set | None:
+        mine = [f for f in findings if _territory(f["territory"]) == _territory(card["territory"])
+                and _cut(f.get("cut")) == _cut(card.get("cut")) and _covers(card, _measure(f))]
+        return {d for f in mine for d in f.get("drivers_supported") or []} if mine else None
+
+    extra = []
+    for card in cards:
+        allowed = expected_for(card)
+        if allowed is None:
+            continue
+        where = f"{card['territory']}{' (' + card['cut'] + ')' if _cut(card.get('cut')) else ''}"
+        extra += [f"{where}: {d}" for d in card.get("drivers_supported") or [] if d not in allowed]
     return Feedback(value=len(extra), rationale=("Unexpected supported drivers: " + "; ".join(extra)) if extra else "No unexpected driver.")
 
 

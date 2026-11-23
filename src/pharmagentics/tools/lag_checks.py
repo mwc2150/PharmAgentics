@@ -122,3 +122,15 @@ def run_checks(reg: Registry, terr: str, W, B, *, brand_id: str = "BXA",
     ref = B if use_selected_baseline else context_baseline(W, B)
     return [check_data(reg, terr, W, B), check_access(reg, terr, W, B), check_promotion(reg, terr, W, B, source_baseline=ref),
             check_supply(reg, terr, W, B), check_competitor(reg, terr, W, ref, exact_comparison=use_selected_baseline)]
+
+
+def national_ruled_out(reg: Registry, terrs: list[str], W, B, *, brand_id: str = "BXA", use_selected_baseline: bool = False) -> list[str]:
+    """Drivers ruled out nationally (brief-010 FR-006): access, promotion or supply, when every reportable territory's
+    own check rules it out on the brief's weeks. The same checks the territory stories run, on a scratch registry so
+    no claim or evidence is added; a territory whose check is inconclusive or supported keeps the driver off the list."""
+    if not terrs:
+        return []
+    scratch = reg.scratch()
+    verdicts = [{c.driver: c.verdict for c in run_checks(scratch, t, W, B, brand_id=brand_id, use_selected_baseline=use_selected_baseline)}
+                for t in terrs]
+    return [d for d in ("access", "promotion", "supply") if all(v.get(d) == "ruled_out" for v in verdicts)]

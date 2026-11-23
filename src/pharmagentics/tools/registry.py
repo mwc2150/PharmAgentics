@@ -124,6 +124,13 @@ class Registry:
     def close(self) -> None:
         self.con.close()
 
+    def scratch(self) -> "Registry":
+        """A registry on the same read-only connection with its own empty evidence and claims, for reads whose
+        numbers the brief does not state (brief-010 FR-006): nothing it records reaches this run's claims."""
+        other = object.__new__(Registry)
+        other.con, other.data_version, other.evidence, other.claims, other._by_query = self.con, self.data_version, [], [], {}
+        return other
+
     def rows(self, sql: str) -> list[tuple]:
         """Internal screening query: governed, not recorded as evidence."""
         check_sql(sql)
