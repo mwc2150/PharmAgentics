@@ -2,6 +2,13 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-23 (afternoon), governed views stored as tables at load (Michael, Claude Opus)._
+- Branch `feature/materialize-views` (core-001 FR-003a): after `sql/001_reporting_views.sql` builds, the loader stores each of the nine `reporting.*` views as a table of the same name, in file order (each view reads only views above it). Agents still read only `reporting.*`, so governance and evidence text are unchanged. A reload rebuilds them; `load_database(materialize=False)` keeps views for the gate-logic tests that change `raw` rows.
+- New test: every stored table matches its view (columns, types, row count, `EXCEPT ALL` both ways) and a reload over stored tables works. `tests/test_data_load.py` 22 passed (19 subtests).
+- Scripted run `26f760c10cde448483c2494bc5945121` gated against `1adaa0e72c5d415f9fd53a9625e8b940` (`main` 604ae24, views): exit 0, all seven gated checks 1.000. All other 24 logged metrics identical; only latency moved: brief p50 20.3 s -> 1.9 s, p95 27.6 s -> 2.8 s, follow-up turn p50 0.15 s -> 0.03 s (both runs on a busy laptop). One scripted brief alone: 0.5 s warm, 1.6 s cold (was about 11 s).
+- After merging: rebuild every checkout's `local/pharmagentics.duckdb` (`uv run python src/pharmagentics/data/load_duckdb.py`). The Dockerfile builds the database at image build, so Cloud Run gets the tables on the next deploy. Not run: the Haiku agent gate, and the full suite.
+- Handoff: `conversations/2026-11-23-materialize-views.md`.
+
 _2026-11-23, UI refresh ready for review: Positivus dark theme, element-tile logo, accessibility pass (Claude Opus, Sonnet and Haiku packets)._
 - Branch `feature/ui-refresh` (frontend and docs only; no Python changed):
   - Michael compared three live directions and picked "Positivus dark": lime #b9ff66 on near-black, Space Grotesk headings, chunky controls with hard offset shadows.
