@@ -24,3 +24,11 @@ Michael asked for a clean demo: six UI items, planned first and approved as reco
 - The hosted Keycloak still serves the old realm until `uv run python deploy/gcp.py keycloak --project <ID>` (by hand). Local compose re-imports on start.
 - Forecast persona names (Ace, Miranda) are for the logins only; Alvin and Sienna may want to confirm them.
 - `feature/materialize-views` is a separate PR; both add a PROJECT_STATE entry at the top, so the second to merge resolves a one-hunk conflict.
+
+## Round 2 (same day)
+- Seafoam #3ecfb2 (Michael picked option A of five; `primaryink` now equals `primary`). Favicon PNG and ICO regenerated from the SVG (app and Keycloak theme).
+- Greeting on one landing page per lane; data line in the Brand row; tighter top spacing.
+- "I have what I need" removed; `POST /api/briefing/{id}/review` records the `insight` event (core-007 FR-025 amended). The old route stays.
+- "Start a new briefing" (result header, opened approved brief). The New briefing tab returns to a run only while it is pending, its plan waits for review, or its result is unseen (`held` in AnalystApp).
+- How it works: `IntroWithHow` disclosure (button with a `help` icon, inline panel, Escape closes) on the New briefing intro and Diana's list; the tab is gone (`briefing.how` stays classified on the panel).
+- Icons: `briefcase` for Weekly briefing, `clipboard` for Evaluation.

@@ -697,12 +697,13 @@ function IntroWithHow({introId, children}: {introId?: string, children: ReactNod
   const panel = useId()
   const button = useRef<HTMLButtonElement>(null)
   const close = () => { setOpen(false); button.current?.focus() }
-  return <div className="space-y-3">
+  // Escape closes the panel from the button as well as from inside it.
+  return <div className="space-y-3" onKeyDown={e=>{ if (e.key==="Escape" && open) { e.stopPropagation(); close() } }}>
     <div className="flex items-start justify-between gap-3">
       <p id={introId} tabIndex={introId ? -1 : undefined} className="min-w-0 text-sm text-muted outline-none">{children}</p>
       <button ref={button} type="button" aria-expanded={open} aria-controls={open ? panel : undefined} onClick={()=>open ? close() : setOpen(true)} className="flex shrink-0 items-center gap-1.5 rounded-lg text-sm text-primaryink hover:underline"><Icon name="help" className="h-4 w-4"/><span className="max-sm:sr-only">How it works</span></button>
     </div>
-    {open && <section id={panel} aria-label="How it works" onKeyDown={e=>{ if (e.key==="Escape") { e.stopPropagation(); close() } }} className="space-y-3 border-y border-rule py-4">
+    {open && <section id={panel} aria-label="How it works" className="space-y-3 border-y border-rule py-4">
       <div className="flex items-center justify-between gap-3"><ClassLabel tab="briefing.how"/><button type="button" onClick={close} aria-label="Close How it works" className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-4 w-4"/></button></div>
       <HowItWorks/>
     </section>}
