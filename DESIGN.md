@@ -1,12 +1,12 @@
 # Design
 
-The web app (`frontend/figma-make`) is an analyst's tool: quiet, precise, consistent. The interface recedes so the evidence and the decision lead. The theme is "Positivus dark": a near-black page, one lime accent, chunky controls and panels that sit on a hard offset slab instead of a soft shadow. Product context is in [PRODUCT.md](PRODUCT.md); tokens live in `frontend/figma-make/src/index.css`.
+The web app (`frontend/figma-make`) is an analyst's tool: quiet, precise, consistent. The interface recedes so the evidence and the decision lead. The theme is "Positivus dark": a near-black page, one teal accent (teal until 2026-11-23), chunky controls and panels that sit on a hard offset slab instead of a soft shadow. Product context is in [PRODUCT.md](PRODUCT.md); tokens live in `frontend/figma-make/src/index.css`.
 
 ## Theme
 
-Dark only. Neutrals carry the page; lime is the one accent and it is rationed. It marks the primary action, the current selection and focus, links and citations, and one highlight block (see "Where lime is allowed").
+Dark only. Neutrals carry the page; teal is the one accent. It comes in two shades: `primary` (#2a8c7c) for fills, focus and selection, and `primaryink` (#45b8a3) for accent text, because #2a8c7c is under AA for small text on panels and it is rationed. It marks the primary action, the current selection and focus, links and citations, and one highlight block (see "Where teal is allowed").
 
-Tokens (Tailwind `@theme`; use as `bg-primary`, `text-muted`, `border-edge`). The old names `navy`, `navyhover`, `limedeep`, `onaccent`, `agent`, `agentdeep`, `agentbg` are deprecated aliases kept for other branches; do not use them in new code.
+Tokens (Tailwind `@theme`; use as `bg-primary`, `text-muted`, `border-edge`). The old names `navy`, `navyhover`, `tealdeep`, `onaccent`, `agent`, `agentdeep`, `agentbg` are deprecated aliases kept for other branches; do not use them in new code.
 
 | Token | Value | Use | Contrast |
 | :- | :- | :- | :- |
@@ -17,11 +17,12 @@ Tokens (Tailwind `@theme`; use as `bg-primary`, `text-muted`, `border-edge`). Th
 | `rule` | #373a52 | Panel borders, dividers, bands, gridlines | 1.5:1 on `sheet` (decorative only; never the sole edge of a control) |
 | `edge` | #8a8ea6 | Borders of controls (fields, secondary buttons, switch, tab pill) | 5.8:1 on `paper`, 5.2:1 on `sheet` (needs 3:1) |
 | `slab` | #3a3e58 | Hard offset shadow under panels, secondary buttons, the tab pill | 1.8:1 on `paper` (decorative) |
-| `primary` | #b9ff66 | Primary button fill; current selection, focus ring, links, citations; the highlight block | 15.8:1 on `paper`, 14.0:1 on `sheet`, 12.9:1 on `primarybg` |
-| `primaryhover` | #cdff91 | Primary button hover fill | `onprimary` on it 15.9:1 |
-| `primarydeep` | #66962a | Hard shadow under the primary button and under the logo tile | 5.4:1 on `paper` (shadow, decorative) |
-| `primarybg` | #1f2714 | Current sidebar row, hovered citation | `ink` 13.9:1 |
-| `onprimary` | #14151c | Text on lime fills (button, highlight block, active view switch, selection) | 15.2:1 on `primary` |
+| `primary` | #2a8c7c | Primary button fill; current selection, focus ring; the highlight block; chart marks | 4.6:1 on `paper`, 4.1:1 on `sheet` (fills and boundaries only: under AA for small text) |
+| `primaryink` | #45b8a3 | Accent text: links, citations and their evidence numbers, the current tab's label, icons that carry state | 7.8:1 on `paper`, 6.9:1 on `sheet`, 6.8:1 on `primarybg` |
+| `primaryhover` | #33a08e | Primary button hover fill | `onprimary` on it 6.1:1 |
+| `primarydeep` | #17564b | Hard shadow under the primary button and under the logo tile | shadow, decorative |
+| `primarybg` | #10221f | Current sidebar row, hovered citation | `ink` 14.9:1 |
+| `onprimary` | #0b0c10 | Text on teal fills (button, highlight block, active view switch, selection) | 4.8:1 on `primary` |
 | `ok` / `okbg` | #8ab4f8 / #14233f | Verified and approved, always with a word or a check mark | 7.4:1 |
 | `amber` / `amberbg` / `amberline` | #fbbf24 / #2d2209 / #5c4513 | Data-health warnings, uncertainty, review required | 9.4:1 on `amberbg`, 10.1:1 on `sheet` |
 | `neg` | #f87171 | Adverse change, rejection, Sensitive data | 6.1:1 on `sheet`, 6.8:1 on `paper` |
@@ -30,14 +31,14 @@ Tokens (Tailwind `@theme`; use as `bg-primary`, `text-muted`, `border-edge`). Th
 
 Every text pair clears WCAG AA (4.5:1), and control borders and focus rings clear 3:1. Remeasure after any colour change. Ratios above were measured against the token values in `index.css`.
 
-### Where lime is allowed
+### Where teal is allowed
 
-- The primary action (`BTN`): lime fill, `onprimary` text. One per view.
+- The primary action (`BTN`): teal fill, `onprimary` text. One per view.
 - The current selection: the current sidebar item's icon, the current tab's label, the active view-switch segment, the current marker in a chart. Focus: the 2px `primary` outline (offset 2px) on every `:focus-visible`, including memo citations and menu items (an inset ring there), and the text-selection colour. Under `forced-colors` the highlight block becomes a rule and the current item an outline.
-- Links and citations: a cited figure is underlined with a dotted lime line and carries a lime evidence number; "Ask about this" is a lime text link.
-- One lime block per view section: the greeting at the top of a workspace, and the top-level heading of each memo section (`.pa-mark`, `onprimary` text, 8px radius, `box-decoration-break: clone` so a wrapped heading keeps its block). Sub-sections (§3.1 and below) stay plain text with a 2px `rule` bar on the left.
+- Links and citations: a cited figure is underlined with a dotted teal line and carries a teal evidence number; "Ask about this" is a teal text link.
+- One teal block per view section: the greeting at the top of a workspace, and the top-level heading of each memo section (`.pa-mark`, `onprimary` text, 8px radius, `box-decoration-break: clone` so a wrapped heading keeps its block). Sub-sections (§3.1 and below) stay plain text with a 2px `rule` bar on the left.
 - The one data series of a chart, and the filled dot for a material change (hollow = not material).
-- Lime never means state. Approved, warning, adverse, paused and rejected come from `ok`, `amber`, `neg`, `warn` and always carry a word.
+- Teal never means state. Approved, warning, adverse, paused and rejected come from `ok`, `amber`, `neg`, `warn` and always carry a word.
 
 ## Type
 
@@ -56,8 +57,8 @@ Use the shared class constants in `App.tsx` (`Overview.tsx` keeps its own copy o
 - `FIELD`: `paper` well, 1px `edge` border, 14px radius, 14px text. `LABEL` above it. `PANEL`: `.pa-panel`, 22px radius, 1px `rule` border, `sheet` fill.
 - Controls are 14px radius (`--radius-lg`); panels are 22px (`--radius-xl`); the highlight block is 8px; status and actor tags 6px. Nested tiles (KPI tiles) use the 14px control radius.
 - Tabs (`SubTabs`): plain text; the current tab is `primary` semibold. A pill slides behind the current tab: `paper` fill, 1px `edge` border, 14px radius, shadow `0 3px 0 slab` (280ms ease-out; none with reduced motion). The row wraps rather than scrolls. They follow the tab pattern: roving tabindex, arrow keys and Home/End move focus, Enter or Space selects. The current tab's data classification sits at the row's end.
-- View switch (`ViewToggle`, analyst/leadership): a small bordered control (1px `edge`, 14px radius) with a solid lime segment for the open view and `muted` text on the other. It is a group of `aria-pressed` buttons, not tabs; the open view stays focusable.
-- Sidebar items: 14px radius rows, 20px icon. Current: `primarybg` fill, `ink` text, semibold, lime icon, `aria-current="page"`. Hover: `paper` fill, `ink` text, lime icon. Not current: `muted`.
+- View switch (`ViewToggle`, analyst/leadership): a small bordered control (1px `edge`, 14px radius) with a solid teal segment for the open view and `muted` text on the other. It is a group of `aria-pressed` buttons, not tabs; the open view stays focusable.
+- Sidebar items: 14px radius rows, 20px icon. Current: `primarybg` fill, `ink` text, semibold, teal icon, `aria-current="page"`. Hover: `paper` fill, `ink` text, teal icon. Not current: `muted`.
 - Lists are rows divided by `rule` inside one panel, never grids of cards.
 - Tags only for status (in review, approved, paused, confidence) and actors (Code, Agent, Person): an outlined word (1px border in the state colour or `edge`), never a filled pill. Approved adds a check mark.
 - Data classification (core-009) is a quiet uppercase text label, never a coloured pill; only Sensitive takes a colour (`neg`).
@@ -78,32 +79,32 @@ Use the shared class constants in `App.tsx` (`Overview.tsx` keeps its own copy o
 - Panels are one flat `sheet` layer on the `paper` page; the sidebar and header are separated by a 1px `rule` line, not a shadow.
 - Frosted glass (`.glass`, `sheet` at 80%, 16px blur) only on things that float over the page: the phone drawer and toasts. Menus are solid panels (`.pa-panel`), so nothing shows through them. The dialog scrim is black at 60%.
 - Motion is state only: 150 to 300ms, exponential ease-out; none with `prefers-reduced-motion`.
-- Print: the memo prints as a plain light A4 page. Tokens are redefined to light values, shadows and the lime block are removed (the heading prints as text), and app chrome and buttons are hidden.
+- Print: the memo prints as a plain light A4 page. Tokens are redefined to light values, shadows and the teal block are removed (the heading prints as text), and app chrome and buttons are hidden.
 
 ## Layout
 
 - Sidebar: a 64px icon rail; the header toggle or Ctrl+B opens it to 248px and the choice is remembered. On phones the same toggle opens a 280px slide-out drawer. The header is 64px tall.
-- The rail's logo tile is its only lime tile; the wordmark appears beside it when the sidebar is open.
+- The rail's logo tile is its only teal tile; the wordmark appears beside it when the sidebar is open.
 - Content (`.workspace-content`, max 52rem) is centred on the whole page, using `--shift` (the rail's width when the sidebar is closed), and clears the sidebar when the screen is narrow.
 - Dashboards (the Overview tab, Evaluation) use `.workspace-wide` (max 72rem), centred the same way. Reading pages stay at 52rem.
 
 ## Logo
 
-- One logo: `public/pa-mark.svg`, a periodic-table-style element tile. A lime (`primary`) rounded tile with "Pa" large in Space Grotesk and "v1" small in the top-left corner, where an element's number would sit. Letters are outlined paths in `onprimary`, so no font loads. A hard slab in `primarydeep` sits 4 units below the tile (the same offset shadow as the primary button).
+- One logo: `public/pa-mark.svg`, a periodic-table-style element tile. A teal (`primary`) rounded tile with "Pa" large in Space Grotesk and "v1" small in the top-left corner, where an element's number would sit. Letters are outlined paths in `onprimary`, so no font loads. A hard slab in `primarydeep` sits 4 units below the tile (the same offset shadow as the primary button).
 - It is an SVG on a 64-unit square, so it scales freely: 36px in the rail, 56px on the sign-in card. Give it its own size class; it is decorative (`alt=""`) next to the name.
 - `public/favicon.svg` is the same tile without "v1" and without the slab, so "Pa" stays legible at 16px. `favicon.png` is the raster fallback.
 - Use it in the rail and the sign-in card only. Never repeat it in the page.
 
 ## Sign-in pages
 
-The pages people see before the app follow the same theme. Keycloak's login uses the `pharmagentics` login theme (`deploy/keycloak/themes/pharmagentics`, over keycloak.v2): near-black page, the tile mark beside the "PharmAgentics" wordmark, one 22px panel with the `slab` shadow, 14px fields with `edge` borders and a lime focus ring, and a lime "Sign in" button with the `primarydeep` shadow (not full width). Errors are a red word under the field, never a filled banner. The realm's display name is "PharmAgentics" (no "UAT"). The API's own pages (dev sign-in, "Starting the sign-in service") share one template in `src/pharmagentics/api/auth.py` with the same panel, mark and buttons. Keep the theme's hex values in step with `index.css` when a token changes.
+The pages people see before the app follow the same theme. Keycloak's login uses the `pharmagentics` login theme (`deploy/keycloak/themes/pharmagentics`, over keycloak.v2): near-black page, the tile mark beside the "PharmAgentics" wordmark, one 22px panel with the `slab` shadow, 14px fields with `edge` borders and a teal focus ring, and a teal "Sign in" button with the `primarydeep` shadow (not full width). Errors are a red word under the field, never a filled banner. The realm's display name is "PharmAgentics" (no "UAT"). The API's own pages (dev sign-in, "Starting the sign-in service") share one template in `src/pharmagentics/api/auth.py` with the same panel, mark and buttons. Keep the theme's hex values in step with `index.css` when a token changes.
 
 ## Avoid
 
 Avatar circles with initials, coloured badge pills with icons, tinted and ringed selected states, a logo repeated in the page, hero headings on working screens, full-width buttons, and blur on solid panels. Also:
 
-- Lime as decoration: a lime border, icon, divider or chart fill that carries no action, selection or link.
-- Lime on more than one block per view section (a second highlighted heading, a lime panel header, a lime tile beside the greeting).
-- Lime for state (approved, warning, adverse, paused); use `ok`, `amber`, `neg`, `warn` with a word.
+- Teal as decoration: a teal border, icon, divider or chart fill that carries no action, selection or link.
+- Teal on more than one block per view section (a second highlighted heading, a teal panel header, a teal tile beside the greeting).
+- Teal for state (approved, warning, adverse, paused); use `ok`, `amber`, `neg`, `warn` with a word.
 - Blurred shadows and glows on solid panels, buttons and tiles; the offset slab is the only depth.
 - Meaning carried by colour alone.
