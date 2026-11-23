@@ -2,8 +2,10 @@ import type { BriefDefinition, Comparison, GrainLevel, MeasureChoice, ProposedDe
 
 // brief-010 FR-000b and FR-000e: the selectors of the brief definition that the period and comparison pickers do not
 // cover (territories counted, measure, grain, relative to), the words that state a whole definition, and the checks on
-// a definition the question reader proposes. Each selector takes one or more values; the first is the primary.
-// Every selector has a pre-selected value; nothing is locked or hidden.
+// a definition the question reader proposes. Each selector takes one or more values; the first drives the stories and
+// cards (the form calls it Main), the rest add labelled figures beside it ("Also show beside it"). Grain has no main:
+// the server sorts it into a fixed order, so it is plain checkboxes. Every selector has a pre-selected value; nothing
+// is locked or hidden.
 
 export type DefinitionChoices = { territories: TerritoriesCounted[]; measure: MeasureChoice[]; grain: GrainLevel[]; relative_to: RelativeTo[] }
 export type DefinitionField = keyof DefinitionChoices
@@ -22,6 +24,21 @@ export const DEFAULT_CHOICES: DefinitionChoices = {
   territories: ["like_for_like"], measure: ["trx"], grain: GRAIN_LEVELS.map(([id]) => id), relative_to: ["other_territories"],
 }
 
+// What each choice does, in plain words, shown beside it on the form.
+const TERRITORY_NOTES: Record<TerritoriesCounted, string> = {
+  like_for_like: "Only territories that report in both periods",
+  all_reportable: "Every territory that reports in each period, counted separately",
+  projected: "Fills in territories whose feed is incomplete",
+}
+const MEASURE_NOTES: Record<MeasureChoice, string> = { trx: "All prescriptions", nbrx: "Patients new to the brand" }
+const RELATIVE_NOTES: Record<RelativeTo, string> = {
+  other_territories: "Each territory's change against the rest", national: "Against the national change", none: "Each change stated alone",
+}
+const GRAIN_NOTES: Record<GrainLevel, string> = {
+  national: "The KPI strip, the trend chart and the Metacora story", territory: "The territory table and territory stories",
+  plan: "Payer-plan cards (BXA only)", channel: "Percent change by payer channel", specialty: "Percent change by prescriber specialty",
+}
+
 /** A value or a list as a list, without repeats, in the order given. */
 export function asList<T>(value: T | T[] | null | undefined): T[] {
   const list = value == null ? [] : Array.isArray(value) ? value : [value]
@@ -30,7 +47,7 @@ export function asList<T>(value: T | T[] | null | undefined): T[] {
 
 const sameList = <T,>(a: T[], b: T[]) => a.length === b.length && a.every((v, i) => v === b[i])
 
-/** True when the choices are the pre-selected ones (the grain in any order, as its order only picks a primary). */
+/** True when the choices are the pre-selected ones (the grain in any order: the server sorts it). */
 export function isDefaultChoices(c: DefinitionChoices): boolean {
   return sameList(c.territories, DEFAULT_CHOICES.territories) && sameList(c.measure, DEFAULT_CHOICES.measure) &&
     sameList(c.relative_to, DEFAULT_CHOICES.relative_to) && c.grain.length === GRAIN_LEVELS.length && GRAIN_LEVELS.every(([id]) => c.grain.includes(id))
@@ -78,9 +95,9 @@ export function comparisonWords(c: Comparison | null | undefined, labelWeek: (is
   return c.start && c.end ? `the weeks ${labelWeek(c.start)} to ${labelWeek(c.end)}` : "named weeks"
 }
 
-/** Every chosen value in words, the primary first and marked when there are several. */
+/** Every chosen value in words: the main one first, then "also" the others. */
 function listWords(words: string[]): string {
-  return words.length > 1 ? words.map((w, i) => i === 0 ? `${w} (primary)` : w).join("; ") : words[0] ?? ""
+  return words.length > 1 ? `${words[0]}; also ${words.slice(1).join(", ")}` : words[0] ?? ""
 }
 
 /** A stored definition in words, one line per choice, for the Assumptions block. No SQL, no arguments. A definition
@@ -94,7 +111,7 @@ export function definitionLines(d: BriefDefinition, labelWeek: (iso: string) => 
   const measures = asList(d.measure as string | string[]).flatMap(m => m === "both" ? ["trx", "nbrx"] : [m]) as MeasureChoice[]
   lines.push(["Measure", listWords(measures.map(m => optionLabel(MEASURE_OPTIONS, m)))])
   const grain = asList(d.grain)
-  lines.push(["Detail", listWords((grain.length ? grain : GRAIN_LEVELS.map(([id]) => id)).map(g => optionLabel(GRAIN_LEVELS, g).toLowerCase()))])
+  lines.push(["Detail", (grain.length ? grain : GRAIN_LEVELS.map(([id]) => id)).map(g => optionLabel(GRAIN_LEVELS, g).toLowerCase()).join(", ")])  // no main: grain order means nothing
   lines.push(["Set against", listWords(asList(d.relative_to).map(r => r === "none" ? "nothing" : optionLabel(RELATIVE_OPTIONS, r).toLowerCase()))])
   return lines
 }
@@ -109,42 +126,56 @@ export function DefinitionWords({ definition, labelWeek }: { definition: BriefDe
   </div>
 }
 
-const SMALL_BTN = "text-xs text-agentdeep hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
-
 export function Proposed({ show }: { show: boolean }) {
   return show ? <span className="ml-2 rounded bg-okbg px-1.5 py-0.5 text-[11px] font-medium text-ok">Proposed, check it</span> : null
 }
 
-type MultiProps<T extends string> = {
-  label: string
+type Shared = { label: string; proposed: boolean; disabled: boolean; error: string | null; id: string }
+
+type MainProps<T extends string> = Shared & {
   options: [T, string][]
-  value: T[]  // the chosen values in order; the first is the primary
+  notes: Record<T, string>
+  value: T[]  // [main, ...extras]: the shape the server takes
   onChange: (value: T[]) => void
-  proposed: boolean
-  disabled: boolean
-  error: string | null
-  id: string
 }
 
-/** One or more choices from a list. Ticking adds a value at the end; the first value is the primary, and "Make primary"
- *  moves another value to the front. */
-function MultiChoice<T extends string>({ label, options, value, onChange, proposed, disabled, error, id }: MultiProps<T>) {
-  const text = (v: T) => optionLabel(options, v)
-  return <fieldset className="min-w-0 space-y-1.5" disabled={disabled} aria-describedby={error ? `${id}-error` : undefined}>
+/** One main choice (radios, each with what it does) and, under "Also show beside it", the others as checkboxes. A new
+ *  main replaces the old one and leaves the extras; the value sent is still [main, ...extras] (brief-010 FR-000e). */
+function MainChoice<T extends string>({ label, options, notes, value, onChange, proposed, disabled, error, id }: MainProps<T>) {
+  const main = value[0]
+  const extras = value.slice(1)
+  const others = options.filter(([opt]) => opt !== main)
+  return <fieldset className="min-w-0 space-y-3" disabled={disabled} aria-describedby={error ? `${id}-error` : undefined}>
     <legend className="text-xs font-medium text-muted">{label}<Proposed show={proposed}/></legend>
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-      {options.map(([opt, name]) => <label key={opt} className="flex items-center gap-2 text-sm text-ink">
-        <input type="checkbox" checked={value.includes(opt)}
-          onChange={() => onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt])}/>{name}</label>)}
-    </div>
-    {value.length > 1 && <ol className="space-y-0.5 text-xs text-muted" aria-label={`${label}, in order`}>
-      {value.map((v, i) => <li key={v} className="flex flex-wrap items-center gap-2">
-        <span className="tabular-nums">{i + 1}.</span><span className="text-ink">{text(v)}</span>
-        {i === 0 ? <span className="rounded bg-okbg px-1.5 py-0.5 text-[11px] font-medium text-ok">primary</span>
-          : <button type="button" className={SMALL_BTN} aria-label={`Make ${text(v)} the primary ${label.toLowerCase()}`}
-              onClick={() => onChange([v, ...value.filter(x => x !== v)])}>Make primary</button>}
-      </li>)}
-    </ol>}
+    <fieldset className="space-y-1.5">
+      <legend className="mb-1 text-xs text-muted">Main</legend>
+      {options.map(([opt, name]) => <label key={opt} className="flex items-start gap-2">
+        <input type="radio" name={`${id}-main`} className="mt-1" checked={main === opt}
+          onChange={() => onChange([opt, ...extras.filter(v => v !== opt)])}/>
+        <span><span className="block text-sm text-ink">{name}</span><span className="block text-xs text-muted">{notes[opt]}</span></span>
+      </label>)}
+    </fieldset>
+    {main !== undefined && others.length > 0 && <fieldset className="space-y-1.5">
+      <legend className="mb-1 text-xs text-muted">Also show beside it</legend>
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {others.map(([opt, name]) => <label key={opt} className="flex items-center gap-2 text-sm text-ink">
+          <input type="checkbox" checked={extras.includes(opt)}
+            onChange={() => onChange(extras.includes(opt) ? [main, ...extras.filter(v => v !== opt)] : [main, ...extras, opt])}/>{name}</label>)}
+      </div>
+    </fieldset>}
+    {error && <p id={`${id}-error`} role="status" className="text-xs text-amber">{error}</p>}
+  </fieldset>
+}
+
+/** Grain: which levels of detail the brief carries. Plain checkboxes, each with what it adds. */
+function GrainChoice({ value, onChange, label, proposed, disabled, error, id }: Shared & { value: GrainLevel[]; onChange: (value: GrainLevel[]) => void }) {
+  return <fieldset className="min-w-0 space-y-1.5" disabled={disabled} aria-describedby={error ? `${id}-error` : undefined}>
+    <legend className="mb-1 text-xs font-medium text-muted">{label}<Proposed show={proposed}/></legend>
+    {GRAIN_LEVELS.map(([level, name]) => <label key={level} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <input type="checkbox" className="self-center" checked={value.includes(level)}
+        onChange={() => onChange(value.includes(level) ? value.filter(v => v !== level) : [...value, level])}/>
+      <span className="text-sm text-ink">{name}</span><span className="text-xs text-muted">{GRAIN_NOTES[level]}</span>
+    </label>)}
     {error && <p id={`${id}-error`} role="status" className="text-xs text-amber">{error}</p>}
   </fieldset>
 }
@@ -156,17 +187,18 @@ type Props = {
   disabled: boolean
 }
 
-/** Territories counted, Measure, Grain and Relative to, each one or more values. Period and Comparison sit above it. */
+/** Territories counted, Measure and Relative to (a main choice and extras), and Grain (checkboxes). Period and
+ *  Comparison sit above it. */
 export function DefinitionPicker({ value, onChange, proposed, disabled }: Props) {
   const set = <F extends DefinitionField>(field: F) => (next: DefinitionChoices[F]) => onChange({ ...value, [field]: next }, field)
-  const common = (field: DefinitionField) => ({ proposed: proposed.includes(field), disabled, error: fieldError(value, field), id: `definition-${field}` })
+  const common = (field: DefinitionField, label: string) => ({ label, proposed: proposed.includes(field), disabled, error: fieldError(value, field), id: `definition-${field}` })
   return <div className="space-y-4">
-    <p className="text-xs text-muted">Each choice takes one or more values. The first is the primary: the stories and cards follow it, and the others add labelled figures beside it.</p>
-    <div className="grid gap-4 sm:grid-cols-3">
-      <MultiChoice label="Territories counted" options={TERRITORY_OPTIONS} value={value.territories} onChange={set("territories")} {...common("territories")}/>
-      <MultiChoice label="Measure" options={MEASURE_OPTIONS} value={value.measure} onChange={set("measure")} {...common("measure")}/>
-      <MultiChoice label="Relative to" options={RELATIVE_OPTIONS} value={value.relative_to} onChange={set("relative_to")} {...common("relative_to")}/>
+    <p className="text-xs text-muted">The main choice drives the stories and cards. Anything you also show adds labelled figures beside it.</p>
+    <div className="grid gap-6 lg:grid-cols-3">
+      <MainChoice options={TERRITORY_OPTIONS} notes={TERRITORY_NOTES} value={value.territories} onChange={set("territories")} {...common("territories", "Territories counted")}/>
+      <MainChoice options={MEASURE_OPTIONS} notes={MEASURE_NOTES} value={value.measure} onChange={set("measure")} {...common("measure", "Measure")}/>
+      <MainChoice options={RELATIVE_OPTIONS} notes={RELATIVE_NOTES} value={value.relative_to} onChange={set("relative_to")} {...common("relative_to", "Relative to")}/>
     </div>
-    <MultiChoice label="Grain" options={GRAIN_LEVELS} value={value.grain} onChange={set("grain")} {...common("grain")}/>
+    <GrainChoice value={value.grain} onChange={set("grain")} {...common("grain", "Grain")}/>
   </div>
 }

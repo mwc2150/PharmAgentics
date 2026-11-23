@@ -1,8 +1,8 @@
 import type { Comparison } from "./agent/briefingApi"
 
 // brief-008 FR-007: "Compare with the previous N weeks" (1 to 13) is the main choice; the same weeks last year,
-// pre-launch weeks and custom dates are the others (brief-010 FR-000e: one or more, the first the primary).
-// The default is no choice at all: the form sends no comparison (null) and the server applies its own rule (the
+// pre-launch weeks and custom dates are the others (brief-010 FR-000e: one or more, the first the main one).
+// The default is a choice in the first row's dropdown: the form sends no comparison (empty list) and the server applies its own rule (the
 // four weeks before the period, shortened where the release starts; the materiality screen uses as many preceding
 // weeks as a longer period has). The same rule runs in the eval, so a brief made here matches what is scored.
 export const DEFAULT_COMPARISON_WEEKS = 4
@@ -26,7 +26,7 @@ export function comparisonError(value: Comparison | null, period: string[], week
   const first = period[0]
   if (value.kind === "previous") {
     if (!Number.isInteger(value.weeks) || value.weeks < 1 || value.weeks > 13) return "Enter a whole number of weeks from 1 to 13."
-    if (first && earlierWeekCount(period, weeks) === 0) return "There are no earlier weeks in the release to compare with. Clear the number to use the default."
+    if (first && earlierWeekCount(period, weeks) === 0) return "There are no earlier weeks in the release to compare with. Choose another comparison."
     if (first && !Array.from({ length: value.weeks }, (_, i) => shiftWeek(first, -1 - i)).every(w => available.has(w))) {
       return "The release has fewer earlier weeks than that. Choose fewer weeks."
     }
@@ -62,7 +62,7 @@ function blank(kind: Comparison["kind"]): Comparison {
 }
 
 type ListProps = {
-  value: Comparison[]   // the chosen comparisons in order, the first is the primary; empty: the default comparison
+  value: Comparison[]   // the chosen comparisons in order, the first is the main one; empty: the default comparison
   onChange: (value: Comparison[]) => void
   period: string[]   // the reporting weeks, first to last
   weeks: string[]    // every week of the release
@@ -70,31 +70,45 @@ type ListProps = {
   labelWeek: (week: string) => string
 }
 
-// brief-010 FR-000e: one or more comparisons, the first the primary. The default (no choice) is the previous four
-// weeks, shortened where the release starts; the form shows it until the analyst chooses.
+const DEFAULT_KIND = "default"
+
+// brief-010 FR-000e: one or more comparisons, the first the main one, in one row layout. "Default" is the first
+// option of row 1 while it is the only row: the previous four weeks, shortened where the release starts.
 export function ComparisonPicker({ value, onChange, period, weeks, disabled, labelWeek }: ListProps) {
   const earlier = weeks.filter(w => !period[0] || w < period[0])
   const error = comparisonsError(value, period, weeks)
   const earlierCount = earlierWeekCount(period, weeks)
-  const change = (i: number, next: Comparison) => onChange(value.map((c, j) => j === i ? next : c))
-  const unused = value.length === 0 ? "last_year" : KINDS.map(([k]) => k).find(k => !value.some(c => c.kind === k))
+  const isDefault = value.length === 0
+  const rows: (Comparison | null)[] = isDefault ? [null] : value  // null: the default row
+  const change = (i: number, next: Comparison) => onChange(isDefault ? [next] : value.map((c, j) => j === i ? next : c))
+  const choose = (i: number, kind: string) => {
+    if (kind === DEFAULT_KIND) onChange([])
+    else change(i, blank(kind as Comparison["kind"]))
+  }
   const rowError = (c: Comparison) => comparisonError(c, period, weeks)
+  // Adding to the default makes it explicit, so the whole list can be sent.
+  const seed: Comparison = { kind: "previous", weeks: Math.max(1, Math.min(DEFAULT_COMPARISON_WEEKS, earlierCount)) }
+  const base = isDefault ? [seed] : value
+  const unused = KINDS.map(([k]) => k).find(k => !base.some(c => c.kind === k))
 
-  const row = (c: Comparison, i: number) => <li key={i} className="space-y-2 rounded-lg border border-rule p-3">
+  const row = (c: Comparison | null, i: number) => <li key={i} className="space-y-2 rounded-lg border border-rule p-3">
+    <label htmlFor={`comparison-kind-${i}`} className="block text-xs text-muted">{i === 0 ? "Main comparison" : "Also compare with"}</label>
     <div className="flex flex-wrap items-center gap-2">
-      <span className="tabular-nums text-xs text-muted">{i + 1}.</span>
-      <select className={`${field} !w-auto`} value={c.kind} aria-label={`Comparison ${i + 1}`} onChange={event => change(i, blank(event.target.value as Comparison["kind"]))}>
+      <select id={`comparison-kind-${i}`} className={`${field} !w-auto`} value={c?.kind ?? DEFAULT_KIND} aria-describedby={c === null ? "comparison-default" : undefined}
+        onChange={event => choose(i, event.target.value)}>
+        {i === 0 && value.length <= 1 && <option value={DEFAULT_KIND}>Default: the {DEFAULT_COMPARISON_WEEKS} weeks before the period</option>}
         {KINDS.map(([k, name]) => <option key={k} value={k}>{name}</option>)}
       </select>
-      {c.kind === "previous" && <label className="flex items-center gap-2 text-sm text-ink">
+      {c?.kind === "previous" && <label className="flex items-center gap-2 text-sm text-ink">
         <input type="number" inputMode="numeric" min={1} max={13} step={1} className={`${field} !w-20 tabular-nums`} aria-label="Number of previous weeks"
           value={Number.isFinite(c.weeks) ? c.weeks : ""} aria-invalid={!!rowError(c)}
           onChange={event => change(i, { kind: "previous", weeks: Number(event.target.value) })}/>weeks</label>}
-      {i === 0 ? <span className="rounded bg-okbg px-1.5 py-0.5 text-[11px] font-medium text-ok">primary</span>
-        : <button type="button" className="text-xs text-agentdeep hover:underline" onClick={() => onChange([c, ...value.filter((_, j) => j !== i)])}>Make primary</button>}
-      <button type="button" className="text-xs text-muted underline" onClick={() => onChange(value.filter((_, j) => j !== i))}>{value.length === 1 ? "Use the default comparison" : "Remove"}</button>
+      {i > 0 && <button type="button" className="text-xs text-muted underline" onClick={() => onChange(value.filter((_, j) => j !== i))}>Remove</button>}
     </div>
-    {c.kind === "custom" && <div className="grid gap-2 sm:grid-cols-2">
+    {c === null && <p id="comparison-default" className="text-xs text-muted">{earlierCount === 0 && period.length
+      ? "There are no earlier weeks in the release to compare with. The briefing runs without a comparison period."
+      : "The default shortens where the release starts later. A longer period is screened against as many preceding weeks as it has."}</p>}
+    {c?.kind === "custom" && <div className="grid gap-2 sm:grid-cols-2">
       <label className="block text-xs text-muted">Start week
         <select className={field} value={c.start} onChange={event => change(i, { ...c, start: event.target.value })}>
           <option value="">Select a week</option>
@@ -112,25 +126,10 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
 
   return <fieldset className="space-y-3" disabled={disabled}>
     <legend className="text-xs font-medium text-muted">Compare with</legend>
-    {value.length === 0
-      ? <div className="space-y-1">
-          <label className="flex flex-wrap items-center gap-2 text-sm text-ink">
-            <span>The previous</span>
-            <input type="number" inputMode="numeric" min={1} max={13} step={1} className={`${field} !w-20 tabular-nums`}
-              value="" placeholder="Default" aria-describedby="comparison-default"
-              onChange={event => event.target.value !== "" && onChange([{ kind: "previous", weeks: Number(event.target.value) }])}/>
-            <span>weeks</span>
-          </label>
-          <p id="comparison-default" className="text-xs text-muted">{earlierCount === 0 && period.length
-            ? "There are no earlier weeks in the release to compare with. The briefing runs without a comparison period."
-            : `Default: the ${DEFAULT_COMPARISON_WEEKS} weeks before the period, or fewer where the release starts later. A longer period is screened against as many preceding weeks as it has.`}</p>
-        </div>
-      : <ol className="space-y-2">{value.map(row)}</ol>}
-    <div className="flex flex-wrap items-center gap-3 text-xs">
+    <ol className="space-y-2">{rows.map(row)}</ol>
+    <div className="text-xs">
       <button type="button" className="text-primaryink hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined}
-        onClick={() => unused && onChange(value.length === 0 ? [blank(unused)] : [...value, blank(unused)])}>
-        {value.length === 0 ? "Choose a different comparison" : "Add another comparison"}</button>
-      {value.length > 1 && <span className="text-muted">The first is the primary. The others add labelled figures beside it.</span>}
+        onClick={() => unused && onChange([...base, blank(unused)])}>Add a comparison</button>
     </div>
     {error && <p id="comparison-error" role="status" className="text-xs text-amber">{error}</p>}
   </fieldset>

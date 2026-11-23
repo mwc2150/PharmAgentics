@@ -4,12 +4,12 @@ import { readBriefingScope, type BriefingScope, type Comparison, type ReleaseCon
 import { asList, proposedChoices, type DefinitionChoices, type DefinitionField } from "./BriefDefinition"
 
 // brief-008 FR-007 and FR-008. The period (First week, Last week) and the question reader for the New briefing form.
-// "Read my question" asks the API for a proposed scope (a configured model proposes, code validates, the rules read
-// it otherwise) and fills the form. Nothing runs on a proposal: the analyst checks the form and builds as usual.
+// useQuestionReader asks the API for a proposed scope (a configured model proposes, code validates, the rules read
+// it otherwise) and fills the form; the message bar on the New briefing tab is its one input. Nothing runs on a
+// proposal: the analyst checks the form and builds as usual.
 
 const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-muted disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
-const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)] disabled:cursor-not-allowed disabled:text-muted disabled:shadow-none"
 
 /** An error for the chosen period, or null. The weeks are the release's Mondays. */
 export function periodError(first: string, last: string, weeks: string[]): string | null {
@@ -108,42 +108,34 @@ export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, la
   </div>
 }
 
-type ReaderProps = {
-  question: string; onQuestion: (text: string) => void
-  brand: string; context: ReleaseContext | null; disabled: boolean
-  onApply: (values: FormValues) => void
+type ReaderOptions = {
+  brand: string; context: ReleaseContext | null
+  onApply: (values: FormValues, question: string) => void
 }
 
-/** The question box and "Read my question". The result names who read it and fills the form through onApply. */
-export function QuestionReader({ question, onQuestion, brand, context, disabled, onApply }: ReaderProps) {
+/** Reads a question into form values (brief-010: the bar on the form is the one question box). `run` resolves true when
+ *  the form was filled; on a failed read the form keeps its values and `error` says why. `read` names who read it. */
+export function useQuestionReader({ brand, context, onApply }: ReaderOptions) {
   const [busy, setBusy] = useState(false)
   const [read, setRead] = useState<BriefingScope | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const typed = question.trim()
-  const run = async () => {
-    if (!context || busy || typed.length < 3) return
+  const run = async (question: string): Promise<boolean> => {
+    const typed = question.trim()
+    if (busy) return false
+    if (!context) { setError("The data release is not loaded yet."); return false }
+    if (typed.length < 3) { setError("Ask in a few words, for example: how did the Southeast do in August?"); return false }
     setBusy(true); setError(null); setRead(null)
     try {
       const scope = await readBriefingScope({ question: typed.slice(0, 300), brand_id: brand })
       const checked = scopeToForm(scope, context, brand)
-      if ("error" in checked) setError(`${checked.error} The form keeps your last values.`)
-      else { onApply(checked.values); setRead(scope) }
+      if ("error" in checked) { setError(`${checked.error} The form keeps your last values.`); return false }
+      onApply(checked.values, typed.slice(0, 300)); setRead(scope)
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      return false
     } finally { setBusy(false) }
   }
-  return <div className="space-y-2">
-    <label className={LABEL}>Your question (optional)
-      <textarea value={question} onChange={event => { onQuestion(event.target.value); setRead(null); setError(null) }} maxLength={300} rows={2}
-        placeholder="For example: how did the Southeast do in August, against the previous eight weeks?" className={FIELD} disabled={disabled}/>
-    </label>
-    <div className="flex flex-wrap items-center gap-3">
-      <button type="button" onClick={() => void run()} disabled={disabled || busy || !context || typed.length < 3} className={BTN2}>{busy ? "Reading…" : "Read my question"}</button>
-      <span className="text-xs text-muted">Fills the weeks, territory, comparison and the other choices from your question. You confirm them.</span>
-    </div>
-    {/* The region is always in the page, so a screen reader announces the text when it arrives. */}
-    <div role="status" className="text-xs text-muted">{read && <><p><span className="font-medium text-ink">{readByLabel(read)}.</span> Check the form, then generate the briefing.</p>
-      {!!read.notes.length && <ul className="mt-1 list-disc space-y-0.5 pl-5">{read.notes.map(n => <li key={n}>{n}</li>)}</ul>}</>}</div>
-    {error && <p role="alert" className="text-xs text-amber">{error}</p>}
-  </div>
+  const clear = () => { setRead(null); setError(null) }
+  return { busy, read, error, run, clear }
 }
