@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
 import { BrandMark, Icon, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
@@ -132,8 +132,7 @@ function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
   const name = me.name.trim() || "Account"  // brief-008 FR-012: the name only, never a lane or role list
   return <DropdownMenu>
-    <DropdownMenuTrigger aria-label={`Account: ${me.tester ? "test view, " : ""}${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink transition hover:bg-paper">
-      {me.tester && <span className="hidden text-xs text-muted sm:inline">Test view ·</span>}
+    <DropdownMenuTrigger aria-label={`Account: ${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink transition hover:bg-paper">
       <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{name}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </DropdownMenuTrigger>
@@ -662,7 +661,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
   useEffect(()=>{ document.title = `${title} · PharmAgentics` },[title])  // 2.4.2: the tab names the workspace that is open
   const content = useRef<HTMLElement>(null)
   // --rail is the width the sidebar occupies; .workspace-content uses it to centre on the whole page (0 on phones).
-  return <FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
+  return <SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
     <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
       <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
@@ -682,7 +681,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
     <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
-  </div></FeedbackProvider>
+  </div></FeedbackProvider></SignedInName.Provider>
 }
 
 function Centered({children}: {children: ReactNode}) {
@@ -721,9 +720,13 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
 }
 
 // A short, warm start to each workspace, from the viewer's own clock.
+// The signed-in person's name, from /api/me (the persona's first name in the realm: Ace, Diana, Miranda, Tester).
+const SignedInName = createContext("")
+
 function Greeting({detail}: {detail?: string}) {
   const h = new Date().getHours()
-  const part = h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"
+  const first = useContext(SignedInName).trim().split(/\s+/)[0]
+  const part = (h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + (first ? `, ${first}` : "")
   // A greeting is not a section heading, so it is a paragraph; the h1 in the header names the page.
   return <div className="pa-fade mb-7"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}.</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
 }

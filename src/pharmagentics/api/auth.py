@@ -22,17 +22,20 @@ from . import brand_access, rbac
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# The display name is the persona's first name (the app greets by it; brief-008 FR-012 shows the name only):
+# Ace is the analyst in both lanes, Diana the Brand Director, Miranda the Brand Manager. The roles tell the
+# stand-ins apart on the sign-in page.
 DEV_USERS = {
-    "dev-analyst": ("Dev Commercial Analyst · BXA", ["briefing-analyst", "brand-bxa"]),
-    "dev-director": ("Dev Brand Director · BXA", ["briefing-director", "brand-bxa"]),
-    "dev-analyst-multibrand": ("Dev Commercial Analyst · BXA and BXC", ["briefing-analyst", "brand-bxa", "brand-bxc"]),
-    "dev-director-multibrand": ("Dev Brand Director · BXA and BXC", ["briefing-director", "brand-bxa", "brand-bxc"]),
-    "dev-analyst-no-brands": ("Dev Commercial Analyst · no brands", ["briefing-analyst"]),
-    "dev-forecast-analyst": ("Dev Forecast Analyst", ["forecast-analyst", "brand-bxa"]),
-    "dev-forecast-manager": ("Dev Brand Manager", ["forecast-manager", "brand-bxa"]),
+    "dev-analyst": ("Ace", ["briefing-analyst", "brand-bxa"]),
+    "dev-director": ("Diana", ["briefing-director", "brand-bxa"]),
+    "dev-analyst-multibrand": ("Ace", ["briefing-analyst", "brand-bxa", "brand-bxc"]),
+    "dev-director-multibrand": ("Diana", ["briefing-director", "brand-bxa", "brand-bxc"]),
+    "dev-analyst-no-brands": ("Ace", ["briefing-analyst"]),
+    "dev-forecast-analyst": ("Ace", ["forecast-analyst", "brand-bxa"]),
+    "dev-forecast-manager": ("Miranda", ["forecast-manager", "brand-bxa"]),
     # Like uat-tester in the Keycloak realm: both lanes, switching between the analyst and the leadership view.
-    "dev-tester": ("Dev test view", ["tester", "brand-bxa", "brand-bxc"]),
-    "dev-norole": ("Dev user with no role", []),
+    "dev-tester": ("Tester", ["tester", "brand-bxa", "brand-bxc"]),
+    "dev-norole": ("No role", []),
 }
 
 
