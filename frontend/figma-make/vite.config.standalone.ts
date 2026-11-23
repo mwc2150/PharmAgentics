@@ -22,8 +22,14 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), standaloneHtml()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   server: {
-    port: 5173,
-    // Local dev: forward API calls to `uv run uvicorn pharmagentics.api.app:app` on :8000.
-    proxy: { "/api": "http://127.0.0.1:8000" },
+    // PORT lets several worktrees serve side by side against one API.
+    port: Number(process.env.PORT ?? 5173),
+    strictPort: true,
+    // Local dev: forward API and sign-in calls to
+    // `PHARMAGENTICS_AUTH=dev uv run uvicorn pharmagentics.api.app:app --app-dir src --port 8000`.
+    proxy: {
+      "/api": process.env.PHARMAGENTICS_API ?? "http://127.0.0.1:8000",
+      "/auth": process.env.PHARMAGENTICS_API ?? "http://127.0.0.1:8000",
+    },
   },
 })
