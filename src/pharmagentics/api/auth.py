@@ -88,7 +88,7 @@ body{margin:0;min-height:100vh;display:grid;place-items:center;padding:48px 16px
 main{width:100%;max-width:440px;background:#1b1d27;border:1px solid #373a52;border-radius:22px;box-shadow:0 5px 0 #3a3e58;padding:32px}
 .mark{display:block;width:56px;height:56px;margin-bottom:24px}
 h1{margin:0;font:700 28px/1.25 "Space Grotesk",system-ui,sans-serif;letter-spacing:-0.02em}
-h1 span{background:#b9ff66;color:#14151c;padding:0.05em 0.4em 0.1em;border-radius:8px}
+h1 span{background:#2a8c7c;color:#0b0c10;padding:0.05em 0.4em 0.1em;border-radius:8px}
 p{margin:14px 0 0;color:#a6aabf;font-size:14px}
 form{margin-top:20px;display:grid;gap:12px}
 button{display:block;width:100%;padding:12px 16px;border:1px solid #8a8ea6;border-radius:14px;background:transparent;color:#f3f3f3;
@@ -96,7 +96,7 @@ button{display:block;width:100%;padding:12px 16px;border:1px solid #8a8ea6;borde
   transition:background-color .15s,transform .15s,box-shadow .15s}
 button:hover{background:#101117}
 button:active{transform:translateY(2px);box-shadow:0 1px 0 #3a3e58}
-button:focus-visible{outline:2px solid #b9ff66;outline-offset:2px}
+button:focus-visible{outline:2px solid #2a8c7c;outline-offset:2px}
 small{display:block;margin-top:2px;color:#a6aabf;font-size:12px;font-weight:400}
 @media (prefers-reduced-motion:reduce){button{transition:none}button:active{transform:none}}
 """

@@ -156,7 +156,7 @@ function SessionRating({ refId }: { refId: string }) {
   }
   if (current && !editing) return <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-3 text-xs text-muted">
     <span className="flex items-center gap-1.5"><Face kind={current} className={`h-4 w-4 ${TONE[current]}`} />This session: <span className="text-ink">{LABEL[current]}</span></span>
-    <button type="button" onClick={() => setEditing(true)} className="text-primary underline underline-offset-4 hover:no-underline">Change or add a note</button>
+    <button type="button" onClick={() => setEditing(true)} className="text-primaryink underline underline-offset-4 hover:no-underline">Change or add a note</button>
   </div>
   return <div className="space-y-2 border-t border-rule pt-3">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -216,7 +216,7 @@ function SuggestModal({ onClose, onSurvey, surveyDone }: { onClose: () => void; 
         {error && <p role="alert" className="text-xs text-amber">{error}</p>}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-6 py-3">
-        <button type="button" onClick={onSurvey} className="text-xs text-primary underline underline-offset-4 hover:no-underline">{surveyDone ? "Update your questionnaire answers" : "Or take the five-minute questionnaire"}</button>
+        <button type="button" onClick={onSurvey} className="text-xs text-primaryink underline underline-offset-4 hover:no-underline">{surveyDone ? "Update your questionnaire answers" : "Or take the five-minute questionnaire"}</button>
         <button type="button" disabled={busy || !text.trim()} onClick={() => void send()} className={BTN}>{busy ? "Sending…" : "Send"}</button>
       </div>
     </div>

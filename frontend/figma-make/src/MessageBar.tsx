@@ -14,15 +14,15 @@ function TurnView({turn, briefId, mine, onCite, onOpenEvidence, onOfferScope}: {
   const offer = turn.offer
   return <li className="space-y-2">
     <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-primarybg px-4 py-2 text-sm text-ink">
-      {turn.section && <span className="mr-2 rounded bg-sheet px-1.5 py-0.5 font-mono text-[11px] text-primary">§{turn.section}</span>}{turn.question}</p>
+      {turn.section && <span className="mr-2 rounded bg-sheet px-1.5 py-0.5 font-mono text-[11px] text-primaryink">§{turn.section}</span>}{turn.question}</p>
     <div className="max-w-[92%] rounded-2xl rounded-bl-sm border border-rule bg-sheet px-4 py-3 text-sm">
       <p className="whitespace-pre-wrap break-words font-sans text-[15px] leading-relaxed text-ink">{turn.answer}</p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-        {turn.cited.map(n => <button key={n} type="button" onClick={() => onCite(n)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-primary hover:underline" title={`Go to §${n}`} aria-label={`Go to section ${n}`}>§{n}</button>)}
+        {turn.cited.map(n => <button key={n} type="button" onClick={() => onCite(n)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-primaryink hover:underline" title={`Go to §${n}`} aria-label={`Go to section ${n}`}>§{n}</button>)}
         {turn.claims.map((c, i) => <button key={i} type="button" onClick={() => onOpenEvidence(c.evidence_id)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-muted hover:text-ink" title={`Open the query behind ${c.value}`} aria-label={`${c.value}, open the query behind it`}>{c.value}</button>)}
         <span className="ml-auto text-muted">{turn.engine === "scripted" ? "Scripted, from this brief only" : "Agent"}</span>
       </div>
-      {offer && offer.week && onOfferScope && <button type="button" onClick={() => onOfferScope(offer)} className="mt-2 text-xs font-medium text-primary hover:underline">
+      {offer && offer.week && onOfferScope && <button type="button" onClick={() => onOfferScope(offer)} className="mt-2 text-xs font-medium text-primaryink hover:underline">
         {offer.choose_comparison ? "Set up a brief with a new comparison" : <>Generate a brief for {offer.brand} · {(offer.territory ?? "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} · week of {offer.week}</>}</button>}
     </div>
     {mine && <AnswerFeedback lane="briefing" refId={`${briefId}:t${turn.n}`} view="analyst" agent={turn.n === 3}/>}
@@ -91,10 +91,10 @@ export function MessageBar({briefId, pending, chip, onClearChip, canGenerate, on
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-2 text-xs text-muted">
         <span>{readOnly ? "Shared thread, read-only" : `Follow-ups, ${thread.turns.length} of ${thread.max_turns}`}{thread.shared_from ? " · continued from a shared thread" : ""}</span>
         <span className="flex items-center gap-3">
-          {readOnly && <button type="button" className="font-medium text-primary hover:underline" onClick={() => briefId && continueShared(briefId, thread.owner).then(t => { setThread(t); window.location.hash = "" }).catch(e => setError(message(e)))}>Continue in my thread</button>}
-          {!readOnly && !thread.saved && <button type="button" className="font-medium text-primary hover:underline" onClick={() => briefId && saveThread(briefId).then(setThread).catch(e => setError(message(e)))}>Save thread</button>}
-          {!readOnly && thread.saved && <button type="button" className="font-medium text-primary hover:underline" onClick={() => { void navigator.clipboard?.writeText(shareLink(thread)); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>{copied ? "Link copied" : "Copy share link"}</button>}
-          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-primary hover:underline">{open ? "Collapse" : "Show"}</button>
+          {readOnly && <button type="button" className="font-medium text-primaryink hover:underline" onClick={() => briefId && continueShared(briefId, thread.owner).then(t => { setThread(t); window.location.hash = "" }).catch(e => setError(message(e)))}>Continue in my thread</button>}
+          {!readOnly && !thread.saved && <button type="button" className="font-medium text-primaryink hover:underline" onClick={() => briefId && saveThread(briefId).then(setThread).catch(e => setError(message(e)))}>Save thread</button>}
+          {!readOnly && thread.saved && <button type="button" className="font-medium text-primaryink hover:underline" onClick={() => { void navigator.clipboard?.writeText(shareLink(thread)); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>{copied ? "Link copied" : "Copy share link"}</button>}
+          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-primaryink hover:underline">{open ? "Collapse" : "Show"}</button>
         </span>
       </div>
       {open && <ol aria-live="polite" aria-relevant="additions" className="max-h-[50vh] space-y-4 overflow-y-auto px-4 py-4">
@@ -107,7 +107,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, canGenerate, on
     {error && <p role="alert" className="mb-2 rounded-lg bg-amberbg px-3 py-2 text-xs text-amber">{error}</p>}
     {queued && <p role="status" className="mb-2 text-xs text-muted">Will ask when the brief is ready: “{queued}”</p>}
     {!readOnly && <form onSubmit={e => { e.preventDefault(); send(text) }} className="flex items-end gap-2 rounded-2xl border border-edge bg-sheet px-3 py-2 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-primary">
-      {chip && <span className="mb-1 inline-flex shrink-0 items-center gap-1 rounded bg-primarybg px-2 py-1 font-mono text-[11px] text-primary">§{chip.number} {chip.title}
+      {chip && <span className="mb-1 inline-flex shrink-0 items-center gap-1 rounded bg-primarybg px-2 py-1 font-mono text-[11px] text-primaryink">§{chip.number} {chip.title}
         <button type="button" aria-label="Remove the section" onClick={onClearChip} className="ml-1 text-muted hover:text-ink">×</button></span>}
       <label htmlFor="pa-message" className="sr-only">Ask about this brief</label>
       <textarea id="pa-message" ref={input} rows={1} value={text} maxLength={500} disabled={busy || full}

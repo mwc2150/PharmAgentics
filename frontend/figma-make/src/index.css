@@ -15,9 +15,10 @@
   --radius-lg: 0.875rem;               /* controls */
   --radius-xl: 1.375rem;               /* panels */
   --radius-2xl: 1.75rem;
-  /* Direction B, "Positivus dark". Near-black page, panels one step lighter, one accent: lime #b9ff66. Lime is the
+  /* Direction B, "Positivus dark", with a teal accent since 2026-11-23 (was lime). Near-black page, panels one step
+     lighter, one accent: teal #2a8c7c as a fill, #45b8a3 as text. Teal is the
      primary action fill (near-black text), the current selection, the focus ring and the highlight block behind
-     section headings; nothing else is lime. Panels and buttons carry a hard offset shadow (no blur). */
+     section headings; nothing else is teal. Panels and buttons carry a hard offset shadow (no blur). */
   --color-paper: #101117;      /* the page, input wells */
   --color-sheet: #1b1d27;      /* panels and the sidebar: one flat, solid layer */
   --color-ink: #f3f3f3;        /* body text (Positivus grey) */
@@ -27,16 +28,19 @@
   --color-slab: #3a3e58;       /* the hard offset shadow under panels and secondary buttons */
   --color-warn: #c9ccd8;
   --color-warnbg: #23253a;
-  /* Primary: solid lime with near-black text. One accent for the primary action, selection, focus and links */
-  --color-primary: #b9ff66;
-  --color-primaryhover: #cdff91;
-  --color-primarydeep: #66962a;   /* the hard shadow under a lime button */
-  --color-onprimary: #14151c;
+  /* Primary: solid teal with near-black text (4.8:1). One accent for the primary action, selection and focus (4.1:1 on
+     sheet, above the 3:1 for UI boundaries). #2a8c7c is 4.1:1 on sheet, under AA for small text, so text in the
+     accent (links, citations, icons that carry state) uses primaryink. */
+  --color-primary: #2a8c7c;
+  --color-primaryhover: #33a08e;
+  --color-primarydeep: #17564b;   /* the hard shadow under a teal button */
+  --color-primaryink: #45b8a3;    /* accent text: 7.8:1 on paper, 6.9:1 on sheet, 6.8:1 on primarybg */
+  --color-onprimary: #0b0c10;
   /* Leaders, human review */
   --color-human: #c4b5fd;
   --color-humanbg: #26213f;
-  /* Accent on dark: current selection, links, icons that carry state: lime */
-  --color-primarybg: #1f2714;
+  /* Accent on dark: the current selection's background (teal-tinted) */
+  --color-primarybg: #10221f;
   /* Verified and successful states: soft blue, always with a word or a check mark */
   --color-ok: #8ab4f8;
   --color-okbg: #14233f;
@@ -51,14 +55,14 @@
   --color-limedeep: var(--color-primarydeep);
   --color-onaccent: var(--color-onprimary);
   --color-agent: var(--color-primary);
-  --color-agentdeep: var(--color-primary);
+  --color-agentdeep: var(--color-primaryink);
   --color-agentbg: var(--color-primarybg);
 }
 
 :root {
   color-scheme: dark;                   /* native selects, scrollbars and pickers render dark */
   accent-color: var(--color-primary);     /* radios and checkboxes */
-  caret-color: var(--color-primary);
+  caret-color: var(--color-primaryink);
   scrollbar-color: var(--color-edge) transparent;   /* thumb 5.8:1 on the page; the old rule colour was 1.7:1 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -134,7 +138,7 @@
   }
   /* Hard offset shadow, no blur: a flat slab under a panel. */
   .pa-panel { box-shadow: 0 5px 0 var(--color-slab); }
-  /* The Positivus highlight: a lime block behind a section heading, dark text. */
+  /* The Positivus highlight: a teal block behind a section heading, dark text. */
   .pa-mark { background: var(--color-primary); color: var(--color-onprimary); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .pa-rise { animation: pa-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-slide { animation: pa-slide 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -148,7 +152,7 @@
     *, ::before, ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
     [class*="active:translate"]:active { translate: none !important; }
   }
-  /* Forced colours (Windows High Contrast): the lime block behind a heading drops away, so the heading keeps a
+  /* Forced colours (Windows High Contrast): the teal block behind a heading drops away, so the heading keeps a
      rule under it, and buttons that rely on a fill or a shadow for their edge get a border. */
   @media (forced-colors: active) {
     .pa-mark { background: transparent; color: CanvasText; border-bottom: 3px solid Highlight; border-radius: 0; padding-inline: 0; }

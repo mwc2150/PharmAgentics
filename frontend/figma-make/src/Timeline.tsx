@@ -87,7 +87,7 @@ function Row({ e, claims, onJump }: { e: RunEvent, claims?: Claim[], onJump: (c:
         {e.claims.length > 0 && <span className="flex flex-wrap items-center gap-1.5 text-muted">Produced
           {e.claims.map(i => claims?.[i]
             ? <button key={i} type="button" onClick={() => onJump(claims[i])} title="Show this number in the brief"
-                className="rounded-sm font-medium text-primary underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg focus:outline-none">{claims[i].value}</button>
+                className="rounded-sm font-medium text-primaryink underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg focus:outline-none">{claims[i].value}</button>
             : <span key={i}>claim {i + 1}</span>)}
         </span>}
         {e.prompt && <span className="font-mono text-[11px] text-muted" title="The prompt file and version this step ran on">{e.prompt}</span>}
@@ -128,7 +128,7 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource }:
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">{g.key.startsWith("_") ? g.title : `Story: ${g.title}`}</h4>
           <ol className="divide-y divide-rule/60">{shown.map(e => <Row key={e.seq} e={e} claims={claims} onJump={c => jumpToClaim(c, onOpenSource)}/>)}</ol>
           {Object.entries(hidden).map(([actor, n]) => <button key={actor} type="button" onClick={() => setOpen(o => ({ ...o, [`${g.key}|${actor}`]: true }))}
-            className="mt-1 text-xs font-medium text-primary underline-offset-4 hover:underline">Show {n} more {actor} step{n === 1 ? "" : "s"}</button>)}
+            className="mt-1 text-xs font-medium text-primaryink underline-offset-4 hover:underline">Show {n} more {actor} step{n === 1 ? "" : "s"}</button>)}
         </div>
       })}
     </div>

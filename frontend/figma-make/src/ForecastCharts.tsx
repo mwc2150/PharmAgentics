@@ -1,6 +1,6 @@
 // Forecast charts (fcst-002). Code builds every chart's data from an answer's stored numbers; a model only chooses
 // which chart to show. Inline SVG, no chart library. Colours are the theme tokens, as in the memo's charts: the first
-// series (the subject) is lime, the comparison series is lavender (`human`); raises are lime, lowers are `neg`. Colour
+// series (the subject) is teal, the comparison series is lavender (`human`); raises are teal, lowers are `neg`. Colour
 // never carries a meaning alone: bars sit left or right of the zero line and carry their signed value, the second
 // series of a pair is hollow (bars) or dashed (lines), provisional weeks are outlined, and the legend names every
 // encoding.
@@ -92,7 +92,7 @@ function TwoLines({ rows, series, unit }: { rows: { label: string; a: number; b?
   const every = Math.ceil(rows.length / 8)
   return <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={series.join(" and ")} onMouseLeave={() => setHover(null)}>
     {ticks.map(t => <g key={t}><line x1={left} x2={W - right} y1={y(t)} y2={y(t)} stroke={GRID} strokeWidth={1}/><text x={left - 6} y={y(t)} dominantBaseline="middle" textAnchor="end" className="fill-muted text-[11px] tabular-nums">{fmt(t)}</text></g>)}
-    {/* a: the forecast, dashed and lavender; b: the actual, solid and lime */}
+    {/* a: the forecast, dashed and lavender; b: the actual, solid and teal */}
     <path d={path("a")} fill="none" stroke={LAV} strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round"/>
     <path d={path("b")} fill="none" stroke={LIME} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
     {rows.map((r, i) => <g key={r.label}>
