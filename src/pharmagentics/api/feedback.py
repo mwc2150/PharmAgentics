@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import secrets
 from collections import Counter
 from functools import lru_cache
@@ -206,16 +207,34 @@ def _sid(request: Request) -> str:
     return sid
 
 
-def _who(p: rbac.Principal, roles: list[rbac.Role]) -> dict:
-    return {"user": rbac.pseudonym(p.sub), "roles": [r.name for r in roles], "personas": [r.persona for r in roles], **p.tag()}
+BROWSER_COOKIE = "pa_browser"
+BROWSER_ID = re.compile(r"^[0-9a-f]{12}$")
 
 
-def _survey_key(user: str) -> str:
-    return f"{SURVEY_PREFIX}{user}.json"
+def _browser(request: Request, response: Response) -> str:
+    """A random ID for this browser, kept in its own cookie for a year (it outlives sign-out). The class shares a few
+    logins, the tester login above all, so a login is not a person: the questionnaire and the votes are kept per login
+    and browser, or one classmate's answers would replace another's (and show up pre-filled for them)."""
+    bid = request.cookies.get(BROWSER_COOKIE, "")
+    if not BROWSER_ID.match(bid):
+        bid = secrets.token_hex(6)
+        response.set_cookie(BROWSER_COOKIE, bid, max_age=365 * 86400, httponly=True, samesite="lax",
+                            secure=bool(os.environ.get("K_SERVICE") or os.environ.get("PHARMAGENTICS_SECURE_COOKIES")))
+    return bid
 
 
-def _read_survey(user: str) -> dict | None:
-    text = store.backend().read(_survey_key(user))
+def _who(p: rbac.Principal, roles: list[rbac.Role], browser: str | None = None) -> dict:
+    user = rbac.pseudonym(p.sub)
+    return {"user": user, **({"respondent": f"{user}-{browser}"} if browser else {}), "roles": [r.name for r in roles],
+            "personas": [r.persona for r in roles], **p.tag()}
+
+
+def _survey_key(user: str, browser: str) -> str:
+    return f"{SURVEY_PREFIX}{user}-{browser}.json"
+
+
+def _read_survey(user: str, browser: str) -> dict | None:
+    text = store.backend().read(_survey_key(user, browser))
     return json.loads(text) if text else None
 
 
@@ -238,7 +257,7 @@ def status(request: Request, response: Response, who=Depends(participant)) -> di
     """What this participant has already given: this session's rating, and whether the questionnaire is done."""
     _no_store(response)
     p, _ = who
-    mine = _read_survey(rbac.pseudonym(p.sub))
+    mine = _read_survey(rbac.pseudonym(p.sub), _browser(request, response))
     return {"pulse": request.session.get("pulse"),
             "survey": {"submitted_at": mine["ts"] if mine else None, "version": mine["version"] if mine else None},
             "questionnaire_version": questionnaire()["version"]}
@@ -277,27 +296,28 @@ def get_questionnaire(response: Response, who=Depends(participant)) -> dict:
 
 
 @router.get("/survey")
-def my_survey(response: Response, who=Depends(participant)) -> dict:
-    """The participant's own earlier answers, so they can update them. Nobody else's."""
+def my_survey(request: Request, response: Response, who=Depends(participant)) -> dict:
+    """This browser's own earlier answers, so they can update them. Nobody else's, even on a shared login."""
     _no_store(response)
     p, _ = who
-    mine = _read_survey(rbac.pseudonym(p.sub))
+    mine = _read_survey(rbac.pseudonym(p.sub), _browser(request, response))
     return {"version": mine["version"], "answers": mine["answers"], "submitted_at": mine["ts"]} if mine else \
            {"version": None, "answers": {}, "submitted_at": None}
 
 
 @router.post("/survey")
-def submit_survey(body: SurveyIn, response: Response, who=Depends(participant)) -> dict:
-    """Store the questionnaire. One document per participant: sending again replaces the earlier answers."""
+def submit_survey(body: SurveyIn, request: Request, response: Response, who=Depends(participant)) -> dict:
+    """Store the questionnaire. One document per login and browser: sending again from the same browser replaces the
+    earlier answers; a classmate on the same shared login gets their own."""
     _no_store(response)
     p, roles = who
     q = questionnaire()
     if body.version != q["version"]:
         raise HTTPException(status_code=409, detail="The questionnaire changed while you were answering. Reload it.")
     answers = validate_answers(q, body.answers)
-    user = rbac.pseudonym(p.sub)
-    before = _read_survey(user)
-    doc = {"kind": "survey", "ts": store.now(), "version": q["version"], **_who(p, roles), "answers": answers,
+    user, browser = rbac.pseudonym(p.sub), _browser(request, response)
+    before = _read_survey(user, browser)
+    doc = {"kind": "survey", "ts": store.now(), "version": q["version"], **_who(p, roles, browser), "answers": answers,
            "sus": sus_score(q, answers), "umux": umux_lite(q, answers), "updates": (before["updates"] + 1) if before else 0}
     if before and before.get("version") != q["version"]:  # an older questionnaire's answers are kept, not overwritten
         doc["previous"] = {k: before[k] for k in ("version", "ts", "answers", "sus") if k in before}
@@ -305,7 +325,7 @@ def submit_survey(body: SurveyIn, response: Response, who=Depends(participant)) 
         doc["previous"] = before["previous"]
     if doc["sus"] is None and doc.get("previous", {}).get("sus") is not None:
         doc["sus"] = doc["previous"]["sus"]  # the version 1 SUS score still counts in the version 1 figure
-    _write(_survey_key(user), doc)
+    _write(_survey_key(user, browser), doc)
     return {"submitted_at": doc["ts"], "answered": len(answers)}
 
 
@@ -317,8 +337,7 @@ def tester(p: rbac.Principal = Depends(rbac.require_user)) -> rbac.Principal:
 
 @router.get("/responses")
 def responses(response: Response, p: rbac.Principal = Depends(tester)) -> dict:
-    """The questionnaire responses, pseudonymous, for the tester admin's read-only panel. The tester's own test
-    submissions are left out, as in every other result."""
+    """The questionnaire responses, pseudonymous, for the tester admin's read-only panel."""
     _no_store(response)
     _, surveys = load_feedback(store.backend())
     return responses_view(surveys, questionnaire())
@@ -384,32 +403,32 @@ def _answer(p: rbac.Principal, lane: str, ref: str, view: str) -> dict:
             "shown": shown}
 
 
-def _vote_key(lane: str, ref: str, user: str, view: str) -> str:
-    return f"{RESPONSE_PREFIX}{lane}/{ref.replace(':', '/')}/{user}-{view}.json"  # a turn "b-…:t3" nests under its brief
+def _vote_key(lane: str, ref: str, user: str, browser: str, view: str) -> str:
+    return f"{RESPONSE_PREFIX}{lane}/{ref.replace(':', '/')}/{user}-{browser}-{view}.json"  # a turn "b-…:t3" nests under its brief
 
 
 @router.get("/vote")
-def my_vote(response: Response, lane: Literal["briefing", "forecast"], ref: str = Query(pattern=ANSWER_ID),
+def my_vote(request: Request, response: Response, lane: Literal["briefing", "forecast"], ref: str = Query(pattern=ANSWER_ID),
             view: Literal["analyst", "leadership"] = "analyst", who=Depends(participant)) -> dict:
-    """The participant's own vote on one answer, so the page can show it again. Nobody else's."""
+    """This browser's own vote on one answer, so the page can show it again. Nobody else's."""
     _no_store(response)
     p, _ = who
     _answer(p, lane, ref, view)
-    text = store.backend().read(_vote_key(lane, ref, rbac.pseudonym(p.sub), view))
+    text = store.backend().read(_vote_key(lane, ref, rbac.pseudonym(p.sub), _browser(request, response), view))
     doc = json.loads(text) if text else None
     return {"vote": doc["vote"], "comment": doc["comment"], "at": doc["ts"]} if doc else {"vote": None, "comment": None, "at": None}
 
 
 @router.post("/vote")
-def vote(body: VoteIn, response: Response, who=Depends(participant)) -> dict:
-    """Thumbs up or down on one answer, with an optional comment. One per participant, answer and view."""
+def vote(body: VoteIn, request: Request, response: Response, who=Depends(participant)) -> dict:
+    """Thumbs up or down on one answer, with an optional comment. One per login, browser, answer and view."""
     _no_store(response)
     p, roles = who
     answer = _answer(p, body.lane, body.ref, body.view)
-    user = rbac.pseudonym(p.sub)
-    key = _vote_key(body.lane, body.ref, user, body.view)
+    user, browser = rbac.pseudonym(p.sub), _browser(request, response)
+    key = _vote_key(body.lane, body.ref, user, browser, body.view)
     before = store.backend().read(key)
-    doc = {"kind": "vote", "ts": store.now(), **_who(p, roles), "lane": body.lane, "ref": body.ref, "view": body.view,
+    doc = {"kind": "vote", "ts": store.now(), **_who(p, roles, browser), "lane": body.lane, "ref": body.ref, "view": body.view,
            "vote": body.vote, "comment": body.comment, **answer,
            "updates": (json.loads(before)["updates"] + 1) if before else 0,
            "app_version": os.environ.get("PHARMAGENTICS_VERSION", "dev")}
@@ -444,7 +463,8 @@ def role_label(doc: dict) -> str:
     same name shows it once."""
     known = rbac.roles()
     labels = [known[n].label for n in doc.get("roles") or [] if n in known]
-    return " / ".join(dict.fromkeys(labels)) or "Unknown role"
+    label = " / ".join(dict.fromkeys(labels)) or "Unknown role"
+    return f"{label} (shared tester login)" if doc.get("test") else label
 
 
 def real_only(docs: list[dict]) -> list[dict]:
@@ -453,12 +473,12 @@ def real_only(docs: list[dict]) -> list[dict]:
 
 
 def responses_view(surveys: list[dict], q: dict) -> dict:
-    """What the tester panel shows: the headline numbers and one pseudonymous row per response, newest first."""
-    real = real_only(surveys)
-    survey = summarize([], real, q)["survey"]
+    """What the tester panel shows: the headline numbers and one pseudonymous row per response, newest first. The
+    class shares the tester login, so its responses count; their role says so."""
+    survey = summarize([], surveys, q)["survey"]
     nps = next((r for r in survey["items"] if r["id"] == "o_nps"), None)
-    rows = [{"ts": s["ts"], "user": s["user"], "role": role_label(s), "version": s["version"], "answers": s["answers"]}
-            for s in sorted(real, key=lambda d: d["ts"], reverse=True)]
+    rows = [{"ts": s["ts"], "user": s.get("respondent", s["user"]), "role": role_label(s), "version": s["version"], "answers": s["answers"]}
+            for s in sorted(surveys, key=lambda d: d["ts"], reverse=True)]
     return {"questionnaire_version": q["version"], "responses": survey["responses"], "umux": survey["umux"],
             "nps": ({"mean": nps["mean"], "nps": nps["nps"], "n": nps["n"]} if nps else None), "rows": rows}
 

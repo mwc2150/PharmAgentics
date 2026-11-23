@@ -66,7 +66,7 @@ function laneRows(lane: "briefing" | "forecast", u: LaneUsage): [string, ReactNo
 function InUse({ u }: { u: Usage }) {
   const lanes = (["briefing", "forecast"] as const).filter(l => u.lanes[l])
   return <>
-    <Heading title="In use" note={`${u.since ? `Since ${when(u.since)}.` : "No use recorded yet."} Test-login activity is left out (${u.excluded_test_records} record${u.excluded_test_records === 1 ? "" : "s"}). Updated every 5 minutes.`}/>
+    <Heading title="In use" note={`${u.since ? `Since ${when(u.since)}.` : "No use recorded yet."} ${u.tester_records ? `Includes ${u.tester_records} record${u.tester_records === 1 ? "" : "s"} from the shared tester login.` : ""} Updated every 5 minutes.`}/>
     <section className={`${PANEL} divide-y divide-rule`}>
       {lanes.map(l => {
         const weeks = Object.entries(u.lanes[l]!.weekly)

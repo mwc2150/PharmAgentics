@@ -114,10 +114,14 @@ def _spread(values: list[float]) -> dict | None:
 def summarize_usage(events: list[dict], job_docs: list[dict], pulses: list[dict], surveys: list[dict],
                     votes: list[dict], questionnaire: dict) -> dict:
     """Aggregate live use per lane plus platform ratings. Pure: no I/O, no per-person rows."""
+    # The class shares the tester login, so its records count; tester_records says how many came from it.
     testers = {e.get("user") for e in [*events, *pulses, *surveys, *votes] if e.get("test")}
 
+    def from_tester(docs: list[dict], who: str = "user") -> int:
+        return sum(1 for d in docs if d.get("test") or d.get(who) in testers)
+
     def real(docs: list[dict], who: str = "user") -> list[dict]:
-        return [d for d in docs if not d.get("test") and d.get(who) not in testers]
+        return docs
 
     kept, kept_jobs = real(events), real(job_docs, "by")
     lanes: dict[str, dict] = {}
@@ -144,8 +148,7 @@ def summarize_usage(events: list[dict], job_docs: list[dict], pulses: list[dict]
     summary = feedback.summarize(real(pulses), real(surveys), questionnaire, real(votes))
     return {
         "since": min((e["ts"] for e in kept), default=None),
-        "excluded_test_records": (len(events) - len(kept)) + (len(job_docs) - len(kept_jobs))
-                                 + (len(feedback_docs) - len(real(feedback_docs))),
+        "tester_records": from_tester(events) + from_tester(job_docs, "by") + from_tester(feedback_docs),
         "lanes": lanes,
         "sessions": summary["pulse"]["by_rating"],
         "sus": summary["survey"]["sus"],

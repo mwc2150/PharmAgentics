@@ -59,7 +59,7 @@ def test_bucket_copy_wins_over_bundled_copy():
     assert telemetry.snapshot()["exported"] == "2026-11-20T00:00+00:00"
 
 
-def test_usage_leaves_out_the_tester_even_where_an_event_lacks_the_flag():
+def test_usage_counts_the_shared_tester_login_and_says_how_much_came_from_it():
     events = [
         event("requested", "2026-11-17T10:00:00+00:00", "u-p1", engine="scripted", latency_ms=1000),
         event("requested", "2026-11-18T10:00:00+00:00", "u-p1", engine="scripted", latency_ms=3000),
@@ -75,13 +75,13 @@ def test_usage_leaves_out_the_tester_even_where_an_event_lacks_the_flag():
     pulses = [{"session": "s1", "user": "u-test", "rating": "bad", "ts": "2026-11-18T12:02:00+00:00", "where": "briefing", "test": True}]
     u = telemetry.summarize_usage(events, job_docs, pulses, [], [], feedback.questionnaire())
     b = u["lanes"]["briefing"]
-    assert b["requests"] == 2 and b["engines"] == {"scripted": 2}
+    assert b["requests"] == 3 and b["engines"] == {"scripted": 2, "agent": 1}  # the class uses the tester login
     assert b["decisions"] == {"approved": 1}
     assert b["scripted_ms"] == {"n": 2, "p50": 1000, "p95": 3000}
-    assert b["agent_jobs"] == {"brief done": 1} and b["agent_seconds"]["p50"] == 60
-    assert b["weekly"] == {"2026-11-16": 2}
+    assert b["agent_jobs"] == {"brief done": 2} and b["agent_seconds"]["n"] == 2
+    assert b["weekly"] == {"2026-11-16": 3}
     assert u["lanes"]["forecast"]["requests"] == 1
-    assert "participants" not in u and u["excluded_test_records"] == 4 and u["sessions"]["bad"] == 0
+    assert "participants" not in u and u["tester_records"] == 4 and u["sessions"]["bad"] == 1
 
 
 def test_usage_endpoint_shows_only_the_signed_in_lanes_and_no_person():
@@ -94,7 +94,7 @@ def test_usage_endpoint_shows_only_the_signed_in_lanes_and_no_person():
     assert director.status_code == 200 and director.headers["cache-control"] == "no-store"
     body = director.json()
     assert set(body["lanes"]) == {"briefing"} and body["lanes"]["briefing"]["requests"] == 1
-    assert body["sessions"] == {r: 0 for r in feedback.RATINGS}
+    assert body["sessions"] == {**{r: 0 for r in feedback.RATINGS}, "bad": 1}  # the shared tester login counts
     assert p1 not in json.dumps(body)
 
     assert set(signed_in("dev-forecast-manager").get("/api/telemetry/usage").json()["lanes"]) == {"forecast"}
