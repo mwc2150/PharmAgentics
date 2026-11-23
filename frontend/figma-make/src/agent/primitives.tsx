@@ -3,18 +3,19 @@ import { useEffect, useRef, type RefObject } from "react"
 /* Visual identity and SVG icon geometry. One icon set, outline style, stroke 1.6 next to 14px text.
    Always pass a size class (h-4 w-4, h-5 w-5): a className without one lets the SVG grow to fill its row. */
 const PATHS={
-  briefings:"M6 3h9l4 4v14H6zM9 12h7M9 16h7M9 8h3",
   send:"M5 12h14M13 6l6 6-6 6",
   evidence:"M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3",
   close:"M6 6l12 12M18 6L6 18",
   back:"M15 18l-6-6 6-6",
   menu:"M4 7h16M4 12h16M4 17h16",
-  layers:"M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5",
   chevronRight:"M9 6l6 6-6 6",
   check:"M5 12.5l4.5 4.5L19 7.5",
   panel:"M4 5h16v14H4zM9.5 5v14",
   trend:"M4 17l5-5 4 3 7-8M15 7h5v5",
-  user:"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0"
+  user:"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0",
+  help:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01",
+  clipboard:"M8 4h8v3H8zM8 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-2M9 12h6M9 16h6",
+  briefcase:"M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18"
 } as const
 export type IconName = keyof typeof PATHS
 export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string}) {
