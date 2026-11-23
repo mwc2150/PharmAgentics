@@ -10,6 +10,16 @@ question: Is this freeing my team's time without risking our credibility?
 review_note: The story states no period; add the weeks to the question before freezing.
 period: null
 anchor: Held-out stretch with artifacts and holidays
+definition:
+  first_week: null
+  last_week: null
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Marcus, I want time saved and errors counted side by side, so that I adopt the agent on evidence.
 given: a held-out stretch of weeks that includes artifacts and holidays.
 when: every version of the brief runs on it.

@@ -79,6 +79,20 @@ app.add_middleware(
     SessionMiddleware, secret_key=_secret, session_cookie="pa_session", max_age=8 * 3600,
     same_site="lax", https_only=bool(os.environ.get("K_SERVICE") or os.environ.get("PHARMAGENTICS_SECURE_COOKIES")),
 )
+
+
+@app.middleware("http")
+async def _ui_cache(request: Request, call_next):
+    """The UI page is revalidated on every load, so a deploy shows at once; the built files under /assets carry a
+    content hash in their names, so a browser may keep them for good. Without a header a browser guesses, and kept
+    showing the previous release for hours after a deploy (2026-11-23)."""
+    response = await call_next(request)
+    if "cache-control" not in response.headers:
+        if request.url.path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif response.headers.get("content-type", "").startswith("text/html"):
+            response.headers["Cache-Control"] = "no-cache"
+    return response
 app.include_router(auth.router)
 app.include_router(feedback.router)  # UAT feedback (core-008)
 app.include_router(classification.router)  # data classification labels (core-009)
@@ -245,11 +259,17 @@ async def review(brief_id: str, decision: ReviewRequest, response: Response, who
     brand_access.brief_for(p, role, brief_id)
     if decision.decision == "rejected" and not decision.reason:
         raise HTTPException(status_code=422, detail="A rejection needs a reason.")
+    earlier = store.get_brief(brief_id)
+    first_decision = bool(earlier) and not earlier.get("reviewed_at")
     try:
         record = store.set_review(brief_id, decision.decision, decision.reason, by=rbac.pseudonym(p.sub))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="No such briefing.") from exc
     store.record_event("reviewed", **_who(p, role), brief_id=brief_id, decision=decision.decision, reason=decision.reason)
+    # core-007 FR-025 (2026-11-23): the analyst's first approve or reject is the moment they have what they need, so
+    # it records the insight time, once per brief; the separate "I have what I need" button is gone from the app.
+    if first_decision:
+        store.record_event("insight", **_who(p, role), brief_id=brief_id, view="analyst")
     return views.analyst(record)
 
 
@@ -396,7 +416,9 @@ def accept_result(job_id: str, ok: bool, result: dict | None, error: str | None)
             if "events" in plan:
                 plan["events"] = events_mod.clean(plan["events"])
             service._matching_brand(query.brand_id, plan)
-            service._matching_comparison(query.comparison, plan)
+            definition = service.effective_definition(query)
+            service._matching_comparison(definition.primary_comparison, plan)
+            service._matching_definition(definition, plan)
             if plan.get("state") != "OUT_OF_SCOPE":
                 service._traceable(plan.get("claims", []), plan.get("evidence", []))
             plan.update(brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start.isoformat())

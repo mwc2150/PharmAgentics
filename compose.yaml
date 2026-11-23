@@ -19,6 +19,7 @@ services:
       PHARMAGENTICS_APP_URL: http://localhost:8080
     volumes:
       - ./deploy/keycloak/realm-pharmagentics.json:/opt/keycloak/data/import/realm-pharmagentics.json:ro
+      - ./deploy/keycloak/themes/pharmagentics:/opt/keycloak/themes/pharmagentics:ro
     ports: ["8081:8080"]
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]

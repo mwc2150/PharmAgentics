@@ -10,6 +10,16 @@ question: Which geographies, segments and channels responded, and which did not?
 review_note: The story states no period; add the weeks to the question before freezing.
 period: null
 anchor: Great Lakes and Southeast splits
+definition:
+  first_week: null
+  last_week: null
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Magdalena, I want the effect broken down by geography and channel, so that I can compare a campaign's area with the rest.
 given: two territories with promotion lapses.
 when: the brief reports them.
@@ -32,7 +42,8 @@ facts:
   value: -31
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''CASH'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''CASH'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: segment_pct
 - id: gl_medicaid_change_pct
   value: -25
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''MEDICAID'' and week_start between DATE ''2026-02-02'' and DATE ''2026-02-23'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and payer_channel = ''MEDICAID'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
@@ -72,7 +83,8 @@ facts:
   value: -30
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''COMMERCIAL'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''COMMERCIAL'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: segment_pct
 - id: se_cash_change_pct
   value: -26
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''CASH'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and payer_channel = ''CASH'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
@@ -125,12 +137,12 @@ findings:
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 - id: southeast_promotion_lapse
   territory: SOUTHEAST
   direction: down
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: docs/planning/user-stories.md#P4-Q2

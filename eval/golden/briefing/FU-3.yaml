@@ -10,6 +10,16 @@ question: 'Week of 2026-05-04 in New England: Is New England reportable this wee
 review_note: Drafted by Claude on 2026-11-20 for brief-006 FR-013 (Session 2026-11-20); Michael labels it.
 period: null
 anchor: 'Two-turn: a scope change'
+definition:
+  first_week: '2026-05-04'
+  last_week: '2026-05-04'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want to ask about a section of the brief, so that I can check or extend it without a new brief.
 given: the New England brief for 2026-05-04.
 when: the analyst asks about another product and territory.

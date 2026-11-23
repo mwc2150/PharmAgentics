@@ -12,13 +12,19 @@ LOW_FILL, FILL_CHANGE = 0.90, 0.02
 LAG_LABELS = ("same week", "one-week lag", "two-week lag")
 
 
-def check_access(reg: Registry, terr: str, W, B) -> Check:
+def check_access(reg: Registry, terr: str, W, B, *, plan: str | None = None) -> Check:
+    """The access driver for a territory, or, with `plan`, for that one plan (brief-010 FR-001: a cut card's access
+    verdict is its own plan's): an access change in the months of the period or the two weeks before it that lines up
+    with the plan's reportable TRx."""
     if not W or not B:
         return Check("access", "insufficient", "Access: insufficient. No TRx comparison is available.")
     shifted = [q.shift(w, -lag) for lag in DRIVER_LAGS for w in W]
     events = access_events(reg, terr, shifted)
+    if plan is not None:
+        events = [e for e in events if e["plan"] == plan]
     if not events:
-        return Check("access", "ruled_out", f"Access: ruled out. No BXA access change in the {q.name(terr)} plans in the tested months.")
+        where = "on this plan" if plan is not None else f"in the {q.name(terr)} plans"
+        return Check("access", "ruled_out", f"Access: ruled out. No BXA access change {where} in the tested months.")
     matched = []
     for event in events:
         change_sql = q.pct_change(q.mean_weekly(W, plan=event["plan"]), q.mean_weekly(B, plan=event["plan"]))
@@ -122,3 +128,13 @@ def run_checks(reg: Registry, terr: str, W, B, *, brand_id: str = "BXA",
     ref = B if use_selected_baseline else context_baseline(W, B)
     return [check_data(reg, terr, W, B), check_access(reg, terr, W, B), check_promotion(reg, terr, W, B, source_baseline=ref),
             check_supply(reg, terr, W, B), check_competitor(reg, terr, W, ref, exact_comparison=use_selected_baseline, pct_format="pct")]
+
+
+def national_ruled_out(story_checks) -> list[str]:
+    """Drivers ruled out nationally (brief-010 FR-006, packet NC): access, promotion or supply is ruled out unless a
+    territory that has its own story card in this brief supports it or cannot rule it out (inconclusive, insufficient
+    or never tested). `story_checks` holds each story territory's checks, as a list or a {driver: Check} dict, exactly
+    the ones the brief ran for its cards, so no check runs again and no claim is added. A territory without a story
+    does not keep a driver off the list; a brief with no story territory rules all three out."""
+    verdicts = [{c.driver: c.verdict for c in (checks.values() if isinstance(checks, dict) else checks)} for checks in story_checks]
+    return [d for d in ("access", "promotion", "supply") if all(v.get(d) == "ruled_out" for v in verdicts)]

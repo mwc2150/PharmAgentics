@@ -10,6 +10,17 @@ question: How confident is the estimate, and when will we know more?
 review_note: The story states no period; add the weeks to the question before freezing.
 period: null
 anchor: Great Lakes and Southeast together
+intent: promotion_review
+definition:
+  first_week: null
+  last_week: null
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Magdalena, I want confidence and timing stated plainly, so that early reads don't mislead the budget.
 given: two coverage gaps in different territories and months.
 when: the brief reports confidence.
@@ -43,14 +54,14 @@ findings:
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 - id: southeast_promotion_lapse
   territory: SOUTHEAST
   direction: down
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 must_say:
   phrases:
   - Medium

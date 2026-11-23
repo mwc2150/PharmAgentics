@@ -1,3 +1,5 @@
+-- The loader stores each view below as a table of the same name after it builds (core-001 FR-003a),
+-- in file order: a view may read only views defined above it.
 -- Provisional Day 1 rules, not yet the governed metrics from Specs 002–004.
 -- Every product has a source cell even before launch (with zero counts).
 CREATE OR REPLACE VIEW reporting.v_rx_expected_keys AS
@@ -163,3 +165,32 @@ SELECT c.week_start, c.territory_id, c.product_id, c.health_status, c.flag_reaso
        CASE WHEN c.basis <> 'estimated' THEN coalesce(o.trx, 0) / c.panel_coverage_ratio END AS projected_trx
 FROM cuts c
 LEFT JOIN observed o USING (week_start, territory_id, product_id);
+
+-- Restatements (brief-010 FR-005). One row per restatement event (week, territory, product, date, reason):
+-- the TRx and NBRx the vendor first reported (signed off) and what it restated them to, summed over the
+-- event's cells. A figure that was restated is quoted with this record beside it, never silently replaced.
+CREATE OR REPLACE VIEW reporting.v_restatements AS
+SELECT week_start, territory_id, product_id, revised_at AS restated_at, revision_reason AS reason,
+       count(*) AS restated_cells,
+       sum(trx_prior) AS trx_signed_off, sum(trx_revised) AS trx_restated,
+       sum(nbrx_prior) AS nbrx_signed_off, sum(nbrx_revised) AS nbrx_restated
+FROM raw.restatement_log
+GROUP BY week_start, territory_id, product_id, revised_at, revision_reason;
+
+-- Duplicate-key tie-out (brief-010 FR-004). For each territory-week the feed gate withholds for duplicate Rx
+-- keys: the naive sum of every row as delivered, and the figure with each duplicated key counted once. These are
+-- data-quality tie-outs ("raw, before deduplication"), never metrics: a metric reads reporting.v_weekly_rx_kpis.
+CREATE OR REPLACE VIEW reporting.v_rx_duplicate_tieout AS
+WITH per_key AS (
+    SELECT r.week_start, r.territory_id, r.product_id, r.plan_id, r.hcp_specialty,
+           sum(r.trx) AS raw_trx, any_value(r.trx) AS key_trx,
+           sum(r.nbrx) AS raw_nbrx, any_value(r.nbrx) AS key_nbrx
+    FROM raw.rx_weekly r
+    WHERE (r.week_start, r.territory_id) IN (SELECT week_start, territory_id FROM reporting.v_rx_duplicate_keys)
+    GROUP BY r.week_start, r.territory_id, r.product_id, r.plan_id, r.hcp_specialty
+)
+SELECT week_start, territory_id, product_id,
+       sum(raw_trx) AS naive_trx, sum(key_trx) AS deduplicated_trx,
+       sum(raw_nbrx) AS naive_nbrx, sum(key_nbrx) AS deduplicated_nbrx
+FROM per_key
+GROUP BY week_start, territory_id, product_id;

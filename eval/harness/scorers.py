@@ -207,11 +207,29 @@ def _cut(value) -> str | None:
     return text or None
 
 
+def _measure(finding: dict) -> str:
+    """The measure a finding's direction belongs to: trx (BXA TRx) unless it names another (brief-010 FR-006)."""
+    return str(finding.get("measure") or "trx").strip().lower()
+
+
+def _covers(card: dict, measure: str) -> bool:
+    """A card covers the measures in its `directions`; a card with no `directions` covers `trx` only."""
+    directions = card.get("directions")
+    return measure in directions if directions else measure == "trx"
+
+
+def _seen(card: dict, measure: str):
+    """The card's direction for a measure it covers."""
+    return (card.get("directions") or {}).get(measure) if card.get("directions") else card.get("direction")
+
+
 def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[str]]:
     """(points, possible, notes) for one expected finding. A finding with a cut is met only by a card with the same
-    territory and cut; a finding without one only by a card with no cut (core-011 FR-017)."""
+    territory and cut; a finding without one only by a card with no cut (core-011 FR-017). A card must cover the
+    finding's measure (`trx` when the finding names none) and its direction for that measure is the one compared."""
+    measure = _measure(finding)
     same_territory = [c for c in cards if _territory(c["territory"]) == _territory(finding["territory"])
-                      and _cut(c.get("cut")) == _cut(finding.get("cut"))]
+                      and _cut(c.get("cut")) == _cut(finding.get("cut")) and _covers(c, measure)]
     if finding.get("withheld"):
         return (0 if same_territory else 1), 1, ([] if not same_territory else [f"{finding['id']}: should be withheld"])
     direction = finding.get("direction")
@@ -220,7 +238,7 @@ def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[st
     where = finding["territory"] + (f" ({finding['cut']})" if _cut(finding.get("cut")) else "")
     best, notes = 0, [f"{finding['id']}: no {direction or 'any'}-direction card for {where}"]
     for card in same_territory:
-        if direction is not None and card.get("direction") != direction:
+        if direction is not None and _seen(card, measure) != direction:
             continue
         have_s, have_r = card.get("drivers_supported") or [], card.get("drivers_ruled_out") or []
         points = 1 + sum(d in have_s for d in supported) + sum(d in have_r for d in ruled_out)
@@ -266,15 +284,21 @@ def false_drivers(outputs, expectations) -> Feedback:
         return _not_scored("the case has no expected findings")
     if not cards:
         return _not_scored("the answer has no story cards with a territory")
-    expected: dict[tuple, set] = {}
-    for f in findings:
-        expected.setdefault((_territory(f["territory"]), _cut(f.get("cut"))), set()).update(f.get("drivers_supported") or [])
     # Only territories (and cuts) the case has a finding for: a correct story the golden answer does not mention is
-    # not a wrong attribution. A cut card is held to the finding with the same cut, a whole-territory card to the one without.
-    extra = [f"{card['territory']}{' (' + card['cut'] + ')' if _cut(card.get('cut')) else ''}: {d}" for card in cards
-             if (_territory(card["territory"]), _cut(card.get("cut"))) in expected
-             for d in card.get("drivers_supported") or []
-             if d not in expected[(_territory(card["territory"]), _cut(card.get("cut")))]]
+    # not a wrong attribution. A cut card is held to the findings with the same cut, a whole-territory card to those
+    # without; and only to findings on a measure the card covers (a national share card is not held to a TRx finding).
+    def expected_for(card) -> set | None:
+        mine = [f for f in findings if _territory(f["territory"]) == _territory(card["territory"])
+                and _cut(f.get("cut")) == _cut(card.get("cut")) and _covers(card, _measure(f))]
+        return {d for f in mine for d in f.get("drivers_supported") or []} if mine else None
+
+    extra = []
+    for card in cards:
+        allowed = expected_for(card)
+        if allowed is None:
+            continue
+        where = f"{card['territory']}{' (' + card['cut'] + ')' if _cut(card.get('cut')) else ''}"
+        extra += [f"{where}: {d}" for d in card.get("drivers_supported") or [] if d not in allowed]
     return Feedback(value=len(extra), rationale=("Unexpected supported drivers: " + "; ".join(extra)) if extra else "No unexpected driver.")
 
 
@@ -312,9 +336,14 @@ def leader_words(sections: list[dict]) -> int:
 # Word budget per view (core-011 FR-020): the largest `brief_words` among the anchor briefs that printed on two A4
 # pages (brief-008 I2; the five anchors of brief-008 SC-002), as measured: a brief no longer than the longest one that fits. MEASURED_ANCHORS holds the counts
 # (analyst, leader) from the scripted engine on data day1-v1 at 2026-11-22; `test_word_budget.py` recomputes them.
+# Re-measured after brief-010 merged (2026-11-22): every anchor +5 for "Holiday weeks are left out."; P4-Q1 +72 because its
+# period now reports the Mid-Atlantic restatement of 2026-04-06 (brief-010 FR-005). The budget stays at the print-verified
+# counts until a print check says otherwise; P4-Q1 is over it until brief-010 FR-008 shrinks its territory card.
+# Re-measured after brief-010 integration (2026-11-23): the national TRx line (packet NC), segment movers (S), the
+# Southeast continuing card on P1-Q6 (C). Michael, 2026-11-23: the word budget is no longer a target (report only).
 MEASURED_ANCHORS: dict[str, tuple[int, int]] = {
-    "P1-Q2": (622, 584), "P1-Q3": (394, 361), "P1-Q6": (498, 464), "P3-Q5": (688, 559), "P4-Q1": (836, 705)}
-WORD_BUDGET: dict[str, int] = {"analyst": 836, "leader": 705}  # the largest anchor counts (P4-Q1, both views)
+    "P1-Q2": (627, 589), "P1-Q3": (409, 376), "P1-Q6": (612, 578), "P3-Q5": (717, 588), "P4-Q1": (842, 808)}
+WORD_BUDGET: dict[str, int] = {"analyst": 836, "leader": 705}  # print-verified longest anchor (P4-Q1 in brief-008 I2)
 
 
 @scorer(name="brief_words",

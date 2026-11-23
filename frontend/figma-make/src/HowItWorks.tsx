@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react"
 import { getAgentsInfo, type AgentCard, type AgentComparison, type AgentsInfo, type CompareRow } from "./agent/briefingApi"
 import { KIND_NAME, KIND_STYLE } from "./Timeline"
+import { Notice, modelName } from "./agent/primitives"
 
 // brief-009 FR-006: how the briefing is made. The flow from question to brief, the four actors the architecture names
 // (Manager, Data Forensics, Driver Investigator, and the Writer, which is an LLM step and not an agent), what each
@@ -8,7 +9,8 @@ import { KIND_NAME, KIND_STYLE } from "./Timeline"
 // engine. Prompts arrive only for analyst roles; the server never sends them to leadership, so this page cannot show them.
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
-const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
+// An outlined word, never a filled pill (DESIGN.md).
+const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
 const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 
 function show(row: CompareRow, v: number | null): string {
@@ -84,7 +86,7 @@ function Comparison({ c }: { c: AgentComparison }) {
 function modelLine(m: AgentsInfo["model"]) {
   if (!m.spec) return <>The agent team runs on a model that is set when it is switched on. No model is set in this app now.</>
   const haiku = /haiku/i.test(m.spec)
-  return <>{haiku ? "Claude Haiku, a small and fast model from Anthropic, drives the agent team: " : "The agent team runs on "}<span className="font-mono text-[13px]">{m.spec}</span>.
+  return <>{haiku ? "Claude Haiku, a small and fast model from Anthropic, drives the agent team: " : "The agent team runs on "}<span>{modelName(m.spec)}</span>.
     {" "}The Manager, Data Forensics, Driver Investigator and Writer all call the same model.{m.source === "evaluation" ? " (Read from the latest evaluation run; this app is not running the team itself.)" : ""}</>
 }
 
@@ -98,7 +100,7 @@ export function HowItWorks() {
     getAgentsInfo().then(v => { if (live) setInfo(v) }).catch(e => { if (live) setError(e instanceof Error ? e.message : String(e)) })
     return () => { live = false }
   }, [attempt])
-  if (error) return <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}<button type="button" className="ml-2 underline" onClick={() => setAttempt(n => n + 1)}>Try again</button></div>
+  if (error) return <Notice tone="error" role="alert">{error}<button type="button" className="ml-2 underline" onClick={() => setAttempt(n => n + 1)}>Try again</button></Notice>
   if (!info) return <div role="status" className={`${PANEL} space-y-3 p-6`}><span className="sr-only">Loading how it works…</span><div className="pa-skeleton h-5 w-2/5"/><div className="pa-skeleton h-3 w-full"/><div className="pa-skeleton h-3 w-4/5"/></div>
   const lim = info.limits
   return <div className="space-y-5">

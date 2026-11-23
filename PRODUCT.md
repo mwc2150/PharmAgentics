@@ -37,7 +37,7 @@ Every figure comes from a governed, versioned SQL query and is filled in by code
 
 ## Brand Commitments
 
-- Name: PharmAgentics. Mark: "Pa", set like a prescription sign (Rx), with the "a" lowered like a subscript.
+- Name: PharmAgentics. Mark: "Pa" on a lime periodic-table-style tile, with "v1" in the corner where an element's number would sit (`public/pa-mark.svg`).
 - Users never see testing scaffolding: no "UAT" names, persona codes (P1, CA) or internal plumbing in the interface.
 - Dark interface only (decided by the product owner, 2026-11-19).
 

@@ -1,24 +1,26 @@
 import { useMemo, useState } from "react"
 import type { Claim, RunEvent } from "./agent/briefingApi"
+import { Icon } from "./agent/primitives"
 
 // brief-009 FR-004: the timeline of how a brief was built. It reads the run's event log (plan.md): live from the job's
 // `progress` while the brief builds, then from the brief's saved `events`. Findings link to the claims they produced
 // in the memo, and a claim opened in the memo names its producer through `producers`. Every word and number shown
 // here was written by the server's code from a tool result; the UI adds none.
 
-const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
+// An outlined word, never a filled pill (DESIGN.md).
+const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
 export const KIND_STYLE: Record<RunEvent["kind"], string> = {
-  agent: "bg-agentbg text-agentdeep",
-  llm: "bg-amberbg text-amber",
-  code: "bg-paper text-ink border border-rule",
-  person: "bg-humanbg text-human",
+  agent: "border-edge text-ink",
+  llm: "border-edge text-ink",
+  code: "border-edge text-ink",
+  person: "border-human/60 text-human",
 }
 export const KIND_NAME: Record<RunEvent["kind"], string> = { agent: "Agent", llm: "LLM step", code: "Code", person: "Person" }
 const VERDICT: Record<string, [string, string]> = {
   supported: ["Supported", "bg-okbg text-ok"],
   "ruled out": ["Ruled out", "bg-paper text-muted border border-rule"],
-  inconclusive: ["Inconclusive", "bg-amberbg text-amber"],
-  abstained: ["Abstained", "bg-amberbg text-amber"],
+  inconclusive: ["Inconclusive", "bg-paper text-ink border border-rule"],
+  abstained: ["Abstained", "bg-paper text-ink border border-rule"],
   done: ["Done", "bg-paper text-muted border border-rule"],
 }
 // A check is a test of the data or of a driver. Counted exactly as the server counts it for leaders (views.process_summary).
@@ -63,8 +65,8 @@ export function jumpToClaim(claim: Claim | undefined, openSource?: (evidenceId: 
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
   el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" })
   el.focus({ preventScroll: true })
-  el.classList.add("bg-agentbg", "ring-2", "ring-agent")
-  window.setTimeout(() => el.classList.remove("bg-agentbg", "ring-2", "ring-agent"), 2000)
+  el.classList.add("bg-primarybg", "ring-2", "ring-primary")
+  window.setTimeout(() => el.classList.remove("bg-primarybg", "ring-2", "ring-primary"), 2000)
 }
 
 function Row({ e, claims, onJump }: { e: RunEvent, claims?: Claim[], onJump: (c: Claim | undefined) => void }) {
@@ -86,7 +88,7 @@ function Row({ e, claims, onJump }: { e: RunEvent, claims?: Claim[], onJump: (c:
         {e.claims.length > 0 && <span className="flex flex-wrap items-center gap-1.5 text-muted">Produced
           {e.claims.map(i => claims?.[i]
             ? <button key={i} type="button" onClick={() => onJump(claims[i])} title="Show this number in the brief"
-                className="rounded-sm font-medium text-agentdeep underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claims[i].value}</button>
+                className="rounded-sm font-medium text-primaryink underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg focus:outline-none">{claims[i].value}</button>
             : <span key={i}>claim {i + 1}</span>)}
         </span>}
         {e.prompt && <span className="font-mono text-[11px] text-muted" title="The prompt file and version this step ran on">{e.prompt}</span>}
@@ -95,9 +97,11 @@ function Row({ e, claims, onJump }: { e: RunEvent, claims?: Claim[], onJump: (c:
   </li>
 }
 
-export function Timeline({ events, claims, live = false, titles, onOpenSource }: {
-  events: RunEvent[], claims?: Claim[], live?: boolean, titles?: Record<string, string>, onOpenSource?: (evidenceId: string) => void
+// `collapsed`: start folded to its header line (an approved brief, where the memo is what the reader came for).
+export function Timeline({ events, claims, live = false, titles, onOpenSource, collapsed = false }: {
+  events: RunEvent[], claims?: Claim[], live?: boolean, titles?: Record<string, string>, onOpenSource?: (evidenceId: string) => void, collapsed?: boolean
 }) {
+  const [shut, setShut] = useState(collapsed)
   const groups = useMemo(() => groupEvents(events, titles), [events, titles])
   const [open, setOpen] = useState<Record<string, boolean>>({})  // "<group>|<actor>" unfolded
   const last = events.length ? events.reduce((a, b) => b.seq > a.seq ? b : a) : null
@@ -105,15 +109,17 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource }:
   const checks = countChecks(events)
   return <section aria-label="How this brief was built" className="rounded-xl border border-rule bg-sheet px-6 py-5">
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-      <h3 className="text-sm font-semibold">{live ? "Building the brief" : "How this brief was built"}</h3>
+      {collapsed ? <h3 className="text-sm font-semibold"><button type="button" aria-expanded={!shut} aria-controls="timeline-steps" onClick={() => setShut(v => !v)} className="flex items-center gap-1.5 hover:text-primaryink">
+        <Icon name="chevronRight" className={`h-4 w-4 transition-transform duration-200 ${shut ? "" : "rotate-90"}`}/>How this brief was built</button></h3>
+        : <h3 className="text-sm font-semibold">{live ? "Building the brief" : "How this brief was built"}</h3>}
       <span className="text-xs text-muted">{events.length} step{events.length === 1 ? "" : "s"}{checks ? ` · ${checks} check${checks === 1 ? "" : "s"}` : ""}{produced ? ` · ${produced} number${produced === 1 ? "" : "s"} produced` : ""}</span>
     </div>
     {live && <p role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-xs text-muted">
-      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-agent pa-pulse"/>
+      <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-primary pa-pulse"/>
       {last ? `Now: ${last.actor}, ${last.step.toLowerCase()}` : "Waiting for the first step…"}
     </p>}
-    {!events.length && !live && <p className="mt-3 text-sm text-muted">No steps were recorded for this brief.</p>}
-    <div className="mt-2 divide-y divide-rule">
+    {!shut && !events.length && !live && <p className="mt-3 text-sm text-muted">No steps were recorded for this brief.</p>}
+    <div id="timeline-steps" hidden={shut} className="mt-2 divide-y divide-rule">
       {groups.map(g => {
         const seen: Record<string, number> = {}
         const hidden: Record<string, number> = {}
@@ -127,7 +133,7 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource }:
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">{g.key.startsWith("_") ? g.title : `Story: ${g.title}`}</h4>
           <ol className="divide-y divide-rule/60">{shown.map(e => <Row key={e.seq} e={e} claims={claims} onJump={c => jumpToClaim(c, onOpenSource)}/>)}</ol>
           {Object.entries(hidden).map(([actor, n]) => <button key={actor} type="button" onClick={() => setOpen(o => ({ ...o, [`${g.key}|${actor}`]: true }))}
-            className="mt-1 text-xs font-medium text-agentdeep underline-offset-4 hover:underline">Show {n} more {actor} step{n === 1 ? "" : "s"}</button>)}
+            className="mt-1 text-xs font-medium text-primaryink underline-offset-4 hover:underline">Show {n} more {actor} step{n === 1 ? "" : "s"}</button>)}
         </div>
       })}
     </div>

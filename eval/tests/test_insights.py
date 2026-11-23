@@ -182,6 +182,32 @@ def test_lower_is_better_scorers_are_not_stuck_or_spread_and_a_rise_is_a_fall(tm
     assert fallen == {("C-2", 0.0, 1.0)}  # 2 -> 0 is better; 0 -> 1 is worse
 
 
+def test_a_small_move_is_not_a_fall(tmp_path):
+    path = tmp_path / "small.db"
+    _store(str(path), {
+        "P1": ("briefing_scripted", "g1", 1000, [
+            (Q_DOLLAR, {"numbers_match_golden": "0.104", "brief_words": "984.0", "false_drivers": "0.0"}),
+            (Q_CONF, {"numbers_match_golden": "0.80", "brief_words": "100.0", "false_drivers": "0.0"})]),
+        "P2": ("briefing_scripted", "g1", 2000, [
+            (Q_DOLLAR, {"numbers_match_golden": "0.100", "brief_words": "998.0", "false_drivers": "1.0"}),  # tiny dip, +14 words, 0 -> 1
+            (Q_CONF, {"numbers_match_golden": "0.70", "brief_words": "115.0", "false_drivers": "0.0"})])})  # 10 points, +15%
+    d = build([path], PAIRS)
+    fallen = {(r["case"], r["scorer"]) for r in d["fallen"]}
+    assert fallen == {("C-1", "false_drivers"), ("C-2", "numbers_match_golden"), ("C-2", "brief_words")}
+
+
+def test_has_fallen_thresholds():
+    from eval.harness.insights import has_fallen
+
+    assert not has_fallen("numbers_match_golden", 0.104, 0.100)
+    assert has_fallen("numbers_match_golden", 0.50, 0.45)  # exactly 5 points
+    assert not has_fallen("numbers_match_golden", 0.50, 0.46)
+    assert not has_fallen("brief_words", 984, 998)
+    assert has_fallen("brief_words", 100, 110)  # exactly 10%
+    assert has_fallen("false_drivers", 0, 1)
+    assert not has_fallen("false_drivers", 3, 2)  # fewer is better
+
+
 def test_numbers_lost_compares_latest_agent_with_latest_scripted_on_the_same_golden(tmp_path):
     scripted, agent, other = tmp_path / "s.db", tmp_path / "a.db", tmp_path / "o.db"
     _store(str(scripted), {"S1": ("briefing_scripted", "g1", 1000, [
@@ -205,3 +231,43 @@ def test_kinds_group_the_matrix_and_leave_out_run_counters(stores):
     assert "golden_number_recall" in d["kinds"]["code"] and "claims_reconcile" in d["kinds"]["code"]
     assert not {"seconds", "llm_calls", "tool_calls", "hit_cap"} & {k for ks in d["kinds"].values() for k in ks}
     assert "briefing_scripted: Code checks" in render_md(d)
+
+
+def test_a_crashed_run_is_not_the_run_to_compare_with(tmp_path):
+    """A run with run errors scores its crashed cases trivially; the comparison skips it for the last clean run."""
+    path = tmp_path / "crash.db"
+    _store(str(path), {
+        "P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"numbers_match_golden": "0.20"})]),
+        "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"numbers_match_golden": "1.0"})]),  # crashed: no numbers
+        "P3": ("briefing_scripted", "g1", 3000, [(Q_DOLLAR, {"numbers_match_golden": "0.18"})])})
+    con = sqlite3.connect(str(path))
+    con.execute("create table metrics (key text, value real, run_uuid text)")
+    con.execute("insert into metrics values ('run_errors/mean', 5.0, 'P2')")
+    con.commit()
+    con.close()
+    assert build([path], PAIRS)["fallen"] == []  # P3 is compared with P1 (0.20 -> 0.18), not with the crashed P2
+
+
+def test_a_run_in_two_stores_counts_once(tmp_path):
+    import shutil
+
+    a = tmp_path / "a.db"
+    _store(str(a), {"P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"golden_number_recall": "1.0"})]),
+                    "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"golden_number_recall": "0.5"})])})
+    b = tmp_path / "b.db"
+    shutil.copy(a, b)
+    d = build([a, b], PAIRS)
+    assert [r["run_id"] for r in d["systems"]["briefing_scripted"]["runs"]] == ["P1", "P2"]
+    assert {(r["case"], r["previous"], r["latest"]) for r in d["fallen"]} == {("C-1", 1.0, 0.5)}
+
+
+def test_a_crashed_latest_run_is_not_compared(tmp_path):
+    path = tmp_path / "crash-latest.db"
+    _store(str(path), {"P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"golden_number_recall": "1.0"})]),
+                       "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"golden_number_recall": "0.0"})])})
+    con = sqlite3.connect(str(path))
+    con.execute("create table metrics (key text, value real, run_uuid text)")
+    con.execute("insert into metrics values ('run_errors/mean', 20.0, 'P2')")
+    con.commit()
+    con.close()
+    assert build([path], PAIRS)["fallen"] == []  # the drop is the crash, not a regression

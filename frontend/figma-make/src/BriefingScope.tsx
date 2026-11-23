@@ -1,14 +1,15 @@
 import { useState } from "react"
 import { DEFAULT_COMPARISON_WEEKS } from "./ComparisonPicker"
 import { readBriefingScope, type BriefingScope, type Comparison, type ReleaseContext } from "./agent/briefingApi"
+import { asList, proposedChoices, type DefinitionChoices, type DefinitionField } from "./BriefDefinition"
 
 // brief-008 FR-007 and FR-008. The period (First week, Last week) and the question reader for the New briefing form.
-// "Read my question" asks the API for a proposed scope (a configured model proposes, code validates, the rules read
-// it otherwise) and fills the form. Nothing runs on a proposal: the analyst checks the form and builds as usual.
+// useQuestionReader asks the API for a proposed scope (a configured model proposes, code validates, the rules read
+// it otherwise) and fills the form; the message bar on the New briefing tab is its one input. Nothing runs on a
+// proposal: the analyst checks the form and builds as usual.
 
-const FIELD = "w-full min-w-0 rounded-lg border border-rule bg-paper px-3 py-2.5 text-sm text-ink disabled:opacity-60"
+const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-muted disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
-const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-rule px-4 py-2 text-sm font-medium text-ink transition-[background-color,transform] duration-150 hover:bg-paper active:scale-[0.98] disabled:cursor-not-allowed disabled:text-muted"
 
 /** An error for the chosen period, or null. The weeks are the release's Mondays. */
 export function periodError(first: string, last: string, weeks: string[]): string | null {
@@ -23,22 +24,55 @@ export function periodWeeks(first: string, last: string, weeks: string[]): strin
   return periodError(first, last, weeks) ? [] : weeks.filter(w => w >= first && w <= last)
 }
 
-export type FormValues = { territory: string | null; week: string; weekEnd: string; promotion: boolean; comparison: Comparison | null }
+// brief-010: `choices` are the definition fields the reader proposed (territories counted, measure, grain, relative to);
+// a field it left out is absent, so the form keeps the analyst's value. `proposed` names them for the "proposed" marks.
+export type FormValues = { territory: string | null; week: string; weekEnd: string; promotion: boolean; comparison: Comparison[]
+  choices: Partial<DefinitionChoices>; proposed: DefinitionField[] }
+
+/** The comparisons a proposed definition names (one or a list, the first the primary), checked like the weeks count.
+ *  A single previous-weeks comparison equal to what the default rule gives stays the default (an empty list). */
+function proposedComparisons(def: unknown, earlier: number, weeks: string[]): Comparison[] | { error: string } {
+  const list = asList(def as Comparison | Comparison[] | null | undefined)
+  const out: Comparison[] = []
+  for (const c of list) {
+    if (c.kind === "last_year" || c.kind === "pre_launch") out.push({ kind: c.kind })
+    else if (c.kind === "custom") {
+      if (!c.start || !c.end || c.start > c.end || !weeks.includes(c.start) || !weeks.includes(c.end)) return { error: "The proposed comparison weeks do not fit the release." }
+      out.push({ kind: "custom", start: c.start, end: c.end })
+    } else if (c.kind === "previous") {
+      if (!Number.isInteger(c.weeks) || c.weeks < 1 || c.weeks > 13) return { error: "The proposed comparison is not from 1 to 13 weeks." }
+      out.push({ kind: "previous", weeks: c.weeks })
+    } else return { error: "The proposed comparison is not one of the choices." }
+  }
+  const unique = out.filter((c, i) => out.findIndex(d => JSON.stringify(d) === JSON.stringify(c)) === i)
+  return unique.length === 1 && unique[0].kind === "previous" && unique[0].weeks === Math.min(DEFAULT_COMPARISON_WEEKS, earlier) ? [] : unique
+}
 
 /** A proposed scope as form values, after the same checks the server made: weeks in the release and in order, a
  *  known territory, a whole comparison of 1 to 13 weeks. Anything else is refused with the reason. */
 export function scopeToForm(scope: BriefingScope, context: ReleaseContext, brand: string): { values: FormValues } | { error: string } {
-  const problem = periodError(scope.week_start, scope.week_end, context.available_weeks)
+  const def = scope.definition ?? null
+  // The definition's own weeks win over the older fields when the reader returned them.
+  const first = def?.first_week || scope.week_start
+  const last = def?.last_week || scope.week_end
+  const problem = periodError(first, last, context.available_weeks)
   if (problem) return { error: `The proposed weeks do not fit the release. ${problem}` }
   if (scope.territory_id !== null && !context.territory_ids.includes(scope.territory_id)) return { error: "The proposed territory is not in the release." }
   const count = scope.comparison_weeks  // null or 0: no earlier week fits, so the default comparison applies
   if (count != null && count !== 0 && (!Number.isInteger(count) || count < 1 || count > 13)) return { error: "The proposed comparison is not from 1 to 13 weeks." }
-  // A proposal equal to what the default rule gives stays the default (null), so the brief matches the eval's.
-  const earlier = context.available_weeks.filter(w => w < scope.week_start).length
-  const comparison: Comparison | null = !count || count === Math.min(DEFAULT_COMPARISON_WEEKS, earlier) ? null : { kind: "previous", weeks: count }
+  // A proposal equal to what the default rule gives stays the default (empty), so the brief matches the eval's.
+  const earlier = context.available_weeks.filter(w => w < first).length
+  let comparison: Comparison[] = !count || count === Math.min(DEFAULT_COMPARISON_WEEKS, earlier) ? [] : [{ kind: "previous", weeks: count }]
+  if (def?.comparison) {
+    const named = proposedComparisons(def.comparison, earlier, context.available_weeks)
+    if ("error" in named) return named
+    comparison = named
+  }
   if (scope.promotion_review && brand !== "BXA") return { error: "The Promotion review is available for BXA only." }
-  return { values: { territory: scope.territory_id, week: scope.week_start, weekEnd: scope.week_end, promotion: scope.promotion_review,
-    comparison } }
+  const proposal = proposedChoices(def)
+  if ("error" in proposal) return proposal
+  return { values: { territory: scope.territory_id, week: first, weekEnd: last, promotion: scope.promotion_review,
+    comparison, choices: proposal.choices, proposed: proposal.fields } }
 }
 
 /** Who read the question, in plain words. */
@@ -57,7 +91,8 @@ export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, la
   const newestFirst = [...weeks].reverse()
   return <div className="grid gap-4 sm:grid-cols-2">
     <label className={LABEL}>First week
-      <select className={FIELD} value={first} onChange={event => onFirst(event.target.value)} disabled={disabled}>
+      <select className={FIELD} value={first} onChange={event => onFirst(event.target.value)} disabled={disabled}
+        aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined}>
         {newestFirst.map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
       </select>
     </label>
@@ -68,46 +103,40 @@ export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, la
           {newestFirst.filter(w => w >= first).map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
         </select>
       </label>
-      {error && <p id="period-error" role="status" className="text-xs text-amber">{error}</p>}
+      <p id="period-error" role="status" className="text-xs text-neg">{error}</p>
     </div>
   </div>
 }
 
-type ReaderProps = {
-  question: string; onQuestion: (text: string) => void
-  brand: string; context: ReleaseContext | null; disabled: boolean
-  onApply: (values: FormValues) => void
+type ReaderOptions = {
+  brand: string; context: ReleaseContext | null
+  onApply: (values: FormValues, question: string) => void
+  onStart?: () => void  // a new read begins: the earlier question no longer applies, even if this read fails
 }
 
-/** The question box and "Read my question". The result names who read it and fills the form through onApply. */
-export function QuestionReader({ question, onQuestion, brand, context, disabled, onApply }: ReaderProps) {
+/** Reads a question into form values (brief-010: the bar on the form is the one question box). `run` resolves true when
+ *  the form was filled; on a failed read the form keeps its values and `error` says why. `read` names who read it. */
+export function useQuestionReader({ brand, context, onApply, onStart }: ReaderOptions) {
   const [busy, setBusy] = useState(false)
   const [read, setRead] = useState<BriefingScope | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const typed = question.trim()
-  const run = async () => {
-    if (!context || busy || typed.length < 3) return
-    setBusy(true); setError(null); setRead(null)
+  const run = async (question: string): Promise<boolean> => {
+    const typed = question.trim()
+    if (busy) return false
+    if (!context) { setError("The data release is not loaded yet."); return false }
+    if (typed.length < 3) { setError("Ask in a few words, for example: how did the Southeast do in August?"); return false }
+    setBusy(true); setError(null); setRead(null); onStart?.()
     try {
       const scope = await readBriefingScope({ question: typed.slice(0, 300), brand_id: brand })
       const checked = scopeToForm(scope, context, brand)
-      if ("error" in checked) setError(`${checked.error} The form keeps your last values.`)
-      else { onApply(checked.values); setRead(scope) }
+      if ("error" in checked) { setError(`${checked.error} The form keeps your last values.`); return false }
+      onApply(checked.values, typed.slice(0, 300)); setRead(scope)
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      return false
     } finally { setBusy(false) }
   }
-  return <div className="space-y-2">
-    <label className={LABEL}>Your question (optional)
-      <textarea value={question} onChange={event => { onQuestion(event.target.value); setRead(null); setError(null) }} maxLength={300} rows={2}
-        placeholder="For example: how did the Southeast do in August, against the previous eight weeks?" className={FIELD} disabled={disabled}/>
-    </label>
-    <div className="flex flex-wrap items-center gap-3">
-      <button type="button" onClick={() => void run()} disabled={disabled || busy || !context || typed.length < 3} className={BTN2}>{busy ? "Reading…" : "Read my question"}</button>
-      <span className="text-xs text-muted">Fills the weeks, territory and comparison from your question. You confirm them below.</span>
-    </div>
-    {read && <div role="status" className="text-xs text-muted"><p><span className="font-medium text-ink">{readByLabel(read)}.</span> Check the form, then generate the briefing.</p>
-      {!!read.notes.length && <ul className="mt-1 list-disc space-y-0.5 pl-5">{read.notes.map(n => <li key={n}>{n}</li>)}</ul>}</div>}
-    {error && <p role="alert" className="text-xs text-amber">{error}</p>}
-  </div>
+  const clear = () => { setRead(null); setError(null) }
+  return { busy, read, error, run, clear }
 }

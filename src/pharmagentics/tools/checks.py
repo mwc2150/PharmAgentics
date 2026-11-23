@@ -118,6 +118,21 @@ def check_competitor(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, e
                  f"Competitor launch: supported. Before the change Metacora held {h} of the basket here against {e} elsewhere.")
 
 
+COMPETITOR_FLOOR = 5.0  # basket share (points) below which Metacora is not a national story
+
+
+def check_competitor_national(reg: Registry, W) -> Check:
+    """The national competitor check (brief-010 FR-006): is Metacora a material part of the basket on the brief's
+    weeks? Supported once it has launched and holds at least the floor; ruled out before launch or below it.
+    The text states no number, so it adds no claim; the card's own claims carry the shares."""
+    launched = launch_date(reg)
+    if launched is None or launched > W[-1]:
+        return Check("competitor", "ruled_out", "Competitor launch: ruled out. Metacora had not launched in these weeks.")
+    if (reg.scalar(q.share(W, "BXE")) or 0) < COMPETITOR_FLOOR:
+        return Check("competitor", "ruled_out", "Competitor launch: ruled out. Metacora's basket share is below the floor for a national story.")
+    return Check("competitor", "supported", "Competitor launch: supported. Metacora holds a material share of the basket.")
+
+
 def check_data(reg: Registry, terr: str, W, B, brand_id: str = "BXA") -> Check:
     weeks = sorted(set(W) | set(B))
     flagged = reg.scalar(f"select count(*) from reporting.v_feed_health where territory_id = '{terr}' and health_status = 'FLAG' "

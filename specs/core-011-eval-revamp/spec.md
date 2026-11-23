@@ -72,3 +72,5 @@ Every Briefing case that states numbers has facts with SQL; each fact is tagged 
 ## Out of scope
 
 The missing analyses that explain most remaining misses (duplicate-key overstatement, restatement deltas, plan-level TRx, holiday weeks against the year before, share trajectory, splits as percentages) belong to a Briefing spec, brief-010, chosen later. LLM judges stay report-only (Evaluation Pack open item 2).
+
+_2026-11-23 (Michael): the Evaluation page's golden-set tables show the pooled key-fact and finding recall beside number recall, and `export-telemetry` takes `--store` (repeatable) so the snapshot holds the newest run of each system across worktree stores._

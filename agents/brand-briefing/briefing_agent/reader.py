@@ -44,10 +44,17 @@ def propose(question: str, *, spec: str, first: str, latest: str, territories: l
                   territory: Annotated[str, "A territory id, or empty"] = "",
                   comparison_weeks: Annotated[int, "Whole weeks to compare with, 1 to 13"] = 4,
                   promotion_review: Annotated[bool, "True for a release-wide promotion question"] = False,
-                  comparison_kind: Annotated[str, "previous, or last_year for the same weeks a year earlier"] = "previous") -> str:
+                  comparison_kind: Annotated[str, "previous, or last_year for the same weeks a year earlier"] = "previous",
+                  measure: Annotated[str, "nbrx or both, only when the question asks for new patients; else empty"] = "",
+                  territories: Annotated[str, "all_reportable or projected, only when the question asks; else empty"] = "",
+                  grain: Annotated[list[str], "levels from national, territory, plan, channel, specialty, only when limited; else empty"] = [],
+                  relative_to: Annotated[str, "national or none, only when the question asks; else empty"] = "",
+                  comparison: Annotated[str, "pre_launch only when the question compares with the weeks before Metacora launched; else empty"] = "") -> str:
         """Record how the question should be read."""
         got.update(period_start=period_start, period_end=period_end, territory=territory,
                    comparison_weeks=comparison_weeks, promotion_review=promotion_review, comparison_kind=comparison_kind)
+        got.update({k: v for k, v in (("measure", measure), ("territories", territories), ("grain", grain),
+                                      ("relative_to", relative_to), ("comparison", comparison)) if v})
         return "Recorded. Stop."
 
     system = instructions(first=first, latest=latest, territories=territories, brand_id=brand_id)

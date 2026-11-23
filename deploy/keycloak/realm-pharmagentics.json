@@ -1,6 +1,7 @@
 {
   "realm": "pharmagentics",
-  "displayName": "PharmAgentics UAT",
+  "displayName": "PharmAgentics",
+  "loginTheme": "pharmagentics",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,
@@ -73,8 +74,7 @@
     {
       "username": "uat-briefing-analyst",
       "enabled": true,
-      "firstName": "UAT",
-      "lastName": "Commercial Analyst",
+      "firstName": "Ace",
       "email": "uat-briefing-analyst@pharmagentics.test",
       "emailVerified": true,
       "credentials": [{"type": "password", "value": "${UAT_PASSWORD_BRIEFING_ANALYST}", "temporary": false}],
@@ -83,8 +83,7 @@
     {
       "username": "uat-briefing-director",
       "enabled": true,
-      "firstName": "UAT",
-      "lastName": "Brand Director",
+      "firstName": "Diana",
       "email": "uat-briefing-director@pharmagentics.test",
       "emailVerified": true,
       "credentials": [{"type": "password", "value": "${UAT_PASSWORD_BRIEFING_DIRECTOR}", "temporary": false}],
@@ -93,8 +92,7 @@
     {
       "username": "uat-forecast-analyst",
       "enabled": true,
-      "firstName": "UAT",
-      "lastName": "Commercial Analyst",
+      "firstName": "Ace",
       "email": "uat-forecast-analyst@pharmagentics.test",
       "emailVerified": true,
       "credentials": [{"type": "password", "value": "${UAT_PASSWORD_FORECAST_ANALYST}", "temporary": false}],
@@ -103,8 +101,7 @@
     {
       "username": "uat-forecast-manager",
       "enabled": true,
-      "firstName": "UAT",
-      "lastName": "Brand Manager",
+      "firstName": "Miranda",
       "email": "uat-forecast-manager@pharmagentics.test",
       "emailVerified": true,
       "credentials": [{"type": "password", "value": "${UAT_PASSWORD_FORECAST_MANAGER}", "temporary": false}],
@@ -113,8 +110,7 @@
     {
       "username": "uat-tester",
       "enabled": true,
-      "firstName": "UAT",
-      "lastName": "Test view",
+      "firstName": "Tester",
       "email": "uat-tester@pharmagentics.test",
       "emailVerified": true,
       "credentials": [{"type": "password", "value": "${UAT_PASSWORD_TESTER}", "temporary": false}],
@@ -123,8 +119,7 @@
     {
       "username": "uat-briefing-analyst-multibrand",
       "enabled": true,
-      "firstName": "UAT",
-      "lastName": "Commercial Analyst (BXA and BXC)",
+      "firstName": "Ace",
       "email": "uat-briefing-analyst-multibrand@pharmagentics.test",
       "emailVerified": true,
       "credentials": [
@@ -143,8 +138,7 @@
     {
       "username": "uat-briefing-director-multibrand",
       "enabled": true,
-      "firstName": "UAT",
-      "lastName": "Brand Director (BXA and BXC)",
+      "firstName": "Diana",
       "email": "uat-briefing-director-multibrand@pharmagentics.test",
       "emailVerified": true,
       "credentials": [

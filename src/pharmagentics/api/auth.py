@@ -22,17 +22,20 @@ from . import brand_access, rbac
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# The display name is the persona's first name (the app greets by it; brief-008 FR-012 shows the name only):
+# Ace is the analyst in both lanes, Diana the Brand Director, Miranda the Brand Manager. The roles tell the
+# stand-ins apart on the sign-in page.
 DEV_USERS = {
-    "dev-analyst": ("Dev Commercial Analyst · BXA", ["briefing-analyst", "brand-bxa"]),
-    "dev-director": ("Dev Brand Director · BXA", ["briefing-director", "brand-bxa"]),
-    "dev-analyst-multibrand": ("Dev Commercial Analyst · BXA and BXC", ["briefing-analyst", "brand-bxa", "brand-bxc"]),
-    "dev-director-multibrand": ("Dev Brand Director · BXA and BXC", ["briefing-director", "brand-bxa", "brand-bxc"]),
-    "dev-analyst-no-brands": ("Dev Commercial Analyst · no brands", ["briefing-analyst"]),
-    "dev-forecast-analyst": ("Dev Forecast Analyst", ["forecast-analyst", "brand-bxa"]),
-    "dev-forecast-manager": ("Dev Brand Manager", ["forecast-manager", "brand-bxa"]),
+    "dev-analyst": ("Ace", ["briefing-analyst", "brand-bxa"]),
+    "dev-director": ("Diana", ["briefing-director", "brand-bxa"]),
+    "dev-analyst-multibrand": ("Ace", ["briefing-analyst", "brand-bxa", "brand-bxc"]),
+    "dev-director-multibrand": ("Diana", ["briefing-director", "brand-bxa", "brand-bxc"]),
+    "dev-analyst-no-brands": ("Ace", ["briefing-analyst"]),
+    "dev-forecast-analyst": ("Ace", ["forecast-analyst", "brand-bxa"]),
+    "dev-forecast-manager": ("Miranda", ["forecast-manager", "brand-bxa"]),
     # Like uat-tester in the Keycloak realm: both lanes, switching between the analyst and the leadership view.
-    "dev-tester": ("Dev test view", ["tester", "brand-bxa", "brand-bxc"]),
-    "dev-norole": ("Dev user with no role", []),
+    "dev-tester": ("Tester", ["tester", "brand-bxa", "brand-bxc"]),
+    "dev-norole": ("No role", []),
 }
 
 
@@ -76,6 +79,45 @@ def _set_user(request: Request, sub: str, name: str, roles: list[str]) -> None:
                                "brand_grants": [r for r in roles if r in brand_access.GRANTS]}
 
 
+# The app's theme (DESIGN.md) for the pages the server renders itself. Fonts and the mark come from the UI's static
+# files on the same origin; system fonts stand in if they are absent.
+_PAGE_CSS = """
+@font-face{font-family:"Space Grotesk";font-weight:300 700;font-display:swap;src:url("/fonts/space-grotesk-latin.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:100 700;font-display:swap;src:url("/fonts/ibm-plex-sans-latin.woff2") format("woff2")}
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:48px 16px;background:#101117;color:#f3f3f3;
+  font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+main{width:100%;max-width:440px;background:#1b1d27;border:1px solid #373a52;border-radius:22px;box-shadow:0 5px 0 #3a3e58;padding:32px}
+.mark{display:block;width:56px;height:56px;margin-bottom:24px}
+h1{margin:0;font:700 28px/1.25 "Space Grotesk",system-ui,sans-serif;letter-spacing:-0.02em}
+h1 span{background:#3ecfb2;color:#0b0c10;padding:0.05em 0.4em 0.1em;border-radius:8px}
+p{margin:14px 0 0;color:#a6aabf;font-size:14px}
+form{margin-top:20px;display:grid;gap:12px}
+button{display:block;width:100%;padding:12px 16px;border:1px solid #8a8ea6;border-radius:14px;background:transparent;color:#f3f3f3;
+  text-align:left;font:500 15px/1.4 inherit;font-family:inherit;cursor:pointer;box-shadow:0 3px 0 #3a3e58;
+  transition:background-color .15s,transform .15s,box-shadow .15s}
+button:hover{background:#101117}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 #3a3e58}
+button:focus-visible{outline:2px solid #3ecfb2;outline-offset:2px}
+small{display:block;margin-top:2px;color:#a6aabf;font-size:12px;font-weight:400}
+a.go{display:inline-block;margin-top:22px;padding:11px 20px;border-radius:12px;background:#3ecfb2;color:#0b0c10;font-weight:600;
+  text-decoration:none;box-shadow:0 4px 0 #1f7a68}
+a.go:hover{background:#62dbc3}
+a.go:focus-visible{outline:2px solid #f3f3f3;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){button{transition:none}button:active{transform:none}}
+"""
+
+
+def _page(title: str, body: str, *, head: str = "", status_code: int = 200, headers: dict[str, str] | None = None) -> HTMLResponse:
+    return HTMLResponse(f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101117">{head}
+<title>{html.escape(title)} · PharmAgentics</title><link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" href="/favicon.ico" sizes="any"><style>{_PAGE_CSS}</style></head>
+<body><main><img class="mark" src="/pa-mark.svg" alt="PharmAgentics" width="56" height="56">{body}</main></body></html>""",
+                        status_code=status_code, headers=headers)
+
+
 @router.get("/auth/login", include_in_schema=False)
 async def login(request: Request):
     if mode() == "dev":
@@ -83,14 +125,9 @@ async def login(request: Request):
             f'<button name="username" value="{html.escape(u)}">{html.escape(n)}'
             f'<small>{html.escape(", ".join(r) or "no role")}</small></button>'
             for u, (n, r) in DEV_USERS.items())
-        return HTMLResponse(f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Development sign-in</title>
-<style>body{{font-family:system-ui,sans-serif;background:#f7f4ee;color:#1b2433;margin:0;padding:48px 16px}}
-main{{max-width:420px;margin:auto}}p{{color:#5b6472;font-size:14px}}button{{display:block;width:100%;margin:8px 0;padding:14px;
-border:1px solid #ddd5c6;border-radius:12px;background:#fff;text-align:left;font-size:15px;cursor:pointer}}
-small{{display:block;color:#5b6472;margin-top:2px}}</style></head><body><main><h1>Development sign-in</h1>
+        return _page("Development sign-in", f"""<h1><span>Development sign-in</span></h1>
 <p>Stand-in identities for local work. The deployed app signs in through Keycloak instead.</p>
-<form method="post" action="/auth/dev-login">{buttons}</form></main></body></html>""")
+<form method="post" action="/auth/dev-login">{buttons}</form>""")
     redirect_uri = str(request.url_for("auth_callback"))
     client = _client()  # a 503 here means sign-in is not configured, which is not a cold start
     try:
@@ -102,12 +139,10 @@ small{{display:block;color:#5b6472;margin-top:2px}}</style></head><body><main><h
 
 def _starting_page() -> HTMLResponse:
     """The sign-in service did not answer in time (a cold start that ran long): retry instead of a bare 500."""
-    return HTMLResponse("""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="5">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Starting sign-in</title>
-<style>body{font-family:system-ui,sans-serif;background:#f7f4ee;color:#1b2433;display:grid;place-items:center;height:100vh;margin:0;padding:0 16px}
-p{color:#5b6472}</style></head><body><main><h1>Starting the sign-in service</h1>
-<p>It sleeps when nobody is using it and takes a few seconds to wake. This page retries by itself.</p></main></body></html>""",
-                        status_code=503, headers={"Retry-After": "5", "Cache-Control": "no-store"})
+    return _page("Starting sign-in", """<h1>Starting the sign-in service</h1>
+<p>It sleeps when nobody is using it and takes a few seconds to wake. This page retries by itself.</p>""",
+                 head='<meta http-equiv="refresh" content="5">',
+                 status_code=503, headers={"Retry-After": "5", "Cache-Control": "no-store"})
 
 
 @router.post("/auth/dev-login", include_in_schema=False)
@@ -123,22 +158,44 @@ async def dev_login(request: Request, username: str = Form(...)):
 async def callback(request: Request):
     if mode() != "oidc":
         raise HTTPException(status_code=404)
-    token = await _client().authorize_access_token(request)  # validates the ID token (issuer, audience, signature, nonce)
+    try:
+        token = await _client().authorize_access_token(request)  # validates the ID token (issuer, audience, signature, nonce)
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001 - a stale or doubled sign-in page (mismatching state), an expired code, a Keycloak error
+        logger.warning("Sign-in callback failed; offering a fresh sign-in", exc_info=True)
+        request.session.clear()
+        return _page("Sign-in did not finish", """<h1>Sign-in did not finish</h1>
+<p>The sign-in page was out of date, perhaps open in another tab or reached with the back button. Nothing was lost.</p>
+<a class="go" href="/auth/login">Sign in again</a>""", status_code=400, headers={"Cache-Control": "no-store"})
     claims = token.get("userinfo") or {}
     _set_user(request, claims["sub"], claims.get("name") or claims.get("preferred_username", ""), list(claims.get("roles", [])))
-    request.session["id_token"] = token.get("id_token")
     return RedirectResponse("/", status_code=303)
 
 
 @router.get("/auth/logout", include_in_schema=False)
 async def logout(request: Request):
-    id_token = request.session.get("id_token")
     request.session.clear()
     if mode() != "oidc":
         return RedirectResponse("/", status_code=303)
     client = _client()
-    metadata = await client.load_server_metadata()
-    params = {"post_logout_redirect_uri": str(request.base_url), "client_id": client.client_id}
-    if id_token:
-        params["id_token_hint"] = id_token
+    try:
+        metadata = await client.load_server_metadata()
+    except Exception:  # noqa: BLE001 - Keycloak unreachable: the app session is already gone, which is the sign-out
+        logger.warning("Sign-in service unreachable at sign-out", exc_info=True)
+        return RedirectResponse("/auth/signed-out", status_code=303)
+    # No id_token_hint: Keycloak keeps no database and makes new signing keys whenever it wakes from idle, so a
+    # token from before then is refused ("invalid_token") and the person was left on its error page (2026-11-23).
+    # Without the hint Keycloak asks "Do you want to log out?" once, then returns to the signed-out page.
+    params = {"post_logout_redirect_uri": f"{str(request.base_url).rstrip('/')}/auth/signed-out", "client_id": client.client_id}
     return RedirectResponse(f"{metadata['end_session_endpoint']}?{urlencode(params)}", status_code=303)
+
+
+@router.get("/auth/signed-out", include_in_schema=False)
+async def signed_out(request: Request):
+    """Where sign-out ends: a page that waits, so the next sign-in starts fresh and may use another account."""
+    if request.session.get("user"):
+        return RedirectResponse("/", status_code=303)
+    return _page("Signed out", """<h1>You are signed out</h1>
+<p>Sign in again with the same account or another one.</p>
+<a class="go" href="/auth/login">Sign in</a>""", headers={"Cache-Control": "no-store"})

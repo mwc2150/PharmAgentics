@@ -1,9 +1,10 @@
 // brief-003: the weekly brief as a memo. Sections, charts and the data behind them come from the server;
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
 import { useState, type ReactNode } from "react"
-import type { ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
+import { DefinitionWords } from "./BriefDefinition"
+import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
-const COLORS = ["var(--color-agent)", "var(--color-human)"]
+const COLORS = ["var(--color-primary)", "var(--color-human)"]
 const PANEL_COLOR = "var(--color-amber)"
 
 function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
@@ -16,7 +17,8 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     if (!claim || sp.start < pos || text.slice(sp.start, sp.end) !== claim.value) return
     parts.push(text.slice(pos, sp.start))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
-      className="pa-cite rounded-sm font-medium underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-agentdeep">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
+      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(text.slice(pos))
@@ -44,14 +46,14 @@ function scale(values: number[], lo?: number, hi?: number) {
   return {min: min - pad, max: max + pad, y: (v: number) => PAD.t + (H - PAD.t - PAD.b) * (1 - (v - (min - pad)) / ((max + pad) - (min - pad)))}
 }
 
-function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[], series: {name: string, points: ChartPoint[], color: string}[], band?: ChartSpec["band"], unit?: string, label: string}) {
+function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[], series: {name: string, points: ChartPoint[], color: string, dash?: string}[], band?: ChartSpec["band"], unit?: string, label: string}) {
   const values = series.flatMap(s => s.points.map(p => p.value).filter((v): v is number => v !== null))
   if (!values.length) return null
   const sc = scale(values, band?.low, band?.high)
   const x = (w: string) => PAD.l + (W - PAD.l - PAD.r) * (weeks.length < 2 ? 0.5 : weeks.indexOf(w) / (weeks.length - 1))
   const ticks = [weeks[0], weeks[Math.floor((weeks.length - 1) / 2)], weeks[weeks.length - 1]]
   return <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
-    {band && <g><rect x={PAD.l} width={W - PAD.l - PAD.r} y={sc.y(band.high)} height={Math.max(1, sc.y(band.low) - sc.y(band.high))} fill="var(--color-agent)" opacity={0.1}/>
+    {band && <g><rect x={PAD.l} width={W - PAD.l - PAD.r} y={sc.y(band.high)} height={Math.max(1, sc.y(band.low) - sc.y(band.high))} fill="var(--color-primary)" opacity={0.1}/>
       <text x={W - PAD.r} y={sc.y(band.high) - 3} textAnchor="end" className="fill-muted text-[10px]">baseline band</text></g>}
     {[sc.min, (sc.min + sc.max) / 2, sc.max].map((v, i) => <g key={i}>
       <line x1={PAD.l} x2={W - PAD.r} y1={sc.y(v)} y2={sc.y(v)} stroke="var(--color-rule)"/>
@@ -60,7 +62,7 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
     {series.map((s, si) => {
       const pts = s.points.filter(p => p.value !== null)
       return <g key={si}>
-        <polyline fill="none" stroke={s.color} strokeWidth={2} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
+        <polyline fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
         {pts.map((p, i) => {
           const assumed = p.basis && p.basis !== "observed"
           return <circle key={i} cx={x(p.week)} cy={sc.y(p.value as number)} r={assumed || p.restated ? 4.5 : 3}
@@ -73,10 +75,10 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
   </svg>
 }
 
-function Legend({items}: {items: {label: string, color: string, hollow?: boolean}[]}) {
+function Legend({items}: {items: {label: string, color: string, hollow?: boolean, dash?: string}[]}) {
   return <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
     {items.map((it, i) => <span key={i} className="inline-flex items-center gap-1.5">
-      <svg viewBox="0 0 10 10" className="h-2.5 w-2.5" aria-hidden="true"><circle cx="5" cy="5" r="4" fill={it.hollow ? "none" : it.color} stroke={it.color} strokeWidth="1.5"/></svg>{it.label}</span>)}
+      <svg viewBox={it.dash ? "0 0 24 10" : "0 0 10 10"} className={it.dash ? "h-2.5 w-6" : "h-2.5 w-2.5"} aria-hidden="true">{it.dash && <line x1="0" x2="24" y1="5" y2="5" stroke={it.color} strokeWidth="2" strokeDasharray={it.dash}/>}<circle cx={it.dash ? 12 : 5} cy="5" r="4" fill={it.hollow ? "none" : it.color} stroke={it.color} strokeWidth="1.5"/></svg>{it.label}</span>)}
   </div>
 }
 
@@ -91,7 +93,7 @@ function CoverageStrip({chart}: {chart: ChartSpec}) {
         const cx = left + chart.weeks.indexOf(c.week) * cell, cy = top + ri * cell
         return <g key={c.week}>
           <rect x={cx + 1} y={cy + 1} width={cell - 2} height={cell - 2} rx={2}
-            fill={c.basis === "observed" ? "var(--color-agent)" : "var(--color-sheet)"} opacity={c.basis === "observed" ? 0.35 : 1}
+            fill={c.basis === "observed" ? "var(--color-primary)" : "var(--color-sheet)"} opacity={c.basis === "observed" ? 0.35 : 1}
             stroke={c.basis === "observed" ? "none" : "var(--color-amber)"} strokeWidth={1.2}/>
           {c.basis === "estimated" && <path d={`M${cx + 3} ${cy + 3}L${cx + cell - 3} ${cy + cell - 3}M${cx + cell - 3} ${cy + 3}L${cx + 3} ${cy + cell - 3}`} stroke="var(--color-amber)" strokeWidth={1.2}/>}
           {c.restated && <circle cx={cx + cell / 2} cy={cy + cell / 2} r={cell / 2 - 0.5} fill="none" stroke="var(--color-human)" strokeWidth={1.2}/>}
@@ -104,11 +106,12 @@ function CoverageStrip({chart}: {chart: ChartSpec}) {
 }
 
 function ChartBlock({chart, onOpen, claims, explanationSpans, bare = false}: {chart: ChartSpec, onOpen?: (id: string) => void, claims?: Claim[], explanationSpans?: Span[], bare?: boolean}) {
-  const series = (chart.series ?? []).map((s, i) => ({...s, color: COLORS[i % COLORS.length]}))
+  // A second line is dashed as well as lavender, so the two never differ by colour alone (WCAG 1.4.1).
+  const series = (chart.series ?? []).map((s, i) => ({...s, color: COLORS[i % COLORS.length], dash: i % COLORS.length ? "7 4" : undefined}))
   return <figure className={`break-inside-avoid ${bare ? "my-3" : "my-4 rounded-xl border border-rule bg-paper/40 p-4"}`}>
     {chart.kind === "coverage" ? <CoverageStrip chart={chart}/> : <>
       <LineChart weeks={chart.weeks} series={series} band={chart.band} unit={chart.kind === "share" ? "percent" : "count"} label={chart.caption}/>
-      <Legend items={series.map((s): {label: string, color: string, hollow?: boolean} => ({label: s.name, color: s.color})).concat(series.some(s => s.points.some(p => p.basis && p.basis !== "observed")) ? [{label: "projected or estimated (an assumption)", color: "var(--color-muted)", hollow: true}] : [])}/>
+      <Legend items={series.map((s): {label: string, color: string, hollow?: boolean, dash?: string} => ({label: s.name, color: s.color, dash: s.dash})).concat(series.some(s => s.points.some(p => p.basis && p.basis !== "observed")) ? [{label: "projected or estimated (an assumption)", color: "var(--color-muted)", hollow: true, dash: undefined}] : [])}/>
       {chart.panel && chart.panel.points.length > 0 && <div className="mt-3 border-t border-rule pt-3">
         <p className="mb-1 text-[11px] uppercase tracking-wider text-muted">{chart.panel.name}</p>
         <LineChart weeks={chart.weeks} series={[{name: chart.panel.name, points: chart.panel.points, color: PANEL_COLOR}]} unit={chart.panel.unit} label={chart.panel.name}/>
@@ -138,17 +141,17 @@ function TableView({table, name}: {table: DataTable, name: string}) {
   const shown = table.columns.map((_, j) => j).filter(j => sql || table.columns[j] !== "query")
   return <div className="rounded-lg border border-rule">
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2 text-xs">
-      <span className="font-mono text-agentdeep">{table.evidence_id}</span>
+      <span className="font-mono text-xs font-medium text-ink">{table.evidence_id}</span>
       <span className="flex gap-3">
-        <button type="button" className="text-agentdeep hover:underline" onClick={() => setSql(!sql)} aria-expanded={sql}>{sql ? "Hide query" : "Show query"}</button>
-        <button type="button" className="text-agentdeep hover:underline" onClick={() => download(name, table)}>Download CSV</button>
+        <button type="button" className="text-primaryink hover:underline" onClick={() => setSql(!sql)} aria-expanded={sql}>{sql ? "Hide query" : "Show query"}</button>
+        <button type="button" className="text-primaryink hover:underline" onClick={() => download(name, table)}>Download CSV</button>
       </span>
     </div>
-    {sql && !perRow && <pre className="overflow-x-auto whitespace-pre-wrap break-all border-b border-rule bg-paper p-3 font-mono text-[11px] leading-relaxed">{table.query}</pre>}
-    <div className="max-h-64 overflow-auto">
-      <table className="w-full text-left font-mono text-[11px]">
-        <thead className="sticky top-0 bg-sheet text-muted"><tr>{shown.map(j => <th key={j} className="px-3 py-1.5 font-normal">{table.columns[j]}</th>)}</tr></thead>
-        <tbody>{table.rows.map((r, i) => <tr key={i} className="border-t border-rule/60 align-top">{shown.map(j => <td key={j} className={`px-3 py-1 ${table.columns[j] === "query" ? "whitespace-pre-wrap break-all text-muted" : ""}`}>{r[j] === null ? "" : String(r[j])}</td>)}</tr>)}</tbody>
+    {sql && !perRow && <pre className="overflow-x-auto whitespace-pre-wrap break-all border-b border-rule bg-paper p-3 font-mono text-xs leading-relaxed">{table.query}</pre>}
+    <div className="max-h-64 overflow-auto" tabIndex={0} role="region" aria-label={`Data table ${table.evidence_id}`}>
+      <table className="w-full text-left font-sans text-xs tabular-nums">
+        <thead className="sticky top-0 bg-sheet text-muted"><tr>{shown.map(j => <th key={j} className="px-3 py-2 font-medium">{table.columns[j]}</th>)}</tr></thead>
+        <tbody>{table.rows.map((r, i) => <tr key={i} className="border-t border-rule align-top">{shown.map(j => <td key={j} className={`px-3 py-1.5 ${table.columns[j] === "query" ? "whitespace-pre-wrap break-all font-mono text-[11px] text-muted" : ""}`}>{r[j] === null ? "" : String(r[j])}</td>)}</tr>)}</tbody>
       </table>
     </div>
   </div>
@@ -164,8 +167,8 @@ function DataBehind({section, claims, evidence, briefId}: {section: MemoSection,
     columns: ["value", "evidence_id", "tool", "query"],
     rows: used.map(c => [c.value, c.evidence_id, byId.get(c.evidence_id)?.tool ?? "", byId.get(c.evidence_id)?.query ?? ""]),
   } : null
-  return <details className="pa-fold mt-3 rounded-xl bg-paper/60 px-4 py-3 text-sm">
-    <summary className="cursor-pointer text-xs font-medium text-agentdeep">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
+  return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3 text-sm">
+    <summary className="cursor-pointer text-[13px] font-medium text-primaryink">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
     <div className="mt-3 space-y-3">
       {claimTable && <TableView table={claimTable} name={`brief-${briefId}-section-${section.number}-claims.csv`}/>}
       {tables.map(t => <TableView key={t.evidence_id} table={t} name={`brief-${briefId}-section-${section.number}-${t.evidence_id}.csv`}/>)}
@@ -198,7 +201,7 @@ function within(spans: Span[] | undefined, start: number, end: number): Span[] {
   return (spans ?? []).filter(sp => sp.start >= start && sp.end <= end).map(sp => ({...sp, start: sp.start - start, end: sp.end - start}))
 }
 
-const PROSE = "pa-prose max-w-[68ch] break-words font-serif text-[16px] leading-[1.7] text-ink"
+const PROSE = "pa-prose max-w-[68ch] break-words font-sans text-[16px] leading-[1.65] text-ink"
 
 // `flow` joins the lines of a run into one paragraph (brief-008 FR-018): code writes §1 and §2 a sentence to a line,
 // and a reader takes them as prose. A newline becomes a space, one character for one, so the spans still fit.
@@ -219,7 +222,7 @@ function Paragraphs({text, spans, claims, onOpen, flow}: {text: string, spans?: 
 }
 
 const DIRECTION = {
-  up: {word: "up", color: "text-agentdeep", d: "M12 5l7 9H5z"},
+  up: {word: "up", color: "text-primaryink", d: "M12 5l7 9H5z"},
   down: {word: "down", color: "text-neg", d: "M12 19l-7-9h14z"},
   flat: {word: "unchanged", color: "text-muted", d: "M5 11h14v2H5z"},
 } as const
@@ -228,9 +231,9 @@ function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], on
   return <dl aria-label="Key figures" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
     {kpis.map((k, i) => {
       const dir = k.direction ? DIRECTION[k.direction] : null
-      return <div key={i} className="break-inside-avoid rounded-xl border border-rule bg-sheet/60 px-3.5 py-3">
+      return <div key={i} className="break-inside-avoid rounded-lg border border-rule bg-sheet/60 px-3.5 py-3">
         <dt className="font-sans text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</dt>
-        <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-sans text-[26px] font-semibold leading-none tabular-nums text-ink">
+        <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-display text-[28px] font-bold leading-none tabular-nums text-ink">
           <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
           {dir && <><svg viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 ${dir.color}`} fill="currentColor" aria-hidden="true"><path d={dir.d}/></svg><span className="sr-only">, {dir.word}</span></>}
         </dd>
@@ -249,7 +252,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
   const basisAt = table.columns.findIndex(c => c.trim().toLowerCase() === "basis")
   const lastData = basisAt > 0 ? basisAt - 1 : table.columns.length - 1
   const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
-  return <div className="my-4 overflow-x-auto">
+  return <div className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
       <caption className="sr-only">Territory figures{table.note ? `. ${table.note}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
@@ -273,7 +276,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
 
 const CONFIDENCE = {
   High: "bg-okbg text-ok",
-  Medium: "bg-amberbg text-amber",
+  Medium: "bg-paper text-ink",
   Low: "bg-warnbg text-neg",
 } as const
 
@@ -289,15 +292,17 @@ function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[
 
 function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   const [open, setOpen] = useState(false)
-  return <details className="pa-fold mt-3 rounded-xl bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
-    <summary className="cursor-pointer font-sans text-xs font-medium text-agentdeep">{open ? "Hide detail" : "Show detail"}</summary>
+  return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
+    <summary className="cursor-pointer font-sans text-[13px] font-medium text-primaryink">{open ? "Hide detail" : "Show detail"}</summary>
     <div className="mt-2"><Paragraphs text={text} spans={spans} claims={claims} onOpen={onOpen}/></div>
   </details>
 }
 
 // The memo: numbered sections in order. Analysts get inline citations and the data behind each section;
 // leaders get the server's cut (no claims, tables or queries) through the same component.
-export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void}) {
+// brief-010 FR-000b: `definition` is what the brief was built under; it is stated in words in the Assumptions block (§6),
+// in both views. A brief made before brief-010 has none, and nothing extra shows.
+export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, definition, labelWeek}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void, definition?: BriefDefinition | null, labelWeek?: (iso: string) => string}) {
   // A brief stored before brief-008 has none of the new fields and renders as it always did: each section's text
   // as one pre-wrapped block. A brief with any of them reads as paragraphs throughout. Only analysts (who get the
   // claims) can unfold `detail`; the leader cut never carries it.
@@ -305,9 +310,9 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
   const analyst = !!claims
   const text = (s: MemoSection) => !s.text ? null : modern
     ? <Paragraphs text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen} flow={s.number === "1" || s.number === "2"}/>
-    : <div className="mt-2 max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><Cited text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/></div>
+    : <div className="mt-2 max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink"><Cited text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/></div>
   const rest = (s: MemoSection) => <>
-    {s.prose && <p className="mt-2 max-w-[68ch] font-serif text-[16px] italic leading-[1.7] text-ink"><Cited text={s.prose} spans={s.prose_citations} claims={claims} onOpen={onOpen}/></p>}
+    {s.prose && <p className="mt-2 max-w-[68ch] font-sans text-[16px] italic leading-[1.65] text-ink"><Cited text={s.prose} spans={s.prose_citations} claims={claims} onOpen={onOpen}/></p>}
     {s.chart && <ChartBlock chart={s.chart} claims={claims} onOpen={onOpen} explanationSpans={s.chart.explanation_citations} bare={!!s.card}/>}
     {analyst && s.detail && <Detail text={s.detail} spans={s.detail_citations} claims={claims} onOpen={onOpen}/>}
     {claims && evidence && <DataBehind section={s} claims={claims} evidence={evidence} briefId={briefId}/>}
@@ -325,11 +330,15 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
         {s.territory_table && <TerritoryTableView table={s.territory_table} claims={claims} onOpen={onOpen}/>}
         {rest(s)}
       </>
-  const heading = (s: MemoSection, sub: boolean) => <div className="flex items-baseline justify-between gap-3">
-    <h3 id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-lg font-semibold"}`}>
-      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{s.title}</h3>
-    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-agentdeep hover:underline">Ask about this</button>}
-  </div>
+  // The page's outline is h1 (the workspace), h2 (the brief), h3 (a section), h4 (a subsection).
+  const heading = (s: MemoSection, sub: boolean) => { const Tag = sub ? "h4" : "h3"; return <div className="flex items-baseline justify-between gap-3">
+    <Tag id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
+      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</Tag>
+    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} aria-label={`Ask about this: section ${s.number}, ${s.title}`} className="pa-noprint shrink-0 text-xs text-primaryink hover:underline">Ask about this</button>}
+  </div> }
+  // The Assumptions block lives in §6; a memo without a §6 shows the definition under its last section.
+  const topLevel = sections.filter(s => !s.number.includes("."))
+  const assumptionsAt = topLevel.some(s => s.number === "6") ? "6" : topLevel[topLevel.length - 1]?.number
   return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>
     {sections.filter(s => !s.number.includes(".")).map(s => {
       const children = sections.filter(c => c.number.startsWith(`${s.number}.`))
@@ -338,6 +347,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
         {children.length > 0 && <div className="mt-4 space-y-6">{children.map(c =>
           <section key={c.number} aria-labelledby={`memo-${briefId}-${c.number}`} className={c.card ? "" : "border-l-2 border-rule pl-4"}>{heading(c, true)}{body(c)}</section>)}</div>}
         <div className={children.length ? "mt-4" : ""}>{body(s)}</div>
+        {definition && s.number === assumptionsAt && <DefinitionWords definition={definition} labelWeek={labelWeek}/>}
       </section>
     })}
   </div>

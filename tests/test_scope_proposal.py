@@ -73,7 +73,7 @@ def _agent(monkeypatch, ask):
     if not service.DB.is_file():
         pytest.skip("Build local/pharmagentics.duckdb first")
 
-    async def triage(question, spec, log, comparison=None):
+    async def triage(question, spec, log, comparison=None, definition=None):
         return {"manager_order": []}
 
     async def run(question, plan, order, spec, reviewed, log):

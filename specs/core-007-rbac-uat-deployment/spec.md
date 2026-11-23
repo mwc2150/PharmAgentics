@@ -224,6 +224,7 @@ The Forecast lane's roles are defined now so that the Forecast view can plug in 
 - **FR-013**: Accounts, roles and sign-in settings MUST be reloaded from versioned configuration at every start of the sign-in service. Passwords and client secrets MUST come from a secret store, never from the repository.
 - **FR-014**: A user with no role, or a role not listed in FR-001, MUST see no data.
 - **FR-015**: The sign-in service MUST be the free open-source edition of Keycloak, with no paid subscription or paid add-on.
+- **FR-015a** (2026-11-23): Signing out MUST end the app session even when the sign-in service has restarted since sign-in (it keeps no database and makes new signing keys at each start, so the sign-out request carries no ID token hint) and MUST end on a page that offers a fresh sign-in. A sign-in that cannot complete (a stale or doubled sign-in page, an expired code) MUST clear the session and offer to sign in again, never a server error. The UI page MUST be revalidated on every load, so a deploy is seen at once.
 
 **Hosting and cost**
 
@@ -250,7 +251,7 @@ The Forecast lane's roles are defined now so that the Forecast view can plug in 
 
 **UAT tracking**
 
-- **FR-025**: The hosted app MUST record one UAT event per briefing: role, pseudonymous participant ID, question time, insight time (when the participant marks that they have what they need), server latency, approve or reject with reason, flagged claims, engine, engine version and data version. UAT events MUST NOT hold names, email addresses or other direct identifiers of participants, and MUST NOT identify an individual rep (B-VI). Recording MUST NOT use the eval package, and a failed recording MUST NOT stop the briefing from being served.
+- **FR-025**: The hosted app MUST record one UAT event per briefing: role, pseudonymous participant ID, question time, insight time (since 2026-11-23: the analyst's approve or reject decision; leaders have no decision, so their insight time is not measured, Michael), server latency, approve or reject with reason, flagged claims, engine, engine version and data version. UAT events MUST NOT hold names, email addresses or other direct identifiers of participants, and MUST NOT identify an individual rep (B-VI). Recording MUST NOT use the eval package, and a failed recording MUST NOT stop the briefing from being served.
 - **FR-026**: The owners MUST be able to import UAT events into the local MLflow store as a UAT experiment, separate from golden-set runs, reporting time to insight, approval rate, flagged-claim rate (the UAT accuracy measure), latency and cost by role and by engine.
 
 **Agent snapshots**

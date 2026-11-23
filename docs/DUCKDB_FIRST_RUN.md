@@ -65,7 +65,10 @@ Dates, counts, booleans, and numeric measures have explicit types. Empty source
 fields become SQL NULL. `market_basket.launch_date` stays text because its source
 also contains `BEFORE_*` sentinels. The manifest fingerprints the original bytes.
 
-Each import replaces the 14 raw tables and reporting views in one transaction.
+Each import replaces the 14 raw tables and reporting relations in one transaction. The
+reporting views in `sql/001_reporting_views.sql` are built, then each is stored as a table
+under the same `reporting.*` name (core-001 FR-003a), so reads take about 1 ms instead of
+recomputing the feed gate. After changing `raw` rows by hand, reload to refresh them.
 Rerunning the loader does not append duplicate source data. It adds a new audit
 run and 14 manifest entries; previous successful manifests remain available.
 Missing files, unexpected headers, invalid types, changing files during ingestion,

@@ -99,8 +99,8 @@ The analyst can type at any time: before a brief exists to start one, while one 
 
 ### Functional Requirements
 
-- **FR-001**: Analysts of the Briefing lane MUST have a message bar docked at the bottom of every Briefing screen, with up to three suggestion bubbles; leaders MUST NOT.
-- **FR-002**: On New briefing the bar MUST start an agent brief for the selected scope with the question as its focus; during a running brief it MUST queue the message; on a brief it MUST ask a follow-up.
+- **FR-001**: Analysts of the Briefing lane MUST have a message bar docked at the bottom of every Briefing screen, with up to three suggestion bubbles; leaders MUST NOT. *(2026-11-23: shown on New briefing, the plan and the brief; not on Overview, Approved briefings or How it works, except on an approved brief that is open. It stays pinned to the bottom of the screen.)*
+- **FR-002**: On New briefing the bar MUST start an agent brief for the selected scope with the question as its focus; during a running brief it MUST queue the message; on a brief it MUST ask a follow-up. *(Changed 2026-11-23, Michael: on New briefing the bar is the one question box. It reads the question and fills the form (brief-008 FR-008), and the question becomes the brief's question; it never starts a brief by itself. The analyst presses Generate briefing. The form's own question box is gone.)*
 - **FR-003**: A follow-up MUST be answered by one agent turn using only the governed tools; every number MUST be a claim token with its evidence attached to the answer; the no-digit rule applies.
 - **FR-004**: The scripted engine MUST answer follow-ups from the brief's claims and evidence only, and say so when a number is not there.
 - **FR-005**: Answers MUST cite section numbers that exist in the brief; each citation MUST link to its section.

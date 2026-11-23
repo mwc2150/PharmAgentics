@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from pharmagentics.api import feedback, rbac, store
+from pharmagentics.api import auth, feedback, rbac, store
 from pharmagentics.api.app import app
 
 ALL_USERS = ("dev-analyst", "dev-director", "dev-forecast-analyst", "dev-forecast-manager")
@@ -73,7 +73,7 @@ def test_pulse_is_stored_without_any_personal_detail(tmp_path):
     assert doc["rating"] == "bad" and doc["comment"] == "Slow after I clicked approve." and doc["where"] == "briefing"
     assert doc["user"] == rbac.pseudonym("dev-analyst") and doc["personas"] == ["P1"] and doc["roles"] == ["briefing-analyst"]
     text = json.dumps(doc)
-    assert "dev-analyst" not in text and "Dev Commercial" not in text  # no sign-in name, no display name
+    assert "dev-analyst" not in text and auth.DEV_USERS["dev-analyst"][0] not in text  # no sign-in name, no display name
 
 
 def test_the_last_rating_of_a_session_is_the_session_rating():

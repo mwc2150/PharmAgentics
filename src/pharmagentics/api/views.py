@@ -57,7 +57,7 @@ def executive_summary(answer: str, sections: list[dict] | None = None) -> str:
 
 
 LEADERSHIP_FIELDS = ("brief_id", "engine", "system", "brand_id", "territory_id", "week_start", "week_end",
-                     "data_version", "abstained", "review_status", "reviewed_at")
+                     "data_version", "abstained", "review_status", "reviewed_at", "definition", "definition_words")  # words, never args or SQL
 LEADERSHIP_SECTIONS = ("1", "2", "3", "4", "5", "6")  # §4 in short, §6 as the Assumptions; story subsections follow §3
 SECTION_FIELDS = ("number", "title", "text", "prose")  # allow-list: no claims, citations or evidence
 KPI_FIELDS, ROW_FIELDS, CARD_FIELDS = ("label", "value", "detail", "direction"), ("cells", "basis"), ("headline", "confidence", "drivers_checked", "territory", "direction", "drivers_supported", "drivers_ruled_out")
@@ -128,6 +128,8 @@ def leadership_sections(sections: list[dict] | None) -> list[dict] | None:
         cut = {k: s.get(k) for k in SECTION_FIELDS}
         cut.update(_blocks(s))
         cut["text"] = _leader_text(cut["text"] or "")
+        if (s.get("card") or {}).get("cut"):  # a plan cut card (brief-010 FR-001): a leader reads its headline, nothing under it
+            cut["text"], cut["prose"] = "", ""
         chart = s.get("chart")
         if chart:
             cut["chart"] = {k: chart.get(k) for k in CHART_FIELDS if k in chart}

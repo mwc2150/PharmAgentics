@@ -21,7 +21,7 @@ export type CaseTable = {
   units?: Record<string, "share" | "count" | "flag">  // scorer -> how to read it; absent: percent
 }
 export type Telemetry = {
-  exported: string | null; note: string; latest: TelemetryRun[]; runs: TelemetryRun[]
+  exported: string | null; note: string; targets?: Record<string, number>; latest: TelemetryRun[]; runs: TelemetryRun[]
   cases?: { generated: string | null; targets?: Record<string, number>; systems: CaseTable[] }
 }
 

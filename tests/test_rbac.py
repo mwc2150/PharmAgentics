@@ -216,14 +216,29 @@ def test_summary_keeps_caveats_and_drops_only_check_detail():
 def test_uat_events_are_pseudonymous(tmp_path):
     analyst = signed_in("dev-analyst")
     bid = run_brief(analyst)["brief_id"]
-    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
-    assert analyst.post("/api/uat/insight", json={"brief_id": bid, "view": "analyst"}).status_code == 204
+    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})  # the decision is the insight time
     events = [json.loads(p.read_text()) for p in (tmp_path / "events").rglob("*.json")]
     assert sorted(e["kind"] for e in events) == ["insight", "requested", "reviewed"]
+    assert next(e for e in events if e["kind"] == "insight")["view"] == "analyst"
     text = json.dumps(events)
-    assert "dev-analyst" not in text and "Dev Commercial Analyst" not in text
+    assert "dev-analyst" not in text and auth.DEV_USERS["dev-analyst"][0] not in text
     assert {e["user"] for e in events} == {rbac.pseudonym("dev-analyst")}
     assert next(e for e in events if e["kind"] == "requested")["latency_ms"] >= 0
+
+
+def test_only_the_first_decision_records_the_insight(tmp_path):
+    analyst = signed_in("dev-analyst")
+    bid = run_brief(analyst)["brief_id"]
+    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "rejected", "reason": "Wrong week."})
+    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
+    events = [json.loads(p.read_text()) for p in (tmp_path / "events").rglob("*.json")]
+    assert sum(e["kind"] == "insight" for e in events) == 1 and sum(e["kind"] == "reviewed" for e in events) == 2
+
+
+def test_insight_route_still_records_for_older_clients(tmp_path):
+    analyst = signed_in("dev-analyst")
+    bid = run_brief(analyst)["brief_id"]
+    assert analyst.post("/api/uat/insight", json={"brief_id": bid, "view": "analyst"}).status_code == 204
 
 
 def test_director_cannot_mark_insight_on_analyst_view():
@@ -280,7 +295,7 @@ def test_flow_and_triage_record_reach_the_analyst_only():
     plan = analyst.post("/api/briefing/triage", json=TRIAGE_Q).json()
     decision = {"plan_id": plan["plan_id"], "stories": ["territory:PACIFIC", "competitor:BXE"]}
     brief = analyst.post("/api/briefing/query", json={**TRIAGE_Q, "triage": decision}).json()
-    assert brief["triage"]["default"] is False and "Left out of this brief by the analyst: Mid-Atlantic." in brief["answer"]
+    assert brief["triage"]["default"] is False and "Left out of this brief by the analyst: Mid-Atlantic, Medicare Part D plan two in Mid-Atlantic." in brief["answer"]  # the plan cut card is a candidate too (brief-010 P)
     assert brief["flow"][-1]["states"] == ["IN_REVIEW"]
     approved = analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "approved"}).json()
     assert approved["flow"][-1]["states"] == ["IN_REVIEW", "PUBLISHED"]

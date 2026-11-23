@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from pharmagentics.tools.definition import Definition
 from pharmagentics.tools.window import Comparison
 
 
@@ -40,6 +41,7 @@ class BriefingQuery(BaseModel):
     week_end: date | None = None  # brief-008: the last week of a multi-week period; absent or equal = one week
     question: str = Field(default="What changed this week?", min_length=3, max_length=300)
     comparison: Comparison | None = None
+    definition: Definition | None = None  # brief-010: what the brief is built from; absent = the pre-selected values
     triage: TriageDecision | None = None  # brief-002: absent = the code plan, unchanged behavior
 
     @field_validator("week_start", "week_end")
@@ -53,6 +55,13 @@ class BriefingQuery(BaseModel):
     def last_week_not_before_first(self):
         if self.week_end is not None and self.week_end < self.week_start:
             raise ValueError("The last week comes before the first week")
+        d = self.definition
+        if d is not None and self.intent == "weekly_brief":
+            if d.first_week and d.first_week != self.week_start.isoformat():
+                raise ValueError("The definition's first week differs from the brief's week_start")
+            if d.last_week and d.last_week != (self.week_end or self.week_start).isoformat():
+                raise ValueError("The definition's last week differs from the brief's week_end")
+            # the top-level `comparison` carries the primary alone; when both are given the definition wins
         return self
 
 
@@ -72,6 +81,7 @@ class BriefingScope(BaseModel):
     territory_id: Territory | None = None  # None: the question names no territory, so the form keeps its choice
     comparison_weeks: int | None = Field(default=None, ge=1, le=13)  # None: no earlier week fits, so the default comparison applies
     promotion_review: bool = False
+    definition: Definition | None = None  # brief-010: the proposed brief definition (period and comparison filled; the analyst confirms)
     notes: list[str] = Field(default_factory=list)
     read_by: Literal["model", "rules"]
     model: str | None = None  # the model that read it, when read_by is "model"
@@ -80,6 +90,7 @@ class BriefingScope(BaseModel):
 class Claim(BaseModel):
     value: str
     evidence_id: str
+    labels: dict[str, Any] | None = None  # brief-010: the definition fields, grain and cut the claim was made under
 
 
 class Evidence(BaseModel):
@@ -103,6 +114,8 @@ class BriefingResult(BaseModel):
     week_start: date
     week_end: date | None = None  # brief-008: set only for a multi-week period
     comparison: Comparison | None = None
+    definition: Definition | None = None  # brief-010: the effective definition (weeks and comparison filled in)
+    definition_words: list[str] | None = None  # the same definition in plain sentences (both views)
     answer: str
     claims: list[Claim] = Field(default_factory=list)
     evidence: list[Evidence] = Field(default_factory=list)

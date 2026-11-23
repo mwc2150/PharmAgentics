@@ -29,6 +29,8 @@ Called once after the investigation and before `export_run`, so its claims are e
 | `bottom_line` | list[str] | §1 code lines in FR-021 order, least-sure by research R8 over the stories this session closed |
 | `next_checks` | list[str] | §5 lines, one per story closed, withheld cut and (if `competitor`) the Metacora story |
 
+brief-010 (packet P): an optional second argument `cuts: list[str]` (plan ids of the plan cut cards the brief keeps; default none) makes `memo_close` also return `cut_stories` (`{id: "cut:<plan>", territory, title, section}`, each built by code from the plan's figures and its territory's checks) and add each card to `story_cards` and its folded checks to `story_details`, both keyed by the story id.
+
 ## Agent tools
 
 Unchanged. `story_confidence` still returns "Next: …" to the agents; only the brief's text moves it to §5.
