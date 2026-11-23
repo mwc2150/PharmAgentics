@@ -107,7 +107,6 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
     </div>}
     {shownError && <p role="alert" className="mb-2 rounded-lg bg-amberbg px-3 py-2 text-xs text-amber">{shownError}</p>}
     {queued && <p role="status" className="mb-2 text-xs text-muted">Will ask when the brief is ready: “{queued}”</p>}
-    {form && <p className="mb-1.5 text-xs text-muted">Fills the weeks, territory, comparison and the other choices. You check them, then generate.</p>}
     {!readOnly && <form onSubmit={e => { e.preventDefault(); send(text) }} className="flex items-end gap-2 rounded-2xl border border-edge bg-sheet px-3 py-2 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-primary">
       {chip && <span className="mb-1 inline-flex shrink-0 items-center gap-1 rounded bg-primarybg px-2 py-1 font-mono text-[11px] text-primaryink">§{chip.number} {chip.title}
         <button type="button" aria-label="Remove the section" onClick={onClearChip} className="ml-1 text-muted hover:text-ink">×</button></span>}
@@ -121,5 +120,6 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
           <option value="scripted">Scripted</option><option value="agent">Agent</option></select></label>}
       <button type="submit" disabled={busy || readBusy || full || !text.trim()} className="rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-onprimary hover:bg-primaryhover disabled:opacity-40">{readBusy ? "Reading…" : busy ? (engine === "agent" && agentAvailable ? "Agent working…" : "Asking…") : form ? "Read" : "Send"}</button>
     </form>}
+    {form && !readOnly && <p className="mt-1.5 px-1 text-xs text-muted">Fills the weeks, territory, comparison and the other choices. You check them, then generate.</p>}
   </div>
 }
