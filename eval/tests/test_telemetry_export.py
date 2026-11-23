@@ -156,17 +156,6 @@ def test_run_carries_the_pooled_recalls_the_targets_use():
     assert "some_other_total" not in m  # only the named run-level scores, nothing else unaveraged
 
 
-def test_only_a_served_run_carries_its_mlflow_ids():
-    """The app links a run into the dashboard `eval ui` serves; a run from another worktree's store would not open there."""
-    from types import SimpleNamespace
-
-    from eval.harness.telemetry_export import _run
-    run = SimpleNamespace(info=SimpleNamespace(run_id="abcdef0123456789", experiment_id="7", start_time=0, end_time=None),
-                          data=SimpleNamespace(params={"system": "briefing_scripted"}, tags={}, metrics={}))
-    assert "mlflow" not in _run(run)
-    assert _run(run, served=True)["mlflow"] == {"experiment_id": "7", "run_id": "abcdef0123456789"}
-
-
 def test_a_mistyped_store_fails_instead_of_creating_an_empty_one(tmp_path):
     import pytest
 

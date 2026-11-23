@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import logging
 import math
-import os
 import threading
 import time
 from collections import Counter
@@ -189,8 +188,7 @@ def _signed_in(p: rbac.Principal) -> set[str]:
 def telemetry(response: Response, p: rbac.Principal = Depends(rbac.require_user)) -> dict:
     lanes = _signed_in(p)
     response.headers["Cache-Control"] = "no-store"
-    # A local MLflow dashboard (`python -m eval ui`) to link runs to; unset on the hosted app, which has none.
-    return {**for_lanes(snapshot(), lanes, case_lanes(p)), "mlflow_url": os.environ.get("PHARMAGENTICS_MLFLOW_URL", "").rstrip("/") or None}
+    return for_lanes(snapshot(), lanes, case_lanes(p))
 
 
 @router.get("/telemetry/usage")

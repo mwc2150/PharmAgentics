@@ -46,11 +46,7 @@
     "run_errors": 0.0,
     "sections_exist": 1.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "26f760c10cde448483c2494bc5945121"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "6f62d72a",
@@ -130,10 +126,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.315
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "9f24a4ec38da4939b2abb55125d245ca"
    }
   },
   {
@@ -160,11 +152,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "e8efe624624a47dfb70bb88dfb64cc92"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "6d10bfa0",
@@ -188,10 +176,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.2967
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "6d10bfa0fdd64195b9b48a0a19e99d9f"
    }
   },
   {
@@ -216,10 +200,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 1.0
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "f5bcd46e0e184c48959a1bee60a551ed"
    }
   }
  ],
@@ -263,11 +243,7 @@
     "run_errors": 0.0,
     "sections_exist": 1.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "26f760c10cde448483c2494bc5945121"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "1adaa0e7",
@@ -308,11 +284,7 @@
     "run_errors": 0.0,
     "sections_exist": 1.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "1adaa0e72c5d415f9fd53a9625e8b940"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "6f62d72a",
@@ -1482,11 +1454,7 @@
     "seconds": 31.1125,
     "tool_calls": 3.9167
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "d5920215b6ff4b89af6935365d095bbb"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "4cf9edfc",
@@ -1517,11 +1485,7 @@
     "seconds": 52.3292,
     "tool_calls": 2.9167
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "4cf9edfc1f004e059abb7b19b36fcda7"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "08364597",
@@ -1552,11 +1516,7 @@
     "seconds": 50.1,
     "tool_calls": 2.9167
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "08364597fd9543d1ad95477c7cae508a"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "e994d094",
@@ -1587,11 +1547,7 @@
     "seconds": 43.6625,
     "tool_calls": 2.5
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "e994d094d9b34d8f86c1efd873a8ab9d"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "ba764209",
@@ -1617,11 +1573,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "ba76420932c34ddf9c020f685c25b5a0"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "3de6fe53",
@@ -1647,11 +1599,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "3de6fe53d21d487e8c8711f0636d74b8"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "9f24a4ec",
@@ -1684,10 +1632,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.315
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "9f24a4ec38da4939b2abb55125d245ca"
    }
   },
   {
@@ -1721,10 +1665,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.45
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "f370f7a7cd894943b28ce72c645270bb"
    }
   },
   {
@@ -1753,10 +1693,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.63
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "6eb8a9a0af9d4ea2887e52e6f62173c1"
    }
   },
   {
@@ -1788,11 +1724,7 @@
     "seconds": 112.1708,
     "tool_calls": 6.5833
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "0cd14c5f4266433ebd60726c539db43a"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "f1b62f86",
@@ -1825,10 +1757,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.6183
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "f1b62f863bf947afa616e2e98ff85e18"
    }
   },
   {
@@ -1857,10 +1785,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.6067
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "6370cef79ad641b1abe9bce52ca4b3f5"
    }
   },
   {
@@ -1887,11 +1811,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "c58f99fc6e09496a817fbf7632c2f72b"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "58063559",
@@ -1922,11 +1842,7 @@
     "seconds": 97.7083,
     "tool_calls": 6.625
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "580635598fec4b3b80f87442cfd87eae"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "6608d416",
@@ -1952,11 +1868,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "6608d416dae849cb9ec315c8360760d6"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "fdd95301",
@@ -1987,11 +1899,7 @@
     "seconds": 112.5,
     "tool_calls": 5.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "fdd953010b38457a89dd600114b8431c"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "e8efe624",
@@ -2017,11 +1925,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "e8efe624624a47dfb70bb88dfb64cc92"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "8c01a9c5",
@@ -2047,11 +1951,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "8c01a9c53a4d4cbaa5563a600f5c4067"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "5979b05b",
@@ -2077,11 +1977,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "5979b05b2a384124a5b1dead3a286f47"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "6e12b028",
@@ -2107,11 +2003,7 @@
     "numbers_traced": 1.0,
     "run_errors": 0.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "6e12b0282f9e4482b894b6134114363e"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "3c78235b",
@@ -2136,11 +2028,7 @@
     "numbers_match_golden": 1.0,
     "numbers_traced": 1.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "3c78235b159f411da88bc3c23b13f607"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "6d10bfa0",
@@ -2164,10 +2052,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 0.2967
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "6d10bfa0fdd64195b9b48a0a19e99d9f"
    }
   },
   {
@@ -2192,10 +2076,6 @@
    },
    "judge_metrics": {
     "judge_factual_correctness": 1.0
-   },
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "f5bcd46e0e184c48959a1bee60a551ed"
    }
   },
   {
@@ -2218,11 +2098,7 @@
     "no_individual_rep": 1.0,
     "numbers_match_golden": 0.5556
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "35600a0c39064cb4a7ad8df753b7ce05"
-   }
+   "judge_metrics": {}
   },
   {
    "run_id": "b0c9b10d",
@@ -2244,11 +2120,7 @@
     "no_individual_rep": 1.0,
     "numbers_match_golden": 1.0
    },
-   "judge_metrics": {},
-   "mlflow": {
-    "experiment_id": "1",
-    "run_id": "b0c9b10d57fb4866a77014a465409a45"
-   }
+   "judge_metrics": {}
   }
  ],
  "cases": {

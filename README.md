@@ -70,7 +70,7 @@ Both are at or above the targets. The Haiku run missed one finding, the plan cut
 - New report-only scores: key-fact recall, finding recall, false drivers, must-say phrases, scope match and brief length. Pooled recall counts crashed cases as misses.
 - `eval insights` compares a run with the last clean one and lists what fell below target.
 - The golden cases were aligned to the comparisons the app uses, and key facts and findings were drafted for the Briefing cases. They are marked `reviewed: false` until Michael reviews them.
-- The Evaluation page shows a per-case table, the key facts and findings found in the newest runs, and plain model names. "Open in MLflow" links appear when a local MLflow URL is configured.
+- The Evaluation page shows a per-case table, the key facts and findings found in the newest runs, and plain model names.
 
 ### Web app
 

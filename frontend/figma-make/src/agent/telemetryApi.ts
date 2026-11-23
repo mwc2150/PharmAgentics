@@ -5,7 +5,6 @@ export type TelemetryRun = {
   run_id: string; started: string; minutes: number | null; system: string; model: string | null; lane: string
   control: boolean; cases: number; reruns: number; judge: string; code_version: string; data_version: string
   metrics: Record<string, number>; judge_metrics: Record<string, number>
-  mlflow?: { experiment_id: string; run_id: string }  // only for runs in the store the local MLflow dashboard serves
 }
 // Per-case table (core-011 FR-009): ids, labels, scores and marks only. The server sends it to analysts and the test login.
 export type CaseRow = {
@@ -24,7 +23,6 @@ export type CaseTable = {
 export type Telemetry = {
   exported: string | null; note: string; targets?: Record<string, number>; latest: TelemetryRun[]; runs: TelemetryRun[]
   cases?: { generated: string | null; targets?: Record<string, number>; systems: CaseTable[] }
-  mlflow_url?: string | null  // a local MLflow dashboard, when the server is configured with one
 }
 
 export type Spread = { n: number; p50: number | null; p95: number | null } | null
