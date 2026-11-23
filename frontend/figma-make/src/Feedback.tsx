@@ -1,7 +1,8 @@
-// UAT feedback (core-008): under every generated answer, thumbs up or down and the session rating
-// (good, fine, bad); and the platform questionnaire, opened from the sidebar or the account menu.
+// UAT feedback (core-008): for every generated answer, thumbs up or down and then the session rating
+// (good, fine, bad), one question at a time in a card on top of the question bar; and the platform questionnaire, opened from the sidebar or the account menu.
 // The server stores everything under a pseudonymous ID; this file only collects it and shows what has been given.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { toast } from "sonner"
 import { Icon, Notice } from "./agent/primitives"
 import {
@@ -17,7 +18,7 @@ const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border bo
 const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink"
 const CLOSE = "grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"
 const LABEL: Record<Rating, string> = { good: "Good", fine: "Fine", bad: "Bad" }
-const TONE: Record<Rating, string> = { good: "text-ok", fine: "text-muted", bad: "text-neg" }
+const TONE: Record<Rating, string> = { good: "text-ok", fine: "text-amber", bad: "text-neg" }
 const RATINGS: Rating[] = ["good", "fine", "bad"]
 
 function Face({ kind, className = "h-5 w-5" }: { kind: Rating; className?: string }) {
@@ -81,103 +82,120 @@ export function ShareFeedbackLink({ expanded, onOpen }: { expanded: boolean; onO
   </button>
 }
 
-// --- under one answer: the mistakes notice, thumbs up or down, and the session rating -------------
+// --- feedback on one answer: a small card on top of the question bar -------------------------------
+// Two steps, one at a time: "Was this answer right?" (thumbs, then an optional note); then, for an agent answer
+// when the session has no rating yet, "How is the agent team working for you this session?" (good, fine, bad,
+// then an optional note). The card closes when both are done, or when it is dismissed. The mistakes notice is
+// not repeated here: the page footer carries it.
+
+// Where the card goes: the Weekly briefing puts a slot directly above its question bar. With no slot (a page
+// without the bar) the card floats at the bottom of the window instead.
+const DockSlot = createContext<HTMLElement | null>(null)
+export function FeedbackDock({ slot, children }: { slot: HTMLElement | null; children: ReactNode }) {
+  return <DockSlot.Provider value={slot}>{children}</DockSlot.Provider>
+}
+const dismissed = new Set<string>()  // answers whose card was closed in this tab; reopening the answer does not bring it back
 
 const THUMB = "M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"
 function Thumb({ down = false }: { down?: boolean }) {
   return <svg viewBox="0 0 24 24" className={`h-4 w-4 ${down ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={THUMB} /></svg>
 }
+const THUMB_BTN = "grid h-9 w-9 place-items-center rounded-lg border border-edge text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-60"
+const CHOICE = "flex items-center gap-1.5 rounded-lg border border-edge px-3 py-2 text-xs font-medium text-ink transition-colors hover:bg-paper disabled:opacity-60"
 
-export function AnswerFeedback({ lane, refId, view, agent = false }: { lane: AnswerLane; refId: string; view: AnswerView; agent?: boolean }) {
+// "voted": a vote was already given (an earlier visit); the next step depends on the session rating.
+type Step = "loading" | "vote" | "vote-note" | "voted" | "session" | "session-note" | "done"
+
+export function AnswerFeedback({ lane, refId, view, agent = false, inline = false }: { lane: AnswerLane; refId: string; view: AnswerView; agent?: boolean; inline?: boolean }) {
+  const f = useFeedback()
+  const slot = useContext(DockSlot)
+  const key = `${lane}|${refId}|${view}`
+  const [step, setStep] = useState<Step>("loading")
   const [vote, setVote] = useState<Vote | null>(null)
-  const [comment, setComment] = useState("")
-  const [saved, setSaved] = useState("")
+  const [note, setNote] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The session question: only for an agent answer, once per session, and only when the feedback service answers.
+  const wantsSession = agent && !!f.status && !f.status.pulse
+  const next: Step = wantsSession ? "session" : "done"
   useEffect(() => {
     let live = true
-    setVote(null); setComment(""); setSaved(""); setError(null)
-    getMyVote(lane, refId, view).then(v => { if (live) { setVote(v.vote); setComment(v.comment ?? ""); setSaved(v.comment ?? "") } })
-      .catch(() => { /* showing an earlier vote is a convenience; voting still reports its own errors */ })
+    setVote(null); setNote(""); setError(null)
+    if (dismissed.has(key)) { setStep("done"); return }
+    setStep("loading")
+    getMyVote(lane, refId, view)
+      .then(v => { if (live) { setVote(v.vote); setStep(v.vote ? "voted" : "vote") } })
+      .catch(() => { if (live) setStep("vote") })  // an earlier vote is a convenience; voting reports its own errors
     return () => { live = false }
-  }, [lane, refId, view])
-  const send = async (v: Vote, note: string) => {
-    setBusy(true); setError(null)
-    try {
-      const r = await sendVote({ lane, ref: refId, view, vote: v, comment: note.trim() || undefined })
-      setVote(r.vote); setSaved(r.comment ?? ""); setComment(r.comment ?? "")
-      toast.success(note.trim() ? "Comment saved. Thank you." : "Thanks for rating this answer.")
-    }
-    catch (e) { setError(message(e)) }
-    finally { setBusy(false) }
-  }
-  const thumb = (v: Vote) => `grid h-10 w-10 place-items-center rounded-lg border transition-colors disabled:cursor-default ${vote === v ? "border-primary bg-primary text-onprimary" : "border-edge text-muted hover:bg-paper hover:text-ink disabled:opacity-60"}`
-  const noted = vote !== null && saved === comment.trim() && saved !== ""
-  return <div className="pa-panel space-y-3 rounded-xl border border-rule bg-sheet px-5 py-4">
-    <p className="text-xs text-muted">PharmAgentics can make mistakes. Check important figures {view === "leadership" ? "with the Commercial Analyst" : "against the evidence"}.</p>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-3">
-      <span className="text-sm text-ink">{vote ? "Thanks for rating this answer" : "Was this answer right?"}</span>
-      <div role="group" aria-label="Rate this answer" className="flex items-center gap-2">
-        <button type="button" aria-pressed={vote === "up"} aria-label="Thumbs up" title="Good answer" disabled={busy || vote === "up"} onClick={() => void send("up", "")} className={thumb("up")}><Thumb /></button>
-        <button type="button" aria-pressed={vote === "down"} aria-label="Thumbs down" title="Something is wrong" disabled={busy || vote === "down"} onClick={() => void send("down", "")} className={thumb("down")}><Thumb down /></button>
-      </div>
-    </div>
-    {vote && <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-      <label className="sr-only" htmlFor={`vote-note-${refId}-${view}`}>{vote === "down" ? "What was wrong?" : "What worked?"}</label>
-      <textarea id={`vote-note-${refId}-${view}`} value={comment} onChange={e => setComment(e.target.value)} maxLength={500} rows={2}
-        placeholder={vote === "down" ? "What was wrong? (optional, no names please)" : "What worked? (optional, no names please)"}
-        className={`${FIELD} flex-1`} />
-      <button type="button" disabled={busy || noted || !comment.trim()} onClick={() => void send(vote, comment)}
-        className={BTN2}>{noted ? "Comment saved" : "Send comment"}</button>
-    </div>}
-    {error && <p role="alert" className="text-xs text-neg">{error}</p>}
-    {agent && <SessionRating refId={refId} />}
-  </div>
-}
+  }, [lane, refId, view, key])
+  const step_ = step === "voted" ? next : step
 
-// How the session is going, asked next to the work it is about (core-008 FR-003). Shrinks once given.
-function SessionRating({ refId }: { refId: string }) {
-  const f = useFeedback()
-  const current = f.status?.pulse?.rating ?? null
-  const [editing, setEditing] = useState(false)
-  const [comment, setComment] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  if (!f.status) return null  // the feedback service is unavailable: say nothing rather than offer a broken control
-  const send = async (rating: Rating, note?: string) => {
+  const close = () => { dismissed.add(key); setStep("done") }
+  const finish = (s: Step) => { setNote(""); if (s === "done") dismissed.add(key); setStep(s) }
+  const sendAnswerVote = async (v: Vote, text = "") => {
     setBusy(true); setError(null)
     try {
-      f.setPulse(await sendPulse({ rating, comment: note?.trim() || undefined, where: f.where, ref: refId }))
-      toast.success(note?.trim() ? "Note saved. Thank you." : `Session rated ${LABEL[rating].toLowerCase()}. Thank you.`)
-      if (note) { setComment(""); setEditing(false) }
+      const r = await sendVote({ lane, ref: refId, view, vote: v, comment: text.trim() || undefined })
+      setVote(r.vote)
+      if (text.trim()) { toast.success("Thanks for the note."); finish(next) } else setStep("vote-note")
     }
     catch (e) { setError(message(e)) }
     finally { setBusy(false) }
   }
-  if (current && !editing) return <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-3 text-xs text-muted">
-    <span className="flex items-center gap-1.5"><Face kind={current} className={`h-4 w-4 ${TONE[current]}`} />This session: <span className="text-ink">{LABEL[current]}</span></span>
-    <button type="button" onClick={() => setEditing(true)} className="text-primaryink underline underline-offset-4 hover:no-underline">Change or add a note</button>
-  </div>
-  return <div className="space-y-2 border-t border-rule pt-3">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <span className="text-sm text-ink">How is the agent team working for you this session?</span>
-      <div role="radiogroup" aria-label="Session rating" className="flex gap-1.5">
-        {RATINGS.map(r => <button key={r} type="button" role="radio" aria-checked={current === r} disabled={busy} onClick={() => void send(r)}
-          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors disabled:opacity-60 ${current === r ? "border-primary bg-primary text-onprimary" : "border-edge text-ink hover:bg-paper"}`}>
-          <Face kind={r} className={`h-4 w-4 ${current === r ? "" : TONE[r]}`} />{LABEL[r]}</button>)}
+  const sendRating = async (rating: Rating, text = "") => {
+    setBusy(true); setError(null)
+    try {
+      f.setPulse(await sendPulse({ rating, comment: text.trim() || undefined, where: f.where, ref: refId }))
+      if (text.trim()) { toast.success("Thanks for the note."); finish("done") } else setStep("session-note")
+    }
+    catch (e) { setError(message(e)) }
+    finally { setBusy(false) }
+  }
+  if (step_ === "loading" || step_ === "done") return null
+
+  const rating = f.status?.pulse?.rating ?? null
+  const row = "flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+  const closeBtn = <button type="button" onClick={close} aria-label="Close feedback" title="Not now" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-4 w-4"/></button>
+  const noteStep = (label: string, onSend: () => void, skip: Step) => <div className="space-y-2">
+    <div className={row}><label htmlFor={`fb-note-${key}`} className="text-sm text-ink">{label} <span className="text-muted">(optional)</span></label>{closeBtn}</div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+      <textarea id={`fb-note-${key}`} autoFocus value={note} onChange={e => setNote(e.target.value)} maxLength={step_ === "vote-note" ? 500 : 300} rows={1}
+        placeholder="No names, please" className={`${FIELD} flex-1 resize-y`} />
+      <div className="flex shrink-0 gap-2">
+        <button type="button" disabled={busy || !note.trim()} onClick={onSend} className={BTN2}>Send</button>
+        <button type="button" disabled={busy} onClick={() => finish(skip)} className="rounded-lg px-3 py-2 text-sm text-muted hover:text-ink">{skip === "done" ? "Done" : "Next"}</button>
       </div>
     </div>
-    {current && <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-      <label className="sr-only" htmlFor={`pulse-note-${refId}`}>{current === "good" ? "What is working?" : "What happened?"}</label>
-      <textarea id={`pulse-note-${refId}`} value={comment} onChange={e => setComment(e.target.value)} maxLength={300} rows={2}
-        placeholder={current === "good" ? "What is working? (optional)" : "What happened? (optional)"} className={`${FIELD} flex-1`} />
-      <div className="flex gap-2">
-        <button type="button" disabled={busy || !comment.trim()} onClick={() => void send(current, comment)} className={BTN2}>Send note</button>
-        <button type="button" onClick={() => setEditing(false)} className="rounded-lg px-3 py-2 text-sm text-muted hover:text-ink">Done</button>
+  </div>
+
+  const body = <div role="region" aria-label="Feedback on this answer" className={`pa-rise rounded-xl border border-rule bg-sheet px-4 py-3 ${inline ? "" : "shadow-[0_10px_30px_rgba(0,0,0,0.45)]"}`}>
+    {step_ === "vote" && <div className={row}>
+      <span className="text-sm text-ink">Was this answer right?</span>
+      <div className="flex items-center gap-2">
+        <div role="group" aria-label="Rate this answer" className="flex items-center gap-2">
+          <button type="button" aria-label="Thumbs up" title="Right" disabled={busy} onClick={() => void sendAnswerVote("up")} className={THUMB_BTN}><Thumb /></button>
+          <button type="button" aria-label="Thumbs down" title="Something is wrong" disabled={busy} onClick={() => void sendAnswerVote("down")} className={THUMB_BTN}><Thumb down /></button>
+        </div>
+        {closeBtn}
       </div>
     </div>}
-    {error && <p role="alert" className="text-xs text-neg">{error}</p>}
+    {step_ === "vote-note" && noteStep(vote === "down" ? "Thanks. What was wrong?" : "Thanks. What worked?", () => void sendAnswerVote(vote ?? "up", note), next)}
+    {step_ === "session" && <div className={row}>
+      <span className="text-sm text-ink">How is the agent team working for you this session?</span>
+      <div className="flex items-center gap-2">
+        <div role="group" aria-label="Session rating" className="flex gap-1.5">
+          {RATINGS.map(r => <button key={r} type="button" disabled={busy} onClick={() => void sendRating(r)} className={CHOICE}>
+            <Face kind={r} className={`h-4 w-4 ${TONE[r]}`} />{LABEL[r]}</button>)}
+        </div>
+        {closeBtn}
+      </div>
+    </div>}
+    {step_ === "session-note" && rating && noteStep(rating === "good" ? "Thanks. What is working?" : "Thanks. What happened?", () => void sendRating(rating, note), "done")}
+    {error && <p role="alert" className="mt-2 text-xs text-neg">{error}</p>}
   </div>
+  if (inline) return body
+  if (slot) return createPortal(<div className="pb-2">{body}</div>, slot)
+  return <div className="pa-noprint sticky bottom-4 z-20">{body}</div>
 }
 
 // --- a suggestion for the platform (FR-018) ---------------------------------------------------------
