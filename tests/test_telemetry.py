@@ -10,7 +10,7 @@ from pharmagentics.api import feedback, jobs, rbac, store, telemetry
 from pharmagentics.api.app import app
 
 SNAPSHOT_FIELDS = {"run_id", "started", "minutes", "system", "model", "lane", "control", "cases", "reruns", "judge",
-                   "code_version", "data_version", "metrics", "judge_metrics"}
+                   "code_version", "data_version", "metrics", "judge_metrics", "mlflow"}
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +46,14 @@ def test_bundled_snapshot_holds_scores_only():
     for r in json.loads(telemetry.FILE.read_text(encoding="utf-8"))["runs"]:
         assert set(r) <= SNAPSHOT_FIELDS
         assert all(isinstance(v, (int, float)) for v in {**r["metrics"], **r["judge_metrics"]}.values())
+        if "mlflow" in r:  # ids to link the run in a local MLflow dashboard, nothing else
+            assert set(r["mlflow"]) == {"experiment_id", "run_id"} and r["mlflow"]["run_id"].startswith(r["run_id"])
+
+
+def test_mlflow_link_base_comes_from_the_server_setting(monkeypatch):
+    assert signed_in("dev-analyst").get("/api/telemetry").json()["mlflow_url"] is None
+    monkeypatch.setenv("PHARMAGENTICS_MLFLOW_URL", "http://127.0.0.1:5000/")
+    assert signed_in("dev-analyst").get("/api/telemetry").json()["mlflow_url"] == "http://127.0.0.1:5000"
 
 
 @pytest.mark.parametrize("values, q, expected", [([5], 0.5, 5), ([1, 2, 3, 4], 0.5, 2), ([1, 2, 3, 4], 0.95, 4),

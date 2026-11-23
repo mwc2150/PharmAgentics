@@ -172,8 +172,15 @@ function PerCase({ tables, targets }: { tables: CaseTable[], targets?: Record<st
   </>
 }
 
+// A link out to the MLflow dashboard: a new tab, marked as leaving the app.
+function MlflowLink({ href, children }: { href: string, children: ReactNode }) {
+  return <a href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-primaryink underline-offset-4 hover:underline">
+    {children}<svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg><span className="sr-only"> (opens in a new tab)</span></a>
+}
+const runHref = (base: string | null | undefined, r: TelemetryRun) => base && r.mlflow ? `${base}/#/experiments/${r.mlflow.experiment_id}/runs/${r.mlflow.run_id}` : null
+
 const COLS = "sm:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem]"
-function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<string, number> }) {
+function Scores({ runs, targets, mlflow }: { runs: TelemetryRun[], targets?: Record<string, number>, mlflow?: string | null }) {
   const cell = (v: number | undefined) => (v != null ? pct(v) : "–")
   const t = (k: string) => targets?.[k] != null ? ` (target ${pct(targets[k])})` : ""
   return <section className={PANEL}>
@@ -193,7 +200,7 @@ function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<stri
           <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile)}</span>
         </summary>
         <div className="px-5 pb-4">
-          <p className="mb-2 text-xs text-muted">{r.cases} questions · {r.reruns} rerun{r.reruns > 1 ? "s" : ""}{r.minutes != null ? ` · ${r.minutes} min` : ""} · run {r.run_id} · code {r.code_version || "n/a"} · data {r.data_version || "n/a"}</p>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><p className="text-xs text-muted">{r.cases} questions · {r.reruns} rerun{r.reruns > 1 ? "s" : ""}{r.minutes != null ? ` · ${r.minutes} min` : ""} · run {r.run_id} · code {r.code_version || "n/a"} · data {r.data_version || "n/a"}</p>{runHref(mlflow, r) && <MlflowLink href={runHref(mlflow, r)!}>Open in MLflow</MlflowLink>}</div>
           <Rows rows={Object.entries(r.metrics).map(([k, v]) => [label(k), runValue(k, v)])}/>
           {!!Object.keys(r.judge_metrics).length && <p className="mt-3 text-xs text-muted">Judge scores (report only): {Object.entries(r.judge_metrics).map(([k, v]) => `${label(k)} ${pct(v)}`).join(" · ")}</p>}
         </div>
@@ -232,15 +239,16 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
     {u && <InUse u={u}/>}
     {t && <>
       <Heading title="Golden-set scores" note={<>{t.exported ? `Exported ${when(t.exported)}. ` : ""}{t.note}{lead ? ` Latest: ${name(lead)}, ${when(lead.started)}.` : ""}{t.targets ? ` Targets: key facts found ${pct(t.targets.key_fact_recall ?? 0)}, findings found ${pct(t.targets.finding_recall ?? 0)}, over all golden questions together.` : ""} Select a row for every score.</>}/>
-      <Scores runs={t.latest.filter(r => !r.control)} targets={t.targets}/>
-      {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)} targets={t.targets}/></>}
+      {t.mlflow_url && <p className="-mt-2"><MlflowLink href={t.mlflow_url}>Open the MLflow dashboard</MlflowLink></p>}
+      <Scores runs={t.latest.filter(r => !r.control)} targets={t.targets} mlflow={t.mlflow_url}/>
+      {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)} targets={t.targets} mlflow={t.mlflow_url}/></>}
       {!!t.cases?.systems.length && <PerCase tables={t.cases.systems} targets={t.cases.targets}/>}
       {!!t.runs.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">All runs ({t.runs.length})</summary>
         <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
-          <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Key facts found</th><th className="pr-4 font-medium">Findings found</th><th className="pr-4 font-medium">Number recall</th><th className="font-medium">Claims reconcile</th></tr></thead>
+          <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Key facts found</th><th className="pr-4 font-medium">Findings found</th><th className="pr-4 font-medium">Number recall</th><th className="pr-4 font-medium">Claims reconcile</th>{t.mlflow_url && <th className="font-medium"><span className="sr-only">MLflow</span></th>}</tr></thead>
           <tbody>{t.runs.map(r => <tr key={r.run_id} className="border-t border-rule"><td className="py-1 pr-4 tabular-nums">{when(r.started)}</td><td className="pr-4">{name(r)}</td><td className="pr-4">{LANES[r.lane] ?? r.lane}</td>
             <td className="pr-4 tabular-nums">{keyFacts(r.metrics) != null ? pct(keyFacts(r.metrics)) : "–"}</td><td className="pr-4 tabular-nums">{findings(r.metrics) != null ? pct(findings(r.metrics)) : "–"}</td>
-            <td className="pr-4 tabular-nums">{r.metrics.golden_number_recall != null ? pct(r.metrics.golden_number_recall) : "–"}</td><td className="tabular-nums">{r.metrics.claims_reconcile != null ? pct(r.metrics.claims_reconcile) : "–"}</td></tr>)}</tbody>
+            <td className="pr-4 tabular-nums">{r.metrics.golden_number_recall != null ? pct(r.metrics.golden_number_recall) : "–"}</td><td className="pr-4 tabular-nums">{r.metrics.claims_reconcile != null ? pct(r.metrics.claims_reconcile) : "–"}</td>{t.mlflow_url && <td>{runHref(t.mlflow_url, r) && <MlflowLink href={runHref(t.mlflow_url, r)!}>MLflow</MlflowLink>}</td>}</tr>)}</tbody>
         </table></div></details>}
     </>}
     <ForecastDriverRecovery/>

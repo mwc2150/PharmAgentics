@@ -30,7 +30,8 @@ MAX_RUNS = 60
 RUN_LEVEL = ("key_fact_recall_pooled", "finding_recall_pooled", "key_fact_target_met", "finding_target_met", "over_word_budget")
 
 
-def _run(r) -> dict:
+def _run(r, served: bool = False) -> dict:
+    """`served`: the run is in the store `python -m eval ui` serves, so the app may link to it there."""
     p, t = r.data.params, r.data.tags
     metrics = {k.removesuffix("/mean"): round(v, 4) for k, v in sorted(r.data.metrics.items())
                if k.endswith("/mean") or k in RUN_LEVEL}
@@ -45,6 +46,7 @@ def _run(r) -> dict:
         "code_version": p.get("code_version", "")[:12], "data_version": p.get("data_version", "")[:12],
         "metrics": {k: v for k, v in metrics.items() if not any(h in k.lower() for h in JUDGE_HINTS)},
         "judge_metrics": {k: v for k, v in metrics.items() if any(h in k.lower() for h in JUDGE_HINTS)},
+        **({"mlflow": {"experiment_id": r.info.experiment_id, "run_id": r.info.run_id}} if served else {}),
     }
 
 
@@ -131,14 +133,17 @@ def export(out: Path = OUT, uri: str | None = None, insights: dict | None = None
     if uri or not uris:
         uris.insert(0, uri or tracking_uri())
     mlflow.set_tracking_uri(uris[0])
-    seen, runs = set(), []
+    home = _store_for(tracking_uri())
+    home = home.resolve() if home else None
+    served, runs = set(), {}
     for u in uris:
+        store = _store_for(u)
         for r in _finished_runs(u):
-            if r.info.run_id not in seen:
-                seen.add(r.info.run_id)
-                runs.append(r)
-    runs.sort(key=lambda r: r.info.start_time, reverse=True)
-    parents = [_run(r) for r in runs if "mlflow.parentRunId" not in r.data.tags][:MAX_RUNS]
+            runs.setdefault(r.info.run_id, r)
+            if home is not None and store is not None and store.resolve() == home:
+                served.add(r.info.run_id)
+    ordered = sorted(runs.values(), key=lambda r: r.info.start_time, reverse=True)
+    parents = [_run(r, r.info.run_id in served) for r in ordered if "mlflow.parentRunId" not in r.data.tags][:MAX_RUNS]
     latest: dict[str, dict] = {}
     for r in parents:  # newest first, so the first per (system, lane) is the latest
         latest.setdefault(f"{r['system']}|{r['lane']}", r)

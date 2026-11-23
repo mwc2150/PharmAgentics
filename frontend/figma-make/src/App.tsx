@@ -13,6 +13,7 @@ import { DEFAULT_CHOICES, DefinitionPicker, choicesError, type DefinitionChoices
 import { MessageBar, type Chip } from "./MessageBar"
 import { sharedFromLocation } from "./agent/threadApi"
 import { AnswerFeedback, FeedbackDock, FeedbackProvider, ShareFeedbackLink, useFeedbackActions } from "./Feedback"
+import { ApprovedNewsProvider, NewDot, isNewer, useApprovedNews } from "./ApprovedNews"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -267,6 +268,7 @@ let pendingRun: string | null = null     // a run to open when the workbench mou
 const KIND_LABEL: Record<string, string> = { run: "investigation", rerun: "rerun", weekly: "week by week", explain: "explanation", chart: "chart", drill: "where the gap sits" }
 
 function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string, analyst: boolean, canPreview: boolean, onBack: () => void, onOpenRun: (runId: string) => void}) {
+  const news = useApprovedNews()
   const [r,setR] = useState<ReportView | null>(null)
   const [runs,setRuns] = useState<ForecastSummary[]>([])
   const [addRun,setAddRun] = useState("")
@@ -311,7 +313,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <button disabled={busy || !note.trim()} onClick={()=>void act(()=>reviewReport(id, "rejected", note))} className={BTN2}>Reject</button>
         <button disabled={busy || !note.trim()} onClick={()=>void act(()=>reviewReport(id, "returned", note))} className={BTN2}>Return</button>
-        <button disabled={busy} onClick={()=>void act(()=>reviewReport(id, "approved", note))} className={BTN}>Approve</button>
+        <button disabled={busy} onClick={()=>void act(async()=>{ const v = await reviewReport(id, "approved", note); news.markSeen("forecast", v.reviewed_at); return v })} className={BTN}>Approve</button>
       </div>
     </section>}
   </div>
@@ -346,12 +348,14 @@ function ForecastReports({me, onOpenRun, approvedOnly=false}: {me: Me, onOpenRun
   const [rows,setRows] = useState<ReportSummary[] | null>(null)
   const [open,setOpen] = useState<string | null>(()=>{ const p = pendingReport; pendingReport = null; return p })
   const [error,setError] = useState<string | null>(null)
-  useEffect(()=>{ if (!open) listReports().then(rs=>setRows(approvedOnly ? rs.filter(x=>x.review_status === "approved") : rs)).catch(e=>setError(message(e))) }, [open, approvedOnly])
+  const news = useApprovedNews()
+  const [since] = useState(()=>news.seen("forecast"))
+  useEffect(()=>{ if (!open) listReports().then(rs=>{ const shown = approvedOnly ? rs.filter(x=>x.review_status === "approved") : rs; setRows(shown); if (approvedOnly) for (const x of shown) news.markSeen("forecast", x.reviewed_at) }).catch(e=>setError(message(e))) }, [open, approvedOnly])  // eslint-disable-line react-hooks/exhaustive-deps
   if (open) return <ReportEditor id={open} analyst={analyst} canPreview={canPreview} onBack={()=>setOpen(null)} onOpenRun={onOpenRun}/>
   return <div className="space-y-6">
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {analyst && !approvedOnly && <p className="text-sm text-muted">A report starts from a question: investigate it under New explanation, pin the follow-ups you want, then choose Create report. The model drafts from everything pinned, you ask for revisions, and code checks every number before the Brand Manager sees it.</p>}
-    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
+    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{approvedOnly && isNewer(x.reviewed_at, since) && <><span className="font-semibold text-primaryink">New</span> · </>}{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
   </div>
 }
 
@@ -422,7 +426,7 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
 // Tabs by the APG pattern: one tab stop (the selected tab), Left/Right/Home/End move focus along the row, Enter or
 // Space selects. `panelId` (optional) names the tabpanel the page renders under the row; the selected tab labels it
 // (id `${panelId}-tab-${key}`). The sliding pill is decoration.
-function SubTabs<T extends string>({label, value, options, onChange, panelId, aside}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string, aside?: ReactNode}) {
+function SubTabs<T extends string>({label, value, options, onChange, panelId, aside, dots}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string, aside?: ReactNode, dots?: Partial<Record<T, boolean>>}) {
   const current = options.find(o => o[0] === value)
   const list = useRef<HTMLDivElement>(null)
   const [bar,setBar] = useState<{left: number, top: number, width: number, height: number} | null>(null)
@@ -445,7 +449,7 @@ function SubTabs<T extends string>({label, value, options, onChange, panelId, as
     <div ref={list} role="tablist" aria-label={label} onKeyDown={onKey} className="pa-noprint relative flex min-w-0 flex-wrap gap-0.5 sm:gap-1">
       {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} tabIndex={value === key ? 0 : -1}
         id={panelId ? `${panelId}-tab-${key}` : undefined} aria-controls={panelId && value === key ? panelId : undefined} onClick={() => onChange(key)}
-        className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primaryink" : "text-muted hover:text-ink"}`}>{text}</button>)}
+        className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primaryink" : "text-muted hover:text-ink"}`}><span className="inline-flex items-center gap-1.5">{text}{dots?.[key] && <NewDot/>}</span></button>)}
       {bar && <span aria-hidden="true" className="pa-tabbar absolute rounded-lg border border-edge bg-paper shadow-[0_3px_0_var(--color-slab)]" style={{left: bar.left, top: bar.top, width: bar.width, height: bar.height}}/>}
     </div>
     {/* `aside` (the Briefing brand picker) sits left of the classification label */}
@@ -490,6 +494,7 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
+  const news = useApprovedNews()
   const [runs,setRuns] = useState<ForecastSummary[]>([])
   const [selected,setSelected] = useState<ForecastRun | null>(null)
   const [context,setContext] = useState<ForecastContext | null>(null)
@@ -548,7 +553,7 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   return <div className={`${section === "reports" ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
     {/* One greeting per lane: on its landing section (the same one Shell opens), with no run open */}
     {section === (analyst ? "workbench" : "reports") && !selected && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
-    <SubTabs label="Forecast explanation" value={section} onChange={onSection} options={(analyst
+    <SubTabs label="Forecast explanation" value={section} onChange={onSection} dots={{approved: news.has("forecast") && section !== "approved"}} options={(analyst
       ? [["workbench", "New explanation", "forecast.new"], ["reports", "Reports", "forecast.reports"], ["approved", "Approved reports", "forecast.approved"]]
       : [["reports", "Reports to review", "forecast.review"], ["approved", "Approved reports", "forecast.approved"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
     {section !== "workbench" ? <ForecastReports key={section} me={me} approvedOnly={section === "approved"} onOpenRun={id=>{ pendingRun = id; onSection("workbench") }}/> : <>
@@ -614,18 +619,22 @@ function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy,
   const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-primarybg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   // A run still going shows a small dot (on the icon in the rail, at the row's end when open); the words are for screen readers.
-  const dot = (cls: string) => <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full bg-primary motion-safe:animate-pulse ${cls}`}/>
-  const item = (icon: IconName, text: string, active: boolean, go: () => void, busy = false) =>
-    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : busy ? `${text} · in progress` : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><span className="relative shrink-0"><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-primaryink" : "group-hover:text-primaryink"}`}/>{busy && !expanded && dot("absolute -right-1 -top-1")}</span>{label(text)}{busy && <span className="sr-only">, in progress</span>}{busy && expanded && dot("ml-auto")}</button>
+  // Newly approved items show a still dot when that workspace is not open; busy wins when both apply.
+  const dot = (cls: string, pulse = true) => <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full bg-primary ${pulse ? "motion-safe:animate-pulse" : ""} ${cls}`}/>
+  const news = useApprovedNews()
+  const item = (icon: IconName, text: string, active: boolean, go: () => void, busy = false, fresh = false) => {
+    const mark = busy || (fresh && !active)
+    return <button aria-current={active ? "page" : undefined} title={expanded ? undefined : busy ? `${text} · in progress` : mark ? `${text} · newly approved` : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><span className="relative shrink-0"><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-primaryink" : "group-hover:text-primaryink"}`}/>{mark && !expanded && dot("absolute -right-1 -top-1", busy)}</span>{label(text)}{busy ? <span className="sr-only">, in progress</span> : mark && <span className="sr-only">, newly approved</span>}{mark && expanded && dot("ml-auto", busy)}</button>
+  }
   return <div className="flex h-full flex-col">
     <div className="flex h-16 items-center gap-3 px-[14px]">
       <BrandMark/>
       {/* The mark is decorative; the product's name is spoken once, by the text beside it or, in the narrow rail, here */}
-      {expanded ? <span className="pa-fade flex-1 truncate whitespace-nowrap font-display text-[18px] font-bold tracking-tight">PharmAgentics</span> : <span className="sr-only">PharmAgentics</span>}
+      {expanded ? <span className="pa-fade flex min-w-0 flex-1 items-baseline gap-1.5 whitespace-nowrap"><span className="truncate font-display text-[18px] font-bold tracking-tight">PharmAgentics</span><span className="text-xs font-medium text-muted">v1</span></span> : <span className="sr-only">PharmAgentics v1</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
-      {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy)}
-      {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast, forecastBusy)}
+      {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy, news.has("briefing"))}
+      {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast, forecastBusy, news.has("forecast"))}
       {item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
     <div className="mt-auto space-y-2 px-3 pb-4">
@@ -779,23 +788,26 @@ function ListSkeleton({rows=3}: {rows?: number}) {
 function PublishedList({onOpen}: {onOpen: (id: string) => void}) {
   const [items,setItems] = useState<PublishedBrief[] | null>(null)
   const [error,setError] = useState<string | null>(null)
-  useEffect(()=>{listPublished().then(setItems).catch(e=>setError(message(e)))},[])
+  const news = useApprovedNews()
+  const [since] = useState(()=>news.seen("briefing"))  // rows approved after this say "New"; opening the list marks them seen
+  useEffect(()=>{listPublished().then(xs=>{ setItems(xs); for (const x of xs) news.markSeen("briefing", x.reviewed_at) }).catch(e=>setError(message(e)))},[])  // eslint-disable-line react-hooks/exhaustive-deps
   if (error) return <Notice tone="error" role="alert">{error}</Notice>
   if (!items) return <ListSkeleton/>
   if (!items.length) return <p className="text-sm text-muted">No approved briefings yet. A briefing appears here once the Commercial Analyst approves it.</p>
   return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={()=>onOpen(b.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
-    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
+    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{isNewer(b.reviewed_at, since) && <><span className="font-semibold text-primaryink">New</span> · </>}Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
     <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul>
 }
 
 function ReviewPanel({result, onChange}: {result: BriefingResult, onChange: (r: BriefingResult) => void}) {
+  const news = useApprovedNews()
   const [reason,setReason] = useState("")
   const [rejecting,setRejecting] = useState(false)
   const [busy,setBusy] = useState(false)
   const [error,setError] = useState<string | null>(null)
   const decide = async (decision: "approved" | "rejected") => {
     setBusy(true); setError(null)
-    try { onChange(await reviewBrief(result.brief_id, decision, reason)); setRejecting(false); setReason(""); toast.success(decision==="approved" ? "Approved. The Brand Director can now open it." : "Rejected. It stays hidden from the Brand Director.") }
+    try { const r = await reviewBrief(result.brief_id, decision, reason); if (decision==="approved") news.markSeen("briefing", r.reviewed_at); onChange(r); setRejecting(false); setReason(""); toast.success(decision==="approved" ? "Approved. The Brand Director can now open it." : "Rejected. It stays hidden from the Brand Director.") }
     catch(e) { setError(message(e)) } finally { setBusy(false) }
   }
   return <section className="border-t border-rule px-6 py-5">
@@ -946,6 +958,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = fals
 }
 
 function AnalystApp({me}: {me: Me}) {
+  const news = useApprovedNews()
   const [context,setContext] = useState<ReleaseContext | null>(null)
   const [contextError,setContextError] = useState<string | null>(null)
   const [loadingContext,setLoadingContext] = useState(true)
@@ -1138,7 +1151,7 @@ function AnalystApp({me}: {me: Me}) {
     <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets with the data line under it, as the Forecast lane does; other tabs start at the tab row */}{view==="overview" && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<SubTabs aside={<label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label>} label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
+      </select></label>} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
@@ -1234,12 +1247,12 @@ export default function App() {
   if (!me) return <Centered><p className="mt-5 text-sm text-muted">Checking your sign-in…</p></Centered>
   const briefing = me.lanes.briefing
   if (!briefing) {
-    if (me.lanes.forecast?.available) return <Shell me={me} startInForecast>{null}</Shell>
+    if (me.lanes.forecast?.available) return <ApprovedNewsProvider me={me}><Shell me={me} startInForecast>{null}</Shell></ApprovedNewsProvider>
     return <Centered>
       <h1 className="mt-5 text-lg font-semibold">No access</h1>
       <p className="mt-2 text-sm text-muted">Your account has no authorized workspace. Ask the project owner to assign a workspace role and brand access.</p>
       <a className="mt-5 inline-block text-sm font-medium text-primaryink hover:underline" href="/auth/logout">Sign out</a>
     </Centered>
   }
-  return briefing.actions.includes("run") ? <AnalystApp me={me}/> : <LeaderApp me={me}/>
+  return <ApprovedNewsProvider me={me}>{briefing.actions.includes("run") ? <AnalystApp me={me}/> : <LeaderApp me={me}/>}</ApprovedNewsProvider>
 }
