@@ -21,6 +21,10 @@ export default defineConfig({
   base: "/",
   plugins: [react(), tailwindcss(), standaloneHtml()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+  // Same origin by default (the Dockerfile sets "." too); the dev server proxies /api and /auth.
+  define: {
+    "import.meta.env.VITE_PHARMAGENTICS_API_BASE_URL": JSON.stringify(process.env.VITE_PHARMAGENTICS_API_BASE_URL ?? "."),
+  },
   server: {
     // PORT lets several worktrees serve side by side against one API.
     port: Number(process.env.PORT ?? 5173),
