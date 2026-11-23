@@ -34,18 +34,20 @@ Focused tests; the scripted run and gate against the previous packet's run (exit
 ## The brief definition (packet D, the contract D-B, D-U and G build against)
 
 ```python
-# src/pharmagentics/tools/definition.py
+# src/pharmagentics/tools/definition.py (as built, packet D-B; FR-000e: lists, the first value is the primary)
 class Definition(BaseModel):
-    first_week: str | None = None          # ISO Monday; None: the question's weeks, else the latest closed week
+    first_week: str | None = None            # ISO Monday; None: the question's weeks, else the latest closed week
     last_week: str | None = None
-    comparison: Comparison | None = None   # tools/window.py; None: the previous four weeks
-    territories: Literal["like_for_like", "all_reportable", "projected"] = "like_for_like"
-    measure: Literal["trx", "nbrx", "both"] = "trx"
+    comparison: list[Comparison] = []        # [] or null: the previous four weeks; kinds previous | last_year | custom | pre_launch
+    territories: list[Literal["like_for_like", "all_reportable", "projected"]] = ["like_for_like"]
+    measure: list[Literal["trx", "nbrx"]] = ["trx"]          # "both" reads as ["trx", "nbrx"]
     grain: list[Literal["national", "territory", "plan", "channel", "specialty"]] = [all five]
-    relative_to: Literal["other_territories", "national", "none"] = "other_territories"
+    relative_to: list[Literal["other_territories", "national", "none"]] = ["other_territories"]
 ```
 
+Holiday weeks are always out of the period (stated in the Assumptions block), except when the period is itself the holiday weeks. Claims carry `labels` (territories, measure, relative_to, period, comparison, comparison_kind, grain, and cut when there is one); a claim made for an extra value records that value. The returned brief and the leader view carry `definition` and `definition_words`.
+
 - Engines: `answer(question, ..., definition: dict | None = None)` for the scripted pipeline and the agent; the MCP session holds the definition beside the period. Today's `comparison` keyword keeps working and maps into `definition.comparison`.
-- API: `BriefRequest.definition`, `AgentJobRequest.definition`, `BriefingScopeRequest` returns a proposed `definition`. JSON field names as above.
+- API: `BriefingQuery.definition` (agent jobs carry it as `query.definition`; a top-level `comparison` is the primary alone and the definition wins); the scope route returns a proposed `definition`. JSON field names as above.
 - Golden YAML: a `definition:` block with every field; the old top-level `comparison:` is read into it. The harness (`eval/harness/systems.py`) passes `definition` to `predict`.
 - Owners: D-B owns `src/` and `agents/` (except the frontend) and their tests; D-U owns `frontend/figma-make/` and `tests/test_frontend_scope.py`; G owns `eval/` (harness, golden, tests).
