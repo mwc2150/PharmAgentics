@@ -17,7 +17,7 @@ from pathlib import Path
 from statistics import pstdev
 
 from .paths import EXPERIMENT, MLFLOW_DIR
-from .scorers import kind_of
+from .scorers import TARGETS, kind_of
 
 OUT_DIR = MLFLOW_DIR / "insights"
 DEFAULT_STORE = MLFLOW_DIR / "mlflow.db"
@@ -30,6 +30,11 @@ LOWER_IS_BETTER = {"false_drivers", "brief_words", "needed_revision"}
 KIND_ORDER = ("code", "agent", "safety")  # ops (run counters) stay out, as OPERATIONAL does
 KIND_TITLES = {"code": "Code checks", "agent": "Agent checks", "safety": "Safety"}
 EPS = 0.001
+CONTROLS = {"reference", "naive_llm"}  # controls are not held to the targets
+# core-011 FR-018: scorers whose rationale lists what was missed ("missing: a, b" / "<finding id>: <what>").
+MISS_SCORERS = ("key_fact_recall", "finding_recall")
+NEEDS_TEXT = {"plan_cut": "plan cut", "segment_pct": "segment percentage", "restatement": "restatement",
+              "national_card": "national card"}
 STD_LIMIT = 0.1
 QUESTION = re.compile(r'"question":\s*"((?:[^"\\]|\\.)*)"')
 
@@ -100,12 +105,15 @@ def _read_store(path: Path) -> list[dict]:
         for rid, key, value in rows("select run_uuid, key, value from params where key in (?,?,?,?,?)", PARAM_KEYS):
             params[rid][key] = value
         child_parent = dict(rows("select run_uuid, value from tags where key = 'mlflow.parentRunId'"))
-        scores = defaultdict(dict)
-        for trace_id, name, value in rows("select trace_id, name, value from assessments "
-                                          "where coalesce(valid, 1) = 1 and assessment_type != 'expectation'"):
+        scores, notes = defaultdict(dict), defaultdict(dict)
+        has_rationale = any(r[1] == "rationale" for r in rows("pragma table_info(assessments)"))
+        for trace_id, name, value, why in rows(f"select trace_id, name, value, {'rationale' if has_rationale else 'null'} "
+                                               "from assessments where coalesce(valid, 1) = 1 and assessment_type != 'expectation'"):
             number = _number(value)
             if number is not None:
                 scores[trace_id][name] = number
+                if why and name in MISS_SCORERS:
+                    notes[trace_id][name] = why
         traces = rows("select m.value, t.request_preview, t.request_id from trace_info t "
                       "join trace_request_metadata m on m.request_id = t.request_id and m.key = 'mlflow.sourceRun'")
 
@@ -120,7 +128,7 @@ def _read_store(path: Path) -> list[dict]:
     for child_id, preview, trace_id in traces:
         parent = child_parent.get(child_id)
         if parent in parents:
-            parents[parent]["traces"].append((_question(preview), scores.get(trace_id, {})))
+            parents[parent]["traces"].append((_question(preview), scores.get(trace_id, {}), notes.get(trace_id, {})))
     return list(parents.values())
 
 
@@ -128,13 +136,16 @@ def _case_scores(parent: dict, tails: dict, heads: dict) -> tuple[dict, int]:
     """{case_id: {scorer: (mean, std)}} over the traces of the run (reruns pooled), and the unmapped trace count."""
     acc = defaultdict(lambda: defaultdict(list))
     unmapped = 0
-    for question, values in parent["traces"]:
+    parent["why"] = defaultdict(lambda: defaultdict(list))  # {case_id: {scorer: [rationale per trace]}}
+    for question, values, why in parent["traces"]:
         case_id = map_question(question, tails, heads)
         if case_id is None:
             unmapped += 1
             continue
         for name, value in values.items():
             acc[case_id][name].append(value)
+        for name, text in why.items():
+            parent["why"][case_id][name].append(text)
     cases = {c: {k: (sum(v) / len(v), pstdev(v)) for k, v in row.items()} for c, row in acc.items()}
     return cases, unmapped
 
@@ -169,8 +180,47 @@ def numbers_lost(latest: dict, scripted: dict) -> list[dict]:
     return rows
 
 
-def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict | None = None) -> dict:
-    """The insights as a dict (insights.json). `pairs` are golden (case_id, question) pairs; `stories` maps case_id to story ID."""
+def missed_ids(scorer: str, rationales: list[str]) -> list[str]:
+    """The fact or finding IDs a key_fact_recall or finding_recall rationale lists as missed, in order, over reruns."""
+    found: list[str] = []
+    for text in rationales:
+        if scorer == "key_fact_recall":
+            part = text.partition("missing:")[2]
+            ids = [i.strip() for i in part.split(",")] if part else []
+        else:
+            ids = [m.group(1) for note in text.split("; ")[1:] if (m := re.match(r"([\w.-]+): ", note))]
+        found += [i for i in ids if i and i not in found]
+    return found
+
+
+def below_target(latest: dict, stories: dict, needs: dict) -> list[dict]:
+    """Cases under `TARGETS` in the latest run of each system (controls left out), the missed fact or finding IDs
+    grouped by the capability the golden file says they need ("needs <capability>") and the rest ("missed")."""
+    rows = []
+    for s, run in latest.items():
+        if _base(s) in CONTROLS:
+            continue
+        for c in sorted(run["cases"]):
+            for scorer, target in TARGETS.items():
+                score = run["cases"][c].get(scorer)
+                if score is None or score[0] >= target:
+                    continue
+                ids = missed_ids(scorer, run.get("why", {}).get(c, {}).get(scorer, []))
+                tags = (needs.get(c) or {}).get("facts" if scorer == "key_fact_recall" else "findings", {})
+                grouped: dict[str, list[str]] = {}
+                for i in ids:
+                    if tags.get(i):
+                        grouped.setdefault(tags[i], []).append(i)
+                rows.append({"system": s, "story": stories.get(c, ""), "case": c, "scorer": scorer,
+                             "score": round(score[0], 4), "target": target,
+                             "needs": grouped, "missed": [i for i in ids if not tags.get(i)]})
+    return rows
+
+
+def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict | None = None,
+          needs: dict | None = None) -> dict:
+    """The insights as a dict (insights.json). `pairs` are golden (case_id, question) pairs; `stories` maps case_id to
+    story ID; `needs` maps case_id to {"facts": {id: capability}, "findings": {id: capability}} (core-011 FR-018)."""
     tails, heads = case_index(pairs)
     stories = stories or {}
     parents = []
@@ -265,7 +315,8 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
     return {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stores": [str(p) for p in stores],
             "unmapped_traces": sum(p["unmapped"] for rs in runs.values() for p in rs),
             "systems": systems, "kinds": kinds, "matrix": matrix, "std": std, "stuck": stuck, "fallen": fallen,
-            "engine": engine, "numbers_lost": lost,
+            "engine": engine, "numbers_lost": lost, "below_target": below_target(latest, stories, needs or {}),
+            "targets": dict(TARGETS),
             "numbers_lost_mean": {s: round(sum(e["lost"] for e in lost if e["system"] == s) / n, 4)
                                   for s in sorted({e["system"] for e in lost}) if (n := sum(e["system"] == s for e in lost))},
             "rerun_spread": spread, "golden_breaks": breaks}
@@ -284,6 +335,23 @@ def _table(lines: list, title: str, cols: list, rows: list, empty: str, cap: int
         lines.append(f"\n{len(rows) - cap} more in insights.json.")
     if note:
         lines.append(f"\n{note}")
+
+
+def _below_target_md(lines: list, d: dict) -> None:
+    targets = d.get("targets") or TARGETS
+    lines += ["", "## Below target (latest run of each system)", "",
+              f"Targets: key-fact recall {targets['key_fact_recall']:.2f}, finding recall {targets['finding_recall']:.2f} per case. "
+              '"Needs" marks facts and findings the golden file tags with a capability the system must have; '
+              '"missed" is anything else the system should have stated.']
+    rows = d.get("below_target") or []
+    if not rows:
+        lines += ["", "None."]
+        return
+    lines += ["", "| system | story | case | scorer | score | target | needs a capability | missed |", "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        need = "; ".join(f"needs {NEEDS_TEXT.get(k, k)}: {', '.join(v)}" for k, v in sorted(r["needs"].items())) or "-"
+        lines.append(f"| {r['system']} | {r['story']} | {r['case']} | {r['scorer']} | {r['score']:.3g} | {r['target']:.2f} | "
+                     f"{need} | {', '.join(r['missed']) or '-'} |")
 
 
 def render_md(d: dict) -> str:
@@ -326,6 +394,7 @@ def render_md(d: dict) -> str:
     for s_name, mean in (d.get("numbers_lost_mean") or {}).items():
         n = sum(e["system"] == s_name for e in d["numbers_lost"])
         lines += ["", f"Mean over the {n} case(s) both scored, {s_name}: {mean:+.3f} (positive: the agent states fewer key facts)."]
+    _below_target_md(lines, d)
     lines += ["", "## Latest score per case, by kind",
               "", "Code checks are what code can produce; agent checks are the agent's own inference; safety guards wording. "
               "A dash is not scored."]
@@ -344,6 +413,17 @@ def render_md(d: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def golden_needs(cases) -> dict:
+    """{case_id: {"facts": {id: needs}, "findings": {id: needs}}} for the tagged facts and findings only."""
+    out = {}
+    for c in cases:
+        facts = {f.id: f.needs for f in c.facts if f.needs}
+        findings = {f.id: f.needs for f in c.findings if f.needs}
+        if facts or findings:
+            out[c.id] = {"facts": facts, "findings": findings}
+    return out
+
+
 def run(stores=None, system: str | None = None, last: int = 5, out: Path | None = None) -> dict:
     from .cases import load_cases
 
@@ -353,7 +433,7 @@ def run(stores=None, system: str | None = None, last: int = 5, out: Path | None 
         raise FileNotFoundError(f"no MLflow store at: {', '.join(missing)}")
     cases = load_cases()
     data = build(paths, [(c.id, c.question) for c in cases], system=system, last=last,
-                 stories={c.id: c.story for c in cases})
+                 stories={c.id: c.story for c in cases}, needs=golden_needs(cases))
     out = Path(out) if out else OUT_DIR
     out.mkdir(parents=True, exist_ok=True)
     (out / "insights.json").write_text(json.dumps(data, indent=2), encoding="utf8")

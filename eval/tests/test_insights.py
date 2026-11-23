@@ -19,7 +19,7 @@ create table params (key text, value text, run_uuid text);
 create table tags (key text, value text, run_uuid text);
 create table trace_info (request_id text, request_preview text);
 create table trace_request_metadata (key text, value text, request_id text);
-create table assessments (trace_id text, name text, assessment_type text, value text, valid integer);
+create table assessments (trace_id text, name text, assessment_type text, value text, valid integer, rationale text);
 """
 
 
@@ -46,9 +46,13 @@ def _store(path, parents, experiment_id=1):
             tid = f"tr-{n}"
             con.execute("insert into trace_info values (?,?)", (tid, _question(question)))
             con.execute("insert into trace_request_metadata values ('mlflow.sourceRun', ?, ?)", (child, tid))
-            con.execute("insert into assessments values (?,'case_id','expectation','\"X\"',1)", (tid,))
-            for name, value in scores.items():
-                con.execute("insert into assessments values (?,?,'feedback',?,1)", (tid, name, value))
+            con.execute("insert into assessments (trace_id, name, assessment_type, value, valid) values (?,'case_id','expectation','\"X\"',1)", (tid,))
+            for name, value in scores.items():  # a value is "0.5" or ("0.5", rationale); None leaves the score out
+                if value is None:
+                    continue
+                value, why = value if isinstance(value, tuple) else (value, None)
+                con.execute("insert into assessments (trace_id, name, assessment_type, value, valid, rationale) values (?,?,'feedback',?,1,?)",
+                            (tid, name, value, why))
     con.commit()
     con.close()
 

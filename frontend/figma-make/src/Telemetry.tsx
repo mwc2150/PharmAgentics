@@ -83,6 +83,13 @@ function grouped(t: CaseTable) {
   const groups = KIND_GROUPS.map(([kind, title]) => ({ kind, title, cols: t.scorers.filter(k => (kinds[k] ?? "agent") === kind) })).filter(g => g.cols.length)
   return groups.length ? groups : null
 }
+const NEEDS: Record<string, string> = { plan_cut: "plan cut", segment_pct: "segment percentage", restatement: "restatement", national_card: "national card" }
+// "Needs a plan cut: 2 · missed: 1": what a below-target score lacks, split into a capability the system does not have and a plain miss.
+function belowText(b: NonNullable<CaseRowBelow>[number]) {
+  const needs = Object.entries(b.needs).map(([k, n]) => `needs ${NEEDS[k] ?? k}: ${n}`)
+  return `${scorerName(b.scorer)} ${pct(b.score)}, target ${pct(b.target)} · ${[...needs, ...(b.missed ? [`missed: ${b.missed}`] : [])].join(" · ") || "no missing item recorded"}`
+}
+type CaseRowBelow = CaseTable["rows"][number]["below"]
 const scorerName = (k: string) => SCORERS[k] ?? label(k)
 const LANES: Record<string, string> = { briefing: "Briefing", forecast: "Forecast" }
 const MARK = "ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium"
@@ -120,7 +127,8 @@ function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
           </tr>
         </thead>
         <tbody>{t.rows.map(r => <tr key={r.case} className="border-t border-rule">
-          <th scope="row" className="px-5 py-2 text-left font-normal"><span className="tabular-nums">{r.case}</span><span className="block text-xs text-muted">{r.story}{r.persona ? ` · ${r.persona}` : ""}</span></th>
+          <th scope="row" className="px-5 py-2 text-left font-normal"><span className="tabular-nums">{r.case}</span><span className="block text-xs text-muted">{r.story}{r.persona ? ` · ${r.persona}` : ""}</span>
+            {r.below?.map(b => <span key={b.scorer} className="block text-xs text-amber">{belowText(b)}</span>)}</th>
           {cols.map(k => <td key={k} className={`px-3 py-2 text-right tabular-nums${edge(k)}`}><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} fell={r.fallen.find(f => f.scorer === k)} lost={k === "numbers_lost"} unit={t.units?.[k]}/></td>)}
         </tr>)}</tbody>
       </table>
@@ -128,10 +136,10 @@ function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
   </details>
 }
 
-function PerCase({ tables }: { tables: CaseTable[] }) {
+function PerCase({ tables, targets }: { tables: CaseTable[], targets?: Record<string, number> }) {
   const real = tables.filter(t => !t.control)
   return <>
-    <Heading title="Per-case results" note="Latest run of each system, one row per golden question. Stuck: zero in every listed run. Fell: lower than the run before. A dash means the case was not scored."/>
+    <Heading title="Per-case results" note={`Latest run of each system, one row per golden question. Stuck: zero in every listed run. Fell: lower than the run before. A dash means the case was not scored.${targets ? ` Targets: key facts found ${pct(targets.key_fact_recall ?? 0)}, findings found ${pct(targets.finding_recall ?? 0)}. Under a target, a row says what is missing: a capability the system needs, or a plain miss.` : ""}`}/>
     <div className="space-y-3">
       {[...real, ...tables.filter(t => t.control)].map((t, i) => <CaseTableView key={`${t.system}|${t.lane}`} t={t} open={i === 0}/>)}
     </div>
@@ -191,7 +199,7 @@ export function TelemetryWorkspace() {
       <Heading title="Golden-set scores" note={<>{t.exported ? `Exported ${when(t.exported)}. ` : ""}{t.note}{lead ? ` Latest: ${name(lead)}, ${when(lead.started)}.` : ""} Select a row for every score.</>}/>
       <Scores runs={t.latest.filter(r => !r.control)}/>
       {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)}/></>}
-      {!!t.cases?.systems.length && <PerCase tables={t.cases.systems}/>}
+      {!!t.cases?.systems.length && <PerCase tables={t.cases.systems} targets={t.cases.targets}/>}
       {!!t.runs.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">All runs ({t.runs.length})</summary>
         <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
           <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Number recall</th><th className="font-medium">Claims reconcile</th></tr></thead>
