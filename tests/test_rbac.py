@@ -280,7 +280,7 @@ def test_flow_and_triage_record_reach_the_analyst_only():
     plan = analyst.post("/api/briefing/triage", json=TRIAGE_Q).json()
     decision = {"plan_id": plan["plan_id"], "stories": ["territory:PACIFIC", "competitor:BXE"]}
     brief = analyst.post("/api/briefing/query", json={**TRIAGE_Q, "triage": decision}).json()
-    assert brief["triage"]["default"] is False and "Left out of this brief by the analyst: Mid-Atlantic." in brief["answer"]
+    assert brief["triage"]["default"] is False and "Left out of this brief by the analyst: Mid-Atlantic, Medicare Part D plan two in Mid-Atlantic." in brief["answer"]  # the plan cut card is a candidate too (brief-010 P)
     assert brief["flow"][-1]["states"] == ["IN_REVIEW"]
     approved = analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "approved"}).json()
     assert approved["flow"][-1]["states"] == ["IN_REVIEW", "PUBLISHED"]

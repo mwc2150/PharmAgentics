@@ -10,6 +10,16 @@ question: 'Week of 2026-07-06: Do the numbers tie out to the source tables?'
 review_note: null
 period: week of 2026-07-06
 anchor: Great Lakes duplicates, 2026-07-06
+definition:
+  first_week: '2026-07-06'
+  last_week: '2026-07-06'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want every figure in the draft to match the pinned data, so that I review the brief instead of rebuilding it.
 given: the snapshot pinned for 2026-07-06 holds 15 duplicate Rx keys in Great Lakes.
 when: the brief runs.
@@ -42,14 +52,19 @@ facts:
   role: must
   value: 670
   sql: select sum(trx) from raw.rx_weekly where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES' and product_id = 'BXA'
+  reviewed: true
+  needs: restatement
 - id: gl_bxa_trx_deduplicated
   role: must
   value: 624
   sql: select sum(t) from (select any_value(trx) t from raw.rx_weekly where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES' and product_id = 'BXA' group by plan_id, hcp_specialty)
+  reviewed: true
+  needs: restatement
 - id: national_bxa_trx_reportable
   role: must
   value: 3665
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-07-06'
+  reviewed: true
 - id: territories_reporting
   role: context
   value: 7
@@ -65,5 +80,5 @@ findings:
   drivers_supported: []
   drivers_ruled_out: []
   withheld: true
-  reviewed: false
+  reviewed: true
 source: docs/planning/user-stories.md#P1-Q1

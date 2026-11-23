@@ -7,8 +7,9 @@ import { Overview } from "./Overview"
 import { Memo } from "./Memo"
 import { Timeline, producers, KIND_NAME } from "./Timeline"
 import { HowItWorks } from "./HowItWorks"
-import { ComparisonPicker, comparisonError } from "./ComparisonPicker"
+import { ComparisonPicker, comparisonsError } from "./ComparisonPicker"
 import { PeriodPicker, QuestionReader, periodError, periodWeeks } from "./BriefingScope"
+import { DEFAULT_CHOICES, DefinitionPicker, choicesError, type DefinitionChoices, type DefinitionField } from "./BriefDefinition"
 import { FeedbackReview } from "./FeedbackReview"
 import { MessageBar, type Chip } from "./MessageBar"
 import { sharedFromLocation } from "./agent/threadApi"
@@ -21,7 +22,7 @@ import {
   getContext, getBriefing, getMe, getTriage, listPublished, markInsight, openBrief, reviewBrief, NotSignedIn,
   getAgentStatus, submitAgentJob, waitAgentJob, agentPlan, agentBrief, getClassification, setViewAs,
   type AgentStatus, type AgentJob, type Classification,
-  type BriefingResult, type Claim, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext, type RunEvent,
+  type BriefDefinition, type BriefingResult, type Claim, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext, type RunEvent,
   type Stage, type TriageDecision, type TriagePlan, type TriageRecord,
 } from "./agent/briefingApi"
 import {
@@ -669,7 +670,7 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
       </div>
       {brief.process_summary && <p className="mt-3 text-xs text-muted">{processLine(brief.process_summary, brief.reviewed_at)}</p>}
     </div>
-    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink">{brief.summary}</pre>}</div>
+    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink">{brief.summary}</pre>}</div>
     <div className="border-t border-rule px-6 py-4 text-xs text-muted">Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst.</div>
   </article>
   <AnswerFeedback lane="briefing" refId={brief.brief_id} view="leadership" agent={brief.engine==="agent"}/></>
@@ -862,7 +863,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
         <p className="mt-1.5 text-sm text-muted">{result.brand_id}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <span className={`${chip} bg-amberbg text-amber`}>Unresolved findings</span>}</div>
       </div>
-      <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
+      <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk} definition={result.definition} labelWeek={labelWeek}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
         <p className="mt-4 text-[11px] text-muted">Each underlined number is a claim: click it, or its source number, to open the query and record behind it.</p></div>
       <section className="flex flex-wrap items-center justify-between gap-2 border-t border-rule bg-paper/60 px-6 py-3">
         {result.evidence.length>0 ? <button className="flex items-center gap-2 text-xs font-medium text-agentdeep underline-offset-4 hover:underline" onClick={()=>setEvidenceId(result.evidence[0].id)}><Icon name="evidence"/>All {result.evidence.length} sources ({result.claims.length} numbers)</button> : <span className="text-xs text-muted">No numeric claims in this brief.</span>}
@@ -890,14 +891,19 @@ function AnalystApp({me}: {me: Me}) {
   const [runError,setRunError] = useState<string | null>(null)
   const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved" | "how">("overview")
   const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,weekEnd:string,promotion:boolean,question:string,
-    comparison:Comparison | null} | null>(null)
+    comparison:Comparison | null,definition:BriefDefinition} | null>(null)
   const [promotion,setPromotion] = useState(false)
-  const [comparison,setComparison] = useState<Comparison | null>(null)  // null: the server's default comparison, the one the eval scores
+  const [comparisons,setComparisons] = useState<Comparison[]>([])  // brief-010: the first is the primary; empty: the server's default comparison, the one the eval scores
+  // brief-010 FR-000b: territories counted, measure, grain and relative to, pre-selected and always editable. The
+  // question reader only proposes values (marked until the analyst touches the field).
+  const [choices,setChoices] = useState<DefinitionChoices>(DEFAULT_CHOICES)
+  const [proposed,setProposed] = useState<DefinitionField[]>([])
   const reviewPromotion = brand === "BXA" && promotion
   const releaseWeeks = context?.available_weeks ?? []
   const invalidPeriod = reviewPromotion ? null : periodError(week, weekEnd, releaseWeeks)
   const period = reviewPromotion ? [] : periodWeeks(week, weekEnd, releaseWeeks)
-  const invalidComparison = reviewPromotion ? null : invalidPeriod ?? comparisonError(comparison, period, releaseWeeks)
+  const invalidComparison = reviewPromotion ? null : invalidPeriod ?? comparisonsError(comparisons, period, releaseWeeks)
+  const invalidChoices = choicesError(choices)
   const [plan,setPlan] = useState<TriagePlan | null>(null)
   // Agent engine (core-007 FR-028/FR-031): jobs run on teammate or cloud CPU hosts; the app only queues them.
   const [engine,setEngine] = useState<"scripted" | "agent">("scripted")
@@ -920,7 +926,7 @@ function AnalystApp({me}: {me: Me}) {
     setEngine(e=>supported.includes(e) ? e : "scripted")
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
     setTriageJob(null); setJobNote(null); setJobState(null); setLiveEvents([]); setPending(false)
-    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(null)
+    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparisons([]); setChoices(DEFAULT_CHOICES); setProposed([])
     setView(v=>v==="triage" || v==="result" ? "home" : v)
   }
 
@@ -964,8 +970,9 @@ function AnalystApp({me}: {me: Me}) {
 
   const submit = async (event?: React.FormEvent) => {
     event?.preventDefault()
-    if(pending || invalidComparison || !context || !context.product_ids.includes(brand) || !context.territory_ids.includes(territory) || !context.available_weeks.includes(week)) return
-    const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,weekEnd:reviewPromotion ? context.latest_week : weekEnd,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparison,
+    if(pending || invalidComparison || invalidChoices || !context || !context.product_ids.includes(brand) || !context.territory_ids.includes(territory) || !context.available_weeks.includes(week)) return
+    const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,weekEnd:reviewPromotion ? context.latest_week : weekEnd,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparisons[0] ?? null,
+      definition:{...choices,first_week:reviewPromotion ? null : week,last_week:reviewPromotion ? null : weekEnd,comparison:reviewPromotion || !comparisons.length ? null : comparisons},
       question:ask.trim().length>=3 ? ask.trim().slice(0,300) : reviewPromotion ? "Review promotion across the release." : "Generate the weekly brand-performance briefing."}
     // Plan review is always on in UAT (brief-002 FR-019): stages 1 to 3 and the code triage first.
     const token=++generation.current
@@ -988,7 +995,7 @@ function AnalystApp({me}: {me: Me}) {
     finally {if(active()){setPending(false);setJobNote(null);setJobState(null);setLiveEvents([])}}
   }
   const query = (s: NonNullable<typeof requestScope>) => ({intent:s.promotion ? "promotion_review" as const : "weekly_brief" as const,
-    brand_id:s.brand,territory_id:s.territory,week_start:s.week,week_end:s.weekEnd > s.week ? s.weekEnd : null,question:s.question,comparison:s.comparison})
+    brand_id:s.brand,territory_id:s.territory,week_start:s.week,week_end:s.weekEnd > s.week ? s.weekEnd : null,question:s.question,comparison:s.comparison,definition:s.definition})
   const approvePlan = async (decision: TriageDecision) => {
     if(!requestScope) return
     const token=++generation.current, active=()=>token===generation.current
@@ -1028,14 +1035,19 @@ function AnalystApp({me}: {me: Me}) {
       <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
+        <fieldset className="space-y-4" aria-label="Brief definition">
+          <div><h3 className="text-sm font-semibold">What the brief counts</h3><p className="mt-1 text-xs text-muted">Six choices, each pre-selected. The brief states them in its Assumptions, and the numbers follow them.</p></div>
+          <PeriodPicker first={week} last={weekEnd} weeks={releaseWeeks} disabled={!selectable || reviewPromotion} onFirst={w=>{ if(weekEnd===week) setWeekEnd(w); setWeek(w) }} onLast={setWeekEnd} labelWeek={labelWeek}/>
+          {!reviewPromotion && <ComparisonPicker value={comparisons} onChange={setComparisons} period={period} weeks={releaseWeeks} disabled={!selectable} labelWeek={labelWeek}/>}
+          <DefinitionPicker value={choices} proposed={proposed} disabled={!selectable} onChange={(next,field)=>{ setChoices(next); setProposed(p=>p.filter(f=>f!==field)) }}/>
+        </fieldset>
         <QuestionReader question={ask} onQuestion={setAsk} brand={brand} context={context} disabled={!selectable}
-          onApply={v=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparison(v.comparison) }}/>
+          onApply={v=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparisons(v.comparison)
+            setChoices(c=>({...c,...v.choices})); setProposed(v.proposed) }}/>
         <label className={LABEL}>Territory
           <select className={FIELD} value={territory} onChange={e=>setTerritory(e.target.value)} disabled={!selectable}>{context?.territory_ids.map(id=><option key={id} value={id}>{labelTerritory(id)}</option>)}</select>
         </label>
-        <PeriodPicker first={week} last={weekEnd} weeks={releaseWeeks} disabled={!selectable || reviewPromotion} onFirst={w=>{ if(weekEnd===week) setWeekEnd(w); setWeek(w) }} onLast={setWeekEnd} labelWeek={labelWeek}/>
         {brand === "BXA" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promotion} onChange={e=>setPromotion(e.target.checked)} /> Promotion review across the release</label>}
-        {!reviewPromotion && <ComparisonPicker value={comparison} onChange={setComparison} period={period} weeks={releaseWeeks} disabled={!selectable} labelWeek={labelWeek}/>}
         <fieldset><legend className="mb-1.5 text-xs font-medium text-muted">Engine</legend>
           <div className="divide-y divide-rule rounded-lg border border-rule">
             <label className="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-paper/50"><input type="radio" name="engine" checked={engine==="scripted"} onChange={()=>setEngine("scripted")} className="mt-1"/><span><span className={`block text-sm ${engine==="scripted" ? "text-ink" : "text-muted"}`}>Scripted</span><span className="block text-xs text-muted">Instant. Runs the standard checks in a fixed order.</span></span></label>
@@ -1044,7 +1056,7 @@ function AnalystApp({me}: {me: Me}) {
         </fieldset>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">
           <span className="text-xs text-muted">{loadingContext ? "Loading the data release…" : engine==="agent" ? "You review the agents' plan before they investigate." : "You review the plan before the checks run."}</span>
-          <button type="submit" disabled={!selectable || !!invalidComparison || !!invalidPeriod} className={BTN}>Generate briefing</button>
+          <button type="submit" disabled={!selectable || !!invalidComparison || !!invalidPeriod || !!invalidChoices} className={BTN}>Generate briefing</button>
         </div>
       </form>
     </div> : view==="how" ? <div key="how" className="workspace-content pa-fade py-8"><HowItWorks/></div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
@@ -1064,7 +1076,7 @@ function AnalystApp({me}: {me: Me}) {
     </div>}
     {brand && view!=="approved" && view!=="how" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
-      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparison(o.comparison ?? null); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
+      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
 }
 

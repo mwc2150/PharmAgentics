@@ -10,6 +10,16 @@ question: 'Weeks of 2026-02-02 to 2026-04-06, Great Lakes: Did my campaign move 
 review_note: null
 period: weeks of 2026-02-02 to 2026-04-06, Great Lakes
 anchor: Great Lakes coverage gap, Feb to Apr 2026
+definition:
+  first_week: '2026-02-02'
+  last_week: '2026-04-06'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Magdalena, I want promotion tested with a verdict either way, so that sales gains are not credited to whichever campaign launched last.
 given: a territory where promotion lapses and then returns.
 when: the brief tests promotion.
@@ -29,17 +39,17 @@ facts:
   value: -17.9
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
   role: must
-  reviewed: false
+  reviewed: true
 - id: gl_trx_week_2026_04_06
   value: 503
   sql: 'select (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start = DATE ''2026-04-06'')'
   role: must
-  reviewed: false
+  reviewed: true
 - id: gl_trx_week_2026_04_13
   value: 730
   sql: 'select (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start = DATE ''2026-04-13'')'
   role: must
-  reviewed: false
+  reviewed: true
 - id: other_territories_change_pct
   value: -3.0
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
@@ -77,5 +87,5 @@ findings:
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: docs/planning/user-stories.md#P4-Q1

@@ -10,6 +10,16 @@ question: 'Brief of 2026-07-13: Can I quote these numbers in my leadership meeti
 review_note: null
 period: brief of 2026-07-13
 anchor: Restatement disclosed, 2026-07-13
+definition:
+  first_week: '2026-07-13'
+  last_week: '2026-07-13'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Diana, I want numbers that will not be corrected later, so that my credibility holds upward.
 given: a restatement of a number already reported.
 when: the next brief runs.
@@ -28,10 +38,14 @@ facts:
   role: must
   value: 692
   sql: select sum(trx_prior) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'
+  reviewed: true
+  needs: restatement
 - id: ma_restated_new
   role: must
   value: 742
   sql: select sum(trx_revised) from raw.restatement_log where product_id = 'BXA' and week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'
+  reviewed: true
+  needs: restatement
 - id: ma_restated_on
   role: context
   value: '2026-07-13'
@@ -44,6 +58,7 @@ facts:
   role: must
   value: 4240
   sql: select sum(trx) from reporting.v_reportable_rx where week_start = DATE '2026-07-13' and product_id = 'BXA'
+  reviewed: true
 - id: like_for_like_territories
   role: context
   value: 7
@@ -55,5 +70,7 @@ findings:
   drivers_supported: [data]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
+  needs: restatement
+  measure: restated_figure
 source: docs/planning/user-stories.md#P3-Q6

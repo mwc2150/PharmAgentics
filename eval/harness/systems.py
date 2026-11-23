@@ -6,12 +6,16 @@ The fresh scripted baseline and the agents plug in here as they are built.
 """
 from __future__ import annotations
 
+import inspect
 import json
 import os
+import re
 import sys
 import urllib.request
 
 import mlflow
+
+from pharmagentics.api.service import TERRITORIES
 
 from .cases import Case
 from .envelope import AnswerEnvelope
@@ -100,10 +104,12 @@ def transcript(system: str, brief: dict, turn: dict, brief_seconds: float, turn_
 class BriefingScripted(_ScriptedLane):
     name, folder, package = "briefing_scripted", "brand-briefing", "briefing_baseline"
 
-    def predict(self, question: str, comparison: dict | None = None) -> dict:
-        return AnswerEnvelope.model_validate(self._answer(question, **_comparison_options(comparison))).model_dump()
+    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None) -> dict:
+        options = {**_comparison_options(comparison), **definition_option(self._answer, definition)}
+        return AnswerEnvelope.model_validate(self._answer(question, **options)).model_dump()
 
-    def predict_follow_up(self, question: str, follow_up: str, section: str | None, comparison: dict | None = None) -> dict:
+    def predict_follow_up(self, question: str, follow_up: str, section: str | None, comparison: dict | None = None,
+                          definition: dict | None = None) -> dict:
         """The scripted brief, then the rule-based follow-up from that brief alone (brief-006 FR-004)."""
         import time
 
@@ -111,7 +117,7 @@ class BriefingScripted(_ScriptedLane):
         pkg = _lane_package(self.folder, self.package)
         started = time.perf_counter()
         options = _comparison_options(comparison)
-        brief = self._answer(question, **options)
+        brief = self._answer(question, **options, **definition_option(self._answer, definition))
         middle = time.perf_counter()
         turn = followup.answer({**brief, **pkg.pipeline.scope(question, **options)}, follow_up, section)
         return transcript(self.name, brief, turn, middle - started, time.perf_counter() - middle)
@@ -163,10 +169,12 @@ class BriefingAgent(BriefingLowCode):
         self.model = model_spec(model)
         self.params = {"agent_config_version": pkg.config_version()}
 
-    def predict(self, question: str, comparison: dict | None = None) -> dict:
-        return AnswerEnvelope.model_validate(self._answer(question, self.model, **_comparison_options(comparison))).model_dump()
+    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None) -> dict:
+        options = {**_comparison_options(comparison), **definition_option(self._answer, definition)}
+        return AnswerEnvelope.model_validate(self._answer(question, self.model, **options)).model_dump()
 
-    def predict_follow_up(self, question: str, follow_up: str, section: str | None, comparison: dict | None = None) -> dict:
+    def predict_follow_up(self, question: str, follow_up: str, section: str | None, comparison: dict | None = None,
+                          definition: dict | None = None) -> dict:
         """The agent's brief, then one agent follow-up on it (brief-006 slice 4). A turn that runs out of time is
         a run error, never a score (FR-010)."""
         import time
@@ -175,12 +183,44 @@ class BriefingAgent(BriefingLowCode):
         from briefing_baseline import pipeline
         started = time.perf_counter()
         options = _comparison_options(comparison)
-        brief = self._answer(question, self.model, **options)
+        brief = self._answer(question, self.model, **options, **definition_option(self._answer, definition))
         middle = time.perf_counter()
         turn = followup.answer({**brief, **pipeline.scope(question, **options)}, follow_up, section, self.model)
         if turn.get("error") == "timeout":
             raise TimeoutError(f"follow-up: {turn['answer']}")
         return transcript(f"{self.name}:{self.model}", brief, turn, middle - started, time.perf_counter() - middle)
+
+
+PROMOTION_REVIEW = "Promotion review in "
+
+
+def _focus_label(question: str) -> str:
+    """The label of the territory a question names, else National (the same labels the app's TERRITORIES uses)."""
+    for tid, label in TERRITORIES.items():
+        if tid != "NATIONAL" and re.search(rf"\b{re.escape(label)}\b", question, re.I):
+            return label
+    return TERRITORIES["NATIONAL"]
+
+
+def briefing_question(question: str, intent: str = "brief") -> str:
+    """The question a Briefing system receives, built as the app's API builds it (service.normalize_question): a
+    Promotion review request reads "Promotion review in <territory label>: <question>". Already prefixed: unchanged."""
+    if intent != "promotion_review" or question.startswith(PROMOTION_REVIEW):
+        return question
+    return f"{PROMOTION_REVIEW}{_focus_label(question)}: {question.strip()}"
+
+
+def accepts(fn, name: str) -> bool:
+    """Whether `fn` names a parameter `name`. The harness passes a case's `definition` only to engines that take it
+    (brief-010 packet D-B adds it), so nothing breaks before the backend lands."""
+    try:
+        return name in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+def definition_option(fn, definition: dict | None) -> dict:
+    return {"definition": definition} if definition and accepts(fn, "definition") else {}
 
 
 def _comparison_options(comparison: dict | None) -> dict:
@@ -238,6 +278,8 @@ class ForecastInvestigator(ForecastAgent):
     name = "forecast_investigator"
     investigator = "model"
 
+
+BRIEFING_SYSTEMS = (BriefingScripted, BriefingLowCode)  # BriefingAgent subclasses BriefingLowCode
 
 SYSTEMS = {"reference": ReferenceSystem, "naive_llm": NaiveLLMSystem, "briefing_scripted": BriefingScripted,
            "forecast_scripted": ForecastScripted, "briefing_lowcode": BriefingLowCode, "briefing_agent": BriefingAgent,

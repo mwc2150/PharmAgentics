@@ -10,6 +10,16 @@ question: 'Week of 2026-08-24: How much do I have to rewrite before this goes to
 review_note: null
 period: week of 2026-08-24
 anchor: Draft for 2026-08-24
+definition:
+  first_week: '2026-08-24'
+  last_week: '2026-08-24'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want a draft in our Monday format that needs only wording fixes, so that the agent saves real time.
 given: the 2026-08-24 snapshot.
 when: the draft reaches Ace.
@@ -33,7 +43,7 @@ findings:
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 must_say:
   phrases:
   - Southeast story

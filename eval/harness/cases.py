@@ -7,10 +7,10 @@ from datetime import date, timedelta
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from pharmagentics.tools.queries import TERRITORY_NAMES
-from pharmagentics.tools.window import Comparison, parse
+from pharmagentics.tools.window import parse
 
 from .numbers import as_numbers, extract, same
 from .paths import GOLDEN_DIR
@@ -35,6 +35,110 @@ class Fact(BaseModel):
 
 
 Driver = Literal["access", "promotion", "supply", "competitor", "data", "holiday", "none"]
+# brief-010 FR-000d: what a finding is about; None means BXA TRx. `restated_figure` is a fact about the data record
+# (a restatement), not the business (brief-010 FR-010).
+Measure = Literal["trx", "nbrx", "bxa_share", "competitor_share", "restated_figure"]
+GRAINS = ("national", "territory", "plan", "channel", "specialty")
+PRE_LAUNCH = ("2026-02-02", "2026-02-23")  # the four weeks before Metacora launched (2026-03-02)
+
+
+class Comparison(BaseModel):
+    """The comparison choice, as `pharmagentics.tools.window.Comparison` plus the eval-only kind `pre_launch` (the four
+    weeks before Metacora launched, 2026-02-02 to 2026-02-23; takes no extra fields)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["previous", "last_year", "custom", "pre_launch"]
+    weeks: int | None = Field(default=None, strict=True, ge=1, le=13)
+    start: date | None = None
+    end: date | None = None
+
+    @model_validator(mode="after")
+    def check_fields(self):
+        if self.kind == "custom":
+            if self.weeks is not None or self.start is None or self.end is None:
+                raise ValueError("Custom comparison needs a start and end week.")
+            if self.start.weekday() or self.end.weekday() or self.start > self.end:
+                raise ValueError("Custom comparison needs ordered Monday reporting weeks.")
+        elif self.kind == "previous":
+            if self.weeks is None or self.start is not None or self.end is not None:
+                raise ValueError("Previous comparison needs a week count.")
+        elif self.weeks is not None or self.start is not None or self.end is not None:
+            raise ValueError(f"A {self.kind} comparison takes no extra fields.")
+        return self
+
+    def for_engine(self) -> "Comparison":
+        """The comparison the shared window parser knows: `pre_launch` is the custom window it names."""
+        if self.kind != "pre_launch":
+            return self
+        return Comparison(kind="custom", start=date.fromisoformat(PRE_LAUNCH[0]), end=date.fromisoformat(PRE_LAUNCH[1]))
+
+
+DEFAULT_COMPARISON = Comparison(kind="previous", weeks=4)  # the house comparison: the four weeks before the period
+
+
+class Definition(BaseModel):
+    """The brief definition a case is written under (brief-010 FR-000a and FR-000e, plan.md "The brief definition"). The
+    eval-side twin of `pharmagentics.tools.definition.Definition`, with the same JSON names; the eval package never
+    imports from `src/` for its own models. A week left None means the question's weeks, else the latest closed week.
+    Every field but the period is a list: the first value is the primary (golden facts and finding directions follow it),
+    a bare value or object is read as a one-item list, `measure: both` as [trx, nbrx], and a comparison of None or []
+    means the previous four weeks."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    first_week: str | None = None
+    last_week: str | None = None
+    comparison: list[Comparison] = []
+    territories: list[Literal["like_for_like", "all_reportable", "projected"]] = ["like_for_like"]
+    measure: list[Literal["trx", "nbrx"]] = ["trx"]
+    grain: list[Literal["national", "territory", "plan", "channel", "specialty"]] = list(GRAINS)
+    relative_to: list[Literal["other_territories", "national", "none"]] = ["other_territories"]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _lists(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        for key in ("comparison", "territories", "measure", "grain", "relative_to"):
+            if key not in data:
+                continue
+            value = data[key]
+            if value is None:
+                value = []
+            elif not isinstance(value, (list, tuple)):
+                value = [value]
+            if key == "measure":
+                value = [m for v in value for m in (["trx", "nbrx"] if v == "both" else [v])]
+            seen: list = []
+            for v in value:  # a repeated value adds nothing
+                if v not in seen:
+                    seen.append(v)
+            if seen or key == "comparison":
+                data[key] = seen
+            else:
+                raise ValueError(f"{key} needs at least one value")
+        return data
+
+    @property
+    def primary_comparison(self) -> Comparison | None:
+        return self.comparison[0] if self.comparison else None
+
+    @property
+    def explicit_comparison(self) -> Comparison | None:
+        """The primary comparison when it is a choice: None for none or the house default (previous four weeks),
+        which the engines read as "no choice made" (a release-wide Promotion review refuses an explicit one)."""
+        c = self.primary_comparison
+        return None if c is None or c == DEFAULT_COMPARISON else c
+
+    def payload(self, *, engine: bool = False) -> dict:
+        """The JSON with every field (lists), comparisons without their Nones. `engine=True` is what a system
+        receives: a comparison list that is only the house default goes as [], which means the same thing."""
+        out = self.model_dump(mode="json")
+        choices = [] if engine and self.comparison == [DEFAULT_COMPARISON] else self.comparison
+        out["comparison"] = [c.model_dump(mode="json", exclude_none=True) for c in choices]
+        return out
 
 
 class Finding(BaseModel):
@@ -49,6 +153,7 @@ class Finding(BaseModel):
     reviewed: bool = True
     cut: str | None = None  # core-011 FR-017: "plan:<id>", "channel:<name>" or "segment:<name>"; None = the whole territory
     needs: Needs | None = None  # core-011 FR-018
+    measure: Measure | None = None  # brief-010 FR-000d: None = BXA TRx
 
     @field_validator("cut")
     @classmethod
@@ -162,20 +267,43 @@ class Case(BaseModel):
     facts: list[Fact] = []
     findings: list[Finding] = []
     follow_up: FollowUp | None = None  # two-turn cases (brief-006 FR-013)
-    comparison: Comparison | None = None
+    definition: Definition | None = None  # brief-010 FR-000d; an old top-level `comparison:` is read into it
+    intent: Literal["brief", "promotion_review"] = "brief"  # the app's request intent; "promotion_review" sends the
+    # Promotion review question form (systems.briefing_question), so a question with no campaign word still gets one
     scope: Scope | None = None  # explicit expected scope; absent, expectations() derives it from the question prefix
     source: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _old_comparison(cls, data):
+        """Files written before brief-010 carry a top-level `comparison:`; it becomes `definition.comparison`."""
+        if isinstance(data, dict) and "comparison" in data:
+            data = dict(data)
+            comparison = data.pop("comparison")
+            definition = dict(data.get("definition") or {})
+            if comparison is not None and not definition.get("comparison"):
+                definition["comparison"] = comparison
+            if definition:
+                data["definition"] = definition
+        return data
+
+    @property
+    def comparison(self) -> Comparison | None:
+        """The comparison the case makes a choice of (None: the house default), as the old `comparison:` field was."""
+        return self.definition.explicit_comparison if self.definition else None
 
     def inputs(self) -> dict:
         """What the system under test receives: the question, and the follow-up for a two-turn case."""
         return {"question": self.question, "follow_up": self.follow_up.question if self.follow_up else None,
-                "section": self.follow_up.section if self.follow_up else None,
-                **({"comparison": self.comparison.model_dump(mode="json", exclude_none=True)} if self.comparison else {})}
+                "section": self.follow_up.section if self.follow_up else None, "intent": self.intent,
+                **({"comparison": self.comparison.for_engine().model_dump(mode="json", exclude_none=True)} if self.comparison else {}),
+                **({"definition": self.definition.payload(engine=True)} if self.definition else {})}
 
     def expected_scope(self) -> Scope:
         comparison = self.comparison.model_dump(mode="json", exclude_none=True) if self.comparison else None
         if self.scope is None:
-            return derive_scope(self.question, comparison)
+            derived = derive_scope(self.question, comparison)
+            return derived.model_copy(update={"intent": "promotion_review"}) if self.intent == "promotion_review" else derived
         return self.scope if self.scope.comparison is not None or comparison is None else self.scope.model_copy(
             update={"comparison": comparison})
 
@@ -200,6 +328,7 @@ class Case(BaseModel):
             "findings": [f.model_dump() for f in self.findings],
             "must_say": self.must_say.phrases if self.must_say else [],
             "scope": self.expected_scope().model_dump(),
+            "definition": self.definition.payload() if self.definition else None,
             "eval_items": self.eval_items,
         }
 
