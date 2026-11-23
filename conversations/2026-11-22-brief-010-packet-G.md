@@ -48,9 +48,9 @@ Reference prose updated: P2-Q3 ("Like for like (the seven territories that repor
 
 ## Tests
 
-- `uv run python -m eval check`: 181 of 181 facts recompute (was 179 of 181 before the P2-Q4 week count was fixed to 22; final run clean).
+- `uv run python -m eval check`: 181 of 181 facts recompute (179 of 181 until the P2-Q4 gate-week count was corrected to 22).
 - New `eval/tests/test_definition.py`: every case states every field and has no top-level `comparison`; period equals `derive_scope`; measure; explicit comparison; old `comparison:` mapping (and explicit wins); old file without a comparison loads with no definition; default comparison goes as None while expectations keep it; definition validation; signature guard; finding `measure` and `finding_recall` does not crash; the review decisions (reviewed flags, cuts, needs, restated values and prose).
-- `uv run pytest -q eval/tests --deselect eval/tests/test_run_smoke.py`: see PROJECT_STATE line below / final report. No eval run, no full suite.
+- `uv run pytest -q eval/tests --deselect eval/tests/test_run_smoke.py`: 191 passed, 1 deselected (18 min 51 s; run on the same files as commit 8caf890). Re-run after the resume: `eval check` 181 of 181, and `test_definition.py`, `test_golden_integrity.py`, `test_scope.py` 27 passed. No eval run, no full suite.
 
 ## Next step
 
