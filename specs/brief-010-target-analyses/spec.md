@@ -37,6 +37,12 @@ Some of it is already computed. The plan, specialty and channel splits are in ea
 - Q: Golden cases? → A: Each case carries the **same explicit definition** (it replaces `comparison`); its facts are computed under it; a finding names its measure (BXA TRx unless it says BXA share or a competitor's share).
 - Q: Merge bar? → A: Each packet, on the scripted engine: pooled key-fact recall and finding recall do not fall, no case goes over the word budget, and the packet raises its own target cases. The Haiku agent runs after the plan-cut packet and at the end; "numbers lost by the agent" (core-011 FR-013) must be 0.
 
+### Session 2026-11-23 (grill with Michael, data notes; do not reopen)
+
+- Q: A restatement is a fact about what? → A: **The data record, not the business.** The restatement card (FR-005) has its own measure, `restated_figure`, and carries `directions: {"restated_figure": up|down|flat}` beside `direction`. A card covers the measures in its `directions`, so it never counts as the territory's TRx story: a finding `withheld: true` for that territory is still met. The golden findings `mid_atlantic_restated_figure` (P2-Q5, P3-Q6) name `measure: restated_figure`. The restatement stays prominent: the Bottom line data note and the never-shrunk restatement card are unchanged.
+- Q: A national total that falls because a territory dropped out? → A: **A national data-artifact card, built by code** (FR-011), at most one a brief, beside the national competitor card (which covers share measures only).
+- Q: P2-Q1's comparison? → A: **The previous 1 week** (`comparison: {kind: previous, weeks: 1}`); its facts already use the week before.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - The plan behind a territory's number (Priority: P1)
@@ -92,6 +98,8 @@ A leader asks whether the issue is new or continuing. The competitor story is a 
 - **FR-007**: The agent engine MUST receive cut and national cards as candidate stories from code (triage) and carry them to the brief unchanged in their numbers; the Writer words them around claim tokens.
 - **FR-008**: A brief near its word budget MUST shrink a territory card to its headline before it drops anything; a cut or national card is never dropped for length.
 - **FR-009**: The scored `answer` MUST carry the new text (cards' unfolded text), so the eval scores what a reader sees.
+- **FR-010**: The restatement card (FR-005) MUST be a data-record note with its own measure: `directions: {"restated_figure": <direction of the restatement>}` (and `direction`). A scorer matches a finding to a card only on a measure the card covers (FR-006), so a restatement card is never the territory's TRx story; the golden finding that expects it names `measure: restated_figure`, and a `withheld` finding for the same territory is met.
+- **FR-011**: When the national change over the reportable territories differs materially from the like-for-like change because a territory dropped out of one period (withheld by the feed gate), the brief MUST add one national data-artifact card, built by code: territory `NATIONAL`, `cut` None, `direction` and `directions: {<primary measure>: ...}` the direction of the reportable-total change, `drivers_supported: ["data"]`, a headline of claim tokens naming the territory that dropped out ("National BXA TRx over the reportable territories fell 18.4%, but on the 7 territories that report both weeks it fell 3.6%: Mid-Atlantic is withheld."). **Materiality: the gap between the two changes reaches `stages.MATERIAL_GAP` (the house 8 points, `tools/stages.py`)**; the card is built from the KPI block's own claims (reportable-total change, like-for-like change, territory count), so it adds none. At most one a brief, in both engines (`memo.data_artifact_block`; the agent session returns `data_artifact_stories` with the restatement stories).
 
 ## Success Criteria *(mandatory)*
 

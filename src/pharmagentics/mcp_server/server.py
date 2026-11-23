@@ -242,6 +242,7 @@ class RunSession:
                 "appendix": memo.appendix(reg, p=p, proj=self.proj, restated=bool(restated)), "calendar": bool(p.calendar),
                 "comparison_phrase": memo.comparison_phrase(p), "comparison_weeks": list(p.baseline or []),
                 "territory_table": nums["territory_table"], "details": {"2": nums["detail"], "4": lim["detail"]},
+                "data_artifact_stories": [asdict(b) for b in [memo.data_artifact_block(facts)] if b],  # brief-010 FR-011
                 "restatement_stories": [asdict(b) for b in [memo.restatement_block(restated_facts)] if b],  # brief-010 FR-005
                 "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 

@@ -72,4 +72,5 @@ findings:
   withheld: false
   reviewed: true
   needs: restatement
+  measure: restated_figure
 source: docs/planning/user-stories.md#P3-Q6

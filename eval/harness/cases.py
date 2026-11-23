@@ -35,8 +35,9 @@ class Fact(BaseModel):
 
 
 Driver = Literal["access", "promotion", "supply", "competitor", "data", "holiday", "none"]
-# brief-010 FR-000d: what a finding is about; None means BXA TRx.
-Measure = Literal["trx", "nbrx", "bxa_share", "competitor_share"]
+# brief-010 FR-000d: what a finding is about; None means BXA TRx. `restated_figure` is a fact about the data record
+# (a restatement), not the business (brief-010 FR-010).
+Measure = Literal["trx", "nbrx", "bxa_share", "competitor_share", "restated_figure"]
 GRAINS = ("national", "territory", "plan", "channel", "specialty")
 PRE_LAUNCH = ("2026-02-02", "2026-02-23")  # the four weeks before Metacora launched (2026-03-02)
 

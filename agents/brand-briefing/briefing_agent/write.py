@@ -355,6 +355,7 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
             notes.append("Routine week. No material change was found, and territory swings stayed in their normal range.")
         elif dropped_line:
             dropped.append(dropped_line)
+    blocks.extend(memo.StoryBlock(**story) for story in sections.get("data_artifact_stories", []))  # brief-010 FR-011
     blocks.extend(memo.StoryBlock(**story) for story in sections.get("restatement_stories", []))  # brief-010 FR-005
     blocks.extend(memo.StoryBlock(**story) for story in sections.get("promotion_stories", []))
     parts = memo.MemoParts(title=sections["title"], bottom_line=close["bottom_line"], numbers=sections["numbers"],
