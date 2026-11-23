@@ -1,7 +1,8 @@
 // brief-003: the weekly brief as a memo. Sections, charts and the data behind them come from the server;
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
 import { useState, type ReactNode } from "react"
-import type { ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
+import { DefinitionWords } from "./BriefDefinition"
+import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
 const COLORS = ["var(--color-agent)", "var(--color-human)"]
 const PANEL_COLOR = "var(--color-amber)"
@@ -295,7 +296,9 @@ function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], cl
 
 // The memo: numbered sections in order. Analysts get inline citations and the data behind each section;
 // leaders get the server's cut (no claims, tables or queries) through the same component.
-export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void}) {
+// brief-010 FR-000b: `definition` is what the brief was built under; it is stated in words in the Assumptions block (§6),
+// in both views. A brief made before brief-010 has none, and nothing extra shows.
+export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, definition, labelWeek}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void, definition?: BriefDefinition | null, labelWeek?: (iso: string) => string}) {
   // A brief stored before brief-008 has none of the new fields and renders as it always did: each section's text
   // as one pre-wrapped block. A brief with any of them reads as paragraphs throughout. Only analysts (who get the
   // claims) can unfold `detail`; the leader cut never carries it.
@@ -328,6 +331,9 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
       <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{s.title}</h3>
     {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-agentdeep hover:underline">Ask about this</button>}
   </div>
+  // The Assumptions block lives in §6; a memo without a §6 shows the definition under its last section.
+  const topLevel = sections.filter(s => !s.number.includes("."))
+  const assumptionsAt = topLevel.some(s => s.number === "6") ? "6" : topLevel[topLevel.length - 1]?.number
   return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>
     {sections.filter(s => !s.number.includes(".")).map(s => {
       const children = sections.filter(c => c.number.startsWith(`${s.number}.`))
@@ -336,6 +342,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
         {children.length > 0 && <div className="mt-4 space-y-6">{children.map(c =>
           <section key={c.number} aria-labelledby={`memo-${briefId}-${c.number}`} className={c.card ? "" : "border-l-2 border-rule pl-4"}>{heading(c, true)}{body(c)}</section>)}</div>}
         <div className={children.length ? "mt-4" : ""}>{body(s)}</div>
+        {definition && s.number === assumptionsAt && <DefinitionWords definition={definition} labelWeek={labelWeek}/>}
       </section>
     })}
   </div>

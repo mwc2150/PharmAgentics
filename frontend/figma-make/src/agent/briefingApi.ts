@@ -43,6 +43,7 @@ export type BriefingResult = {
   flow?: Stage[] | null         // brief-002: the seven stages, run states and actors (analyst view only)
   citations?: { start: number; end: number; claim: number }[] | null  // where each claim sits in the answer
   sections?: MemoSection[] | null  // brief-003: the memo's sections, charts and the data behind them
+  definition?: BriefDefinition | null  // brief-010: what the brief was built under; absent on briefs made before it
   events?: RunEvent[] | null  // brief-009: the saved event log (analyst view only); absent on briefs made before it
 }
 // brief-009 (plan.md): one step of a run. `claims` are indexes into the brief's claims; `args` are analyst view only;
@@ -197,6 +198,7 @@ export type LeadershipBrief = {
   reviewed_at: string | null
   summary: string
   sections?: MemoSection[] | null  // brief-003 FR-026: §1, §2, §3 without checks, §5; no claims, tables or queries
+  definition?: BriefDefinition | null  // brief-010: the same definition as the analyst brief; it holds no SQL and no arguments
   process_summary?: string | null  // brief-009 FR-005: one line on how it was built; leaders never get the events
 }
 export type PublishedBrief = {
@@ -228,6 +230,23 @@ export type Comparison =
   | { kind: "last_year" }
   | { kind: "custom"; start: string; end: string }
 
+// brief-010 FR-000a: the brief definition, JSON names as in plan.md ("The brief definition"). The server fills every
+// field it is not given with the pre-selected value (like for like, TRx, all five grains, the other territories, the
+// house comparison), so a brief with no definition is the brief of today.
+export type TerritoriesCounted = "like_for_like" | "all_reportable" | "projected"
+export type MeasureChoice = "trx" | "nbrx" | "both"
+export type GrainLevel = "national" | "territory" | "plan" | "channel" | "specialty"
+export type RelativeTo = "other_territories" | "national" | "none"
+export type BriefDefinition = {
+  first_week?: string | null  // ISO Monday; null: the question's weeks, else the latest closed week
+  last_week?: string | null
+  comparison?: Comparison | null  // null: the previous four weeks
+  territories: TerritoriesCounted
+  measure: MeasureChoice
+  grain: GrainLevel[]
+  relative_to: RelativeTo
+}
+
 export type BriefingQuery = {
   intent: "weekly_brief" | "promotion_review"
   brand_id: string
@@ -236,6 +255,7 @@ export type BriefingQuery = {
   week_end?: string | null  // brief-008: the last week of a multi-week period; absent for one week
   comparison?: Comparison | null
   question: string
+  definition?: BriefDefinition | null  // brief-010: the six selectors; the server's pre-selected values when absent
 }
 
 // brief-008 FR-008: a typed question read into a proposed scope for the form. Nothing runs on it.
@@ -249,6 +269,7 @@ export type BriefingScope = {
   notes: string[]
   read_by: "model" | "rules"
   model?: string | null
+  definition?: Partial<BriefDefinition> | null  // brief-010: the fields the reader proposes; the analyst confirms them
 }
 
 export class NotSignedIn extends Error {}
