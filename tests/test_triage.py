@@ -28,7 +28,12 @@ def q(week: str, territory: str | None = None) -> str:
 def comparable(envelope: dict) -> dict:
     """The envelope's answer, claims, evidence and flag, with this machine's data version replaced by a
     placeholder: the version is a hash of the data files, so the frozen fixture must not depend on it."""
-    text = json.dumps({k: envelope[k] for k in ("answer", "claims", "evidence", "abstained")}, default=str)
+    body = {k: envelope[k] for k in ("answer", "claims", "evidence", "abstained")}
+    # brief-010: the frozen fixture predates the claim `labels` (the definition each claim was made under) and the one
+    # Assumptions sentence "Holiday weeks are left out."; neither changes a number, a claim value or an evidence item.
+    body["claims"] = [{k: v for k, v in c.items() if k != "labels"} for c in body["claims"]]
+    body["answer"] = body["answer"].replace(" Holiday weeks are left out.", "")
+    text = json.dumps(body, default=str)
     return json.loads(_mask_version(text))
 
 

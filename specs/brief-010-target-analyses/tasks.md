@@ -3,10 +3,10 @@
 Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeline`. Packets D-B, D-U and G first, side by side; then N and R side by side; then P, then S. Built by Sonnet in their own worktrees; Opus integrates.
 
 ## Packet D-B: the brief definition, backend (FR-000a, FR-000c)
-- [ ] DB1 `tools/definition.py`: the `Definition` model, its pre-selected values, validation, and words for the Assumptions block.
-- [ ] DB2 Both engines take `definition` (None means the pre-selected values) and honour every field; claims record the fields plus grain and cut.
-- [ ] DB3 API: brief and job requests carry `definition`; the stored brief keeps it; the scope reader proposes it; the Assumptions block prints it.
-- [ ] DB4 Tests: pre-selected definition gives today's brief unchanged (answer, claims, evidence); each field changes what it should.
+- [x] DB1 `tools/definition.py`: the `Definition` model, its pre-selected values, validation, and words for the Assumptions block.
+- [x] DB2 Both engines take `definition` (None means the pre-selected values) and honour every field; claims record the fields plus grain and cut.
+- [x] DB3 API: brief and job requests carry `definition`; the stored brief keeps it; the scope reader proposes it; the Assumptions block prints it.
+- [x] DB4 Tests: pre-selected definition gives today's brief unchanged (answer, claims, evidence); each field changes what it should.
 
 ## Packet D-U: the brief definition, form (FR-000b)
 - [x] DU1 Six selectors at the start of the Briefing form, pre-selected, editable; the scope reader's proposal fills them; the request sends `definition`.

@@ -13,6 +13,9 @@ Your three outputs:
 
 Question from the brand team: {question}
 
+How this brief counts (the analyst's definition; name a figure's basis in these words):
+{definition}
+
 The memo's sections, written by code (numbers are claim tokens such as {{c7}}):
 {sections}
 

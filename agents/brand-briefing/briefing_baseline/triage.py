@@ -83,7 +83,7 @@ def build_plan(reg, f: Front) -> dict:
     if not p.calendar and not p.promotion_review:
         for i, s in enumerate(f.found):
             cards.append(_card(reg, f, s, len(cards) + 1, "investigate" if i < MAX_STORIES else "over_cap"))
-        if stages.competitor_status(reg, p) is not None:
+        if p.has("national") and stages.competitor_status(reg, p) is not None:
             cards.append(_card(reg, f, None, len(cards) + 1, "investigate"))
     texts = [c[k] for c in cards for k in ("what_moved", "decision", "population", "granularity", "time")]
     bad = digits_outside_tokens("\n".join(texts))
@@ -101,6 +101,10 @@ def build_plan(reg, f: Front) -> dict:
     pinned = [p.comparison.model_dump_json(), *p.baseline] if p.comparison is not None else []
     if p.brand_id != "BXA":
         pinned.append(p.brand_id)
+    d = p.definition
+    if not d.is_pre_selected or d.extra_comparisons:  # a different definition is a different plan; the pre-selected one keeps today's ID
+        pinned.append(d.model_dump_json(exclude={"comparison"}))
+        pinned += [c.model_dump_json() for c in d.extra_comparisons]
     plan_id = "t-" + hashlib.sha256("|".join([p.question, reg.data_version, *pinned, *proposed_ids]).encode()).hexdigest()[:12]
     for c in cards:
         for k in ("what_moved", "decision", "population", "granularity", "time"):
@@ -110,6 +114,7 @@ def build_plan(reg, f: Front) -> dict:
         "weeks": list(p.weeks), "baseline": list(p.baseline), "focus": p.focus,
         "promotion_review": p.promotion_review,
         "comparison": p.comparison.model_dump(mode="json") if p.comparison is not None else None,
+        "definition": p.definition.to_json(),
         "baseline_source": p.baseline_source,
         "context": reg.render("\n".join(x for x in f.out if x)),  # stages 1 to 3 as the brief will state them
         "stories": cards, "dropped": dropped, "withheld": withheld, "candidates": len(f.found),

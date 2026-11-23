@@ -15,6 +15,7 @@ from mcp.client.stdio import StdioServerParameters
 
 from pharmagentics.llm import REPO_ROOT, chat_client, chat_options
 from pharmagentics.mcp_server import AGENT_TOOLS
+from pharmagentics.tools.definition import Definition, prompt_words
 from pharmagentics.tracing import finish, span
 
 from briefing_lowcode.team import RunLog, _call, _model_failure  # build 2's middleware and helpers
@@ -45,14 +46,15 @@ def wall_scale() -> float:
         return 1.0
 
 
-def story_task(card: dict, hypotheses: list[str]) -> str:
+def story_task(card: dict, hypotheses: list[str], definition: dict | None = None) -> str:
     t = card["territory"]
     order = ", ".join(hypotheses)
     return (f"Investigate one story for the weekly BXA brief.\nStory: {card['title']} (territory ID {t}).\n"
             f"Plan's hypothesis order: {order}.\n"
             f"Data Forensics first: check_data({t}). Then the Driver Investigator tests the other drivers in that "
             f"order with check_access, check_promotion, check_supply or check_competitor on {t}, one call each, "
-            f"and closes the story with story_confidence({t}). Stop once story_confidence has closed it.")
+            f"and closes the story with story_confidence({t}). Stop once story_confidence has closed it."
+            + (f"\nThe brief counts like this:\n{prompt_words(Definition.coerce(definition, None))}" if definition else ""))
 
 
 async def _team(cfg: dict, spec: str, mcp, task: str, log: RunLog, wall: float) -> str | None:
@@ -104,7 +106,7 @@ async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], l
             log.events.story = sid
         with span(f"story_{n}_{card['territory']}", inputs={"story": sid, "hypotheses": card["manager"]["hypotheses"]}) as sp:
             if not capped:
-                capped = await _team(cfg, spec, mcp, story_task(card, card["manager"]["hypotheses"]), log,
+                capped = await _team(cfg, spec, mcp, story_task(card, card["manager"]["hypotheses"], plan.get("definition")), log,
                                      min(cfg["story_wall_seconds"] * scale, left))
             section = await _call(mcp, "story_section", territory=card["territory"], n=n)  # code closes the story
             await trace.note(log, "Close the story", section, tool="story_section", args={"territory": card["territory"]},

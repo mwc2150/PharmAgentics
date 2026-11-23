@@ -36,8 +36,8 @@ def _cuts_sql(p: Period, territory: str, by: str) -> str:
     return f"""
         with cuts as (
             select coalesce({col}, 'Unclassified') as cut,
-                coalesce(sum(trx) filter (where week_start in {q._dates(W)}), 0) / {len(W)}.0 as recent,
-                coalesce(sum(trx) filter (where week_start in {q._dates(B)}), 0) / {len(B)}.0 as baseline
+                coalesce(sum({p.col}) filter (where week_start in {q._dates(W)}), 0) / {len(W)}.0 as recent,
+                coalesce(sum({p.col}) filter (where week_start in {q._dates(B)}), 0) / {len(B)}.0 as baseline
             from {q.RX}
             where product_id = '{p.brand_id}' and territory_id = '{territory}'
                 and week_start in {q._dates(sorted(set(W) | set(B)))}
@@ -57,6 +57,8 @@ def _cuts_sql(p: Period, territory: str, by: str) -> str:
 
 
 def split_change(reg: Registry, p: Period, territory: str, by: str) -> list[str]:
+    if not p.has(by):
+        return [f"Cuts of the change by {by} are not part of this brief: its levels leave them out."]
     if territory not in p.ok or not p.baseline:
         return ["The feed gate or comparison window leaves no reportable split."]
     ordered = _cuts_sql(p, territory, by)
@@ -64,18 +66,18 @@ def split_change(reg: Registry, p: Period, territory: str, by: str) -> list[str]
     if not rows or all(size < SMALL_CELL for _, _, size in rows):
         return [f"Cuts of the change by {by}: the change cannot be split at this size."]
     total = reg.claim("split_change", ordered + "select cumulative from running order by rank desc limit 1", "dec2",
-                      territory=territory, by=by, measure="total weekly TRx change")
-    lines = [f"Cuts of the change by {by}, weekly TRx. Total: {total}."]
+                      territory=territory, by=by, measure=f"total weekly {p.col_name} change")
+    lines = [f"Cuts of the change by {by}, weekly {p.measure_label}. Total: {total}."]
     for rank, cut, size in rows:
         token = reg.claim("split_change", ordered + f"select contribution from contributions where rank = {rank}", "dec2",
-                          territory=territory, by=by, cut=cut, measure="weekly TRx change", small_cell=size < SMALL_CELL)
+                          territory=territory, by=by, cut=cut, measure=f"weekly {p.col_name} change", small_cell=size < SMALL_CELL)
         label = " (small cell: noisy)" if size < SMALL_CELL else ""
         lines.append(f"- {cut}: {token}{label}.")
     return lines
 
 
 def story_lines(reg: Registry, p: Period, territory: str) -> list[str]:
-    return [line for dimension in SPLITS for line in split_change(reg, p, territory, dimension)]
+    return [line for dimension in SPLITS if p.has(dimension) for line in split_change(reg, p, territory, dimension)]
 
 
 MOST_CUTS = 5
@@ -88,6 +90,8 @@ def readable_lines(reg: Registry, p: Period, territory: str) -> list[str]:
 
     lines: list[str] = []
     for by in SPLITS:
+        if not p.has(by):
+            continue
         if territory not in p.ok or not p.baseline:
             return ["The feed gate or comparison window leaves no reportable split."]
         ordered = _cuts_sql(p, territory, by)
@@ -98,12 +102,12 @@ def readable_lines(reg: Registry, p: Period, territory: str) -> list[str]:
         params = {"territory": territory, "by": by}
         total_sql = ordered + "select cumulative from running order by rank desc limit 1"
         total = reg.claim("split_change", ordered + "select abs(cumulative) from running order by rank desc limit 1", "int",
-                          measure="total weekly TRx change", **params)
-        lines.append(f"Cuts of the change by {by}, weekly TRx. Total: {word(reg.scalar(total_sql) or 0)} {total} TRx a week.")
+                          measure=f"total weekly {p.col_name} change", **params)
+        lines.append(f"Cuts of the change by {by}, weekly {p.measure_label}. Total: {word(reg.scalar(total_sql) or 0)} {total} {p.measure_label} a week.")
         for rank, cut, size in rows[:MOST_CUTS]:
             sql = ordered + f"select contribution from contributions where rank = {rank}"
             token = reg.claim("split_change", ordered + f"select abs(contribution) from contributions where rank = {rank}", "int",
-                              cut=cut, measure="weekly TRx change", small_cell=size < SMALL_CELL, **params)
-            lines.append(f"- {readable(cut)[:1].upper()}{readable(cut)[1:]}: {word(reg.scalar(sql) or 0)} {token} TRx a week"
+                              cut=cut, measure=f"weekly {p.col_name} change", small_cell=size < SMALL_CELL, **params)
+            lines.append(f"- {readable(cut)[:1].upper()}{readable(cut)[1:]}: {word(reg.scalar(sql) or 0)} {token} {p.measure_label} a week"
                          + (" (small cell: noisy)." if size < SMALL_CELL else "."))
     return lines
