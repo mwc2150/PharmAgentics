@@ -49,8 +49,8 @@ The loader reads an explicit list of filenames, not all CSVs it finds nearby.
 
 These are fictional, schema-aligned commercial data, not real patients,
 prescribers, products, or calibrated industry measurements. Read the
-[source README](../data/agent_visible/README.md) and
-[data dictionary](../data/agent_visible/data_dictionary.json) for metric meanings
+[source README](../../data/agent_visible/README.md) and
+[data dictionary](../../data/agent_visible/data_dictionary.json) for metric meanings
 and limits.
 
 ## Database layout and repeat imports

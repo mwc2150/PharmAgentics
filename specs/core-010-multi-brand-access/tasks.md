@@ -32,4 +32,4 @@ Base: `5b8dfb7fa7eec05b2ab943a3816f655946af98c4`.
 
 ## After merge — hosted rollout
 
-The code change does not modify a running Keycloak realm. Apply the explicit account grants with Michael **before the merge triggers app deployment**, then sign out/in and repeat the same-role/different-grant UAT walkthrough in [MULTI_BRAND_UAT.md](../../docs/MULTI_BRAND_UAT.md). Record the hosted revision, allowed BXC brief and denied BXC request. BXC agent/Forecast support and immediate session revocation remain outside this release.
+The code change does not modify a running Keycloak realm. Apply the explicit account grants with Michael **before the merge triggers app deployment**, then sign out/in and repeat the same-role/different-grant UAT walkthrough in [multi-brand-uat.md](../../docs/guides/multi-brand-uat.md). Record the hosted revision, allowed BXC brief and denied BXC request. BXC agent/Forecast support and immediate session revocation remain outside this release.
