@@ -231,3 +231,31 @@ def test_kinds_group_the_matrix_and_leave_out_run_counters(stores):
     assert "golden_number_recall" in d["kinds"]["code"] and "claims_reconcile" in d["kinds"]["code"]
     assert not {"seconds", "llm_calls", "tool_calls", "hit_cap"} & {k for ks in d["kinds"].values() for k in ks}
     assert "briefing_scripted: Code checks" in render_md(d)
+
+
+def test_a_crashed_run_is_not_the_run_to_compare_with(tmp_path):
+    """A run with run errors scores its crashed cases trivially; the comparison skips it for the last clean run."""
+    path = tmp_path / "crash.db"
+    _store(str(path), {
+        "P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"numbers_match_golden": "0.20"})]),
+        "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"numbers_match_golden": "1.0"})]),  # crashed: no numbers
+        "P3": ("briefing_scripted", "g1", 3000, [(Q_DOLLAR, {"numbers_match_golden": "0.18"})])})
+    con = sqlite3.connect(str(path))
+    con.execute("create table metrics (key text, value real, run_uuid text)")
+    con.execute("insert into metrics values ('run_errors/mean', 5.0, 'P2')")
+    con.commit()
+    con.close()
+    assert build([path], PAIRS)["fallen"] == []  # P3 is compared with P1 (0.20 -> 0.18), not with the crashed P2
+
+
+def test_a_run_in_two_stores_counts_once(tmp_path):
+    import shutil
+
+    a = tmp_path / "a.db"
+    _store(str(a), {"P1": ("briefing_scripted", "g1", 1000, [(Q_DOLLAR, {"golden_number_recall": "1.0"})]),
+                    "P2": ("briefing_scripted", "g1", 2000, [(Q_DOLLAR, {"golden_number_recall": "0.5"})])})
+    b = tmp_path / "b.db"
+    shutil.copy(a, b)
+    d = build([a, b], PAIRS)
+    assert [r["run_id"] for r in d["systems"]["briefing_scripted"]["runs"]] == ["P1", "P2"]
+    assert {(r["case"], r["previous"], r["latest"]) for r in d["fallen"]} == {("C-1", 1.0, 0.5)}

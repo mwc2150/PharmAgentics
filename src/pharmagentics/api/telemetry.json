@@ -1,7 +1,7 @@
 {
- "exported": "2026-11-23T18:06+00:00",
+ "exported": "2026-11-23T18:17+00:00",
  "source": "golden set (MLflow)",
- "note": "Run-level scores only. Judge scores are report-only until judge agreement clears the bar.",
+ "note": "Scores from the golden questions. Scores from a model judge are shown for reference only.",
  "targets": {
   "key_fact_recall": 0.85,
   "finding_recall": 0.9
@@ -2124,7 +2124,7 @@
   }
  ],
  "cases": {
-  "generated": "2026-11-23T18:06:32+00:00",
+  "generated": "2026-11-23T18:17:27+00:00",
   "targets": {
    "key_fact_recall": 0.85,
    "finding_recall": 0.9
@@ -4862,7 +4862,13 @@
        "numbers_lost": null
       },
       "stuck": [],
-      "fallen": []
+      "fallen": [
+       {
+        "scorer": "judge_factual_correctness",
+        "previous": 0.46,
+        "latest": 0.3
+       }
+      ]
      },
      {
       "case": "C-006",
@@ -4900,7 +4906,23 @@
        "numbers_lost": null
       },
       "stuck": [],
-      "fallen": []
+      "fallen": [
+       {
+        "scorer": "golden_number_recall",
+        "previous": 0.5714,
+        "latest": 0.0
+       },
+       {
+        "scorer": "judge_factual_correctness",
+        "previous": 0.44,
+        "latest": 0.33
+       },
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.6667,
+        "latest": 0.0
+       }
+      ]
      },
      {
       "case": "C-008",
@@ -5360,7 +5382,13 @@
        "numbers_lost": null
       },
       "stuck": [],
-      "fallen": []
+      "fallen": [
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.4167,
+        "latest": 0.24
+       }
+      ]
      },
      {
       "case": "C-006",
@@ -5803,18 +5831,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 984.0,
-        "latest": 998.0
-       },
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.1042,
-        "latest": 0.1
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-002",
@@ -5839,13 +5856,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 739.0,
-        "latest": 742.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-003",
@@ -5870,13 +5881,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 409.0,
-        "latest": 461.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-004",
@@ -5901,13 +5906,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 1.0,
-        "latest": 0.0909
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-005",
@@ -5932,18 +5931,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 789.0,
-        "latest": 799.0
-       },
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.2674,
-        "latest": 0.2614
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-006",
@@ -6018,13 +6006,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 1.0,
-        "latest": 0.2055
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-009",
@@ -6049,13 +6031,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 1.0,
-        "latest": 0.1867
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-010",
@@ -6080,13 +6056,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.2396,
-        "latest": 0.2308
-       }
-      ],
+      "fallen": [],
       "below": [
        {
         "scorer": "finding_recall",
@@ -6120,18 +6090,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 970.0,
-        "latest": 972.0
-       },
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.127,
-        "latest": 0.125
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-012",
@@ -6156,13 +6115,7 @@
        "numbers_lost": null
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 611.0,
-        "latest": 624.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-013",
@@ -6187,13 +6140,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.1915,
-        "latest": 0.1818
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-014",
@@ -6243,18 +6190,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 737.0,
-        "latest": 754.0
-       },
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.1266,
-        "latest": 0.1139
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-016",
@@ -6279,18 +6215,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 905.0,
-        "latest": 911.0
-       },
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.1304,
-        "latest": 0.125
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-017",
@@ -6315,13 +6240,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.2152,
-        "latest": 0.2055
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-018",
@@ -6346,13 +6265,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 870.0,
-        "latest": 878.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-019",
@@ -6452,13 +6365,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 1.0,
-        "latest": 0.1651
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-023",
@@ -6583,13 +6490,7 @@
        "numbers_lost": null
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 769.0,
-        "latest": 792.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-028",
@@ -6639,13 +6540,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 749.0,
-        "latest": 756.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-030",
@@ -6670,13 +6565,7 @@
        "numbers_lost": null
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 1.0,
-        "latest": 0.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-031",
@@ -6701,13 +6590,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 465.0,
-        "latest": 473.0
-       }
-      ]
+      "fallen": []
      },
      {
       "case": "C-032",
@@ -6732,18 +6615,7 @@
        "numbers_lost": 0.0
       },
       "stuck": [],
-      "fallen": [
-       {
-        "scorer": "brief_words",
-        "previous": 744.0,
-        "latest": 754.0
-       },
-       {
-        "scorer": "numbers_match_golden",
-        "previous": 0.1529,
-        "latest": 0.1477
-       }
-      ]
+      "fallen": []
      }
     ]
    }

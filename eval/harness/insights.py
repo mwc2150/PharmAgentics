@@ -110,6 +110,10 @@ def _read_store(path: Path) -> list[dict]:
         for rid, key, value in rows("select run_uuid, key, value from params where key in (?,?,?,?,?)", PARAM_KEYS):
             params[rid][key] = value
         child_parent = dict(rows("select run_uuid, value from tags where key = 'mlflow.parentRunId'"))
+        errors = defaultdict(float)  # run errors (crashed cases): such a run is not a fair "last run" to compare with
+        if rows("select 1 from sqlite_master where type = 'table' and name = 'metrics'"):
+            for rid, value in rows("select run_uuid, value from metrics where key = 'run_errors/mean'"):
+                errors[rid] = max(errors[rid], value or 0.0)
         scores, notes = defaultdict(dict), defaultdict(dict)
         has_rationale = any(r[1] == "rationale" for r in rows("pragma table_info(assessments)"))
         for trace_id, name, value, why in rows(f"select trace_id, name, value, {'rationale' if has_rationale else 'null'} "
@@ -129,7 +133,7 @@ def _read_store(path: Path) -> list[dict]:
         p = params[rid]
         parents[rid] = {"store": str(path), "run_id": rid, "system": p.get("system") or name, "start": start or 0,
                         "golden_version": p.get("golden_version"), "code_version": p.get("code_version"),
-                        "data_version": p.get("data_version"), "traces": []}
+                        "data_version": p.get("data_version"), "run_errors": errors.get(rid, 0.0), "traces": []}
     for child_id, preview, trace_id in traces:
         parent = child_parent.get(child_id)
         if parent in parents:
@@ -236,9 +240,12 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
     story ID; `needs` maps case_id to {"facts": {id: capability}, "findings": {id: capability}} (core-011 FR-018)."""
     tails, heads = case_index(pairs)
     stories = stories or {}
-    parents = []
-    for path in stores:
-        parents += _read_store(Path(path))
+    parents, seen = [], set()
+    for path in stores:  # stores copied between worktrees share runs: count each run once
+        for p in _read_store(Path(path)):
+            if p["run_id"] not in seen:
+                seen.add(p["run_id"])
+                parents.append(p)
     groups = defaultdict(list)
     for p in sorted(parents, key=lambda p: p["start"]):
         if system and system not in (p["system"], _base(p["system"])):
@@ -280,8 +287,12 @@ def build(stores, pairs, system: str | None = None, last: int = 5, stories: dict
                 if (k not in OPERATIONAL and k not in LOWER_IS_BETTER
                         and len(present) == len(vals) and all(v <= EPS for v in present)):
                     stuck.append({"system": s, "story": stories.get(c, ""), "case": c, "scorer": k, "runs": len(present)})
-        if len(rs) >= 2 and rs[-2]["golden_version"] == rs[-1]["golden_version"]:
-            prev, last_run = rs[-2], rs[-1]
+        # The run to compare with is the latest earlier one on the same golden version that ran without errors: a
+        # crashed case scores trivially (no numbers match no golden numbers), so a crashed run is no baseline.
+        prev = next((r for r in reversed(rs[:-1]) if r["golden_version"] == rs[-1]["golden_version"]
+                     and not r.get("run_errors")), None) if len(rs) >= 2 else None
+        if prev is not None:
+            last_run = rs[-1]
             for c in set(prev["cases"]) & set(last_run["cases"]):
                 for k in set(prev["cases"][c]) & set(last_run["cases"][c]):
                     if k in OPERATIONAL:
