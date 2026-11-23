@@ -8,7 +8,16 @@ const NAMES: Record<string, string> = {
   forecast_scripted: "Forecast, scripted baseline", forecast_rules: "Forecast, rules (no model)",
   forecast_agent: "Forecast agent (model reads and writes)", forecast_investigator: "Forecast, model investigates (comparison)", reference: "Reference answers (control)", naive_llm: "Model without data (control)",
 }
-const label = (k: string) => k.replace(/[_.]/g, " ").replace(/^./, c => c.toUpperCase())
+const RUN_LABELS: Record<string, string> = {
+  key_fact_recall_pooled: "Key facts found, pooled", finding_recall_pooled: "Findings found, pooled",
+  key_fact_target_met: "Key-fact target met", finding_target_met: "Findings target met", over_word_budget: "Briefs over the word budget",
+}
+const label = (k: string) => RUN_LABELS[k] ?? k.replace(/[_.]/g, " ").replace(/^./, c => c.toUpperCase())
+// core-011: the pooled share (all golden facts or findings of the run together) is what the targets are set on; a run
+// logged before pooling existed falls back to the per-case mean.
+const keyFacts = (m: Record<string, number>) => m.key_fact_recall_pooled ?? m.key_fact_recall
+const findings = (m: Record<string, number>) => m.finding_recall_pooled ?? m.finding_recall
+const runValue = (k: string, v: number) => k.endsWith("_target_met") ? (v >= 0.5 ? "Yes" : "No") : k === "over_word_budget" ? String(Math.round(v)) : pct(v)
 const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toFixed(2))
 // A score as people read it: a share as a percent, a count as a whole number, a flag as Yes/No; no unit means a share.
 const fmt = (v: number, unit?: "share" | "count" | "flag") =>
@@ -146,23 +155,29 @@ function PerCase({ tables, targets }: { tables: CaseTable[], targets?: Record<st
   </>
 }
 
-function Scores({ runs }: { runs: TelemetryRun[] }) {
+const COLS = "sm:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem]"
+function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<string, number> }) {
   const cell = (v: number | undefined) => (v != null ? pct(v) : "–")
+  const t = (k: string) => targets?.[k] != null ? ` (target ${pct(targets[k])})` : ""
   return <section className={PANEL}>
-    <div className="hidden grid-cols-[minmax(0,1fr)_7rem_6rem_6rem] gap-4 border-b border-rule px-5 py-2 text-[11px] text-muted sm:grid">
-      <span>System</span><span>Run</span><span className="text-right">Claims reconcile</span><span className="text-right">Number recall</span>
+    <div className={`hidden gap-4 border-b border-rule px-5 py-2 text-[11px] text-muted sm:grid ${COLS}`}>
+      <span>System</span><span>Run</span><span className="text-right" title={`Share of the golden key facts the run stated, all cases pooled${t("key_fact_recall")}`}>Key facts found</span>
+      <span className="text-right" title={`Share of the golden findings the run reached, all cases pooled${t("finding_recall")}`}>Findings found</span>
+      <span className="text-right">Number recall</span><span className="text-right">Claims reconcile</span>
     </div>
     <ul className="divide-y divide-rule">{runs.map(r => <li key={r.run_id}>
       <details>
-        <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem]">
+        <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60 ${COLS}`}>
           <span className="min-w-0"><span className="block truncate text-sm">{name(r)}</span>{r.model && <span className="block truncate text-xs text-muted">{r.model}</span>}</span>
           <span className="text-xs text-muted sm:text-sm">{when(r.started)}</span>
-          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile)}</span>
-          <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Recall </span>{cell(r.metrics.golden_number_recall)}</span>
+          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{cell(keyFacts(r.metrics))}</span>
+          <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Findings </span>{cell(findings(r.metrics))}</span>
+          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Number recall </span>{cell(r.metrics.golden_number_recall)}</span>
+          <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile)}</span>
         </summary>
         <div className="px-5 pb-4">
           <p className="mb-2 text-xs text-muted">{r.cases} questions · {r.reruns} rerun{r.reruns > 1 ? "s" : ""}{r.minutes != null ? ` · ${r.minutes} min` : ""} · run {r.run_id} · code {r.code_version || "n/a"} · data {r.data_version || "n/a"}</p>
-          <Rows rows={Object.entries(r.metrics).map(([k, v]) => [label(k), pct(v)])}/>
+          <Rows rows={Object.entries(r.metrics).map(([k, v]) => [label(k), runValue(k, v)])}/>
           {!!Object.keys(r.judge_metrics).length && <p className="mt-3 text-xs text-muted">Judge scores (report only): {Object.entries(r.judge_metrics).map(([k, v]) => `${label(k)} ${pct(v)}`).join(" · ")}</p>}
         </div>
       </details>
@@ -196,14 +211,15 @@ export function TelemetryWorkspace() {
     ]}/>}
     {u && <InUse u={u}/>}
     {t && <>
-      <Heading title="Golden-set scores" note={<>{t.exported ? `Exported ${when(t.exported)}. ` : ""}{t.note}{lead ? ` Latest: ${name(lead)}, ${when(lead.started)}.` : ""} Select a row for every score.</>}/>
-      <Scores runs={t.latest.filter(r => !r.control)}/>
-      {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)}/></>}
+      <Heading title="Golden-set scores" note={<>{t.exported ? `Exported ${when(t.exported)}. ` : ""}{t.note}{lead ? ` Latest: ${name(lead)}, ${when(lead.started)}.` : ""}{t.targets ? ` Targets: key facts found ${pct(t.targets.key_fact_recall ?? 0)}, findings found ${pct(t.targets.finding_recall ?? 0)}, over all golden questions together.` : ""} Select a row for every score.</>}/>
+      <Scores runs={t.latest.filter(r => !r.control)} targets={t.targets}/>
+      {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)} targets={t.targets}/></>}
       {!!t.cases?.systems.length && <PerCase tables={t.cases.systems} targets={t.cases.targets}/>}
       {!!t.runs.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">All runs ({t.runs.length})</summary>
         <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
-          <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Number recall</th><th className="font-medium">Claims reconcile</th></tr></thead>
+          <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Key facts found</th><th className="pr-4 font-medium">Findings found</th><th className="pr-4 font-medium">Number recall</th><th className="font-medium">Claims reconcile</th></tr></thead>
           <tbody>{t.runs.map(r => <tr key={r.run_id} className="border-t border-rule"><td className="py-1 pr-4 tabular-nums">{when(r.started)}</td><td className="pr-4">{name(r)}</td><td className="pr-4">{r.lane}</td>
+            <td className="pr-4 tabular-nums">{keyFacts(r.metrics) != null ? pct(keyFacts(r.metrics)) : "–"}</td><td className="pr-4 tabular-nums">{findings(r.metrics) != null ? pct(findings(r.metrics)) : "–"}</td>
             <td className="pr-4 tabular-nums">{r.metrics.golden_number_recall != null ? pct(r.metrics.golden_number_recall) : "–"}</td><td className="tabular-nums">{r.metrics.claims_reconcile != null ? pct(r.metrics.claims_reconcile) : "–"}</td></tr>)}</tbody>
         </table></div></details>}
     </>}

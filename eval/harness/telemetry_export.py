@@ -5,6 +5,7 @@ src/pharmagentics/api/telemetry.json. It holds run-level scores, plus a per-case
 marks per scorer): no case text, no answers, no golden facts (core-011 FR-009). The API gives `cases` to analysts and
 the test login only.
 `deploy/gcp.py telemetry` (run by every `gcp.py app`) uploads a fresh copy to the state bucket, which the app prefers.
+Runs often live in several worktrees' stores; `--store` (repeatable) reads them all and keeps the newest per system.
 """
 from __future__ import annotations
 
@@ -25,11 +26,14 @@ JUDGE_HINTS = ("judge", "ragas", "faithfulness", "relevan")  # LLM judges are re
 CONTROLS = {"reference", "naive_llm"}
 AGENT_SUFFIXES = ("_agent", "_lowcode")  # systems whose rows carry numbers_lost (insights.numbers_lost)
 MAX_RUNS = 60
+# Run-level scores logged without "/mean" (core-011 FR-019 to FR-021): the pooled recalls the targets are set on.
+RUN_LEVEL = ("key_fact_recall_pooled", "finding_recall_pooled", "key_fact_target_met", "finding_target_met", "over_word_budget")
 
 
 def _run(r) -> dict:
     p, t = r.data.params, r.data.tags
-    metrics = {k.removesuffix("/mean"): round(v, 4) for k, v in sorted(r.data.metrics.items()) if k.endswith("/mean")}
+    metrics = {k.removesuffix("/mean"): round(v, 4) for k, v in sorted(r.data.metrics.items())
+               if k.endswith("/mean") or k in RUN_LEVEL}
     system = t.get("system", p.get("system", "?"))
     return {
         "run_id": r.info.run_id[:8],
@@ -108,28 +112,42 @@ def _store_for(uri: str | None) -> Path | None:
     return Path(uri.removeprefix("sqlite:///")) if uri.startswith("sqlite:///") else None
 
 
-def export(out: Path = OUT, uri: str | None = None, insights: dict | None = None) -> dict:
-    """Write the snapshot. `insights` is the dict `insights.build` returns; without it the per-case block is built from
-    the SQLite store behind `uri` (the default local store when `uri` is None), and left out for any other store."""
-    mlflow.set_tracking_uri(uri or tracking_uri())
-    client = MlflowClient()
+def _finished_runs(uri: str) -> list:
+    client = MlflowClient(tracking_uri=uri)
     exp = client.get_experiment_by_name(EXPERIMENT)
-    runs = [] if exp is None else client.search_runs(
+    return [] if exp is None else client.search_runs(
         [exp.experiment_id], "tags.suite = 'golden' and attributes.status = 'FINISHED'",
         order_by=["attributes.start_time DESC"], max_results=500)
+
+
+def export(out: Path = OUT, uri: str | None = None, insights: dict | None = None, stores: list[Path] | None = None) -> dict:
+    """Write the snapshot. `insights` is the dict `insights.build` returns; without it the per-case block is built from
+    the SQLite store(s) behind `uri` and `stores` (the default local store when both are absent), and left out for any
+    other kind of store. `stores` adds more SQLite stores; a run found in several is counted once."""
+    uris = [f"sqlite:///{Path(s).resolve().as_posix()}" for s in stores or []]
+    if uri or not uris:
+        uris.insert(0, uri or tracking_uri())
+    mlflow.set_tracking_uri(uris[0])
+    seen, runs = set(), []
+    for u in uris:
+        for r in _finished_runs(u):
+            if r.info.run_id not in seen:
+                seen.add(r.info.run_id)
+                runs.append(r)
+    runs.sort(key=lambda r: r.info.start_time, reverse=True)
     parents = [_run(r) for r in runs if "mlflow.parentRunId" not in r.data.tags][:MAX_RUNS]
     latest: dict[str, dict] = {}
     for r in parents:  # newest first, so the first per (system, lane) is the latest
         latest.setdefault(f"{r['system']}|{r['lane']}", r)
     snap = {"exported": datetime.now(timezone.utc).isoformat(timespec="minutes"), "source": "golden set (MLflow)",
             "note": "Run-level scores only. Judge scores are report-only until judge agreement clears the bar.",
-            "latest": list(latest.values()), "runs": parents}
-    store = _store_for(uri)
-    if insights is None and store is not None and store.exists():
+            "targets": dict(TARGETS), "latest": list(latest.values()), "runs": parents}
+    sqlite = [p for p in (_store_for(u) for u in uris) if p is not None and p.exists()]
+    if insights is None and sqlite:
         from .cases import load_cases
 
         cases = load_cases()
-        insights = build([store], [(c.id, c.question) for c in cases], stories={c.id: c.story for c in cases})
+        insights = build(sqlite, [(c.id, c.question) for c in cases], stories={c.id: c.story for c in cases})
     if insights is not None:
         snap["cases"] = cases_block(insights, _labels())
     out.write_text(json.dumps(snap, indent=1) + "\n", encoding="utf-8")

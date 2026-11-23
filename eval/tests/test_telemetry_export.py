@@ -138,3 +138,19 @@ def test_the_store_behind_a_uri():
     assert _store_for(None) == DEFAULT_STORE
     assert _store_for("sqlite:///C:/x/y.db").as_posix() == "C:/x/y.db"
     assert _store_for("http://mlflow.example") is None and _store_for("file:///x") is None
+
+
+def test_run_carries_the_pooled_recalls_the_targets_use():
+    """core-011 FR-019 to FR-021: the pooled recalls and target flags are logged without "/mean"; the snapshot keeps them."""
+    from types import SimpleNamespace
+
+    from eval.harness.telemetry_export import _run
+    run = SimpleNamespace(
+        info=SimpleNamespace(run_id="abcdef0123456789", start_time=0, end_time=60000),
+        data=SimpleNamespace(params={"system": "briefing_scripted", "cases": "32"}, tags={"lane": "briefing"},
+                             metrics={"key_fact_recall/mean": 0.95, "key_fact_recall_pooled": 1.0, "finding_recall_pooled": 0.9706,
+                                      "key_fact_target_met": 1.0, "over_word_budget": 8.0, "some_other_total": 3.0}))
+    m = _run(run)["metrics"]
+    assert m["key_fact_recall"] == 0.95 and m["key_fact_recall_pooled"] == 1.0 and m["finding_recall_pooled"] == 0.9706
+    assert m["key_fact_target_met"] == 1.0 and m["over_word_budget"] == 8.0
+    assert "some_other_total" not in m  # only the named run-level scores, nothing else unaveraged
