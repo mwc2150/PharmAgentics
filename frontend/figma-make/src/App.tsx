@@ -45,6 +45,13 @@ function periodLabel(start: string, end?: string | null): string {
 function labelTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—"
 }
+// The server's one-line process summary ends "; reviewed by the analyst." with no date (a UTC date reads a day late in
+// the evening); the date is added here from reviewed_at, in the viewer's own time zone.
+function processLine(line: string, reviewedAt: string | null): string {
+  const d = reviewedAt ? new Date(reviewedAt) : null
+  if (!d || Number.isNaN(d.getTime())) return line
+  return line.replace(/; reviewed by the analyst\.$/, `; reviewed by the analyst on ${d.toLocaleDateString("en-CA")}.`)
+}
 function dataText(input: unknown): string {
   return input === null || input === undefined ? "—" : typeof input === "string" ? input : JSON.stringify(input, null, 2)
 }
@@ -660,7 +667,7 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
         {brief.review_status==="approved" ? <span className={`${chip} inline-flex items-center gap-1 bg-okbg text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Approved by the Commercial Analyst · {labelTime(brief.reviewed_at)}</span> : <span className={REVIEW_CHIP[brief.review_status][0]}>{REVIEW_CHIP[brief.review_status][1]}</span>}
         {brief.abstained && <span className={`${chip} bg-amberbg text-amber`}>Unresolved findings</span>}
       </div>
-      {brief.process_summary && <p className="mt-3 text-xs text-muted">{brief.process_summary}</p>}
+      {brief.process_summary && <p className="mt-3 text-xs text-muted">{processLine(brief.process_summary, brief.reviewed_at)}</p>}
     </div>
     <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink">{brief.summary}</pre>}</div>
     <div className="border-t border-rule px-6 py-4 text-xs text-muted">Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst.</div>

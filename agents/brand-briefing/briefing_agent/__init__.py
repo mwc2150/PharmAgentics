@@ -91,13 +91,14 @@ async def _ask(spec: str, prompt: str, log: RunLog, name: str) -> str:
 async def _triage(question: str, spec: str, log: RunLog, comparison: Comparison | None = None) -> dict:
     cfg = load_config()
     code_plan = scripted.triage(question, comparison=comparison) if comparison else scripted.triage(question)
-    await trace.note(log, "Screen territories", summary=trace.screened(code_plan))
     if code_plan["promotion_review"]:
+        await trace.note(log, "Screen territories", summary=trace.screened(code_plan))
         return dict(planmod.apply(code_plan, '{"order": []}', question), model=spec)
     scope = out_of_scope(question)
-    if scope:
+    if scope:  # no territories were screened for a question outside the release
         return dict(code_plan, engine="agent", state="OUT_OF_SCOPE", scope=scope, stories=[], flagged=False, flags=[],
                     manager_order=[], manager_drop={}, manager_note="", model=spec)
+    await trace.note(log, "Screen territories", summary=trace.screened(code_plan))
     if code_plan["state"] != "TRIAGE_REVIEW":
         return dict(planmod.apply(code_plan, '{"order": []}', question), model=spec)
     prompt = (HERE / cfg["prompts"]["manager_triage"]).read_text(encoding="utf-8").format(
@@ -164,8 +165,9 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
         chart_lines, chart_dropped = write.chart_explanations(reply, close, stories, n_claims, glosses)
         dropped += chart_dropped
         finish(sp, {"problems": bad, "revised": revised, "dropped": dropped, "chart_lines": sorted(chart_lines)})
+    n_bad = sum(len(v) for v in bad.values())  # `bad` maps each part to its list of problems
     await trace.note(log, "Check the writer's sentences", summary=(
-        f"Code checked every sentence: {len(bad)} broke a rule" + ("; rewritten once" if revised else "")
+        f"Code checked every sentence: {n_bad} problem{'' if n_bad == 1 else 's'} found" + ("; rewritten once" if revised else "")
         + f"; {len(dropped)} dropped."))
     return answer_text, sentences, chart_lines, revised, dropped
 
@@ -181,7 +183,8 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
             env = json.loads(await _call(mcp, "promotion_review"))
         env.update(system=f"{NAME}:{spec}", trajectory={"llm_calls": 0, "model": spec, "scope": "promotion_review"})
         record = planmod.record(plan, [], reviewed)
-        return {"envelope": env, "triage": record, "flow": stage_flow(plan, record, verified=True)}
+        return trace.attach({"envelope": env, "triage": record, "flow": stage_flow(plan, record, verified=True)},
+                            log, len(env.get("claims") or []), None)  # the saved brief keeps its timeline
     if plan.get("state") == "OUT_OF_SCOPE":
         choice = Comparison.model_validate(plan["comparison"]) if plan.get("comparison") else None
         env = scripted.answer(question, comparison=choice) if choice else scripted.answer(question)
@@ -189,7 +192,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
                    comparison=plan.get("comparison"),
                    trajectory={"scope": "out", "tools": [], "llm_calls": 0, "capped": None, "model": spec,
                                "config_version": config_version(), "seconds": round(time.time() - started, 1)})
-        return {"envelope": env, "triage": None, "flow": None}
+        return trace.attach({"envelope": env, "triage": None, "flow": None}, log, len(env.get("claims") or []), None)
     async with Client(server()) as mcp:
         if log.events is not None:
             log.events.fetch = lambda: trace.claims_of(mcp)

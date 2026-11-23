@@ -11,6 +11,7 @@ import logging
 import os
 import sys
 import threading
+import time
 import traceback
 from pathlib import Path
 from typing import Callable
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 NAME = "builtin"
 POLL_SECONDS = 2.0
 HEARTBEAT_SECONDS = 20.0
+PERSIST_SECONDS = 3.0  # how often a running job's new events are written to the store (the external worker's cadence)
 AGENTS_DIR = Path(__file__).resolve().parents[3] / "agents" / "brand-briefing"
 
 _stop = threading.Event()
@@ -45,7 +47,7 @@ def _run_job(job: dict, spec: str) -> dict:
 
     def progress(events: list[dict]) -> None:  # the timeline fills in live (brief-009 FR-002)
         try:
-            jobs.add_progress(job["id"], events, NAME, spec)
+            jobs.add_progress(job["id"], events, NAME, spec, persist=False)  # memory now; the beat writes the store
         except KeyError:
             pass  # the job was failed or finished under us; the result path reports that
 
@@ -61,10 +63,18 @@ def work_once(spec: str, accept: Callable[[str, bool, dict | None, str | None], 
     done = threading.Event()
 
     def beat() -> None:  # a long run must not look like a dead host (jobs.HEARTBEAT_STALE)
-        while not done.wait(HEARTBEAT_SECONDS):
-            jobs.heartbeat(spec, NAME)
+        last = time.time()
+        while not done.wait(PERSIST_SECONDS):
+            try:
+                jobs.persist_progress(job["id"])  # at most one store write per interval, off the agent's thread
+            except Exception:  # noqa: BLE001 - a failed write is retried at the next beat and at the job's end
+                logger.warning("Could not save progress for %s", job["id"], exc_info=True)
+            if time.time() - last >= HEARTBEAT_SECONDS:
+                last = time.time()
+                jobs.heartbeat(spec, NAME)
 
-    threading.Thread(target=beat, daemon=True).start()
+    flusher = threading.Thread(target=beat, daemon=True)
+    flusher.start()
     try:
         ok, result, error = True, runner(job, spec), None
     except Exception as exc:  # noqa: BLE001 - any failure fails the job visibly, never the app
@@ -72,6 +82,7 @@ def work_once(spec: str, accept: Callable[[str, bool, dict | None, str | None], 
         ok, result, error = False, None, f"{exc.__class__.__name__}: {exc}"[:1900]
     finally:
         done.set()
+        flusher.join(timeout=30)  # no store write may land after the job completes
     try:
         accept(job["id"], ok, result, error)
     except KeyError:

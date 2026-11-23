@@ -264,7 +264,7 @@ def test_builtin_worker_appends_progress_and_the_brief_keeps_the_events(monkeypa
     analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "approved"})
     leader = signed_in("dev-director").get(f"/api/briefing/{brief['brief_id']}").json()
     assert leader["view"] == "leadership" and leader["process_summary"].startswith("Built by the agent team: ")
-    assert "reviewed by the analyst on" in leader["process_summary"]
+    assert "reviewed by the analyst" in leader["process_summary"]
     forbidden = {"events", "claim_events", "args", "prompt", "progress", "flow", "triage", "tool", "step", "actor"}
     assert not (_keys(leader) & forbidden), _keys(leader) & forbidden
 
@@ -297,7 +297,7 @@ def test_process_summary_without_events_and_while_unreviewed():
                                                        _event(2, story="a", step="Test a driver", tool="check_supply"),
                                                        _event(3, story="b", step="Close the story", tool="story_confidence")]},
            "review_status": "approved", "reviewed_at": "2026-11-22T10:00:00Z"}
-    assert views.process_summary(rec) == "Built by the scripted engine: 2 stories, 2 checks; reviewed by the analyst on 2026-11-22."
+    assert views.process_summary(rec) == "Built by the scripted engine: 2 stories, 2 checks; reviewed by the analyst."
 
 
 # --- the pieces ---------------------------------------------------------------------------------------------
@@ -328,3 +328,139 @@ def test_progress_post_batches_and_keeps_a_failed_batch():
     fail[0] = False
     p.flush()
     assert [[e["seq"] for e in b] for b in sent] == [[1, 2]]
+
+
+# --- integration review fixes ---------------------------------------------------------------------------------
+
+def test_progress_post_sends_chunks_of_the_apps_limit_and_drops_a_refused_batch():
+    from briefing_agent.worker import ProgressPost
+
+    sent, mode = [], {"status": None}
+
+    def post(batch):
+        if mode["status"]:
+            raise SimpleNamespace_error(mode["status"])
+        sent.append([e["seq"] for e in batch])
+
+    class SimpleNamespace_error(Exception):
+        def __init__(self, status):
+            self.response = SimpleNamespace(status_code=status)
+    p = ProgressPost(post)
+    p([_event(i) for i in range(1, 451)])  # a backlog bigger than the app's 200 per post
+    p.flush()
+    assert [len(b) for b in sent] == [200, 200, 50] and sent[0][0] == 1 and sent[2][-1] == 450
+    sent.clear()
+    p([_event(500)])
+    mode["status"] = 503  # a server error keeps the batch for the next beat
+    p.flush()
+    mode["status"] = None
+    p.flush()
+    assert sent == [[500]]
+    sent.clear()
+    mode["status"] = 422  # a refusal would repeat for ever: dropped, and later events still go
+    p([_event(501)])
+    p.flush()
+    mode["status"] = None
+    p([_event(502)])
+    p.flush()
+    assert sent == [[502]]
+    p.close()
+    p([_event(503)])
+    p.flush()
+    assert sent == [[502]]  # nothing is sent once the client is closed
+
+
+def test_add_progress_inserts_a_late_earlier_event_in_order_without_duplicates(monkeypatch):
+    saves = []
+    monkeypatch.setattr(jobs, "_save", lambda job: saves.append(job["id"]))
+    job = jobs.submit("triage", {"question": Q}, "dev-analyst")
+    jobs.next_job(SPEC, "pc")
+    jobs.add_progress(job["id"], [_event(1), _event(3)])
+    assert jobs.add_progress(job["id"], [_event(2), _event(3), _event(4)]) == 4
+    assert [e["seq"] for e in jobs.get(job["id"])["progress"]] == [1, 2, 3, 4]
+    before = len(saves)
+    jobs.add_progress(job["id"], [_event(5)], persist=False)
+    assert len(saves) == before and jobs.get(job["id"])["progress"][-1]["seq"] == 5  # in memory at once, not yet saved
+    assert jobs.persist_progress(job["id"]) is True and len(saves) == before  # written outside the lock, once
+    assert jobs.persist_progress(job["id"]) is False
+
+
+def test_builtin_worker_saves_progress_on_a_beat_not_once_per_event(monkeypatch):
+    from briefing_baseline.pipeline import triage
+
+    writes = []
+    real = jobs.store.backend()
+
+    class Spy:
+        keys, read = staticmethod(real.keys), staticmethod(real.read)
+
+        @staticmethod
+        def write(key, text):
+            writes.append(json.loads(text)["status"])
+            real.write(key, text)
+    monkeypatch.setattr(jobs.store, "backend", lambda: Spy)
+    monkeypatch.setattr(agent_host, "PERSIST_SECONDS", 0.05)
+
+    def fake_run_job(job, spec, progress=None):
+        import time
+        for i in range(1, 41):
+            progress([_event(i)])
+            assert [e["seq"] for e in jobs.get(job["id"])["progress"]][-1] == i  # a poll sees it at once
+        time.sleep(0.3)
+        return dict(triage(job["payload"]["question"]), engine="agent", manager_order=["territory:PACIFIC"], flagged=False, flags=[])
+
+    monkeypatch.setattr("briefing_agent.worker.run_job", fake_run_job)
+    signed_in("dev-analyst").post("/api/agent/jobs", json={"kind": "triage", "query": QUERY})
+    writes.clear()
+    assert agent_host.work_once(SPEC, accept_result, runner=agent_host._run_job) is True
+    assert writes[-1] == "done" and writes.count("done") == 1  # saved at the job's end, and no beat write lands after it
+    assert writes.count("running") <= 8  # the start and a few beats, never one per event (40)
+
+
+def test_a_competitor_section_that_comes_back_empty_is_no_story_and_no_event(monkeypatch):
+    import briefing_agent as agent
+    inv = importlib.import_module("briefing_agent.investigate")
+    from briefing_lowcode.team import RunLog
+
+    plan = {"stories": [{"id": "competitor:BXE", "kind": "competitor", "title": "Competitor", "proposed": "investigate"}]}
+    for text, want in (("", 0), ("Story one: competitor Metacora", 1)):
+        async def fake_call(mcp, tool, **kw):
+            return text
+        monkeypatch.setattr(inv, "_call", fake_call)
+        log = RunLog(agent.events_for())
+        stories, _ = asyncio.run(inv.investigate({"run_wall_seconds": 100, "story_wall_seconds": 10}, SPEC, None, plan,
+                                                 ["competitor:BXE"], log))
+        assert len(stories) == want
+        assert [e["step"] for e in log.events.public()] == ["Check the competitor"] * want
+
+
+def test_promotion_review_and_out_of_scope_runs_keep_their_event_log():
+    import briefing_agent as agent
+
+    for question, step_screen in (("Did the campaign reach the people it was meant to reach?", True),
+                                  ("Week of 2026-10-05: Where should the next dollar go?", False)):
+        log = agent.events_for()
+        plan = agent.triage(question, SPEC, events=log)
+        assert any(e["step"] == "Screen territories" for e in log.public()) is step_screen  # none for a question outside the release
+        out = agent.run_with_plan(question, {"plan_id": plan["plan_id"], "stories": []}, plan, SPEC, events=log)
+        assert out["events"] == log.finalize(len(out["envelope"].get("claims") or []))[0] and "claim_events" in out
+        assert out["events"] or not step_screen
+
+
+def test_deferred_summaries_are_filled_once_after_the_timed_section():
+    calls = []
+
+    async def fetch():
+        calls.append(1)
+        return [{"value": "5%"}, {"value": "7"}]
+    log = ev.EventLog()
+    log.fetch = fetch
+    log.defer = True
+    log.emit("Driver Investigator", "agent", "Test a driver", summary="Access: down {c1} and {c2}", text="{c1} {c2}")
+    log.emit("Driver Investigator", "agent", "Test a driver", summary="Supply: {c2}", text="{c2}")
+    assert calls == [] and log.public()[0]["summary"] == "Access: down a figure and a figure"
+    log.defer = False
+    asyncio.run(log.resolve())
+    assert calls == [1] and [e["summary"] for e in log.public()] == ["Access: down 5% and 7", "Supply: 7"]
+    asyncio.run(log.resolve())
+    assert calls == [1]  # nothing pending: no second fetch

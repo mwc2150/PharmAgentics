@@ -123,7 +123,8 @@ class RunLog:
         if self.events is None:
             return
         try:
-            await self.events.refresh(text)
+            if not self.events.defer:  # inside a timed story the claims are fetched once afterwards (EventLog.resolve)
+                await self.events.refresh(text)
             actor = ev.ACTOR_OF.get(agent, "Code")
             self.events.emit(actor, "agent", ev.TOOL_STEP.get(tool, "Use a tool"), tool=tool, args=args,
                              verdict=ev.verdict_of(tool, text), summary=ev.summary_line(tool, text), text=text,

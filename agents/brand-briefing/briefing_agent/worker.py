@@ -54,28 +54,46 @@ def run_job(job: dict, model: str | None, progress=None) -> dict:
 
 
 class ProgressPost:
-    """Collects a running job's events and posts them in batches (with the heartbeat). Never raises: a missed batch
-    is sent again with the next, and the finished result carries the whole log anyway."""
+    """Collects a running job's events and posts them in batches (with the heartbeat). Never raises: a batch lost to
+    the network or a 5xx is sent again with the next, and the finished result carries the whole log anyway. The app
+    takes at most MAX_BATCH events per post, so a backlog goes in chunks; a batch the app refuses (4xx) is dropped, as
+    sending it again would never succeed. Flushes are serialized, so the last one cannot overtake one in flight."""
+
+    MAX_BATCH = 200  # the app's limit per post (schemas.WorkerProgress)
 
     def __init__(self, http_post):
         self._post = http_post
         self._lock = threading.Lock()
+        self._flush_lock = threading.Lock()
         self._pending: list[dict] = []
+        self._closed = False
 
     def __call__(self, events: list[dict]) -> None:
         with self._lock:
             self._pending += events
 
     def flush(self) -> None:
-        with self._lock:
-            batch, self._pending = self._pending, []
-        if not batch:
-            return
-        try:
-            self._post(batch)
-        except Exception:  # noqa: BLE001 - keep them for the next beat
-            with self._lock:
-                self._pending = batch + self._pending
+        with self._flush_lock:
+            while not self._closed:
+                with self._lock:
+                    batch, self._pending = self._pending[:self.MAX_BATCH], self._pending[self.MAX_BATCH:]
+                if not batch:
+                    return
+                try:
+                    self._post(batch)
+                except Exception as exc:  # noqa: BLE001
+                    status = getattr(getattr(exc, "response", None), "status_code", None)
+                    if status is not None and 400 <= status < 500 and status not in (408, 429):
+                        print(f"  progress batch of {len(batch)} refused ({status}); dropped", flush=True)
+                        continue  # the finished result still carries these events
+                    with self._lock:  # network or server trouble: keep them for the next beat
+                        self._pending = batch + self._pending
+                    return
+
+    def close(self) -> None:
+        """Wait for a flush in flight, then refuse further ones (the http client is about to close)."""
+        with self._flush_lock:
+            self._closed = True
 
 
 def _heartbeat(app: str, headers: dict, model: str, name: str, stop: threading.Event, every: float = 20.0,
@@ -160,6 +178,7 @@ def main(argv: list[str] | None = None) -> None:
                 stop.set()
                 beat.join(timeout=5)
                 progress.flush()
+                progress.close()  # waits for a beat's flush still in flight
                 http2.close()
             for attempt in range(5):
                 try:

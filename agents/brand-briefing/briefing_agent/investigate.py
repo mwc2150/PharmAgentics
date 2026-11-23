@@ -91,9 +91,9 @@ async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], l
         card = by_id[sid]
         if card["kind"] == "competitor":
             text = await _call(mcp, "competitor_section", lead=f"Story {ORD[n + 1]}: competitor Metacora")
-            await trace.note(log, "Check the competitor", text, tool="competitor_section", story=sid,
-                             summary="Code wrote the competitor Metacora story from the shared basket figures.")
-            if text:
+            if text:  # an empty section is no story, so it is no event (the scripted engine's `if comp`)
+                await trace.note(log, "Check the competitor", text, tool="competitor_section", story=sid,
+                                 summary="Code wrote the competitor Metacora story from the shared basket figures.")
                 n += 1
                 stories.append({"id": sid, "n": n, "section": text})
             continue
@@ -104,8 +104,15 @@ async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], l
             log.events.story = sid
         with span(f"story_{n}_{card['territory']}", inputs={"story": sid, "hypotheses": card["manager"]["hypotheses"]}) as sp:
             if not capped:
-                capped = await _team(cfg, spec, mcp, story_task(card, card["manager"]["hypotheses"]), log,
-                                     min(cfg["story_wall_seconds"] * scale, left))
+                if log.events is not None:
+                    log.events.defer = True  # recording adds no MCP round trip to the story's wall clock
+                try:
+                    capped = await _team(cfg, spec, mcp, story_task(card, card["manager"]["hypotheses"]), log,
+                                         min(cfg["story_wall_seconds"] * scale, left))
+                finally:
+                    if log.events is not None:
+                        log.events.defer = False
+                        await log.events.resolve()  # fill the story's summaries now, outside the timed section
             section = await _call(mcp, "story_section", territory=card["territory"], n=n)  # code closes the story
             await trace.note(log, "Close the story", section, tool="story_section", args={"territory": card["territory"]},
                              verdict="done", summary=trace.confidence(section) + (f" The team stopped early ({capped})." if capped else ""))

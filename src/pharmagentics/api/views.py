@@ -139,7 +139,7 @@ def leadership_sections(sections: list[dict] | None) -> list[dict] | None:
 
 def process_summary(record: dict) -> str | None:
     """One line on how the brief was made, built by code for leaders (brief-009 FR-005): the engine, how many stories
-    and checks, and the analyst's review date. It carries no step, tool, argument or prompt."""
+    and checks, and whether the analyst reviewed it (no date: a UTC date reads a day late in the evening). It carries no step, tool, argument or prompt."""
     result = record["result"]
     who = "the agent team" if result.get("engine") == "agent" else "the scripted engine"
     events = result.get("events") or []
@@ -152,7 +152,7 @@ def process_summary(record: dict) -> str | None:
         parts = [f"{stories} stor{'y' if stories == 1 else 'ies'}", f"{checks} check{'' if checks == 1 else 's'}"]
     line = f"Built by {who}" + (": " + ", ".join(parts) if parts else "")
     if record.get("review_status") == "approved" and record.get("reviewed_at"):
-        line += f"; reviewed by the analyst on {record['reviewed_at'][:10]}"
+        line += "; reviewed by the analyst"  # the date is the viewer's own: the UI adds "on <date>" from reviewed_at, in local time
     return line + "."
 
 

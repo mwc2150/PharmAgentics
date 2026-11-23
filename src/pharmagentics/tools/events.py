@@ -93,6 +93,8 @@ class EventLog:
         self.claims: list[dict] = []           # the run's claims so far, for filling tokens in summaries
         self.fetch: Callable[[], Any] | None = None  # async: returns the run's claims (agent engine)
         self.done_marker = ""
+        self.defer = False                     # True while a timed section runs: summaries are filled after it, by `resolve`
+        self._pending: dict[int, str] = {}     # seq -> raw summary (tokens still in) of an event emitted while `defer` was on
         for e in seed or []:
             self.events.append(dict(e, claims=[]))
 
@@ -116,6 +118,8 @@ class EventLog:
                      "args": dict(args) if args else None, "verdict": verdict, "summary": tidy(self.fill(summary)),
                      "claims": [], "prompt": prompt}
             self.events.append(event)
+            if self.defer and tokens(summary):
+                self._pending[seq] = summary
         if self.on_event:
             try:
                 self.on_event(dict(event))
@@ -149,6 +153,26 @@ class EventLog:
                 self.claims = got
         except Exception:  # noqa: BLE001 - an unfilled token reads "a figure"; the run goes on
             pass
+
+    async def resolve(self) -> None:
+        """Fill the summaries of events recorded while `defer` was on, from the run's claims (one fetch, outside the
+        timed section). Until then a summary shows the values known when it was recorded, else "a figure". Never raises."""
+        with self._lock:
+            waiting = dict(self._pending)
+        if not waiting:
+            return
+        try:
+            got = await self.fetch() if self.fetch is not None else None
+            if got and len(got) >= len(self.claims):
+                self.claims = got
+        except Exception:  # noqa: BLE001
+            pass
+        with self._lock:
+            for e in self.events:
+                raw = waiting.get(e["seq"])
+                if raw is not None:
+                    e["summary"] = tidy(self.fill(raw))
+                    self._pending.pop(e["seq"], None)
 
     def public(self) -> list[dict]:
         with self._lock:
