@@ -590,13 +590,15 @@ def story_card(name: str, facts: dict, confidence: str, drivers: list[str], *, t
 def competitor_card(p, facts: dict) -> dict:
     """The competitor story is a national card (brief-010 FR-006): territory NATIONAL, no cut, the national competitor
     check's verdict, and the direction of BXA's basket share on the comparison weeks (house flat band) with each
-    measure's direction in `directions` (bxa_share, competitor_share, trx). `facts` comes from competitor_status."""
+    measure's direction in `directions` (bxa_share, competitor_share; no trx, national TRx lives in the KPI strip). `facts` comes from competitor_status."""
     d = facts.get("directions") or {}
     # The headline keeps its measured length: MEASURED_ANCHORS (the word budget) counts it.
     headline = f"Metacora holds {facts['bxe']} of the four-brand basket, and {p.brand_id} holds {facts['bxa']}."
     check = facts.get("check")
     supported, ruled_out = driver_calls([check] if check else [])
-    return {"headline": headline, "confidence": "Medium", "drivers_checked": [DRIVER_NAMES["competitor"]],
+    ruled_out += [x for x in facts.get("ruled_out") or [] if x not in ruled_out]  # access, promotion, supply: every territory ruled it out
+    return {"headline": headline, "confidence": "Medium",
+            "drivers_checked": [DRIVER_NAMES[x] for x in ["competitor"] + [r for r in ruled_out if r != "competitor"]],
             "territory": "NATIONAL", "direction": d.get("bxa_share"), "directions": dict(d), "drivers_supported": supported,
             "drivers_ruled_out": ruled_out, "cut": None}
 

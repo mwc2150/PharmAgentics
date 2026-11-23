@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from . import queries as q
 from .brands import briefing_brand
 from .checks import access_events, check_competitor_national, launch_date
+from .lag_checks import national_ruled_out
 from .registry import Registry
 from .window import Comparison, comparison_weeks, parse
 
@@ -365,10 +366,11 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
 
 def _national_reading(reg: Registry, p: Period) -> dict:
     """What the national competitor card reads off the comparison weeks (brief-010 FR-006): the competitor check's
-    verdict, each measure's direction (share points and TRx, inside the house flat band). Directions only, no number is
+    verdict, each measure's direction (share points, inside the house flat band; national TRx lives in the KPI strip). Directions only, no number is
     stated, so no claim is added. Empty `directions` when the brief has no comparison weeks."""
     W, B = p.weeks, p.baseline
-    out: dict = {"check": check_competitor_national(reg, W), "directions": {}}
+    out: dict = {"check": check_competitor_national(reg, W), "directions": {},
+                 "ruled_out": national_ruled_out(reg, p.ok, W, B, brand_id=p.brand_id, use_selected_baseline=p.comparison is not None)}
     if not B:
         return out
     for key, product in (("bxa_share", p.brand_id), ("competitor_share", "BXE")):
@@ -376,10 +378,6 @@ def _national_reading(reg: Registry, p: Period) -> dict:
         if now is None or then is None:
             continue
         out["directions"][key] = word(now - then)
-    if p.ok:
-        change = reg.scalar(q.pct_change(q.mean_weekly(W, terrs=p.ok, product=p.brand_id), q.mean_weekly(B, terrs=p.ok, product=p.brand_id)))
-        if change is not None:
-            out["directions"]["trx"] = word(change)
     return out
 
 

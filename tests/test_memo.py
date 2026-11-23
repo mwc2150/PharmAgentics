@@ -398,10 +398,10 @@ def test_card_driver_lists_use_the_evals_ids_and_leave_inconclusive_checks_out()
     assert bare["territory"] == "NATIONAL" and bare["drivers_supported"] == [] and bare["drivers_ruled_out"] == []
 
 
-NATIONAL_ANCHORS = {  # the dev anchors: (question, BXA share, Metacora share, trx) directions on the default comparison weeks
-    "P3-Q1": ("Week of 2026-04-27: What changed this week that I need to know about?", "flat", "up", "flat"),
-    "P3-Q4": ("Week of 2026-09-28: Is this new or the same issue as last week, and is it getting better or worse?", "up", "flat", "up"),
-    "P1-Q5": ("Week of 2026-06-08: Am I confident nothing material was left out?", "down", "up", "down"),
+NATIONAL_ANCHORS = {  # the dev anchors: (question, BXA share, Metacora share, drivers ruled out in every reportable territory)
+    "P3-Q1": ("Week of 2026-04-27: What changed this week that I need to know about?", "flat", "up", ["access", "supply"]),
+    "P3-Q4": ("Week of 2026-09-28: Is this new or the same issue as last week, and is it getting better or worse?", "up", "flat", ["access", "supply"]),
+    "P1-Q5": ("Week of 2026-06-08: Am I confident nothing material was left out?", "down", "up", ["access", "promotion"]),
 }
 
 
@@ -414,11 +414,13 @@ def _national_cards(env: dict) -> list[dict]:
 def test_the_competitor_story_is_one_national_card_with_a_direction_for_each_measure(anchor):
     from briefing_baseline import answer
 
-    question, bxa, bxe, trx = NATIONAL_ANCHORS[anchor]
+    question, bxa, bxe, ruled_out = NATIONAL_ANCHORS[anchor]
     env = answer(question)
     (card,) = _national_cards(env)  # at most one a brief
-    assert card["cut"] is None and card["drivers_supported"] == ["competitor"] and card["drivers_ruled_out"] == []
-    assert card["directions"] == {"bxa_share": bxa, "competitor_share": bxe, "trx": trx} and card["direction"] == bxa
+    assert card["cut"] is None and card["drivers_supported"] == ["competitor"]
+    assert card["drivers_ruled_out"] == ruled_out  # from the territory checks, by code (P1-Q5: supply is live in Pacific)
+    assert card["drivers_checked"] == ["competitor"] + [{"promotion": "promotion"}.get(d, d) for d in ruled_out]
+    assert card["directions"] == {"bxa_share": bxa, "competitor_share": bxe} and card["direction"] == bxa  # share story: no trx
     assert not re.search(r"\{c\d+\}", card["headline"]) and card["headline_citations"]  # filled, and every number cited
     assert re.search(r"Metacora holds \d+\.\d% of the four-brand basket, and BXA holds \d+\.\d%\.", card["headline"])
 
@@ -443,3 +445,19 @@ def test_the_national_card_states_a_ruled_out_competitor_and_keeps_its_headline(
                               "directions": {"bxa_share": "flat", "competitor_share": "flat"}})
     assert out["drivers_supported"] == [] and out["drivers_ruled_out"] == ["competitor"] and out["direction"] == "flat"
     assert out["headline"] == "Metacora holds {c1} of the four-brand basket, and BXA holds {c2}."
+
+
+@needs_db
+def test_the_national_ruled_out_scan_adds_no_claim_and_keeps_a_live_driver_off_the_list():
+    from pharmagentics.tools import stages
+    from pharmagentics.tools.lag_checks import national_ruled_out
+    from pharmagentics.tools.registry import Registry
+
+    reg = Registry()
+    try:
+        p = stages.resolve(reg, NATIONAL_ANCHORS["P1-Q5"][0])
+        assert national_ruled_out(reg, p.ok, p.weeks, p.baseline) == ["access", "promotion"]  # supply is live in Pacific
+        assert reg.claims == [] and reg.evidence == []
+        assert national_ruled_out(reg, [], p.weeks, p.baseline) == []
+    finally:
+        reg.close()

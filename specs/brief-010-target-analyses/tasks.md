@@ -35,7 +35,7 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 
 ## Packet N: national card (FR-006)
 - [x] N1 `competitor_card` becomes a national card: territory NATIONAL, direction from the share change (house flat band), competitor supported from the check.
-- [x] N2 Scorer reads the card direction for the finding's `measure` (`directions`), with tests. (The scripted run and gate are the integration packet's.)
+- [x] N2 Scorer reads the card direction for the finding's `measure` (`directions`) and compares only cards that cover it; the national card carries no `trx` and lists territory-wide ruled-out drivers, with tests. (The scripted run and gate are the integration packet's.)
 
 ## Integration (Opus)
 - [ ] I1 After the last packet: full suite, scripted gate, SC-001 (targets met, `over_word_budget` 0).
