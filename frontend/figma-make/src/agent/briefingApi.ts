@@ -231,21 +231,34 @@ export type Comparison =
   | { kind: "pre_launch" }  // brief-010: the four weeks before Metacora launched; no weeks, start or end
   | { kind: "custom"; start: string; end: string }
 
-// brief-010 FR-000a: the brief definition, JSON names as in plan.md ("The brief definition"). The server fills every
-// field it is not given with the pre-selected value (like for like, TRx, all five grains, the other territories, the
-// house comparison), so a brief with no definition is the brief of today.
+// brief-010 FR-000a and FR-000e: the brief definition, JSON names as in plan.md ("The brief definition"). Every field
+// except the period is a list of one or more values; the first is the primary and drives the stories, the cards and the
+// finding directions, and each extra value adds labelled figures beside it. The server reads a single value as a
+// one-item list, and fills every field it is not given with the pre-selected value (like for like, TRx, all five
+// grains, the other territories, the house comparison), so a brief with no definition is the brief of today.
 export type TerritoriesCounted = "like_for_like" | "all_reportable" | "projected"
-export type MeasureChoice = "trx" | "nbrx" | "both"
+export type MeasureChoice = "trx" | "nbrx"  // the old "both" is ["trx", "nbrx"]
 export type GrainLevel = "national" | "territory" | "plan" | "channel" | "specialty"
 export type RelativeTo = "other_territories" | "national" | "none"
 export type BriefDefinition = {
   first_week?: string | null  // ISO Monday; null: the question's weeks, else the latest closed week
   last_week?: string | null
-  comparison?: Comparison | null  // null: the previous four weeks
-  territories: TerritoriesCounted
-  measure: MeasureChoice
+  comparison?: Comparison[] | null  // null: the previous four weeks
+  territories: TerritoriesCounted[]
+  measure: MeasureChoice[]
   grain: GrainLevel[]
-  relative_to: RelativeTo
+  relative_to: RelativeTo[]
+}
+// What a question reader may propose: any field as one value or a list (a single value is a one-item list).
+type OneOrMany<T> = T | T[]
+export type ProposedDefinition = {
+  first_week?: string | null
+  last_week?: string | null
+  comparison?: OneOrMany<Comparison> | null
+  territories?: OneOrMany<TerritoriesCounted> | null
+  measure?: OneOrMany<MeasureChoice | "both"> | null
+  grain?: OneOrMany<GrainLevel> | null
+  relative_to?: OneOrMany<RelativeTo> | null
 }
 
 export type BriefingQuery = {
@@ -270,7 +283,7 @@ export type BriefingScope = {
   notes: string[]
   read_by: "model" | "rules"
   model?: string | null
-  definition?: Partial<BriefDefinition> | null  // brief-010: the fields the reader proposes; the analyst confirms them
+  definition?: ProposedDefinition | null  // brief-010: the fields the reader proposes; the analyst confirms them
 }
 
 export class NotSignedIn extends Error {}

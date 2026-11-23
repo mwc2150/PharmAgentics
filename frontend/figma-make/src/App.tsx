@@ -7,7 +7,7 @@ import { Overview } from "./Overview"
 import { Memo } from "./Memo"
 import { Timeline, producers, KIND_NAME } from "./Timeline"
 import { HowItWorks } from "./HowItWorks"
-import { ComparisonPicker, comparisonError } from "./ComparisonPicker"
+import { ComparisonPicker, comparisonsError } from "./ComparisonPicker"
 import { PeriodPicker, QuestionReader, periodError, periodWeeks } from "./BriefingScope"
 import { DEFAULT_CHOICES, DefinitionPicker, choicesError, type DefinitionChoices, type DefinitionField } from "./BriefDefinition"
 import { FeedbackReview } from "./FeedbackReview"
@@ -886,7 +886,7 @@ function AnalystApp({me}: {me: Me}) {
   const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,weekEnd:string,promotion:boolean,question:string,
     comparison:Comparison | null,definition:BriefDefinition} | null>(null)
   const [promotion,setPromotion] = useState(false)
-  const [comparison,setComparison] = useState<Comparison | null>(null)  // null: the server's default comparison, the one the eval scores
+  const [comparisons,setComparisons] = useState<Comparison[]>([])  // brief-010: the first is the primary; empty: the server's default comparison, the one the eval scores
   // brief-010 FR-000b: territories counted, measure, grain and relative to, pre-selected and always editable. The
   // question reader only proposes values (marked until the analyst touches the field).
   const [choices,setChoices] = useState<DefinitionChoices>(DEFAULT_CHOICES)
@@ -895,7 +895,7 @@ function AnalystApp({me}: {me: Me}) {
   const releaseWeeks = context?.available_weeks ?? []
   const invalidPeriod = reviewPromotion ? null : periodError(week, weekEnd, releaseWeeks)
   const period = reviewPromotion ? [] : periodWeeks(week, weekEnd, releaseWeeks)
-  const invalidComparison = reviewPromotion ? null : invalidPeriod ?? comparisonError(comparison, period, releaseWeeks)
+  const invalidComparison = reviewPromotion ? null : invalidPeriod ?? comparisonsError(comparisons, period, releaseWeeks)
   const invalidChoices = choicesError(choices)
   const [plan,setPlan] = useState<TriagePlan | null>(null)
   // Agent engine (core-007 FR-028/FR-031): jobs run on teammate or cloud CPU hosts; the app only queues them.
@@ -919,7 +919,7 @@ function AnalystApp({me}: {me: Me}) {
     setEngine(e=>supported.includes(e) ? e : "scripted")
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
     setTriageJob(null); setJobNote(null); setJobState(null); setLiveEvents([]); setPending(false)
-    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(null); setChoices(DEFAULT_CHOICES); setProposed([])
+    setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparisons([]); setChoices(DEFAULT_CHOICES); setProposed([])
     setView(v=>v==="triage" || v==="result" ? "home" : v)
   }
 
@@ -964,8 +964,8 @@ function AnalystApp({me}: {me: Me}) {
   const submit = async (event?: React.FormEvent) => {
     event?.preventDefault()
     if(pending || invalidComparison || invalidChoices || !context || !context.product_ids.includes(brand) || !context.territory_ids.includes(territory) || !context.available_weeks.includes(week)) return
-    const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,weekEnd:reviewPromotion ? context.latest_week : weekEnd,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparison,
-      definition:{...choices,first_week:reviewPromotion ? null : week,last_week:reviewPromotion ? null : weekEnd,comparison:reviewPromotion ? null : comparison},
+    const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,weekEnd:reviewPromotion ? context.latest_week : weekEnd,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparisons[0] ?? null,
+      definition:{...choices,first_week:reviewPromotion ? null : week,last_week:reviewPromotion ? null : weekEnd,comparison:reviewPromotion || !comparisons.length ? null : comparisons},
       question:ask.trim().length>=3 ? ask.trim().slice(0,300) : reviewPromotion ? "Review promotion across the release." : "Generate the weekly brand-performance briefing."}
     // Plan review is always on in UAT (brief-002 FR-019): stages 1 to 3 and the code triage first.
     const token=++generation.current
@@ -1031,11 +1031,11 @@ function AnalystApp({me}: {me: Me}) {
         <fieldset className="space-y-4" aria-label="Brief definition">
           <div><h3 className="text-sm font-semibold">What the brief counts</h3><p className="mt-1 text-xs text-muted">Six choices, each pre-selected. The brief states them in its Assumptions, and the numbers follow them.</p></div>
           <PeriodPicker first={week} last={weekEnd} weeks={releaseWeeks} disabled={!selectable || reviewPromotion} onFirst={w=>{ if(weekEnd===week) setWeekEnd(w); setWeek(w) }} onLast={setWeekEnd} labelWeek={labelWeek}/>
-          {!reviewPromotion && <ComparisonPicker value={comparison} onChange={setComparison} period={period} weeks={releaseWeeks} disabled={!selectable} labelWeek={labelWeek}/>}
+          {!reviewPromotion && <ComparisonPicker value={comparisons} onChange={setComparisons} period={period} weeks={releaseWeeks} disabled={!selectable} labelWeek={labelWeek}/>}
           <DefinitionPicker value={choices} proposed={proposed} disabled={!selectable} onChange={(next,field)=>{ setChoices(next); setProposed(p=>p.filter(f=>f!==field)) }}/>
         </fieldset>
         <QuestionReader question={ask} onQuestion={setAsk} brand={brand} context={context} disabled={!selectable}
-          onApply={v=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparison(v.comparison)
+          onApply={v=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparisons(v.comparison)
             setChoices(c=>({...c,...v.choices})); setProposed(v.proposed) }}/>
         <label className={LABEL}>Territory
           <select className={FIELD} value={territory} onChange={e=>setTerritory(e.target.value)} disabled={!selectable}>{context?.territory_ids.map(id=><option key={id} value={id}>{labelTerritory(id)}</option>)}</select>
@@ -1069,7 +1069,7 @@ function AnalystApp({me}: {me: Me}) {
     </div>}
     {brand && view!=="approved" && view!=="how" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
-      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparison(o.comparison ?? null); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
+      onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
 }
 
