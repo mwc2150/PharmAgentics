@@ -201,7 +201,9 @@ function within(spans: Span[] | undefined, start: number, end: number): Span[] {
 
 const PROSE = "pa-prose max-w-[68ch] break-words font-serif text-[16px] leading-[1.7] text-ink"
 
-function Paragraphs({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+// `flow` joins the lines of a run into one paragraph (brief-008 FR-018): code writes §1 and §2 a sentence to a line,
+// and a reader takes them as prose. A newline becomes a space, one character for one, so the spans still fit.
+function Paragraphs({text, spans, claims, onOpen, flow}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void, flow?: boolean}) {
   return <>{chunks(text).map((c, i) => {
     const raw = text.slice(c.start, c.end)
     const lines = raw.split("\n")
@@ -213,7 +215,7 @@ function Paragraphs({text, spans, claims, onOpen}: {text: string, spans?: Span[]
         return <li key={k}><Cited text={l.slice(m)} spans={within(spans, from, to)} claims={claims} onOpen={onOpen}/></li>
       })}</ul>
     }
-    return <p key={i} className={`${PROSE} mt-3 whitespace-pre-line first:mt-2`}><Cited text={raw} spans={within(spans, c.start, c.end)} claims={claims} onOpen={onOpen}/></p>
+    return <p key={i} className={`${PROSE} mt-3 ${flow ? "" : "whitespace-pre-line"} first:mt-2`}><Cited text={flow ? raw.replace(/\n/g, " ") : raw} spans={within(spans, c.start, c.end)} claims={claims} onOpen={onOpen}/></p>
   })}</>
 }
 
@@ -305,7 +307,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
   const modern = sections.some(s => s.kpis || s.territory_table || s.card || s.detail)
   const analyst = !!claims
   const text = (s: MemoSection) => !s.text ? null : modern
-    ? <Paragraphs text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/>
+    ? <Paragraphs text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen} flow={s.number === "1" || s.number === "2"}/>
     : <div className="mt-2 max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><Cited text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/></div>
   const rest = (s: MemoSection) => <>
     {s.prose && <p className="mt-2 max-w-[68ch] font-serif text-[16px] italic leading-[1.7] text-ink"><Cited text={s.prose} spans={s.prose_citations} claims={claims} onOpen={onOpen}/></p>}

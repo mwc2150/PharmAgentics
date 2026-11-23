@@ -246,7 +246,7 @@ def _like_for_like(reg: Registry, p, facts: dict | None = None, col: str | None 
         n = None if mode == "projected" else reg.claim(
             "get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(W)} and {q._in('territory_id', tc)}", "int")
         total = reg.claim("get_metric", "select count(*) from raw.dim_territory", "int")
-        pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope=scope)
+        pct = reg.claim("get_metric", q.pct_change(cur, base), "pct", scope=scope)
         entry = {"n": n, "total": total, "pct": pct, "word": stages.word(change), "basis": mode, "label": label, "vs": vs}
         if col != "trx" or col != p.col:  # an observed level the KPI strip shows (TRx has the projected national)
             entry["avg"] = reg.claim("get_metric", cur, "int", scope=scope)
@@ -280,6 +280,26 @@ def comparison_text(p) -> str:
     return stages.describe_comparison(p.comparison, p.baseline)
 
 
+_COUNT = {**_WORDS, 7: "seven", 8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve", 13: "thirteen"}
+
+
+def comparison_phrase(p) -> str | None:
+    """The comparison as a short phrase a sentence can carry (brief-008 FR-014): code fills it into the writer's
+    `{cmp}` token, so the model never words the comparison. None when there is no earlier week to compare with.
+    No digit except the dates of a single week or a custom window."""
+    B = p.baseline
+    if not B:
+        return None
+    if len(B) == 1:
+        return f"the week of {B[0]}"
+    kind = p.comparison.kind if p.comparison is not None else "previous"
+    if kind == "last_year":
+        return "the same weeks last year"
+    if kind == "custom":
+        return f"the weeks from {B[0]} to {B[-1]}"
+    return f"the previous {_COUNT.get(len(B), 'several')} weeks"
+
+
 def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str | None:
     """Research R8: estimated territory, else projected, else the lowest-confidence story's change, else the
     change built on the fewest prescriptions. The competitor story is left out: its share is measured."""
@@ -302,7 +322,7 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
         t = s["territory"]
         x, b = q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id, col=p.col), q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id, col=p.col)
         change = reg.scalar(q.pct_change(x, b)) or 0
-        pct = reg.claim("get_metric", q.pct_change(x, b), "pct1", territory=t)
+        pct = reg.claim("get_metric", q.pct_change(x, b), "pct", territory=t)
         return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}); its confidence, {s['confidence']}, "
                 "is the lowest of this brief's stories.")
     if len(p.weeks) == 1 and p.baseline and p.has("national"):
@@ -310,7 +330,7 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
         prev = q.shift(w, -1)
         sql = q.pct_change(q.trx_sum([w], product=p.brand_id), q.trx_sum([prev], product=p.brand_id))
         change = reg.scalar(sql) or 0
-        pct = reg.claim("get_metric", sql, "pct1", scope="week over week, reportable cuts")
+        pct = reg.claim("get_metric", sql, "pct", scope="week over week, reportable cuts")
         return (f"Least sure: the week-over-week change ({stages.word(change)} {pct}), "
                 "because it compares one week with one week.")
     if p.ok and p.baseline and p.has("national"):
@@ -344,13 +364,13 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
             lines.append(_like_for_like(reg, p, facts, extra=j))
         if p.extra_col:
             lines.append(_like_for_like(reg, p, facts, col=p.extra_col))
-        share = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct1", product=p.brand_id)
+        share = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct", product=p.brand_id)
         facts["share"] = share
         lines.append(f"{p.brand_id} held {share} of the four-brand market basket.")
         launched = launch_date(reg)
         if launched is not None and launched <= W[-1] and p.brand_id == "BXA":
             pre = [q.shift(launched, -i) for i in range(4, 0, -1)]
-            facts["pre"] = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct1", product=p.brand_id, weeks="before launch")
+            facts["pre"] = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct", product=p.brand_id, weeks="before launch")
             facts["share_word"] = stages.word((reg.scalar(q.share(W, p.brand_id)) or 0) - (reg.scalar(q.share(pre, p.brand_id)) or 0))
     least = _least_sure(reg, p, proj, stories)
     if least:

@@ -21,7 +21,12 @@ BANNED = [(re.compile(r"surveillance", re.I), 'says "surveillance" (use "competi
 _WEEK_SETS = re.compile(r"week_start in \(([^)]*)\)")
 _ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
 TOKEN_NUMBERS = re.compile(r"\{c(\d+)\}")
-RELATIVE_WEEK = re.compile(r"\b(week before|last week|previous week|prior week|week earlier|week[- ]over[- ]week)\b", re.I)
+# A comparison the model words itself ("the week before", "last week", "the previous four weeks", "four weeks
+# earlier", "week over week"). The comparison is named only by the code-filled token {cmp} (brief-008 FR-014).
+OWN_COMPARISON = re.compile(r"\b(?:\w+ )?weeks? (?:before|earlier|prior|ago)\b|\b(?:last|previous|prior|preceding|earlier|past) (?:\w+ )?weeks?\b"
+                            r"|\bweek[- ]over[- ]week\b", re.I)
+CMP = "{cmp}"
+LINK = "{link}"  # a story's causal verb, filled by code from its confidence (brief-008 FR-015)
 YEAR_BACK = re.compile(r"\b(last year|year[- ]over[- ]year|a year ago|same week last year)\b", re.I)
 
 
@@ -29,8 +34,9 @@ def _span(weeks: list[str]) -> str:
     return f"the week of {weeks[0]}" if len(weeks) == 1 else f"the weeks {weeks[0]} to {weeks[-1]}"
 
 
-def gloss(claim: dict, evidence: dict | None) -> dict:
-    """{'text': what the number is, 'base_single': True when it compares with the single week before}."""
+def gloss(claim: dict, evidence: dict | None, baseline: list[str] | None = None) -> dict:
+    """{'text': what the number is, 'base_single': True when it compares with the single week before,
+    'uses_cmp': True when it compares with the period's comparison weeks, the ones {cmp} names}."""
     query = (evidence or {}).get("query") or ""
     sets: list[list[str]] = []
     for group in _WEEK_SETS.findall(query):
@@ -39,7 +45,7 @@ def gloss(claim: dict, evidence: dict | None) -> dict:
             sets.append(weeks)
     scope = (evidence or {}).get("params") or {}
     params = ", ".join(f"{k} {v}" for k, v in scope.items())
-    single, last_year = False, False
+    single, last_year, uses_cmp = False, False, False
     if len(sets) >= 2 and claim["value"].endswith("%"):
         new, old = sets[0], sets[1]
         single = len(old) == 1 and len(new) == 1 and date.fromisoformat(old[0]) == date.fromisoformat(new[0]) - timedelta(days=7)
@@ -47,19 +53,22 @@ def gloss(claim: dict, evidence: dict | None) -> dict:
         last_year = old == [(date.fromisoformat(w) - timedelta(weeks=52)).isoformat() for w in new]
         if last_year:
             text += " (same reporting weeks last year)"
+        uses_cmp = bool(baseline) and old == sorted(baseline)
+        text += " (name this comparison with {cmp})" if uses_cmp else " (do not name this comparison)"
     elif sets:
         text = f"a value for {_span(sets[0])}"
     else:
         text = "a value taken from the data"
     return {"text": text + (f" [{params}]" if params else ""), "base_single": single,
-            "last_year": last_year, "small_cell": scope.get("small_cell", False)}
+            "last_year": last_year, "uses_cmp": uses_cmp, "small_cell": scope.get("small_cell", False)}
 
 
-def glossary(shown: str, claims: list[dict], evidence: list[dict]) -> tuple[str, dict[str, dict]]:
-    """Lines for the writer, one per token that appears in the sections, and the gloss data by token."""
+def glossary(shown: str, claims: list[dict], evidence: list[dict], baseline: list[str] | None = None) -> tuple[str, dict[str, dict]]:
+    """Lines for the writer, one per token that appears in the sections, and the gloss data by token. `baseline`
+    (the period's comparison weeks) marks the numbers the {cmp} token describes."""
     by_id = {e["id"]: e for e in evidence}
     seen = sorted({int(n) for n in TOKEN_NUMBERS.findall(shown) if 0 < int(n) <= len(claims)})
-    data = {f"{{c{n}}}": gloss(claims[n - 1], by_id.get(claims[n - 1]["evidence_id"])) for n in seen}
+    data = {f"{{c{n}}}": gloss(claims[n - 1], by_id.get(claims[n - 1]["evidence_id"]), baseline) for n in seen}
     return "\n".join(f"{t} = {g['text']}" for t, g in data.items()), data
 
 
@@ -81,6 +90,27 @@ CAUSAL = re.compile(r"\b(because|caused|causes|causing|drove|driven|drives|due t
 FOLDED = re.compile(r"\b(splits?|by (?:plan|specialty|channel)|cuts of the change|considered and dropped|glossary)\b|\bmethod:", re.I)
 REP = re.compile(r"\b(?i:reps?|representatives?)\s+(?:[A-Z][a-z]+|#)")
 CONFIDENCE = re.compile(r"\bConfidence(?: for [^:]+)?:\s*(High|Medium|Low)\b")
+
+
+def mention(sid: str) -> str:
+    """The name the answer uses for a story: its territory, or Metacora."""
+    from pharmagentics.tools.queries import name
+
+    kind, _, key = sid.partition(":")
+    return "Metacora" if kind == "competitor" else name(key)
+
+
+def answer_high(text: str, confidences: dict[str, str | None], mentions: dict[str, str] | None = None) -> bool:
+    """True when the answer may use causal wording: every story it names is High, or every story when it names none.
+    False when the brief has no story (nothing to be sure of)."""
+    named = [sid for sid, who in (mentions or {}).items() if who and who.lower() in (text or "").lower()]
+    pool = [confidences[sid] for sid in (named or confidences) if sid in confidences]
+    return bool(pool) and all(c == "High" for c in pool)
+
+
+def link_verb(high: bool) -> str:
+    """The causal verb code writes for a story: "drove" only for High confidence, else "moved with"."""
+    return "drove" if high else "moved with"
 
 
 def confidence(section: str) -> str | None:
@@ -114,10 +144,28 @@ def style(piece: str, max_sentences: int | None = None) -> list[str]:
     return out
 
 
+PLACEHOLDER = re.compile(r"\{[^{}]*\}")
+
+
+def placeholders(piece: str, *, has_cmp: bool = True) -> list[str]:
+    """Braces the writer may not leave: anything but a claim token or the code-filled {cmp} and {link}."""
+    out = []
+    for m in PLACEHOLDER.findall(piece or ""):
+        if TOKEN.fullmatch(m):
+            continue
+        if m == LINK:
+            continue
+        if m == CMP and not has_cmp:
+            out.append(f"{m} (this brief has no comparison to name)")
+        elif m != CMP:
+            out.append(m)
+    return out
+
+
 def problems(piece: str, allowed: set[str], n_claims: int, glosses: dict[str, dict] | None = None,
-             *, causal_ok: bool | None = None, max_sentences: int | None = None) -> list[str]:
+             *, causal_ok: bool | None = None, max_sentences: int | None = None, has_cmp: bool = True) -> list[str]:
     """What fails in one piece of writer prose. `causal_ok=False` rejects causal wording (the story is not High);
-    `None` skips that check."""
+    `None` skips that check. `has_cmp=False` rejects {cmp} (the brief has no earlier week)."""
     out = []
     if (bad := digits_outside_tokens(piece)):
         out.append(f"typed numbers {', '.join(bad[:5])}")
@@ -128,14 +176,15 @@ def problems(piece: str, allowed: set[str], n_claims: int, glosses: dict[str, di
     foreign = sorted(t for t in used - allowed if t not in invented)
     if foreign:
         out.append(f"tokens from another part of the brief {', '.join(foreign)}")
+    if (stray := placeholders(piece, has_cmp=has_cmp)):
+        out.append(f"uses {', '.join(dict.fromkeys(stray[:3]))}, which code does not fill (the only allowed placeholders are {CMP} and {LINK})")
     out += [why for rx, why in BANNED if rx.search(piece or "")]
     out += style(piece, max_sentences)
+    if (own := OWN_COMPARISON.search(piece or "")):
+        out.append(f'words the comparison itself ("{own.group(0)}"); name it only with {CMP}, or leave it out')
     if causal_ok is False and (m := CAUSAL.search(piece or "")):
         out.append(f'says "{m.group(0)}", but confidence is not High (say "association", not cause)')
     if glosses is not None:  # wording: a comparison is described only as the glossary states it
-        if RELATIVE_WEEK.search(piece or "") and not any(glosses.get(t, {}).get("base_single") for t in used):
-            out.append('compares with "the week before", but none of its numbers is a week-over-week comparison '
-                       "(describe it as the glossary does)")
         if YEAR_BACK.search(piece or "") and not any(glosses.get(t, {}).get("last_year") for t in used):
             out.append("compares with last year, but no number in this brief does")
         if any(glosses.get(t, {}).get("small_cell") for t in used):
@@ -158,36 +207,54 @@ ANSWER_SENTENCES, STORY_SENTENCES, CHART_SENTENCES = 4, 5, 3
 
 
 def check(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
-          glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None) -> dict[str, list[str]]:
+          glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None,
+          has_cmp: bool = True, mentions: dict[str, str] | None = None) -> dict[str, list[str]]:
     """Problems per piece: 'answer' and each story id. With `confidences` (story id to its stated confidence), a
-    story's prose may use causal wording only when that confidence is High, and the answer only when every story is."""
+    story's prose may use causal wording only when that confidence is High, and the answer only when every story
+    it names is (every story, when it names none; `mentions` maps a story id to the name the answer would use)."""
     reply = normalize(reply, story_tokens)
     every = set().union(*story_tokens.values(), story_tokens.get("_sections", set()))
     found = {}
-    answer_causal = None if confidences is None else bool(confidences) and all(c == "High" for c in confidences.values())
+    answer_causal = None if confidences is None else answer_high(str(reply.get("answer", "")), confidences, mentions)
     if (p := problems(str(reply.get("answer", "")), every, n_claims, glosses, causal_ok=answer_causal,
-                      max_sentences=ANSWER_SENTENCES)):
+                      max_sentences=ANSWER_SENTENCES, has_cmp=has_cmp)):
         found["answer"] = p
     for sid, sentence in (reply.get("stories") or {}).items():
         if sid not in story_tokens:
             continue  # an entry for a story this brief does not have is discarded, not revised (small models invent them)
         causal = None if confidences is None else confidences.get(sid) == "High"
         if (p := problems(str(sentence), story_tokens[sid], n_claims, glosses, causal_ok=causal,
-                          max_sentences=STORY_SENTENCES)):
+                          max_sentences=STORY_SENTENCES, has_cmp=has_cmp)):
             found[sid] = p
     return found
 
 
 def clean(reply: dict, story_tokens: dict[str, set[str]], n_claims: int,
-          glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None) -> tuple[str, dict[str, str], list[str]]:
+          glosses: dict[str, dict] | None = None, confidences: dict[str, str | None] | None = None,
+          has_cmp: bool = True, mentions: dict[str, str] | None = None) -> tuple[str, dict[str, str], list[str]]:
     """Keep only the pieces that pass; report what was dropped."""
     reply = normalize(reply, story_tokens)
-    bad = check(reply, story_tokens, n_claims, glosses, confidences)
+    bad = check(reply, story_tokens, n_claims, glosses, confidences, has_cmp, mentions)
     answer = "" if "answer" in bad else str(reply.get("answer", "")).strip()
     stories = {sid: str(s).strip() for sid, s in (reply.get("stories") or {}).items()
                if sid in story_tokens and sid != "_sections" and sid not in bad and str(s).strip()}
     dropped = [f"{k}: {'; '.join(v)}" for k, v in bad.items()]
     return answer, stories, dropped
+
+
+_CMP_AT_START = re.compile(r"(^|[.!?]\s+)\{cmp\}")
+
+
+def fill(text: str, cmp: str | None, link: str | None = None) -> str:
+    """Fill the writer's code-owned phrase tokens: {cmp} with the comparison phrase (capitalised at a sentence
+    start) and {link} with the causal verb. Runs after every check, so the filled words are code's, never the
+    model's (brief-008 FR-014, FR-015)."""
+    if not text:
+        return text
+    if cmp is not None:
+        text = _CMP_AT_START.sub(lambda m: m.group(1) + cmp[:1].upper() + cmp[1:], text)
+        text = text.replace(CMP, cmp)
+    return text if link is None else text.replace(LINK, link)
 
 
 def sections_text(sections: dict, close: dict, stories: list[dict]) -> str:
@@ -221,7 +288,7 @@ def chart_targets(close: dict, stories: list[dict]) -> dict[str, dict]:
 
 
 def chart_explanations(reply: dict, close: dict, stories: list[dict], n_claims: int,
-                       glosses: dict[str, dict] | None = None) -> tuple[dict[str, str], list[str]]:
+                       glosses: dict[str, dict] | None = None, has_cmp: bool = True) -> tuple[dict[str, str], list[str]]:
     """The writer's chart lines that pass the same checks as its sentences, using only that chart's tokens.
     A failing line is not revised: the chart keeps the explanation code wrote."""
     targets, kept, dropped = chart_targets(close, stories), {}, []
@@ -230,7 +297,7 @@ def chart_explanations(reply: dict, close: dict, stories: list[dict], n_claims: 
         if key not in targets or not line:
             continue
         allowed = tokens(targets[key]["caption"] + "\n" + targets[key]["explanation"])
-        bad = problems(line, allowed, n_claims, glosses, max_sentences=CHART_SENTENCES)
+        bad = problems(line, allowed, n_claims, glosses, max_sentences=CHART_SENTENCES, has_cmp=has_cmp)
         if bad:
             dropped.append(f"chart {key}: {'; '.join(bad)}")
         else:

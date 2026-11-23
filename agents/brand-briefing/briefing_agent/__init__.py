@@ -35,7 +35,7 @@ from pharmagentics.tools.events import EventLog
 
 from . import lessons
 from . import plan as planmod
-from . import trace, write
+from . import reader, trace, write
 from .investigate import investigate, server
 from .scope import out_of_scope
 
@@ -141,17 +141,24 @@ def _left_out(plan: dict, order: list[str]) -> list[str]:
            ([f"Left out of this brief by the analyst: {', '.join(by_analyst)}."] if by_analyst else [])
 
 
+_CMP_NOTE = 'The token {cmp} is available: code fills it with the comparison the analyst chose, as in "against {cmp}".'
+_NO_CMP_NOTE = "This brief has no comparison (no earlier week). Do not write {cmp} or any comparison."
+
+
 async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dict, stories: list[dict],
                  claims: list[dict], evidence: list[dict], log: RunLog, definition: dict | None = None) -> tuple[str, dict, dict, bool, list[str]]:
     n_claims = len(claims)
     story_tokens = {s["id"]: write.tokens(s["section"]) for s in stories}
     story_tokens["_sections"] = write.section_tokens(sections, close)
     confidences = {s["id"]: write.confidence(s["section"]) for s in stories}  # causal words only for a High story
+    mentions = {s["id"]: write.mention(s["id"]) for s in stories}
     shown = write.sections_text(sections, close, stories)
-    gloss_text, glosses = write.glossary(shown, claims, evidence)  # what each number measures, written by code
+    cmp = sections.get("comparison_phrase")  # the comparison in words, by code; the writer only places {cmp}
+    gloss_text, glosses = write.glossary(shown, claims, evidence, sections.get("comparison_weeks"))  # what each number measures, by code
     prompt = (HERE / cfg["prompts"]["writer"]).read_text(encoding="utf-8").format(
         question=question.split(":", 1)[-1].strip(), sections=shown, glossary=gloss_text or "(no numbers)",
-        definition=prompt_words(Definition.coerce(definition, None))) \
+        definition=prompt_words(Definition.coerce(definition, None)),
+        comparison=_CMP_NOTE if cmp else _NO_CMP_NOTE) \
         + lessons.block("writer")  # approved lessons only (core-008 FR-022); empty adds nothing
     with span("5_writer") as sp:
         raw = await _ask(spec, prompt, log, "writer")
@@ -162,10 +169,12 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
         finish(sp, {"reply": raw})
     revised = False
     with span("6_verification") as sp:
-        bad = write.check(reply, story_tokens, n_claims, glosses, confidences)
+        bad = write.check(reply, story_tokens, n_claims, glosses, confidences, bool(cmp), mentions)
         if bad:
             allowed = "\n".join(f"- {k}: {', '.join(sorted(v)) or '(none)'}" for k, v in story_tokens.items() if k != "_sections")
             allowed += "\n- answer: any token above, or " + (", ".join(sorted(story_tokens["_sections"])) or "(none)")
+            allowed += "\n- every piece: " + (f"{write.CMP} (code fills it with the comparison)" if cmp else "no comparison placeholder (the brief has none)")
+            allowed += f"\n- every piece: {write.LINK} (code fills it with the causal verb for the story's confidence)"
             fix = (HERE / cfg["prompts"]["revise"]).read_text(encoding="utf-8").format(
                 problems="\n".join(f"- {k}: {'; '.join(v)}" for k, v in bad.items()), allowed=allowed,
                 glossary=gloss_text or "(no numbers)", reply=json.dumps(reply))
@@ -175,9 +184,15 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
             except Exception:  # noqa: BLE001
                 pass
             revised = True
-        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses, confidences)
-        chart_lines, chart_dropped = write.chart_explanations(reply, close, stories, n_claims, glosses)
+        answer_text, sentences, dropped = write.clean(reply, story_tokens, n_claims, glosses, confidences, bool(cmp), mentions)
+        chart_lines, chart_dropped = write.chart_explanations(reply, close, stories, n_claims, glosses, bool(cmp))
         dropped += chart_dropped
+        # code's words go in after every check: the comparison, and each piece's causal verb from its confidence
+        all_high = write.answer_high("", confidences)  # a chart of §2 or §4 speaks for the whole brief
+        answer_text = write.fill(answer_text, cmp, write.link_verb(write.answer_high(answer_text, confidences, mentions)))
+        sentences = {k: write.fill(v, cmp, write.link_verb(confidences.get(k) == "High")) for k, v in sentences.items()}
+        chart_lines = {k: write.fill(v, cmp, write.link_verb(confidences[k] == "High" if k in confidences else all_high))
+                       for k, v in chart_lines.items()}
         finish(sp, {"problems": bad, "revised": revised, "dropped": dropped, "chart_lines": sorted(chart_lines)})
     n_bad = sum(len(v) for v in bad.values())  # `bad` maps each part to its list of problems
     await trace.note(log, "Check the writer's sentences", summary=(
@@ -261,6 +276,31 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
     return trace.attach({"envelope": envelope, "triage": record, "flow": flow}, log, len(used), index)
 
 
+def _release_bounds() -> tuple[str, str, list[str]]:
+    """The release's first and latest week and its territory IDs, for the scope reader."""
+    from pharmagentics.tools import DEFAULT_DB, Registry
+    from pharmagentics.tools.queries import TERRITORY_NAMES
+
+    reg = Registry(DEFAULT_DB)
+    try:
+        first, latest = reg.rows("select min(week_start)::varchar, max(week_start)::varchar from raw.calendar")[0]
+    finally:
+        reg.close()
+    return first, latest, [t for t in TERRITORY_NAMES if t != "NATIONAL"]
+
+
+async def _scope_proposal(question: str, spec: str, log: RunLog) -> dict | None:
+    """The scope the model reads from the question text (brief-008 FR-017), recorded for scoring only: the brief
+    has already run on the prefix scope and nothing here changes it. One reader call; any failure records nothing."""
+    try:
+        first, latest, territories = _release_bounds()
+        log.llm_calls += 1  # the reader is one model call, made even when its answer is unusable
+        return await asyncio.to_thread(reader.scope_proposal, question, spec=spec, first=first, latest=latest,
+                                       territories=territories)
+    except Exception:  # noqa: BLE001 - no usable reading: no scope_proposal, and the scorer says so
+        return None
+
+
 async def _answer(question: str, model: str | None, comparison: Comparison | None = None,
                   definition: Definition | dict | None = None) -> dict:
     cfg = load_config()
@@ -273,4 +313,9 @@ async def _answer(question: str, model: str | None, comparison: Comparison | Non
             raise
         return dict(scripted.answer(question, **_options(None, definition)), system=f"{NAME}:{spec}")
     result = await _run(question, plan, plan.get("manager_order", []), spec, reviewed=False, log=log)
-    return result["envelope"]
+    envelope = result["envelope"]
+    if load_config().get("scope_proposal", True) and (proposal := await _scope_proposal(question, spec, log)):
+        envelope["trajectory"]["scope_proposal"] = proposal
+    if isinstance(envelope.get("trajectory"), dict):
+        envelope["trajectory"]["llm_calls"] = log.llm_calls  # the reader's call is counted
+    return envelope

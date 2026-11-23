@@ -29,11 +29,11 @@ def check_access(reg: Registry, terr: str, W, B) -> Check:
         return Check("access", "insufficient", "Access: inconclusive. No tested access change aligns with reportable plan TRx.")
     _, e = max(matched, key=lambda item: item[0])
     plan_w, plan_b = q.mean_weekly(W, plan=e["plan"]), q.mean_weekly(B, plan=e["plan"])
-    change = reg.claim("get_plan_metric", q.pct_change(plan_w, plan_b), "pct1", plan=e["plan"], weeks=len(W))
+    change = reg.claim("get_plan_metric", q.pct_change(plan_w, plan_b), "pct", plan=e["plan"], weeks=len(W))
     lives = reg.claim(
         "lookup_access_events",
         f"select 100.0 * (select max(covered_lives_weight) from raw.dim_plan where plan_id = '{e['plan']}') / "
-        f"(select sum(covered_lives_weight) from raw.dim_plan where territory_id = '{terr}')", "pct1", plan=e["plan"])
+        f"(select sum(covered_lives_weight) from raw.dim_plan where territory_id = '{terr}')", "pct", plan=e["plan"])
     move = "added restrictions (tier, prior authorization or step therapy)" if e["restricted"] else "removed restrictions"
     trend = "fell" if e["restricted"] else "rose"
     from .splits import readable  # a reader's name for the plan (brief-008 FR-004); local: splits imports stages, which imports this
@@ -89,7 +89,7 @@ def check_promotion(reg: Registry, terr: str, W, B, *, source_baseline=None) -> 
     if not matches:
         return Check("promotion", "ruled_out", f"Promotion: ruled out. No tested lag lines up with TRx. "
                      f"Aggregated calls averaged {a} a week against {b} in the reference weeks.")
-    pct = reg.claim("lookup_promo", q.pct_change(recent, earlier), "pct1", territory=terr, lag=lag)
+    pct = reg.claim("lookup_promo", q.pct_change(recent, earlier), "pct", territory=terr, lag=lag)
     direction = "lower" if avg < prior else "higher"
     return Check("promotion", "supported", f"Promotion: supported as an association, {LAG_LABELS[lag]}. "
                  f"Aggregated calls averaged {a} a week against {b} in the reference weeks ({pct} {direction}).",
@@ -110,7 +110,7 @@ def check_supply(reg: Registry, terr: str, W, B) -> Check:
     previous = reg.claim("lookup_inventory", q.context_mean("inventory_weekly", "inventory_fill_rate", baseline, terr),
                          "dec2", territory=terr, weeks=baseline)
     back = reg.claim("lookup_inventory", q.context_mean("inventory_weekly", "distribution_backorder_rate", current, terr, 100),
-                     "pct1", territory=terr, weeks=current)
+                     "pct", territory=terr, weeks=current)
     return Check("supply", "supported", f"Supply: supported, {LAG_LABELS[lag]}. BXA inventory fill averaged {f} against "
                  f"{previous} in the comparison weeks, with {back} of orders backordered.", {"lag": lag})
 
@@ -118,10 +118,10 @@ def check_supply(reg: Registry, terr: str, W, B) -> Check:
 def run_checks(reg: Registry, terr: str, W, B, *, brand_id: str = "BXA",
                use_selected_baseline: bool = False) -> list[Check]:
     if brand_id != "BXA":
-        return run_brand_checks(reg, terr, W, B, brand_id, use_selected_baseline=use_selected_baseline)
+        return run_brand_checks(reg, terr, W, B, brand_id, use_selected_baseline=use_selected_baseline, pct_format="pct")
     ref = B if use_selected_baseline else context_baseline(W, B)
     return [check_data(reg, terr, W, B), check_access(reg, terr, W, B), check_promotion(reg, terr, W, B, source_baseline=ref),
-            check_supply(reg, terr, W, B), check_competitor(reg, terr, W, ref, exact_comparison=use_selected_baseline)]
+            check_supply(reg, terr, W, B), check_competitor(reg, terr, W, ref, exact_comparison=use_selected_baseline, pct_format="pct")]
 
 
 def national_ruled_out(reg: Registry, terrs: list[str], W, B, *, brand_id: str = "BXA", use_selected_baseline: bool = False) -> list[str]:

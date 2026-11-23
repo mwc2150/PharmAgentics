@@ -5,6 +5,8 @@
 
 model: null            # null: PHARMAGENTICS_AGENT_MODEL, else ollama:qwen3:4b-instruct-2507-q4_K_M
 
+scope_proposal: true   # eval: also record the scope a model reads from the question text (brief-008 FR-017); never changes the brief
+
 prompts:
   manager_triage: prompts/manager_triage.md
   manager: prompts/manager.md

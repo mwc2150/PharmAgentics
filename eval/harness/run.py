@@ -45,7 +45,9 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
     os.environ.setdefault("MLFLOW_GENAI_EVAL_SKIP_TRACE_VALIDATION", "True")
 
     configure(uri, experiment, artifacts)
-    rows = [{"inputs": c.inputs(), "expectations": c.expectations()} for c in cases]
+    # MLflow refuses a None expectation ("The `value` field must be specified"), so a key with no value is left out of the
+    # logged rows; every scorer reads expectations with .get, so an absent key reads as None.
+    rows = [{"inputs": c.inputs(), "expectations": {k: v for k, v in c.expectations().items() if v is not None}} for c in cases]
     latency: dict[str, list[float]] = {"brief": [], "turn": []}  # brief-006 FR-011
 
     # Traced here because skipping MLflow's first-row validation also skips its auto-tracing wrapper.

@@ -115,7 +115,7 @@ def test_every_projected_or_estimated_level_is_flagged_as_an_assumption(week, te
 @needs_db
 def test_least_sure_falls_to_the_lowest_confidence_story_then_the_smallest_change():
     restated = section(brief(RESTATED)["answer"], "Bottom line")
-    assert ("Least sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories."
+    assert ("Least sure: the Pacific change (up 45%); its confidence, Low, is the lowest of this brief's stories."
             in restated)
     routine = section(brief(ROUTINE)["answer"], "Bottom line")
     assert any(x.startswith("Least sure: the week-over-week change") for x in routine)
@@ -172,7 +172,7 @@ def test_a_multi_week_window_compares_with_the_four_weeks_before():
     from briefing_baseline import answer
 
     text = answer(SOUTHEAST_GAP)["answer"]
-    assert "Southeast. BXA TRx averaged 481 a week against 639 before (down 24.8%)" in text
+    assert "Southeast. BXA TRx averaged 481 a week against 639 before (down 25%)" in text
     assert "against the four weeks before (2026-07-06 to 2026-07-27)." in section(text, "Bottom line")[1]
 
 
@@ -217,8 +217,8 @@ def test_scope_line_and_assumptions_name_the_comparison_weeks():
 def test_territory_changes_match_the_golden_swings():
     """FR-007 (P1-Q3): each territory's week-over-week change, with its direction."""
     numbers = section(brief(ROUTINE)["answer"], "The numbers")
-    assert any(x.startswith("Pacific: ") and x.endswith("up 24.8% on the week before; up 8.4% on the comparison weeks.") for x in numbers)
-    assert any(x.startswith("Southeast: ") and x.endswith("down 10.8% on the week before; down 16.0% on the comparison weeks.") for x in numbers)
+    assert any(x.startswith("Pacific: ") and x.endswith("up 25% on the week before; up 8.4% on the comparison weeks.") for x in numbers)
+    assert any(x.startswith("Southeast: ") and x.endswith("down 11% on the week before; down 16% on the comparison weeks.") for x in numbers)
 
 
 @needs_db
@@ -312,13 +312,13 @@ def test_blocks_follow_the_schema_for_a_one_week_brief():
     table = two["territory_table"]
     assert table["columns"] == ["Territory", "BXA TRx", "On the week before", "On the comparison weeks", "Basis"]
     assert [r["cells"][0] for r in table["rows"]][:2] == ["Great Lakes", "Mid-Atlantic"] and len(table["rows"]) == 8
-    assert table["rows"][0]["cells"] == ["Great Lakes", "556", "down 12.3%", "down 12.6%", "observed"]
+    assert table["rows"][0]["cells"] == ["Great Lakes", "556", "down 12%", "down 13%", "observed"]
     assert all(len(r["cells"]) == len(table["columns"]) == len(r["cell_citations"]) for r in table["rows"])
     assert table["rows"][0]["cell_citations"][0] == [] and len(table["rows"][0]["cell_citations"][1]) == 1
     assert "four weeks before" in table["note"]
     story = by_number(env)["3.1"]
     assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"][0] == "competitor"  # the national competitor story (brief-010 FR-006)
-    assert "Metacora holds 15.9%" in story["card"]["headline"] and story["card"]["headline_citations"]
+    assert "Metacora holds 16%" in story["card"]["headline"] and story["card"]["headline_citations"]
     card = story["card"]  # brief-010 FR-006: the national card
     assert (card["territory"], card["cut"], card["drivers_supported"]) == ("NATIONAL", None, ["competitor"])
     assert set(card["drivers_ruled_out"]) <= {"access", "promotion", "supply"}  # only drivers every territory rules out (packet N)
@@ -334,7 +334,7 @@ def test_a_multi_week_brief_quotes_no_single_week_change():
     assert "On the week before" not in by_number(env)["2"]["territory_table"]["columns"]
     assert "on the week before" not in env["answer"] and "Week over week" not in env["answer"]
     card = by_number(env)["3.1"]["card"]
-    assert card["headline"].startswith("Southeast fell 24.8% on the comparison weeks, while the other territories were up 2.8%")
+    assert card["headline"].startswith("Southeast fell 25% on the comparison weeks, while the other territories were up 2.8%")
     assert card["drivers_checked"] == ["data quality", "access", "promotion", "supply", "competitor"]
     # core-011: territory id, own direction and the drivers the checks supported and ruled out, in the eval's ids
     assert (card["territory"], card["direction"]) == ("SOUTHEAST", "down")
@@ -424,7 +424,7 @@ def test_the_competitor_story_is_one_national_card_with_a_direction_for_each_mea
     assert card["drivers_checked"] == ["competitor"] + [{"promotion": "promotion"}.get(d, d) for d in ruled_out]
     assert card["directions"] == {"bxa_share": bxa, "competitor_share": bxe} and card["direction"] == bxa  # share story: no trx
     assert not re.search(r"\{c\d+\}", card["headline"]) and card["headline_citations"]  # filled, and every number cited
-    assert re.search(r"Metacora holds \d+\.\d% of the four-brand basket, and BXA holds \d+\.\d%\.", card["headline"])
+    assert re.search(r"Metacora holds \d+(?:\.\d)?% of the four-brand basket, and BXA holds \d+(?:\.\d)?%\.", card["headline"])  # whole from 10%, one decimal below (brief-008 FR-016)
 
 
 @needs_db

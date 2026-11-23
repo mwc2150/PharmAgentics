@@ -9,13 +9,14 @@ Rules again:
 - Short sentences, at most 25 words each. One plain paragraph: no bullets, no headings, no bold, no line breaks. The answer has at most four sentences and a story at most five.
 - Readable names only ("Southeast", "primary care"), never ids such as territory:SOUTHEAST or PRIMARY_CARE.
 - Do not mention splits by plan, specialty or channel, the method, the glossary or "considered and dropped": they are folded away.
-- Say "association" for promotion. Use "because", "caused", "drove", "due to" or "explains" only for a story whose confidence is High.
+- Say "association" for promotion. To link a driver to a move, use the token {{link}} as the verb. Code fills it by confidence. Do not write "because", "caused", "due to" or "explains" yourself.
+- Name a comparison only with the token {{cmp}} when the allowed list offers it. Never word a comparison in your own words.
 - Never use "surveillance"; "new patients" only for NBRx; never name or number an individual rep.
 
 Allowed tokens per piece:
 {allowed}
 
-What each number measures (describe a comparison only as this list does):
+What each number measures (a note says when to name its comparison with {{cmp}}):
 {glossary}
 
 Your previous reply:

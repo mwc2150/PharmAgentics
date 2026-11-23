@@ -132,7 +132,7 @@ def competitor(reg: Registry, p) -> dict:
            f"100.0 * sum(trx) filter (where product_id = 'BXE') / nullif(sum(trx), 0) from {q.RX} "
            f"where week_start in {q._dates(W)} group by 1 order by 1")
     table = _table(reg, "chart_competitor", sql, ["week", f"{p.brand_id.lower()}_share", "bxe_share"])
-    bxe = reg.claim("compare_competitors", q.share([W[-1]], "BXE"), "pct1", product="BXE", week=W[-1])
+    bxe = reg.claim("compare_competitors", q.share([W[-1]], "BXE"), "pct", product="BXE", week=W[-1])
     return {"kind": "share", "weeks": W, "series": [
         {"name": f"{p.brand_id} share", "points": [{"week": r[0], "value": r[1], "basis": "observed", "restated": False} for r in table["rows"]]},
         {"name": "Metacora share", "points": [{"week": r[0], "value": r[2], "basis": "observed", "restated": False} for r in table["rows"]]}],

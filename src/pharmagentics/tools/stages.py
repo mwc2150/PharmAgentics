@@ -368,7 +368,7 @@ def _national_block(reg: Registry, p: Period, facts: dict, col: str, key: str, *
         lines = []
         if base:
             change = reg.scalar(q.pct_change(cur, base)) or 0
-            pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope=scope)
+            pct = reg.claim("get_metric", q.pct_change(cur, base), "pct", scope=scope)
             entry.update(pct=pct, word=word(change))
             if mode == "like_for_like":
                 lines.append(f"KPIs: {brand} {label} averaged {avg} a week across {n} of {total} territories (like for like), "
@@ -384,7 +384,7 @@ def _national_block(reg: Registry, p: Period, facts: dict, col: str, key: str, *
                 all_cur, all_base = q.mean_weekly(W, product=brand, col=col), q.mean_weekly(B, product=brand, col=col)
                 naive = reg.scalar(q.pct_change(all_cur, all_base)) or 0
                 if len(tc) < len(p.terrs) and abs(naive - change) >= 5:
-                    p2 = reg.claim("get_metric", q.pct_change(all_cur, all_base), "pct1", scope="headline total of reportable cuts")
+                    p2 = reg.claim("get_metric", q.pct_change(all_cur, all_base), "pct", scope="headline total of reportable cuts")
                     lines.append(f"The headline total of reportable cuts is {word(naive)} {p2}, but that move comes mostly from withheld cuts, so it is a data artifact, not a business change.")
                     facts["artifact"] = lines[-1]
     if extra is not None:
@@ -434,7 +434,7 @@ def kpis(reg: Registry, p: Period, facts: dict | None = None) -> list[str]:
         if earlier_b and min(earlier_w + earlier_b) >= p.first and p.comparison is None and p.has("national") and ok:
             ly_cur, ly_base = q.mean_weekly(earlier_w, terrs=ok, product=p.brand_id), q.mean_weekly(earlier_b, terrs=ok, product=p.brand_id)
             ly = reg.scalar(q.pct_change(ly_cur, ly_base)) or 0
-            cal_lines.append(f"The same weeks a year earlier were {word(ly)} {reg.claim('get_metric', q.pct_change(ly_cur, ly_base), 'pct1', scope='same weeks last year')}. This is a calendar effect, not a business event.")
+            cal_lines.append(f"The same weeks a year earlier were {word(ly)} {reg.claim('get_metric', q.pct_change(ly_cur, ly_base), 'pct', scope='same weeks last year')}. This is a calendar effect, not a business event.")
     facts["calendar"] = cal_lines
     return lines + cal_lines
 
@@ -455,7 +455,7 @@ def week_over_week(reg: Registry, p: Period, facts: dict | None = None) -> list[
     now_all, prev_all = q.trx_sum([w], product=p.brand_id), q.trx_sum([prev], product=p.brand_id)
     change = reg.scalar(q.pct_change(now_all, prev_all)) or 0
     now_t, prev_t = reg.claim('get_metric', now_all, 'int', week=w), reg.claim('get_metric', prev_all, 'int', week=prev)
-    pct_t = reg.claim('get_metric', q.pct_change(now_all, prev_all), 'pct1', scope='week over week, reportable cuts')
+    pct_t = reg.claim('get_metric', q.pct_change(now_all, prev_all), 'pct', scope='week over week, reportable cuts')
     facts["wow"] = {"now": now_t, "prev": prev_t, "pct": pct_t, "word": word(change)}
     lines = [f"Week over week, summed over reportable cuts: {p.brand_id} TRx is {now_t} "
              f"against {prev_t} the week before ({word(change)} {pct_t})."]
@@ -467,7 +467,7 @@ def week_over_week(reg: Registry, p: Period, facts: dict | None = None) -> list[
         noun = plural(claim_value(reg, n), "territory that reports", "territories that report")
         first, last = (reg.claim('get_metric', prev_b, 'int', week=prev, scope='like for like'),
                        reg.claim('get_metric', now_b, 'int', week=w, scope='like for like'))
-        pct_b = reg.claim('get_metric', q.pct_change(now_b, prev_b), 'pct1', scope='week over week, like for like')
+        pct_b = reg.claim('get_metric', q.pct_change(now_b, prev_b), 'pct', scope='week over week, like for like')
         facts["wow_both"] = {"n": n, "noun": noun, "from": first, "to": last, "pct": pct_b, "word": word(ch)}
         lines.append(f"On the {n} {noun} both weeks, {p.brand_id} TRx went from {first} to {last} ({word(ch)} {pct_b}).")
     return lines
@@ -493,7 +493,7 @@ def territory_changes(reg: Registry, p: Period, facts: dict | None = None) -> li
             facts["changes"].append({"territory": t, "ok": False, "base": None, "wow": None})
             continue
         base_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id, col=p.col), q.mean_weekly(B, terrs=[t], product=p.brand_id, col=p.col))
-        base = reg.claim("get_metric", base_sql, "pct1", territory=t, scope="against the comparison weeks")
+        base = reg.claim("get_metric", base_sql, "pct", territory=t, scope="against the comparison weeks")
         base_change = reg.scalar(base_sql) or 0
         entry = {"territory": t, "ok": True, "base": {"word": word(base_change), "token": base, "change": base_change}, "wow": None}
         if p.col != "trx":  # the table's level column is the observed level, not the projection
@@ -509,7 +509,7 @@ def territory_changes(reg: Registry, p: Period, facts: dict | None = None) -> li
             if all(p.status.get((w, t), ("FLAG", ""))[0] == "PASS" for w in (last, prev)):
                 wow_sql = q.pct_change(q.trx_sum([last], terrs=[t], product=p.brand_id, col=p.col),
                                        q.trx_sum([prev], terrs=[t], product=p.brand_id, col=p.col))
-                wow = reg.claim("get_metric", wow_sql, "pct1", territory=t, scope="week over week")
+                wow = reg.claim("get_metric", wow_sql, "pct", territory=t, scope="week over week")
                 entry["wow"] = {"word": word(reg.scalar(wow_sql) or 0), "token": wow}
                 weekly = f"{entry['wow']['word']} {wow} on the week before"
             weekly += "; "
@@ -518,7 +518,7 @@ def territory_changes(reg: Registry, p: Period, facts: dict | None = None) -> li
             nb_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id, col=p.extra_col),
                                   q.mean_weekly(B, terrs=[t], product=p.brand_id, col=p.extra_col))
             with reg.under(measure=p.extra_col):
-                nb = reg.claim("get_metric", nb_sql, "pct1", territory=t, scope=f"against the comparison weeks, {p.extra_label}")
+                nb = reg.claim("get_metric", nb_sql, "pct", territory=t, scope=f"against the comparison weeks, {p.extra_label}")
             entry["xm"] = {"word": word(reg.scalar(nb_sql) or 0), "token": nb}
             extra += f"; {p.extra_label} {entry['xm']['word']} {nb}"
         entry["xc"] = []
@@ -528,7 +528,7 @@ def territory_changes(reg: Registry, p: Period, facts: dict | None = None) -> li
                 continue
             x_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id, col=p.col), q.mean_weekly(Bx, terrs=[t], product=p.brand_id, col=p.col))
             with reg.under(**comparison_labels(cmp_, Bx)):
-                tok = reg.claim("get_metric", x_sql, "pct1", territory=t, scope=f"against {comparison_tile(cmp_, Bx)}")
+                tok = reg.claim("get_metric", x_sql, "pct", territory=t, scope=f"against {comparison_tile(cmp_, Bx)}")
             entry["xc"].append({"word": word(reg.scalar(x_sql) or 0), "token": tok, "since": comparison_since(cmp_, Bx),
                                 "tile": comparison_tile(cmp_, Bx)})
             extra += f"; {entry['xc'][-1]['word']} {tok} {entry['xc'][-1]['since']}"
@@ -617,7 +617,7 @@ def _against(reg: Registry, p: Period, t: str, kind: str, col: str) -> tuple[str
     else:
         return None
     with reg.under(relative_to=kind):
-        token = reg.claim("get_metric", sql, "pct1", scope=scope)
+        token = reg.claim("get_metric", sql, "pct", scope=scope)
     return word(reg.scalar(sql) or 0), token
 
 
@@ -629,7 +629,7 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
     x, b = q.mean_weekly(W, terrs=[t], product=brand, col=col), q.mean_weekly(B, terrs=[t], product=brand, col=col)
     change = reg.scalar(q.pct_change(x, b)) or 0
     mean_x, mean_b = reg.claim('get_metric', x, 'int', territory=t), reg.claim('get_metric', b, 'int', territory=t)
-    pct = reg.claim('get_metric', q.pct_change(x, b), 'pct1', territory=t)
+    pct = reg.claim('get_metric', q.pct_change(x, b), 'pct', territory=t)
     kind, peer_word, peer_pct, tail, extras = p.definition.relative, None, None, "", []
     got = _against(reg, p, t, kind, col)
     if got:
@@ -651,7 +651,7 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
         with reg.under(measure=p.extra_col):
             n_x = reg.claim('get_metric', nx_, 'int', territory=t, scope=p.extra_label)
             n_b = reg.claim('get_metric', nb_, 'int', territory=t, scope=p.extra_label)
-            n_pct = reg.claim('get_metric', q.pct_change(nx_, nb_), 'pct1', territory=t, scope=p.extra_label)
+            n_pct = reg.claim('get_metric', q.pct_change(nx_, nb_), 'pct', territory=t, scope=p.extra_label)
         if facts is not None:
             facts["xm"] = {"word": word(n_change), "pct": n_pct, "label": p.extra_label}
         text += f" {p.extra_label[:1].upper()}{p.extra_label[1:]} averaged {n_x} a week against {n_b} before ({word(n_change)} {n_pct})."
@@ -660,7 +660,7 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
             continue
         sql = q.pct_change(x, q.mean_weekly(Bx, terrs=[t], product=brand, col=col))
         with reg.under(**comparison_labels(cmp_, Bx)):
-            tok = reg.claim('get_metric', sql, 'pct1', territory=t, scope=f"against {comparison_tile(cmp_, Bx)}")
+            tok = reg.claim('get_metric', sql, 'pct', territory=t, scope=f"against {comparison_tile(cmp_, Bx)}")
         since = comparison_since(cmp_, Bx)
         if facts is not None:
             facts["xc"].append({"word": word(reg.scalar(sql) or 0), "pct": tok, "since": since})
@@ -700,9 +700,9 @@ def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora
     earlier = [q.shift(w, -8) for w in W]
     trend = (reg.scalar(share_w) or 0) - (reg.scalar(q.share(earlier, "BXE")) or 0)
     direction = "still growing" if trend > 1 else "now flat" if trend > -1 else "declining"
-    bxe = reg.claim("compare_competitors", share_w, "pct1", product="BXE")
-    bxa = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct1", product=p.brand_id)
-    bxa_pre = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct1", product=p.brand_id, weeks="before launch")
+    bxe = reg.claim("compare_competitors", share_w, "pct", product="BXE")
+    bxa = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct", product=p.brand_id)
+    bxa_pre = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct", product=p.brand_id, weeks="before launch")
     if facts is not None:
         facts.update(bxe=bxe, bxa=bxa, pre=bxa_pre)
         facts.update(_national_reading(reg, p))
