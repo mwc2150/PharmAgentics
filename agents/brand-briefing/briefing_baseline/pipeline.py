@@ -299,7 +299,8 @@ def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBloc
               verdict=_VERDICT.get(c.verdict), summary=c.text, text=c.text)
     facts: dict = {}
     head = f"Story {_ord(n)}: {stages.territory_change(reg, p, t, facts)}"
-    lines = [head, "Checked, in this order:"] + [f"- {c.text}" for c in checks]
+    movers = splits.segment_line(reg, p, t)  # brief-010 FR-003: the channel and specialty movers, in percent
+    lines = [head] + ([movers] if movers else []) + ["Checked, in this order:"] + [f"- {c.text}" for c in checks]
     supported = [c.driver for c in checks if c.verdict == "supported"]
     lags = {c.driver: c.detail["lag"] for c in checks if c.detail and "lag" in c.detail}
     if level == "Low":

@@ -173,6 +173,19 @@ def _direction(value: float, above: str, below: str) -> str:
     return below if value < 0 else above
 
 
+def _segment_lines(reg: Registry, period: stages.Period, t: str) -> list[str]:
+    """The channel and specialty movers of one lapse, in percent, against the four weeks before it (brief-010 FR-003).
+    The lapse's own weeks first; a lapse longer than the four-week comparison is also read on its first four weeks, which
+    is the window the golden answer reads (a coverage gap's early response, before the weeks that follow muddy it).
+    A small cell is quoted with its flag here: this review is where cash is read as noisy rather than dropped."""
+    lead = "Over the lapse"
+    out = [splits.segment_line(reg, period, t, quote_small=True, lead=lead)]
+    if len(period.weeks) > stages.BASELINE_WEEKS:
+        out.append(splits.segment_line(reg, replace(period, weeks=period.weeks[:stages.BASELINE_WEEKS]), t, quote_small=True,
+                                lead="In its first four weeks"))
+    return [" ".join(x for x in out if x)] if any(out) else []
+
+
 def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple[str, float]]) -> memo.StoryBlock:
     """One lapse as a short story: what calls and impressions did, what TRx did and what returned, a card, and the
     splits (readable, rounded) folded for analysts. A gap against peer trend, below zero, is appended to `gaps`."""
@@ -209,6 +222,7 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
                      f"{_direction(gap_value or 0, 'above', 'below')} the other territories' trend. This is an association.")
         if below:
             gaps.append((gap, abs(gap_value)))
+        lines.extend(_segment_lines(reg, period, t))  # brief-010 FR-003
         verb = {"up": "rose", "down": "fell"}.get(stages.word(change), "held flat at")
         card.update(headline=f"{name}: aggregated calls fell from {before} to {during} a week, and {brand} TRx {verb} {pct}.",
                     confidence="Medium", direction=stages.word(change),  # the territory's own TRx move

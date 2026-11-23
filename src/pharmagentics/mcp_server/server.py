@@ -294,7 +294,8 @@ class RunSession:
         head = f"Story {_ORD.get(n, str(n))}: {stages.territory_change(self._reg(), self.p, t, facts)}"
         self.story_facts[t] = facts
         done = list(self.checks.get(t, {}).values())
-        lines = [head] + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
+        movers = splits.segment_line(self._reg(), self.p, t)  # brief-010 FR-003
+        lines = [head] + ([movers] if movers else []) + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
         lines.append(memo.without_next(self._status(t, closing=True)))  # its next check goes to §5
         self.story_detail[t] = memo.story_detail(self._reg(), self.p, t)  # folded, not in the story's text
         return "\n".join(lines)

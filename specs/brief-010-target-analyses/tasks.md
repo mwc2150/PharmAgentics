@@ -24,9 +24,9 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [ ] P4 Tests (`tests/test_plan_cuts.py`: done); scripted run and gate; targets P1-Q4, P2-Q2, P2-Q4, P4-Q4 rise; Haiku run and gate (the integrator's).
 
 ## Packet S: segment and channel percent (FR-003)
-- [ ] S1 Percent movers by channel and specialty (at most two a story, small cells named, not quoted).
-- [ ] S2 The Promotion review states them for each lapsed territory.
-- [ ] S3 Tests; scripted run and gate; P4-Q2 rises.
+- [x] S1 Percent movers by channel and specialty (at most two a story, small cells named, not quoted).
+- [x] S2 The Promotion review states them for each lapsed territory.
+- [x] S3 Tests (`tests/test_segment_percent.py`); P4-Q2 states both facts. The scripted run and gate are the integrator's (I1).
 
 ## Packet R: restatement detail (FR-004, FR-005)
 - [x] R1 Duplicate overstatement (naive, deduplicated, overstatement) in §4 when the gate withholds a territory.
