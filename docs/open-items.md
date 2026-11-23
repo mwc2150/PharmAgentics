@@ -6,7 +6,7 @@ There is no `PROJECT_STATE.md` any more. Every branch used to add an entry at it
 
 Carried over from the entries of 2026-11-22 and 2026-11-23. Read the handoff named before acting: some may have moved since.
 
-- Keycloak deploy script: `put_secret` destroyed the secret version the running revision mounted; fixed by hand, and the script fix is on the local branch `fix/keycloak-secret-pin`, not pushed.
+- Keycloak deploy script: `put_secret` destroyed the secret version the running revision mounted (fixed by hand on 2026-11-23). The script fix (pin Keycloak to the new version, prune only after it serves; `setup` no longer prunes the realm secret) is committed on `fix/keycloak-secret-pin`, not pushed or merged.
 - Golden set: the P4-Q3 and WIN-2 findings omit promotion for the Southeast gap (Michael). `docs/handoffs/2026-11-23-brief-010-integration.md`
 - Golden set: Michael reviews the golden edits before `key_fact_recall` and `finding_recall` join the gated checks (core-011 FR-006). `docs/handoffs/2026-11-22-core-011-integration.md`
 - Forecast: Alvin to agree whether Haiku replaces Qwen once the designs are set; the hosted app would bill the team key. `docs/handoffs/2026-11-22-fcst-haiku-option.md`

@@ -130,11 +130,22 @@ def shared_env(c: Ctx) -> str | None:
     return c.gc("secrets", "versions", "access", "latest", f"--secret={ENV_SECRET}", quiet_fail=True)
 
 
-def put_secret(c: Ctx, name: str, value: str) -> None:
-    """Add a version and destroy older ones, so at most one version per secret is active (free tier: 6)."""
+def put_secret(c: Ctx, name: str, value: str, prune: bool = True) -> str:
+    """Add a version and return its number. With `prune`, destroy older ones, so at most one version per secret is
+    active (free tier: 6). A service that mounts the secret deploys with `prune=False`, pinned to the new version,
+    and prunes after: destroying the version its running revision uses failed the Keycloak deploy (2026-11-23)."""
     if not c.ok("secrets", "describe", name):
         c.gc("secrets", "create", name, "--replication-policy=automatic")
     c.gc("secrets", "versions", "add", name, "--data-file=-", input=value)
+    versions = c.gc("secrets", "versions", "list", name, "--filter=state=enabled", "--format=value(name)").split()
+    newest = max((v.rsplit("/", 1)[-1] for v in versions), key=int, default="latest")
+    if prune:
+        prune_secret(c, name)
+    return newest
+
+
+def prune_secret(c: Ctx, name: str) -> None:
+    """Destroy every enabled version of a secret except the newest."""
     versions = c.gc("secrets", "versions", "list", name, "--filter=state=enabled", "--format=value(name)").split()
     for v in sorted(versions, key=lambda x: int(x.rsplit("/", 1)[-1]))[:-1]:
         c.gc("secrets", "versions", "destroy", v.rsplit("/", 1)[-1], f"--secret={name}")
@@ -185,7 +196,7 @@ def setup(c: Ctx, billing: str | None, github_repo: str) -> None:
     env = read_env()
     put_secret(c, SECRETS["session"], env["PHARMAGENTICS_SESSION_SECRET"])
     put_secret(c, SECRETS["client"], env["PHARMAGENTICS_OIDC_CLIENT_SECRET"])
-    put_secret(c, SECRETS["realm"], render_realm(env, c.url(APP)))
+    put_secret(c, SECRETS["realm"], render_realm(env, c.url(APP)), prune=False)  # Keycloak runs pinned to an older version; `keycloak` prunes
     put_secret(c, SECRETS["worker"], env["PHARMAGENTICS_WORKER_TOKEN"])
     put_secret(c, ENV_SECRET, ENV_FILE.read_text(encoding="utf-8"))  # FR-030; no service account reads it
     for key, secret in (("app", "session"), ("app", "client"), ("kc", "realm"), ("app", "worker")):
@@ -249,13 +260,14 @@ def keycloak(c: Ctx) -> None:
     c.gc("auth", "configure-docker", f"{c.region}-docker.pkg.dev", quiet_fail=True)
     docker("build", "-t", image, str(HERE / "keycloak"))
     docker("push", image)
-    put_secret(c, SECRETS["realm"], render_realm(env, c.url(APP)))
+    version = put_secret(c, SECRETS["realm"], render_realm(env, c.url(APP)), prune=False)
     c.gc("run", "deploy", KC, f"--image={image}", f"--region={c.region}", f"--service-account={c.sa('kc')}",
          "--allow-unauthenticated", "--port=8080", "--cpu=1", "--memory=1Gi", "--min-instances=0",
          "--max-instances=1",  # one instance: Keycloak keeps sessions in memory (no database)
          "--cpu-boost", "--timeout=300", "--concurrency=40",
          f"--set-env-vars=KC_HOSTNAME={c.url(KC)}",
-         f"--set-secrets=/opt/keycloak/data/import/realm-pharmagentics.json={SECRETS['realm']}:latest")
+         f"--set-secrets=/opt/keycloak/data/import/realm-pharmagentics.json={SECRETS['realm']}:{version}")
+    prune_secret(c, SECRETS["realm"])  # only once the new revision serves
     print(f"\nKeycloak: {c.url(KC)}  (realm pharmagentics; restart to reload accounts)")
 
 
