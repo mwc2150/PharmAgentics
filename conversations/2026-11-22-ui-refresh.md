@@ -65,10 +65,19 @@ Session: Claude Opus (plan, review, integration) with Sonnet and Haiku packets. 
 - No Spec Kit spec covers the visual theme; DESIGN.md is its source. Decide whether the theme deserves a `core-0xx` spec.
 - Leftovers seen but not changed:
   - The Evaluation page (`Telemetry.tsx`, owned by core-011) has panels without the hard shadow, a duplicate "Evaluation" title and regular-weight figures. Restyle it after core-011 merges.
-  - The API's dev sign-in page (`src/pharmagentics/api/auth.py`) is still the old light page.
   - Week-chart hover readouts in the Overview are pointer-only.
   - Chart axis labels get small on phones (the numbers are also in captions and tables).
   - The unreachable-API card has no retry link.
 - Delete the deprecated token aliases once core-011 and brief-010 have merged and use the new names.
 - Branches kept until Michael says otherwise: `feature/ui-direction-a`, `-c`, `feature/ui-refresh-{tokens,docs,screens,a11y}` and `feature/ui-dev-server` (whose two commits are also in `feature/ui-refresh`). Not pushed.
 - Scratch artefacts (screenshots, packets, scripts) are in this session's temp scratchpad and will not survive a cleanup.
+
+## Follow-up (2026-11-23): sign-in pages
+
+- Keycloak login theme `deploy/keycloak/themes/pharmagentics` (CSS over keycloak.v2, Space Grotesk and Plex Sans, `pa-mark.svg`, favicon, wording "Sign in"). The realm selects it (`"loginTheme"`) and its display name drops "UAT". compose mounts it, and `deploy/keycloak/Dockerfile` copies it into the Cloud Run image (build checked; the theme files are in the image). The deployed Keycloak picks it up on the next `deploy/gcp.py keycloak`.
+- The API's dev sign-in and "Starting the sign-in service" pages share one themed template in `auth.py`.
+- Checked:
+  - a throwaway Keycloak 26.4 with the theme mounted: login, wrong-password error and phone screenshots;
+  - the dev page through the Vite proxy, with no failed requests and no sideways scroll at 390px;
+  - tests: deploy, rbac, brand_access, briefing_api, classification, frontend_scope and feedback, 160 passed, with this branch's `src` on PYTHONPATH.
+- Gotcha: the main checkout's `.venv` has an editable install of the MAIN checkout's `src`. Tests run from another worktree with that venv silently import main's code (which another session had changed). Prefix `PYTHONPATH=<worktree>/src`.

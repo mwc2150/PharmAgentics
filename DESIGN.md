@@ -94,6 +94,10 @@ Use the shared class constants in `App.tsx` (`Overview.tsx` keeps its own copy o
 - `public/favicon.svg` is the same tile without "v1" and without the slab, so "Pa" stays legible at 16px. `favicon.png` is the raster fallback.
 - Use it in the rail and the sign-in card only. Never repeat it in the page.
 
+## Sign-in pages
+
+The pages people see before the app follow the same theme. Keycloak's login uses the `pharmagentics` login theme (`deploy/keycloak/themes/pharmagentics`, over keycloak.v2): near-black page, the tile mark beside the "PharmAgentics" wordmark, one 22px panel with the `slab` shadow, 14px fields with `edge` borders and a lime focus ring, and a lime "Sign in" button with the `primarydeep` shadow (not full width). Errors are a red word under the field, never a filled banner. The realm's display name is "PharmAgentics" (no "UAT"). The API's own pages (dev sign-in, "Starting the sign-in service") share one template in `src/pharmagentics/api/auth.py` with the same panel, mark and buttons. Keep the theme's hex values in step with `index.css` when a token changes.
+
 ## Avoid
 
 Avatar circles with initials, coloured badge pills with icons, tinted and ringed selected states, a logo repeated in the page, hero headings on working screens, full-width buttons, and blur on solid panels. Also:

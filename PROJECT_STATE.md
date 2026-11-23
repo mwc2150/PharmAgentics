@@ -19,8 +19,8 @@ _2026-11-22 (night), UI refresh ready for review: Positivus dark theme, element-
 - Open:
   - No Spec Kit spec covers the theme (DESIGN.md does).
   - The Evaluation page restyle waits for core-011.
-  - The dev sign-in page is still the old light page.
   - Drop the token aliases once the other branches merge.
+- 2026-11-23: the sign-in pages match the theme. The Keycloak login theme (realm `loginTheme`, display name without "UAT", compose mount and Dockerfile copy) and the API's dev and starting pages are done. 160 focused tests passed.
 - Not pushed. Handoff: `conversations/2026-11-22-ui-refresh.md`.
 
 _2026-11-22 (evening), brief-008 readable memo ready for review (Claude Opus, Sonnet and Haiku packets)._

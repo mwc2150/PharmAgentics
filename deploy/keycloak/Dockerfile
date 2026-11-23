@@ -8,6 +8,8 @@ RUN /opt/keycloak/bin/kc.sh build
 
 FROM quay.io/keycloak/keycloak:26.4
 COPY --from=build /opt/keycloak/ /opt/keycloak/
+# The PharmAgentics login theme (DESIGN.md); the realm selects it with "loginTheme".
+COPY themes/pharmagentics /opt/keycloak/themes/pharmagentics
 # Cloud Run terminates TLS and forwards X-Forwarded-* headers; KC_HOSTNAME is set at deploy time.
 ENV KC_HTTP_ENABLED=true KC_HTTP_PORT=8080 KC_PROXY_HEADERS=xforwarded
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
