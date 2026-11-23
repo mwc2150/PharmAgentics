@@ -9,13 +9,19 @@ import duckdb
 from mlflow.entities import Feedback
 from mlflow.genai.scorers import scorer
 
-from .numbers import Number, as_numbers, contains_phrase, extract, matches, parse_token, same, unique
+from .numbers import Number, as_numbers, contains_phrase, extract, matches, parse_token, same, states, unique
 from .paths import DATABASE
 from .versions import data_fingerprint
 
 # numbers_match_golden stays report-only: a system with evidence may state correct numbers the golden answer omits.
 GATED = ("must_not_say", "governed_terms", "no_individual_rep", "claims_reconcile", "numbers_traced", "links_resolve",
          "sections_exist")
+
+
+# core-011 FR-019: targets, report-only. Pooled key-fact recall (stated over all must facts) and finding recall
+# (points over all possible points). FR-021: when these join GATED (FR-006), `over_word_budget` joins with them.
+TARGETS: dict[str, float] = {"key_fact_recall": 0.85, "finding_recall": 0.90}
+GATED_WHEN_REVIEWED = ("key_fact_recall", "finding_recall", "over_word_budget")  # not gated now; see FR-006, FR-021
 
 
 def _answer(outputs) -> str:
@@ -31,13 +37,38 @@ def _golden(expectations) -> list:
     return unique(stated) + facts
 
 
+def _exacts(expectations) -> list[tuple[Number, float]]:
+    """(written figure, exact value) for each numeric fact whose SQL ran (core-011 FR-016)."""
+    return [(as_numbers([f["value"]])[0], f["exact"]) for f in expectations.get("fact_exact") or []
+            if f.get("exact") is not None]
+
+
+def _unit_ok(a: Number, b: Number) -> bool:
+    return a.percent is None or b.percent is None or a.percent == b.percent
+
+
+def _golden_stated(g: Number, found: list[Number], exacts) -> bool:
+    """A golden number backed by a fact (it is the fact's exact value at its own precision, or the fact's written
+    figure) is stated by any answer number that prints that exact value at the answer's precision; one no fact
+    backs falls back to `matches`. So a golden "22.5%" (exact 22.45) is stated by "22%", and a brief that prints
+    the true value is never failed by a figure the golden file rounded twice."""
+    # A written figure backs g only when it is at least as precise: same() rounds to the coarser of the two, so a
+    # fact written "1" would otherwise back a golden "0.656" and ask the answer for 1.
+    backing = [e for written, e in exacts if states(g, e) or (written.decimals >= g.decimals and same(g, written))]
+    if backing:
+        return any(_unit_ok(g, n) and states(n, e) for n in found for e in backing)
+    return any(matches(g, n) for n in found)
+
+
 @scorer(name="numbers_match_golden",
         description="Share of numbers in the answer that match a golden number (EV-1.1 / FE-04 proxy).")
 def numbers_match_golden(outputs, expectations) -> Feedback:
     found, golden = extract(_answer(outputs)), _golden(expectations)
     if not found:
         return Feedback(value=1.0, rationale="The answer states no numbers to check.")
-    unmatched = [n.text for n in found if not any(matches(n, g) for g in golden)]
+    exacts = _exacts(expectations)
+    unmatched = [n.text for n in found
+                 if not any(matches(n, g) for g in golden) and not any(states(n, e) for _, e in exacts)]
     share = 1 - len(unmatched) / len(found)
     note = f"{len(found) - len(unmatched)} of {len(found)} numbers match the golden answer"
     return Feedback(value=round(share, 4), rationale=note + (f"; unmatched: {', '.join(unmatched)}" if unmatched else "."))
@@ -49,7 +80,8 @@ def golden_number_recall(outputs, expectations) -> Feedback:
     golden, found = unique(extract(expectations.get("expected_response", ""))), extract(_answer(outputs))
     if not golden:
         return Feedback(value=1.0, rationale="The golden answer states no numbers.")
-    missing = [g.text for g in golden if not any(matches(g, n) for n in found)]
+    exacts = _exacts(expectations)
+    missing = [g.text for g in golden if not _golden_stated(g, found, exacts)]
     note = f"{len(golden) - len(missing)} of {len(golden)} golden numbers stated"
     return Feedback(value=round(1 - len(missing) / len(golden), 4),
                     rationale=note + (f"; missing: {', '.join(missing[:12])}" if missing else "."))
@@ -118,11 +150,15 @@ def _not_scored(why: str) -> Feedback:
 
 
 def fact_stated(fact: dict, found: list[Number]) -> bool:
-    """A must-state fact is stated when an extracted number matches it at its stated precision,
-    or within its relative tolerance when one is set."""
-    value, tolerance = fact["value"], fact.get("tolerance")
+    """A must-state fact is stated when an extracted number prints the fact's exact value (from its SQL) at the
+    number's own precision (core-011 FR-016), or, with no exact value, matches the written figure at its stated
+    precision; or within its relative tolerance when one is set."""
+    value, tolerance, exact = fact["value"], fact.get("tolerance"), fact.get("exact")
     target = [replace(t, percent=fact.get("percent")) for t in as_numbers([value])]
-    if any(matches(n, t) for n in found for t in target):
+    if exact is not None:
+        if any(_unit_ok(n, t) and states(n, exact) for n in found for t in target):
+            return True
+    elif any(matches(n, t) for n in found for t in target):
         return True
     if tolerance is None:
         return False
@@ -164,15 +200,25 @@ def _territory(value) -> str:
     return str(value or "").strip().upper()
 
 
+def _cut(value) -> str | None:
+    """A cut below the territory ("plan:P1", "channel:retail", "segment:..."), compared without case or edge space.
+    A missing key, None or empty text is no cut: the card or finding is about the whole territory (FR-017)."""
+    text = str(value or "").strip().lower()
+    return text or None
+
+
 def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[str]]:
-    """(points, possible, notes) for one expected finding."""
-    same_territory = [c for c in cards if _territory(c["territory"]) == _territory(finding["territory"])]
+    """(points, possible, notes) for one expected finding. A finding with a cut is met only by a card with the same
+    territory and cut; a finding without one only by a card with no cut (core-011 FR-017)."""
+    same_territory = [c for c in cards if _territory(c["territory"]) == _territory(finding["territory"])
+                      and _cut(c.get("cut")) == _cut(finding.get("cut"))]
     if finding.get("withheld"):
         return (0 if same_territory else 1), 1, ([] if not same_territory else [f"{finding['id']}: should be withheld"])
     direction = finding.get("direction")
     supported, ruled_out = finding.get("drivers_supported") or [], finding.get("drivers_ruled_out") or []
     possible = 1 + len(supported) + len(ruled_out)
-    best, notes = 0, [f"{finding['id']}: no {direction or 'any'}-direction card for {finding['territory']}"]
+    where = finding["territory"] + (f" ({finding['cut']})" if _cut(finding.get("cut")) else "")
+    best, notes = 0, [f"{finding['id']}: no {direction or 'any'}-direction card for {where}"]
     for card in same_territory:
         if direction is not None and card.get("direction") != direction:
             continue
@@ -185,20 +231,29 @@ def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[st
     return best, possible, notes
 
 
-@scorer(name="finding_recall",
-        description="Points for each expected finding the story cards reach (territory, direction, drivers) (core-011 FR-004). Report only.")
-def finding_recall(outputs, expectations) -> Feedback:
+def finding_counts(outputs, expectations) -> tuple[int, int, list[str]]:
+    """(points, possible, notes) over the case's expected findings. A case with no findings is (0, 0, []); a case
+    whose answer has no story cards scores 0 of everything possible (it is not scored in `finding_recall`, but a
+    run's pooled share counts it, as a crashed case counts in the pooled key facts)."""
     findings, cards = expectations.get("findings") or [], _cards(outputs)
-    if not findings:
-        return _not_scored("the case has no expected findings")
-    if not cards:
-        return _not_scored("the answer has no story cards with a territory")
     got = possible = 0
     notes: list[str] = []
     for finding in findings:
         points, worth, why = _finding_points(finding, cards)
         got, possible = got + points, possible + worth
         notes += why
+    return got, possible, notes
+
+
+@scorer(name="finding_recall",
+        description="Points for each expected finding the story cards reach (territory, cut, direction, drivers) (core-011 FR-004). Report only.")
+def finding_recall(outputs, expectations) -> Feedback:
+    findings = expectations.get("findings") or []
+    if not findings:
+        return _not_scored("the case has no expected findings")
+    if not _cards(outputs):
+        return _not_scored("the answer has no story cards with a territory")
+    got, possible, notes = finding_counts(outputs, expectations)
     return Feedback(value=round(got / possible, 4),
                     rationale=f"{got} of {possible} points over {len(findings)} findings" + (f"; {'; '.join(notes)}" if notes else "."))
 
@@ -211,13 +266,15 @@ def false_drivers(outputs, expectations) -> Feedback:
         return _not_scored("the case has no expected findings")
     if not cards:
         return _not_scored("the answer has no story cards with a territory")
-    expected: dict[str, set] = {}
+    expected: dict[tuple, set] = {}
     for f in findings:
-        expected.setdefault(_territory(f["territory"]), set()).update(f.get("drivers_supported") or [])
-    # Only territories the case has a finding for: a correct story the golden answer does not mention is not a
-    # wrong attribution.
-    extra = [f"{card['territory']}: {d}" for card in cards if _territory(card["territory"]) in expected
-             for d in card.get("drivers_supported") or [] if d not in expected[_territory(card["territory"])]]
+        expected.setdefault((_territory(f["territory"]), _cut(f.get("cut"))), set()).update(f.get("drivers_supported") or [])
+    # Only territories (and cuts) the case has a finding for: a correct story the golden answer does not mention is
+    # not a wrong attribution. A cut card is held to the finding with the same cut, a whole-territory card to the one without.
+    extra = [f"{card['territory']}{' (' + card['cut'] + ')' if _cut(card.get('cut')) else ''}: {d}" for card in cards
+             if (_territory(card["territory"]), _cut(card.get("cut"))) in expected
+             for d in card.get("drivers_supported") or []
+             if d not in expected[(_territory(card["territory"]), _cut(card.get("cut")))]]
     return Feedback(value=len(extra), rationale=("Unexpected supported drivers: " + "; ".join(extra)) if extra else "No unexpected driver.")
 
 
@@ -229,15 +286,10 @@ def _words(text) -> int:
     return len(re.findall(r"\S+", text)) if isinstance(text, str) else 0
 
 
-@scorer(name="brief_words",
-        description="Words a reader sees unfolded: section text and writer prose, card headlines, table cells, KPI tiles, chart captions and explanations; not the folded detail (core-011 FR-005). Report only.")
-def brief_words(outputs) -> Feedback:
+def count_words(sections: list[dict]) -> int:
     """Words a reader sees without unfolding anything: each section's `text` and the writer's `prose`, card headlines,
     territory-table cells, KPI tile `value` and `detail`, and chart `caption` and `explanation`. The folded `detail`
     of a section is left out."""
-    sections = outputs.get("sections") if isinstance(outputs, dict) else None
-    if not sections:
-        return _not_scored("the answer has no sections")
     total = 0
     for section in sections:
         total += _words(section.get("text")) + _words(section.get("prose"))
@@ -247,7 +299,37 @@ def brief_words(outputs) -> Feedback:
         total += _words(chart.get("caption")) + _words(chart.get("explanation"))
         for row in (section.get("territory_table") or {}).get("rows") or []:
             total += sum(_words(cell) for cell in row.get("cells") or [])
-    return Feedback(value=total, rationale=f"{total} words across {len(sections)} sections, excluding detail.")
+    return total
+
+
+def leader_words(sections: list[dict]) -> int:
+    """The same count over the leader's cut of the memo (the server's own cut, `views.leadership_sections`)."""
+    from pharmagentics.api.views import leadership_sections
+
+    return count_words(leadership_sections(sections) or [])
+
+
+# Word budget per view (core-011 FR-020): the largest `brief_words` among the anchor briefs that printed on two A4
+# pages (brief-008 I2; the five anchors of brief-008 SC-002), as measured: a brief no longer than the longest one that fits. MEASURED_ANCHORS holds the counts
+# (analyst, leader) from the scripted engine on data day1-v1 at 2026-11-22; `test_word_budget.py` recomputes them.
+MEASURED_ANCHORS: dict[str, tuple[int, int]] = {
+    "P1-Q2": (622, 584), "P1-Q3": (394, 361), "P1-Q6": (498, 464), "P3-Q5": (688, 559), "P4-Q1": (836, 705)}
+WORD_BUDGET: dict[str, int] = {"analyst": 836, "leader": 705}  # the largest anchor counts (P4-Q1, both views)
+
+
+@scorer(name="brief_words",
+        description="Words a reader sees unfolded: section text and writer prose, card headlines, table cells, KPI tiles, chart captions and explanations; not the folded detail (core-011 FR-005). The rationale also gives the leader view and the budget. Report only.")
+def brief_words(outputs) -> Feedback:
+    """The analyst view's count is the value; the rationale carries the leader view's count and each view's budget."""
+    sections = outputs.get("sections") if isinstance(outputs, dict) else None
+    if not sections:
+        return _not_scored("the answer has no sections")
+    total, leader = count_words(sections), leader_words(sections)
+    over = [f"{view} {words} over {WORD_BUDGET[view]}" for view, words in (("analyst", total), ("leader", leader))
+            if words > WORD_BUDGET[view]]
+    return Feedback(value=total, rationale=f"{total} words across {len(sections)} sections, excluding detail; "
+                    f"leader view {leader}; budget {WORD_BUDGET['analyst']} analyst, {WORD_BUDGET['leader']} leader"
+                    + (f"; over budget: {', '.join(over)}." if over else "."))
 
 
 @scorer(name="must_say_recall",
