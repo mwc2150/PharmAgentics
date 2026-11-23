@@ -387,6 +387,12 @@ def _national_block(reg: Registry, p: Period, facts: dict, col: str, key: str, *
                     p2 = reg.claim("get_metric", q.pct_change(all_cur, all_base), "pct1", scope="headline total of reportable cuts")
                     lines.append(f"The headline total of reportable cuts is {word(naive)} {p2}, but that move comes mostly from withheld cuts, so it is a data artifact, not a business change.")
                     facts["artifact"] = lines[-1]
+                    if abs(naive - change) >= MATERIAL_GAP * 100:  # brief-010 FR-011: the house gap, in points
+                        dropped = [t for t in p.terrs if t not in tc]
+                        facts["data_artifact"] = {
+                            "brand": brand, "label": label, "col": col, "total_word": word(naive), "total_pct": p2, "like_word": word(change),
+                            "like_pct": pct, "n": n, "noun": plural(claim_value(reg, n), "territory that reports", "territories that report"), "both": "both weeks" if len(W) == 1 and len(B) == 1 else "both periods",
+                            "dropped": [q.name(t) for t in sorted(dropped, key=q.name)]}
     if extra is not None:
         entry["tile"] = f"Change against {comparison_tile(cmp_, B)}"
     elif rule is not None:

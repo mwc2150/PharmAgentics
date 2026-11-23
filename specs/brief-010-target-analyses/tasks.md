@@ -37,6 +37,11 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [x] N1 `competitor_card` becomes a national card: territory NATIONAL, direction from the share change (house flat band), competitor supported from the check.
 - [x] N2 Scorer reads the card direction for the finding's `measure` (`directions`) and compares only cards that cover it; the national card carries no `trx` and lists territory-wide ruled-out drivers, with tests. (The scripted run and gate are the integration packet's.)
 
+## Packet X: data notes (FR-010, FR-011; grill 2026-11-23)
+- [x] X1 Restatement card carries `directions: {"restated_figure": ...}`; the eval's `Finding.measure` accepts `restated_figure`; P2-Q5 and P3-Q6 findings name it; P2-Q1's definition compares with the previous 1 week (`eval/golden/CHANGELOG.md`).
+- [x] X2 `memo.data_artifact_block`: the national data-artifact card, built in `stages._national_block` (`facts["data_artifact"]`) on the house gap `MATERIAL_GAP`; wired into the scripted pipeline and the agent session (`data_artifact_stories`, `write.assemble`).
+- [x] X3 Tests (`tests/test_data_notes.py`). The scripted run, gate and the P2-Q1 rise are the integrator's.
+
 ## Integration (Opus)
 - [ ] I1 After the last packet: full suite, scripted gate, SC-001 (targets met, `over_word_budget` 0).
 - [ ] I2 Haiku agent run and gate (SC-002).

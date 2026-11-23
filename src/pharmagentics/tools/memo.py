@@ -850,7 +850,8 @@ def restatement_block(restated: list[dict]) -> StoryBlock | None:
     """brief-010 FR-005: one card for the restated territory-week with the largest change (at most one a brief).
     `restated` is `stages.restatements(..., facts)`: each item holds claim tokens. The card is about the data, not a
     business move: drivers supported ["data"], direction the restatement's (up when the restated TRx is higher),
-    cut None (the whole territory). A scorer matches it by territory like any card."""
+    cut None (the whole territory). Its own measure is `restated_figure` (`directions`), so a scorer never counts it as
+    the territory's TRx story (brief-010 FR-010)."""
     if not restated:
         return None
     r = max(restated, key=lambda x: x["size"])
@@ -858,8 +859,33 @@ def restatement_block(restated: list[dict]) -> StoryBlock | None:
     moved = {"up": f"up {r['pct']}", "down": f"down {r['pct']}"}.get(r["direction"], "unchanged")
     card = {"headline": f"{name} TRx for the week of {r['week']} was restated from {r['old']} to {r['new']} ({moved}).",
             "confidence": "High", "drivers_checked": [DRIVER_NAMES["data"]],
-            "territory": r["territory"], "direction": r["direction"], "drivers_supported": ["data"],
-            "drivers_ruled_out": [], "cut": None}
+            "territory": r["territory"], "direction": r["direction"], "directions": {"restated_figure": r["direction"]},
+            "drivers_supported": ["data"], "drivers_ruled_out": [], "cut": None}
     line = (f"Data story: {name} restated its week of {r['week']} on {r['restated_on']}, from {r['old']} to {r['new']} TRx "
             f"({moved}). Confidence: High. Leading driver: data.")
     return StoryBlock(f"restatement:{r['territory']}:{r['week']}", f"{name} restatement", [line], card=card)
+
+
+def _names(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def data_artifact_block(facts: dict) -> StoryBlock | None:
+    """brief-010 FR-011: the national data-artifact card, built by code from `facts["data_artifact"]` (set by
+    `stages.kpis` when the change over the reportable territories and the like-for-like change differ by at least
+    `MATERIAL_GAP`, because a territory dropped out of one period). At most one a brief. Territory NATIONAL, no cut,
+    the direction of the reportable-total change on the primary measure, `data` supported. It claims nothing new: the
+    two changes and the territory count are the KPI block's claims. It covers the primary measure only, so it never
+    stands in for a territory's story, and it sits beside the competitor card (which covers share measures only)."""
+    a = facts.get("data_artifact")
+    if not a:
+        return None
+    gone = _names(a["dropped"])
+    headline = (f"National {a['brand']} {a['label']} over the reportable territories {_verb(a['total_word'], a['total_pct'])}, but on the "
+                f"{a['n']} {a['noun']} {a['both']} it {_verb(a['like_word'], a['like_pct'])}: {gone} "
+                f"{'is' if len(a['dropped']) == 1 else 'are'} withheld.")
+    card = {"headline": headline, "confidence": "High", "drivers_checked": [DRIVER_NAMES["data"]],
+            "territory": "NATIONAL", "direction": a["total_word"], "directions": {a["col"]: a["total_word"]},
+            "drivers_supported": ["data"], "drivers_ruled_out": [], "cut": None}
+    line = f"Data story: {headline[:1].lower()}{headline[1:]} Confidence: High. Leading driver: data."
+    return StoryBlock("data_artifact:NATIONAL", "National data artifact", [line], card=card)

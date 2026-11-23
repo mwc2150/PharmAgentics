@@ -259,6 +259,7 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
         finish(sp, {"abstained": abstained})
 
     with span("5_narrative") as sp:
+        blocks.extend(b for b in [memo.data_artifact_block(f.facts)] if b)  # brief-010 FR-011
         blocks.extend(b for b in [memo.restatement_block(f.restated_facts)] if b)  # brief-010 FR-005
         blocks.extend(promotion.story_blocks(reg, p))
         top: dict = {}
