@@ -198,8 +198,8 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
         px, pb = q.mean_weekly(W, terrs=peers, product=brand), q.mean_weekly(B, terrs=peers, product=brand)
         change, peer = reg.scalar(q.pct_change(x, b)) or 0, reg.scalar(q.pct_change(px, pb)) or 0
         trx, base = reg.claim("get_metric", x, "int", **fields), reg.claim("get_metric", b, "int", **fields)
-        pct = reg.claim("get_metric", q.pct_change(x, b), "pct1", **fields)
-        peer_pct = reg.claim("get_metric", q.pct_change(px, pb), "pct1", scope="other territories", **fields)
+        pct = reg.claim("get_metric", q.pct_change(x, b), "pct", **fields)
+        peer_pct = reg.claim("get_metric", q.pct_change(px, pb), "pct", scope="other territories", **fields)
         gap_sql = f"select {q.sub(x)} - {q.sub(b)} * (1 + {q.sub(q.pct_change(px, pb))} / 100)"
         gap_value = reg.scalar(gap_sql)  # None when the gap cannot be computed: promotion is then inconclusive
         below = gap_value is not None and gap_value < 0
@@ -229,7 +229,7 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
             peers = [other for other in ok if other != t]
             if peers:
                 change_sql = q.pct_change(q.trx_sum([weeks[1]], terrs=peers), q.trx_sum([weeks[0]], terrs=peers))
-                move = reg.claim("get_metric", change_sql, "pct1", scope="other territories", weeks=weeks)
+                move = reg.claim("get_metric", change_sql, "pct", scope="other territories", weeks=weeks)
                 line += f", while the other territories were {stages.word(reg.scalar(change_sql))} {move}"
             lines.append(line + ".")
     return memo.StoryBlock(f"promotion:{t}:{lapse.start}", f"{name} promotion lapse", lines, card=card, detail=detail)
