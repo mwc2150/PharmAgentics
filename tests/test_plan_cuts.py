@@ -241,6 +241,17 @@ def test_a_shrunk_brief_scores_as_before(briefs):
     assert any(s["number"].startswith("3.") and not s["text"] and s["card"] for s in env["sections"])
 
 
+def test_the_shrink_brings_p4_q1_back_inside_the_analyst_budget():
+    """P4-Q1 reports the Mid-Atlantic restatement and runs 908 analyst words unshrunk; its territory card shrinks to the headline."""
+    from eval.harness.scorers import WORD_BUDGET, count_words
+
+    env, _ = brief_for("P4-Q1")
+    assert count_words(env["sections"]) <= WORD_BUDGET["analyst"]
+    stories = [x for x in env["sections"] if x["number"].startswith("3.") and (x.get("card") or {}).get("territory") == "GREAT_LAKES"]
+    assert stories and not stories[0]["text"] and stories[0]["card"]["headline"] and "Checked, in this order" in stories[0]["detail"]
+    assert "Checked, in this order" in env["answer"]  # nothing left the scored answer
+
+
 # triage and the agent's manager (FR-007) ------------------------------------------------------------------------------
 
 def test_the_triage_plan_proposes_the_cut_card_between_the_territory_stories_and_the_competitor():
