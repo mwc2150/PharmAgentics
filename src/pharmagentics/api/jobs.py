@@ -7,6 +7,7 @@ each worker (one GPU) runs one job at a time, and the oldest queued job goes to 
 """
 from __future__ import annotations
 
+import bisect
 import json
 import threading
 import time
@@ -21,6 +22,7 @@ _BOOT = time.time()      # after a restart a worker has this long to heartbeat a
 _lock = threading.Lock()
 _jobs: dict[str, dict] = {}
 _loaded = False
+_dirty: set[str] = set()  # running jobs whose progress is in memory but not yet in the store
 _hosts: dict[str, dict] = {}  # worker name -> {"last_seen": epoch seconds, "model": spec}
 
 
@@ -47,6 +49,7 @@ def reset() -> None:
     with _lock:
         _jobs.clear()
         _hosts.clear()
+        _dirty.clear()
         _loaded = False
         _BOOT = time.time()
 
@@ -117,10 +120,14 @@ def next_job(model: str | None, worker: str = "worker") -> dict | None:
         return job
 
 
-def add_progress(job_id: str, events: list[dict], worker: str | None = None, model: str | None = None) -> int:
+def add_progress(job_id: str, events: list[dict], worker: str | None = None, model: str | None = None, *,
+                 persist: bool = True) -> int:
     """A running job's new run events (brief-009 FR-002), from a worker's post or the built-in worker. Idempotent: an
-    event whose seq is already stored is ignored, so a retried batch cannot repeat a step. Counts as a heartbeat.
-    Returns how many events the job now holds. Raises KeyError when no such job is running."""
+    event whose seq is already stored is ignored, so a retried batch cannot repeat a step; an event that arrives after
+    a later one (a retried earlier batch) is inserted in seq order. Counts as a heartbeat. `persist=False` keeps the
+    events in memory only (polls see them at once) and leaves the store write to `persist_progress`, so a chatty
+    in-process worker does not write the store once per event. Returns how many events the job now holds. Raises
+    KeyError when no such job is running."""
     from pharmagentics.tools import events as ev
 
     with _lock:
@@ -131,13 +138,37 @@ def add_progress(job_id: str, events: list[dict], worker: str | None = None, mod
         if worker or job.get("worker"):
             _hosts[worker or job["worker"]] = {"last_seen": time.time(), "model": model or _hosts.get(worker or job["worker"], {}).get("model")}
         have = job.setdefault("progress", [])
-        last = have[-1]["seq"] if have else 0
+        known = {e["seq"] for e in have}
         for e in sorted(ev.clean(events), key=lambda e: e["seq"]):
-            if e["seq"] > last and len(have) < ev.MAX_EVENTS:
+            if e["seq"] in known or len(have) >= ev.MAX_EVENTS:
+                continue
+            known.add(e["seq"])
+            if not have or e["seq"] > have[-1]["seq"]:
                 have.append(e)
-                last = e["seq"]
-        _save(job)
+            else:
+                have.insert(bisect.bisect([x["seq"] for x in have], e["seq"]), e)
+        if persist:
+            _dirty.discard(job_id)
+            _save(job)
+        else:
+            _dirty.add(job_id)
         return len(have)
+
+
+def persist_progress(job_id: str) -> bool:
+    """Write a running job's in-memory progress to the store if `add_progress(persist=False)` left it unsaved. The
+    snapshot is taken under the lock and written outside it, so a slow store never stalls the job queue. The caller
+    must not run this after `complete` (the built-in worker stops its flusher first). Returns whether it wrote."""
+    with _lock:
+        if job_id not in _dirty:
+            return False
+        _dirty.discard(job_id)
+        job = _jobs.get(job_id)
+        if job is None or job["status"] != "running":
+            return False
+        text = json.dumps(job, default=str)
+    store.backend().write(f"jobs/{job_id}.json", text)
+    return True
 
 
 def complete(job_id: str, ok: bool, result: dict | None, error: str | None) -> dict:
@@ -148,6 +179,7 @@ def complete(job_id: str, ok: bool, result: dict | None, error: str | None) -> d
             raise KeyError(job_id)
         job.update(status="done" if ok else "failed", result=result if ok else None,
                    error=None if ok else (error or "The agent run failed.")[:500], finished_at=store.now())
+        _dirty.discard(job_id)
         _save(job)
         return job
 

@@ -2,6 +2,12 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-22 (late night), brief-009 agent transparency ready for review (Claude Opus with Sonnet packets)._
+- Branch `feature/brief-009-timeline`: packet E (each run records code-built events on both engines; the timeline fills in live from the full `progress` list on every poll; every claim links to the event that produced it; leaders get a one-line `process_summary` only) and packet T (the timeline, the How-it-works tab, `GET /api/briefing/agents` with prompt refs `<id>@sha256[:7]`), plus eleven `/code-review` fixes (progress saved on a 3 s beat, not once per event under the jobs lock; chunked worker posts; early-return briefs keep their events; leader review date in the viewer's local time).
+- Scripted run `e4e5194e91254a5398daf2e58b66caa2` (after the fixes) and `104da6d2e59d424ca3e3716d6982396b` (before) gated against `a5a4968270cb47af890796f2c2979c45`: exit 0, all seven 1.000, answers unchanged (recall 0.682, findings 0.750, 656 words). Haiku run `be5f26cde73d4bf595ef44d32a97d488` against `727bc0064e75480cbd73dca00748f56e`: exit 0, all seven 1.000, no run errors, recall 0.682 (no numbers lost).
+- Full suite 933 passed; the Forecast split follow-up test failed under load and passes alone (known flake). Live check on Haiku (dev auth): 25 events streamed, six actors, 82 of 82 claims linked to an event, leader view has no event keys and gets 403 on the job route.
+- Next: merge after `feature/brief-008-polish` (PR #22); both touch `briefing_agent/__init__.py`. Handoff: `conversations/2026-11-22-brief-009-integration.md`.
+
 _2026-11-22 (night), core-011 eval revamp ready for review (Claude Opus with Sonnet packets)._
 - Branch `feature/core-011-eval-revamp`: packets A (key-fact and finding recall, brevity, must-say), B (`eval insights`), C (per-case table on the Evaluation page, analysts and the tester only), D (golden facts and findings, `reviewed: false`), E (story cards carry territory, direction and the drivers supported and ruled out, both engines), F (scorer kinds code/agent/safety/ops, `scope_match`, "numbers lost by the agent", unit-aware matching) and G (golden definitions aligned to the case text or the house four weeks before), plus ten `/code-review` fixes.
 - Decided with Michael (deterministic first): code fills whatever it can; agent checks score inference. "Recall" now means pooled key-fact recall.

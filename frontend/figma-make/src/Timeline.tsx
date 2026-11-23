@@ -21,6 +21,9 @@ const VERDICT: Record<string, [string, string]> = {
   abstained: ["Abstained", "bg-amberbg text-amber"],
   done: ["Done", "bg-paper text-muted border border-rule"],
 }
+// A check is a test of the data or of a driver. Counted exactly as the server counts it for leaders (views.process_summary).
+export const countChecks = (events: RunEvent[]) =>
+  events.filter(e => (e.step === "Check the data" || e.step === "Test a driver") && (e.tool ?? "").startsWith("check_")).length
 export const FIRST_STEPS = 5  // steps shown per actor in a group before the rest fold
 
 const titleCase = (s: string) => s.toLowerCase().split(/[_\s]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
@@ -99,7 +102,7 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource }:
   const [open, setOpen] = useState<Record<string, boolean>>({})  // "<group>|<actor>" unfolded
   const last = events.length ? events.reduce((a, b) => b.seq > a.seq ? b : a) : null
   const produced = events.reduce((n, e) => n + e.claims.length, 0)
-  const checks = events.filter(e => e.verdict && e.tool).length
+  const checks = countChecks(events)
   return <section aria-label="How this brief was built" className="rounded-xl border border-rule bg-sheet px-6 py-5">
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
       <h3 className="text-sm font-semibold">{live ? "Building the brief" : "How this brief was built"}</h3>
