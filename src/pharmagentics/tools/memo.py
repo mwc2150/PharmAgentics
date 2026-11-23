@@ -10,11 +10,11 @@ skeleton. Headings carry no digits (research R6): section numbers live in the st
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from . import queries as q
 from . import stages
-from .checks import DECISION, OWNER, launch_date
+from .checks import DECISION, OWNER, confidence, launch_date
 from .lag_checks import LAG_LABELS
 from .projection import Projection, _label, method_lines
 from .registry import Registry
@@ -80,7 +80,56 @@ def chart_lines(chart: dict | None) -> list[str]:
     return [f"Chart: {chart['caption']}", chart["explanation"]] if chart else []
 
 
+# The analyst view's word budget (core-011 FR-020): the words a reader sees unfolded in the longest anchor brief that
+# printed on two A4 pages. `eval.harness.scorers.WORD_BUDGET["analyst"]` holds the same number (a test keeps them equal;
+# src never imports eval).
+WORD_BUDGET = 836
+
+
+def _words(text) -> int:
+    return len(re.findall(r"\S+", text)) if isinstance(text, str) else 0
+
+
+def visible_words(sections: list[dict]) -> int:
+    """The words a reader sees without unfolding anything, over `compose`'s sections: the same count as the scorer's
+    `count_words` (text, prose, card headline, KPI tiles, chart caption and explanation, table cells; not the detail).
+    A claim token counts as the one word its value is."""
+    total = 0
+    for s in sections:
+        total += _words(" ".join(s.get("lines") or [])) + _words(s.get("prose"))
+        total += _words((s.get("card") or {}).get("headline"))
+        total += sum(_words(k.get("value")) + _words(k.get("detail")) for k in s.get("kpis") or [])
+        chart = s.get("chart") or {}
+        total += _words(chart.get("caption")) + _words(chart.get("explanation"))
+        total += sum(_words(c) for r in (s.get("territory_table") or {}).get("rows") or [] for c in r.get("cells") or [])
+    return total
+
+
+def _shrinkable(block: StoryBlock) -> bool:
+    """A territory story's card (its id is `territory:<id>` or `plan:<id>`) can shrink to its headline; a cut, national,
+    restatement or promotion card never does (brief-010 FR-008)."""
+    return bool(block.card) and block.id.partition(":")[0] in ("territory", "plan") and any(block.lines)
+
+
 def compose(parts: MemoParts) -> tuple[str, list[dict]]:
+    """`_compose`, then the budget (brief-010 FR-008): when the analyst view's words would exceed the budget, territory
+    cards shrink to their headline, longest first, until it fits or none is left. The lines move to the folded detail,
+    so nothing leaves the scored answer, and the flattened answer is the one the unshrunk brief has, word for word (only
+    where a reader finds the text changes). Nothing is ever dropped, and a cut card is never shrunk."""
+    template, sections = _compose(parts)
+    if visible_words(sections) <= WORD_BUDGET:
+        return template, sections
+    stories = list(parts.stories)
+    for i in sorted((i for i, b in enumerate(stories) if _shrinkable(b)), key=lambda i: -_words(" ".join(stories[i].lines))):
+        b = stories[i]
+        stories[i] = replace(b, lines=[], detail=[x for x in b.lines if x] + list(b.detail))
+        _, sections = _compose(replace(parts, stories=stories))
+        if visible_words(sections) <= WORD_BUDGET:
+            break
+    return template, sections
+
+
+def _compose(parts: MemoParts) -> tuple[str, list[dict]]:
     """The token template (flattened answer) and the sections, each {number, title, lines, prose} plus, when
     present, the brief-008 blocks: kpis (§1), territory_table (§2), card and detail. Text, then detail, goes into
     the answer, so folding changes what is shown and never what is scored (FR-002)."""
@@ -728,6 +777,68 @@ def competitor_card(p, facts: dict) -> dict:
             "drivers_checked": [DRIVER_NAMES[x] for x in ["competitor"] + [r for r in ruled_out if r != "competitor"]],
             "territory": "NATIONAL", "direction": d.get("bxa_share"), "directions": dict(d), "drivers_supported": supported,
             "drivers_ruled_out": ruled_out, "cut": None}
+
+
+_DRIVER_ORDER = ("data", "access", "promotion", "supply", "competitor")
+
+
+def cut_checks(reg: Registry, p, territory: str, plan: str, checks=None) -> list:
+    """The checks a cut card stands on (brief-010 FR-001): the territory story's own, with the access check scoped to
+    the plan (an access change on this plan, lined up with its TRx). Data, promotion, supply and competitor have no
+    plan scope, so the card reuses the territory's verdicts. `checks` are the story's, when it ran them; otherwise
+    the same checks run here."""
+    from .lag_checks import check_access, run_checks
+
+    complete = bool(checks) and {c.driver for c in checks} >= set(_DRIVER_ORDER)
+    own = list(checks) if complete else run_checks(reg, territory, p.weeks, p.baseline, brand_id=p.brand_id,
+                                                    use_selected_baseline=p.comparison is not None)
+    with reg.under(measure="trx"):  # the access check reads TRx whatever the primary measure
+        access = check_access(reg, territory, p.weeks, p.baseline, plan=plan)
+    by = {c.driver: c for c in own}
+    by["access"] = access
+    return [by[d] for d in _DRIVER_ORDER if d in by]
+
+
+def cut_card(p, territory: str, plan: str, figures: dict, checks: list) -> dict:
+    """A plan cut card (core-011 FR-017; brief-010 FR-001): the territory, the cut `plan:<id>`, the plan's direction on
+    the primary measure and on each measure the definition holds (`directions`), the drivers its checks support or rule
+    out, and a headline with claim tokens and the plan's readable name. Built by code."""
+    supported, ruled_out = driver_calls(checks)
+    first = figures["measures"][0]
+    where, name = q.name(territory), splits.readable(plan)
+    name = name[:1].upper() + name[1:]
+    verb = {"up": "rose from", "down": "fell from"}.get(first["word"], "held flat from")
+    against = figures["territory_word"] != first["word"] and "flat" not in (first["word"], figures["territory_word"])
+    peers = {"up": f"rose {figures['territory_pct']}", "down": f"fell {figures['territory_pct']}"}.get(
+        figures["territory_word"], f"held flat ({figures['territory_pct']})")
+    headline = (f"{name} in {where} {verb} {first['before']} to {first['after']} {first['label']} a week "
+                f"({first['word']} {first['pct']}){', while' if against else ', and'} {where} {peers}.")
+    return {"headline": headline, "confidence": confidence(checks)[0], "drivers_checked": [DRIVER_NAMES[c.driver] for c in checks],
+            "territory": territory, "cut": f"plan:{plan}", "direction": first["word"],
+            "directions": {m["measure"]: m["word"] for m in figures["measures"]},
+            "drivers_supported": supported, "drivers_ruled_out": ruled_out}
+
+
+def cut_block(reg: Registry, p, cut: dict, checks=None) -> StoryBlock:
+    """A cut card as a story block (§3, after its territory's story): the plan's level before and after and its change
+    for each measure the definition holds, its closing confidence, and the checks folded under the card. The text
+    reaches the scored answer (FR-009); every number is a claim token."""
+    territory, plan = cut["territory"], cut["plan"]
+    figures = splits.cut_figures(reg, p, territory, plan)
+    done = cut_checks(reg, p, territory, plan, checks)
+    card = cut_card(p, territory, plan, figures, done)
+    where, name = q.name(territory), splits.readable(plan)
+    name = name[:1].upper() + name[1:]
+    lines = []
+    for i, m in enumerate(figures["measures"]):
+        lead = f"{name} in {where}: {p.brand_id} {m['label']}" if i == 0 else m["label"][:1].upper() + m["label"][1:]
+        lines.append(f"{lead} averaged {m['after']} a week on the comparison weeks against {m['before']} before ({m['word']} {m['pct']}).")
+    level, lead = confidence(done)
+    lines.append(f"Confidence: {level}. Unresolved, investigate next. No driver is named." if level == "Low" else
+                 f"Confidence: {level}. {'Leading driver' if level == 'High' else 'Candidate drivers'}: {lead}.")
+    detail = ["Checked for this plan, in this order:"] + [f"- {c.text}" for c in done]
+    detail.append(f"Data, promotion, supply and competitor have no plan-level test, so they carry the {where} verdicts.")
+    return StoryBlock(f"cut:{plan}", f"{name} in {where}", lines, card=card, detail=detail)
 
 
 def story_detail(reg: Registry, p, territory: str) -> list[str]:

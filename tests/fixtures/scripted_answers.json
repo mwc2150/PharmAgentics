@@ -1226,7 +1226,7 @@
   "abstained": false
  },
  "Week of 2026-07-13 in Mid-Atlantic: Generate the weekly brand-performance briefing.": {
-  "answer": "Brief for week of 2026-07-13. Product: BXA.\n## Bottom line\nData note: an earlier week was restated. The new value and the reason are in The numbers.\nProjected national BXA TRx is 4,240 for the week of 2026-07-13.\nLike for like on 7 of 8 territories, BXA TRx is up 3.3% against the four weeks before (2026-06-15 to 2026-07-06).\nBXA held 32.6% of the four-brand market basket.\nLeast sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories.\nBefore Metacora launched, BXA held 35.4% of the four-brand basket.\n## The numbers\nScope: week of 2026-07-13, compared with the four weeks before (2026-06-15 to 2026-07-06).\nLike for like, BXA TRx averaged 3,618 a week across 7 of 8 territories, up 3.3% against the comparison weeks.\nWeek over week, BXA TRx is 4,240 against 3,665 the week before (up 15.7%).\nOn the 7 territories that report both weeks, BXA TRx went from 3,665 to 3,618 (down 1.3%).\nAgainst the comparison weeks, New England fell most (down 14.6%) and Pacific rose most (up 45.3%).\nRestated: Mid-Atlantic BXA TRx for the week of 2026-04-06 was 692 when first reported and is now 742, up 50 TRx (7.2%). It was restated 2026-07-13; reason: synthetic late claims adjustment. Quote the new value with this note.\nChart: BXA TRx a week, 2026-04-20 to 2026-07-13: projected national and Mid-Atlantic. Hollow points are projected or estimated, an assumption (weeks of 2026-05-04, 2026-07-06). No forecast is drawn.\nProjected national moved from 4,728 in the week of 2026-04-20 to 4,240 in the week of 2026-07-13.\nBy territory, all observed.\nGreat Lakes: 622 BXA TRx a week; no change is given, because a week compared failed the feed gate.\nMid-Atlantic: 636 BXA TRx a week; down 6.9% on the week before; down 6.5% on the comparison weeks.\nMountain: 383 BXA TRx a week; up 20.8% on the week before; up 20.1% on the comparison weeks.\nNew England: 336 BXA TRx a week; down 20.6% on the week before; down 14.6% on the comparison weeks.\nNorthwest: 384 BXA TRx a week; down 2.5% on the week before; down 1.9% on the comparison weeks.\nPacific: 737 BXA TRx a week; up 5.4% on the week before; up 45.3% on the comparison weeks.\nSouth Central: 533 BXA TRx a week; flat 0.4% on the week before; down 7.4% on the comparison weeks.\nSoutheast: 609 BXA TRx a week; down 0.8% on the week before; down 4.1% on the comparison weeks.\n## What changed and why\nStory one: Pacific. BXA TRx averaged 737 a week against 507 before (up 45.3%), while the other territories were down 3.8%.\nChecked, in this order:\n- Data artifact: ruled out. Every Pacific cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Pacific plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 50 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 1.00.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Pacific BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (406 to 699). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Pacific had 737 BXA TRx, above its baseline band.\nCuts of the change by plan, weekly TRx. Total: up 230 TRx a week.\n- Commercial plan one: up 86 TRx a week.\n- Medicare Part D plan one: up 63 TRx a week.\n- Commercial plan two: up 28 TRx a week.\n- Medicare Part D plan two: up 22 TRx a week.\n- Medicaid plan one: up 12 TRx a week.\nCuts of the change by specialty, weekly TRx. Total: up 230 TRx a week.\n- Primary care: up 95 TRx a week.\n- Internal medicine: up 79 TRx a week.\n- Cardiology: up 35 TRx a week.\n- Endocrinology: up 22 TRx a week.\nCuts of the change by channel, weekly TRx. Total: up 230 TRx a week.\n- Commercial: up 114 TRx a week.\n- Medicare Part D: up 85 TRx a week.\n- Medicaid: up 16 TRx a week.\n- Cash: up 15 TRx a week (small cell: noisy).\nStory two: Mid-Atlantic. BXA TRx averaged 636 a week against 680 before (down 6.5%), while the other territories were up 5.7%.\nChecked, in this order:\n- Data artifact: ruled out. Every Mid-Atlantic cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Mid-Atlantic plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 54 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 0.97.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Mid-Atlantic BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (640 to 712). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Mid-Atlantic had 636 BXA TRx, below its baseline band.\nCuts of the change by plan, weekly TRx. Total: down 44 TRx a week.\n- Medicare Part D plan two: up 41 TRx a week.\n- Commercial plan two: down 30 TRx a week.\n- Commercial plan one: down 23 TRx a week.\n- Cash plan one: down 14 TRx a week (small cell: noisy).\n- Medicaid plan two: down 13 TRx a week (small cell: noisy).\nCuts of the change by specialty, weekly TRx. Total: down 44 TRx a week.\n- Internal medicine: down 38 TRx a week.\n- Cardiology: down 21 TRx a week.\n- Primary care: up 17 TRx a week.\n- Endocrinology: down 2 TRx a week.\nCuts of the change by channel, weekly TRx. Total: down 44 TRx a week.\n- Commercial: down 53 TRx a week.\n- Medicare Part D: up 35 TRx a week.\n- Cash: down 18 TRx a week (small cell: noisy).\n- Medicaid: down 9 TRx a week.\nStory three: competitor Metacora (launched 2026-03-02). This is a continuing story, week 19 since launch, still growing. Metacora held 13.2% of the four-brand basket and BXA held 32.6%, against 35.4% for BXA in the four weeks before launch. Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers.\nChart: Shares of the four-brand basket, 2026-04-20 to 2026-07-13, every reportable territory.\nMetacora held 13.2% of the basket in the week of 2026-07-13.\nData story: Mid-Atlantic restated its week of 2026-04-06 on 2026-07-13, from 692 to 742 TRx (up 7.2%). Confidence: High. Leading driver: data.\nConsidered and dropped: 5 territories moved within their normal range.\n## What the data can't tell us\nData health: 8 of 8 territories pass the feed gate for 2026-07-13. No cut is withheld.\nChart: Feed coverage by territory and week, 2026-04-20 to 2026-07-13. Hollow cells are projected and crossed cells are estimated, both assumptions.\n2 territory-weeks in this window are not observed counts.\nFeed for Mid-Atlantic in these weeks: 128 rows received against 128 expected; lowest panel coverage 1.000.\n## Next checks\n- Pacific: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Mid-Atlantic: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Metacora: track the basket shares each week. Owner: marketing and sales. Unlocks: whether to adjust the response to Metacora.\n## Appendix\nData version <DATA_VERSION>. Product: BXA (Cardiovela), synthetic data.\nAssumptions:\n- Comparison weeks: the four weeks before (2026-06-15 to 2026-07-06). Source: the brief's default rule, the four weeks before the period.\n- Like for like: changes use only territories whose feed passed the gate in every week compared. Withheld cuts are left out of every change and story, and never read as zero demand. A restatement is reported when the restated week is inside the period or the restatement was published inside it. Source: the feed gate and the vendor's restatement record.\n- Drivers: the checks evaluate the same week and delays of one and two weeks. A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.\nMethod: like-for-like figures use only territories whose feed passed the gate in every week compared. The projected national divides each territory's observed TRx by its panel coverage, and estimates a territory that cannot be read from its recent share of national. Changes, stories and drivers use like-for-like cuts only.\nGlossary:\n- Like for like: a comparison that uses only territories whose feed passed its checks in every week compared.\n- Panel coverage: the share of a territory's expected prescription records that arrived in a given week.\n- Projected national: national TRx built territory by territory, each territory's observed TRx divided by its panel coverage, summed.\n- Withheld cut: a territory or week whose data failed its checks, so no story or driver is given for it.",
+  "answer": "Brief for week of 2026-07-13. Product: BXA.\n## Bottom line\nData note: an earlier week was restated. The new value and the reason are in The numbers.\nProjected national BXA TRx is 4,240 for the week of 2026-07-13.\nLike for like on 7 of 8 territories, BXA TRx is up 3.3% against the four weeks before (2026-06-15 to 2026-07-06).\nBXA held 32.6% of the four-brand market basket.\nLeast sure: the Pacific change (up 45.3%); its confidence, Low, is the lowest of this brief's stories.\nBefore Metacora launched, BXA held 35.4% of the four-brand basket.\n## The numbers\nScope: week of 2026-07-13, compared with the four weeks before (2026-06-15 to 2026-07-06).\nLike for like, BXA TRx averaged 3,618 a week across 7 of 8 territories, up 3.3% against the comparison weeks.\nWeek over week, BXA TRx is 4,240 against 3,665 the week before (up 15.7%).\nOn the 7 territories that report both weeks, BXA TRx went from 3,665 to 3,618 (down 1.3%).\nAgainst the comparison weeks, New England fell most (down 14.6%) and Pacific rose most (up 45.3%).\nRestated: Mid-Atlantic BXA TRx for the week of 2026-04-06 was 692 when first reported and is now 742, up 50 TRx (7.2%). It was restated 2026-07-13; reason: synthetic late claims adjustment. Quote the new value with this note.\nChart: BXA TRx a week, 2026-04-20 to 2026-07-13: projected national and Mid-Atlantic. Hollow points are projected or estimated, an assumption (weeks of 2026-05-04, 2026-07-06). No forecast is drawn.\nProjected national moved from 4,728 in the week of 2026-04-20 to 4,240 in the week of 2026-07-13.\nBy territory, all observed.\nGreat Lakes: 622 BXA TRx a week; no change is given, because a week compared failed the feed gate.\nMid-Atlantic: 636 BXA TRx a week; down 6.9% on the week before; down 6.5% on the comparison weeks.\nMountain: 383 BXA TRx a week; up 20.8% on the week before; up 20.1% on the comparison weeks.\nNew England: 336 BXA TRx a week; down 20.6% on the week before; down 14.6% on the comparison weeks.\nNorthwest: 384 BXA TRx a week; down 2.5% on the week before; down 1.9% on the comparison weeks.\nPacific: 737 BXA TRx a week; up 5.4% on the week before; up 45.3% on the comparison weeks.\nSouth Central: 533 BXA TRx a week; flat 0.4% on the week before; down 7.4% on the comparison weeks.\nSoutheast: 609 BXA TRx a week; down 0.8% on the week before; down 4.1% on the comparison weeks.\n## What changed and why\nStory one: Pacific. BXA TRx averaged 737 a week against 507 before (up 45.3%), while the other territories were down 3.8%.\nChecked, in this order:\n- Data artifact: ruled out. Every Pacific cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Pacific plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 50 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 1.00.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Pacific BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (406 to 699). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Pacific had 737 BXA TRx, above its baseline band.\nCuts of the change by plan, weekly TRx. Total: up 230 TRx a week.\n- Commercial plan one: up 86 TRx a week.\n- Medicare Part D plan one: up 63 TRx a week.\n- Commercial plan two: up 28 TRx a week.\n- Medicare Part D plan two: up 22 TRx a week.\n- Medicaid plan one: up 12 TRx a week.\nCuts of the change by specialty, weekly TRx. Total: up 230 TRx a week.\n- Primary care: up 95 TRx a week.\n- Internal medicine: up 79 TRx a week.\n- Cardiology: up 35 TRx a week.\n- Endocrinology: up 22 TRx a week.\nCuts of the change by channel, weekly TRx. Total: up 230 TRx a week.\n- Commercial: up 114 TRx a week.\n- Medicare Part D: up 85 TRx a week.\n- Medicaid: up 16 TRx a week.\n- Cash: up 15 TRx a week (small cell: noisy).\nStory two: Mid-Atlantic. BXA TRx averaged 636 a week against 680 before (down 6.5%), while the other territories were up 5.7%.\nChecked, in this order:\n- Data artifact: ruled out. Every Mid-Atlantic cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change in the Mid-Atlantic plans in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 54 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 0.97.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChart: Mid-Atlantic BXA TRx a week, 2026-04-20 to 2026-07-13, against the band of its baseline weeks (640 to 712). No driver was supported, so only TRx is shown.\nIn the week of 2026-07-13, Mid-Atlantic had 636 BXA TRx, below its baseline band.\nCuts of the change by plan, weekly TRx. Total: down 44 TRx a week.\n- Medicare Part D plan two: up 41 TRx a week.\n- Commercial plan two: down 30 TRx a week.\n- Commercial plan one: down 23 TRx a week.\n- Cash plan one: down 14 TRx a week (small cell: noisy).\n- Medicaid plan two: down 13 TRx a week (small cell: noisy).\nCuts of the change by specialty, weekly TRx. Total: down 44 TRx a week.\n- Internal medicine: down 38 TRx a week.\n- Cardiology: down 21 TRx a week.\n- Primary care: up 17 TRx a week.\n- Endocrinology: down 2 TRx a week.\nCuts of the change by channel, weekly TRx. Total: down 44 TRx a week.\n- Commercial: down 53 TRx a week.\n- Medicare Part D: up 35 TRx a week.\n- Cash: down 18 TRx a week (small cell: noisy).\n- Medicaid: down 9 TRx a week.\nMedicare Part D plan two in Mid-Atlantic: BXA TRx averaged 132 a week on the comparison weeks against 92 before (up 44.3%).\nConfidence: Low. Unresolved, investigate next. No driver is named.\nChecked for this plan, in this order:\n- Data artifact: ruled out. Every Mid-Atlantic cut in these weeks passes the feed gate.\n- Access: ruled out. No BXA access change on this plan in the tested months.\n- Promotion: ruled out. No tested lag lines up with TRx. Aggregated calls averaged 54 a week against 52 in the reference weeks.\n- Supply: ruled out. No tested lag lines up with TRx. BXA inventory fill averaged 0.97.\n- Competitor launch: ruled out as a local cause. Before the change Metacora held 11.2% of the basket here against 10.8% elsewhere.\nData, promotion, supply and competitor have no plan-level test, so they carry the Mid-Atlantic verdicts.\nStory three: competitor Metacora (launched 2026-03-02). This is a continuing story, week 19 since launch, still growing. Metacora held 13.2% of the four-brand basket and BXA held 32.6%, against 35.4% for BXA in the four weeks before launch. Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers.\nChart: Shares of the four-brand basket, 2026-04-20 to 2026-07-13, every reportable territory.\nMetacora held 13.2% of the basket in the week of 2026-07-13.\nData story: Mid-Atlantic restated its week of 2026-04-06 on 2026-07-13, from 692 to 742 TRx (up 7.2%). Confidence: High. Leading driver: data.\nConsidered and dropped: 5 territories moved within their normal range.\n## What the data can't tell us\nData health: 8 of 8 territories pass the feed gate for 2026-07-13. No cut is withheld.\nChart: Feed coverage by territory and week, 2026-04-20 to 2026-07-13. Hollow cells are projected and crossed cells are estimated, both assumptions.\n2 territory-weeks in this window are not observed counts.\nFeed for Mid-Atlantic in these weeks: 128 rows received against 128 expected; lowest panel coverage 1.000.\n## Next checks\n- Pacific: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Mid-Atlantic: split by plan and specialty, and ask for local context. Owner: sales leadership. Unlocks: whether to open a deeper review of the territory.\n- Metacora: track the basket shares each week. Owner: marketing and sales. Unlocks: whether to adjust the response to Metacora.\n## Appendix\nData version <DATA_VERSION>. Product: BXA (Cardiovela), synthetic data.\nAssumptions:\n- Comparison weeks: the four weeks before (2026-06-15 to 2026-07-06). Source: the brief's default rule, the four weeks before the period.\n- Like for like: changes use only territories whose feed passed the gate in every week compared. Withheld cuts are left out of every change and story, and never read as zero demand. A restatement is reported when the restated week is inside the period or the restatement was published inside it. Source: the feed gate and the vendor's restatement record.\n- Drivers: the checks evaluate the same week and delays of one and two weeks. A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.\nMethod: like-for-like figures use only territories whose feed passed the gate in every week compared. The projected national divides each territory's observed TRx by its panel coverage, and estimates a territory that cannot be read from its recent share of national. Changes, stories and drivers use like-for-like cuts only.\nGlossary:\n- Like for like: a comparison that uses only territories whose feed passed its checks in every week compared.\n- Panel coverage: the share of a territory's expected prescription records that arrived in a given week.\n- Projected national: national TRx built territory by territory, each territory's observed TRx divided by its panel coverage, summed.\n- Withheld cut: a territory or week whose data failed its checks, so no story or driver is given for it.",
   "claims": [
    {
     "value": "8",
@@ -1633,8 +1633,24 @@
     "evidence_id": "e98"
    },
    {
-    "value": "5",
+    "value": "92",
     "evidence_id": "e102"
+   },
+   {
+    "value": "132",
+    "evidence_id": "e103"
+   },
+   {
+    "value": "44.3%",
+    "evidence_id": "e104"
+   },
+   {
+    "value": "6.5%",
+    "evidence_id": "e18"
+   },
+   {
+    "value": "5",
+    "evidence_id": "e105"
    },
    {
     "value": "7",
@@ -1662,19 +1678,19 @@
    },
    {
     "value": "128",
-    "evidence_id": "e103"
+    "evidence_id": "e106"
    },
    {
     "value": "128",
-    "evidence_id": "e104"
+    "evidence_id": "e107"
    },
    {
     "value": "1.000",
-    "evidence_id": "e105"
+    "evidence_id": "e108"
    },
    {
     "value": "4,728",
-    "evidence_id": "e107"
+    "evidence_id": "e110"
    },
    {
     "value": "4,240",
@@ -1682,7 +1698,7 @@
    },
    {
     "value": "2",
-    "evidence_id": "e109"
+    "evidence_id": "e112"
    }
   ],
   "evidence": [
@@ -2887,6 +2903,42 @@
    },
    {
     "id": "e102",
+    "tool": "get_plan_metric",
+    "params": {
+     "territory": "MID_ATLANTIC",
+     "plan": "SYN_MID_ATLANTIC_MEDICARE_PART_D_2",
+     "scope": "the plan, TRx"
+    },
+    "query": "select (select coalesce(sum(trx),0) from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-06-15',DATE '2026-06-22',DATE '2026-06-29',DATE '2026-07-06') and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_2') / 4.0",
+    "result": 91.5,
+    "data_version": "<DATA_VERSION>"
+   },
+   {
+    "id": "e103",
+    "tool": "get_plan_metric",
+    "params": {
+     "territory": "MID_ATLANTIC",
+     "plan": "SYN_MID_ATLANTIC_MEDICARE_PART_D_2",
+     "scope": "the plan, TRx"
+    },
+    "query": "select (select coalesce(sum(trx),0) from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-07-13') and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_2') / 1.0",
+    "result": 132.0,
+    "data_version": "<DATA_VERSION>"
+   },
+   {
+    "id": "e104",
+    "tool": "get_plan_metric",
+    "params": {
+     "territory": "MID_ATLANTIC",
+     "plan": "SYN_MID_ATLANTIC_MEDICARE_PART_D_2",
+     "scope": "the plan, TRx"
+    },
+    "query": "select 100.0 * ((select (select coalesce(sum(trx),0) from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-07-13') and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_2') / 1.0) / nullif((select (select coalesce(sum(trx),0) from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-06-15',DATE '2026-06-22',DATE '2026-06-29',DATE '2026-07-06') and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_2') / 4.0), 0) - 1)",
+    "result": 44.26229508196722,
+    "data_version": "<DATA_VERSION>"
+   },
+   {
+    "id": "e105",
     "tool": "detect_changes",
     "params": {
      "scope": "territories with no material change"
@@ -2896,7 +2948,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e103",
+    "id": "e106",
     "tool": "validate_feed",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2906,7 +2958,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e104",
+    "id": "e107",
     "tool": "validate_feed",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2916,7 +2968,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e105",
+    "id": "e108",
     "tool": "validate_feed",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2926,7 +2978,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e106",
+    "id": "e109",
     "tool": "chart_trend",
     "params": {
      "territory": "MID_ATLANTIC"
@@ -2936,7 +2988,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e107",
+    "id": "e110",
     "tool": "project_national",
     "params": {
      "week": "2026-04-20",
@@ -2947,7 +2999,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e108",
+    "id": "e111",
     "tool": "chart_coverage",
     "params": {},
     "query": "select v.territory_id, v.week_start::varchar, v.basis, exists (select 1 from raw.restatement_log r where r.product_id = 'BXA' and r.week_start = v.week_start and r.territory_id = v.territory_id and r.revised_at <= DATE '2026-07-20') from reporting.v_rx_projection v where v.product_id = 'BXA' and v.week_start in (DATE '2026-04-20',DATE '2026-04-27',DATE '2026-05-04',DATE '2026-05-11',DATE '2026-05-18',DATE '2026-05-25',DATE '2026-06-01',DATE '2026-06-08',DATE '2026-06-15',DATE '2026-06-22',DATE '2026-06-29',DATE '2026-07-06',DATE '2026-07-13') order by 1, 2",
@@ -2955,7 +3007,7 @@
     "data_version": "<DATA_VERSION>"
    },
    {
-    "id": "e109",
+    "id": "e112",
     "tool": "chart_coverage",
     "params": {
      "scope": "territory-weeks not observed"

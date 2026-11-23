@@ -91,6 +91,8 @@ async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], l
     scale = wall_scale()
     for sid in order:
         card = by_id[sid]
+        if card["kind"] == "cut":  # a plan cut card is built by code at memo_close, beside its territory's story (brief-010)
+            continue
         if card["kind"] == "competitor":
             text = await _call(mcp, "competitor_section", lead=f"Story {ORD[n + 1]}: competitor Metacora")
             if text:  # an empty section is no story, so it is no event (the scripted engine's `if comp`)

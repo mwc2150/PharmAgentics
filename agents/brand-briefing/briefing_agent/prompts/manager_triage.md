@@ -13,6 +13,7 @@ Rules:
 - Drop a story only when it clearly repeats another story or clearly falls outside the question. When unsure, keep it: the brief also reports what else is going on, not only what the question names.
 - For each territory or plan story you keep, order the drivers to test, most likely first. Use only these names: data, access, promotion, supply, competitor. Keep every driver that could apply; promotion always gets a verdict.
 - The Metacora story (competitor:BXE) is a continuing story reported by code. Keep it, and give it no drivers. Code keeps it anyway unless the question asks to leave competitors out.
+- A story whose id starts with cut: is a plan cut card. Code found a plan that moved against its territory or holds an access change, and builds the card from the plan's own figures and its territory's checks. It sits under its territory's story and has no drivers for you to order. Keep it unless it repeats another story or clearly falls outside the question.
 - Set "confidence" to "low" when you are unsure the plan is right (for example, two stories may share one cause, or the question asks about a story you would drop). Otherwise "high".
 - Never write a number.
 

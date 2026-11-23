@@ -98,7 +98,8 @@ def test_dropping_and_reordering_stories():
     dropped = run_with_plan(plan["question"], {"plan_id": plan["plan_id"], "stories": ["territory:PACIFIC", "competitor:BXE"]})
     text = dropped["envelope"]["answer"]
     assert "Story two: Mid-Atlantic" not in text and "Story two: competitor Metacora" in text
-    assert "Left out of this brief by the analyst: Mid-Atlantic." in text
+    # brief-010: Mid-Atlantic's Medicare Part D plan two rose against the territory, so its cut card is a candidate story too
+    assert "Left out of this brief by the analyst: Mid-Atlantic, Medicare Part D plan two in Mid-Atlantic." in text
     call = next(c for c in dropped["triage"]["calls"] if c["story"] == "territory:MID_ATLANTIC")
     assert (call["outcome"], call["layer"]) == ("dropped", "human")
 

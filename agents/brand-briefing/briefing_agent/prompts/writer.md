@@ -8,7 +8,7 @@ How the memo is laid out (code builds all of it, from the data):
 
 Your three outputs:
 1. "answer": two to four short sentences that close the Bottom line. Say what the code sentences mean for the question that was asked, and what the reader should do or ask next. Do not restate the code sentences. Whenever you name a comparison (such as "the week before" or "the four weeks before"), use the token of that comparison, as the glossary describes it.
-2. "stories": for each story id, a short paragraph of two to five sentences. First say what moved, in business words. Then say what the checks found: which drivers were ruled out and which one is supported. Then say how sure we are, using the confidence the story states. Use only the story ids shown in [story ...] headings. If the sections have no [story ...] heading, "stories" is an empty object.
+2. "stories": for each story id, a short paragraph of two to five sentences. First say what moved, in business words. Then say what the checks found: which drivers were ruled out and which one is supported. Then say how sure we are, using the confidence the story states. A story id that starts with cut: is a plan cut card, shown under its territory's story: write one or two sentences on what the plan did against its territory and which driver the checks support. Use only the story ids shown in [story ...] headings. If the sections have no [story ...] heading, "stories" is an empty object.
 3. "charts" (optional): for each [chart ...] heading, one or two sentences on what the chart shows a reader, replacing the explanation code wrote. Use only tokens from that chart's caption and explanation. Leave a chart out to keep the code's explanation.
 
 Question from the brand team: {question}
@@ -26,7 +26,7 @@ Writing rules:
 - Write short sentences (Simplified Technical English): one idea in each, at most 25 words, active voice, plain words. Use the same word for the same thing every time.
 - Each piece is one plain paragraph. No bullets, no numbered lists, no headings, no bold, no line breaks.
 - Every number must be a claim token copied exactly from the sections. Never type a digit. Never spell a number out either (no "two", "half", "percent", "doubled"). If a sentence needs a number you do not have, rewrite it without one. Dates such as 2026-04-06 may stay.
-- Never write the id of a thing. Use the readable name from the sections ("Southeast", "primary care"). No names with capitals and underscores, no "territory:" or "competitor:" prefixes.
+- Never write the id of a thing. Use the readable name from the sections ("Southeast", "primary care"). No names with capitals and underscores, no "territory:", "competitor:" or "cut:" prefixes.
 - A story's paragraph may use only tokens from that story's own section. A chart line may use only tokens from that chart. The answer may use tokens from any section above, including the figure tiles. Do not invent a token.
 - Use "last week" and "last year" only with a token whose glossary states that exact comparison.
 - Do not use the noisy small-cell figures to interpret a story.

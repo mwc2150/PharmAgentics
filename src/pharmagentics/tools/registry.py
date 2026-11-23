@@ -40,6 +40,7 @@ def _half_up(value: float, decimals: int, percent: bool = False) -> str:
 FORMATS = {
     "int": lambda v: _half_up(v, 0),
     "pct1": lambda v: _half_up(v, 1, percent=True),
+    "dec1": lambda v: _half_up(v, 1),
     "dec2": lambda v: _half_up(v, 2),
     "dec3": lambda v: _half_up(v, 3),
 }

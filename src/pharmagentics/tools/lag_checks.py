@@ -12,13 +12,19 @@ LOW_FILL, FILL_CHANGE = 0.90, 0.02
 LAG_LABELS = ("same week", "one-week lag", "two-week lag")
 
 
-def check_access(reg: Registry, terr: str, W, B) -> Check:
+def check_access(reg: Registry, terr: str, W, B, *, plan: str | None = None) -> Check:
+    """The access driver for a territory, or, with `plan`, for that one plan (brief-010 FR-001: a cut card's access
+    verdict is its own plan's): an access change in the months of the period or the two weeks before it that lines up
+    with the plan's reportable TRx."""
     if not W or not B:
         return Check("access", "insufficient", "Access: insufficient. No TRx comparison is available.")
     shifted = [q.shift(w, -lag) for lag in DRIVER_LAGS for w in W]
     events = access_events(reg, terr, shifted)
+    if plan is not None:
+        events = [e for e in events if e["plan"] == plan]
     if not events:
-        return Check("access", "ruled_out", f"Access: ruled out. No BXA access change in the {q.name(terr)} plans in the tested months.")
+        where = "on this plan" if plan is not None else f"in the {q.name(terr)} plans"
+        return Check("access", "ruled_out", f"Access: ruled out. No BXA access change {where} in the tested months.")
     matched = []
     for event in events:
         change_sql = q.pct_change(q.mean_weekly(W, plan=event["plan"]), q.mean_weekly(B, plan=event["plan"]))

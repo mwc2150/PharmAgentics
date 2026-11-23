@@ -6,6 +6,7 @@ assembly. The Ollama run itself is checked by the eval suite (`eval run --system
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -72,7 +73,10 @@ def test_sections_match_the_scripted_brief():
     told = [{"id": i, "n": n, "section": s.story_section(t, n), "territory": t}
             for n, (i, t) in enumerate(zip(cards, ("PACIFIC", "MID_ATLANTIC")), 1)]
     told.append({"id": "competitor:BXE", "n": 3, "section": s.competitor_section("Story three: competitor Metacora")})
-    close = s.memo_close(competitor=True)
+    # brief-010: the plan cut cards the scripted brief tells, built by the session and placed after their territory's story
+    cut_plans = [x["card"]["cut"].partition(":")[2] for x in scripted_env["sections"] if (x.get("card") or {}).get("cut")]
+    close = s.memo_close(competitor=True, cuts=cut_plans)
+    told = write.place_cuts(told, close["cut_stories"])
     _t, built = write.assemble(sec, close, told, "", {}, [], s.dropped_line())
     agent = {x["number"]: x for x in render_sections(built, s.reg.claims)}
     ours = {x["number"]: x for x in scripted_env["sections"]}
@@ -80,12 +84,15 @@ def test_sections_match_the_scripted_brief():
     assert shape(agent["1"]["kpis"]) == shape(ours["1"]["kpis"])
     assert agent["2"]["territory_table"]["columns"] == ours["2"]["territory_table"]["columns"]
     assert [r["cells"] for r in agent["2"]["territory_table"]["rows"]] == [r["cells"] for r in ours["2"]["territory_table"]["rows"]]
-    for number in ("3.1", "3.2", "3.3"):
+    assert [x["card"].get("cut") for n, x in agent.items() if n.startswith("3.")][:4] == [None, None, f"plan:{cut_plans[0]}", None]
+    for number in ("3.1", "3.2", "3.3", "3.4"):
         assert agent[number]["card"]["headline"] == ours[number]["card"]["headline"]
         assert agent[number]["card"]["drivers_checked"] == ours[number]["card"]["drivers_checked"]
         for field in ("territory", "direction", "drivers_supported", "drivers_ruled_out"):  # core-011: same verdicts, same ids
             assert agent[number]["card"][field] == ours[number]["card"][field], (number, field)
-        assert agent[number].get("detail") == ours[number].get("detail")
+        # (a card the budget shrank carries its lines in the detail, where the agent's closing line names the territory)
+        same = lambda text: re.sub(r"Confidence for [^:]+:", "Confidence:", text or "")  # noqa: E731
+        assert same(agent[number].get("detail")) == same(ours[number].get("detail"))
     s.close()
 
 

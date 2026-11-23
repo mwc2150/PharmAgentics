@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from pharmagentics.tools import DEFAULT_DB, Registry
-from pharmagentics.tools import charts, memo, projection, promotion, stages
+from pharmagentics.tools import charts, memo, projection, promotion, splits, stages
 from pharmagentics.tools.checks import confidence
 from pharmagentics.tools.events import EventLog
 from pharmagentics.tools.lag_checks import run_checks
@@ -48,6 +48,7 @@ class Front:
     proj: projection.Projection | None = None
     facts: dict = field(default_factory=dict)  # stage 3's claims by name, for the memo's blocks (brief-008)
     restated_facts: list[dict] = field(default_factory=list)  # the restatements' claims, for the restatement card (brief-010)
+    cuts: list[dict] = field(default_factory=list)  # plans worth a cut card in the story territories (brief-010 FR-001); no claims yet
 
 
 def answer(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
@@ -120,8 +121,12 @@ def story_id(s: dict) -> str:
     return f"plan:{s['plan']}" if s["kind"] == "plan" else f"territory:{s['territory']}"
 
 
-def default_order(found: list[dict]) -> list[str]:
-    return [story_id(s) for s in found[:MAX_STORIES]] + [COMPETITOR]
+def cut_id(cut: dict) -> str:
+    return f"cut:{cut['plan']}"
+
+
+def default_order(found: list[dict], cuts: list[dict] = ()) -> list[str]:
+    return [story_id(s) for s in found[:MAX_STORIES]] + [cut_id(c) for c in cuts] + [COMPETITOR]
 
 
 def _note(events: EventLog | None, step: str, *, tool: str | None = None, args: dict | None = None, verdict: str | None = None,
@@ -172,12 +177,13 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
         _note(events, "Read the national figures", tool="national_kpis", text="\n".join(kpis))
         proj = projection.build(reg, p)  # a level for the memo; never a story (ADR 0001)
         found, quiet = ([], []) if p.calendar else stages.screen(reg, p)
+        cuts = splits.screen_cuts(reg, p, [s["territory"] for s in found[:MAX_STORIES]])  # brief-010 FR-001
         finish(sp, {"calendar_mode": bool(p.calendar), "candidates": [f["territory"] for f in found],
                     "projected": proj.territories("projected"), "estimated": proj.territories("estimated")})
     _note(events, "Screen territories", tool="screen_territories", summary=(
         "Calendar weeks: no territory story is opened." if p.calendar else
         f"{len(found)} territor{'y' if len(found) == 1 else 'ies'} moved beyond the normal range; {len(quiet)} stayed within it."))
-    return Front(p, out, found, quiet, health, restated, kpis, proj, facts, restated_facts)
+    return Front(p, out, found, quiet, health, restated, kpis, proj, facts, restated_facts, cuts)
 
 
 def _brief(reg: Registry, question: str, order: list[str] | None = None, left_out: list[str] = (),
@@ -205,7 +211,11 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             notes.append("No story is opened for a calendar week. Expect a rebound in the next regular week.")
         else:
             by_id = {story_id(s): s for s in f.found}
-            for sid in (default_order(f.found) if order is None else order):
+            by_cut = {cut_id(c): c for c in f.cuts}
+            checks_by: dict[str, list] = {}  # each told territory's checks, which its cut cards reuse
+            for sid in (default_order(f.found, f.cuts) if order is None else order):
+                if sid in by_cut:  # built after the territory stories, once their checks are known
+                    continue
                 if sid == COMPETITOR:
                     if not p.has("national"):  # the competitor card is a national story
                         continue
@@ -227,9 +237,17 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
                     finish(story_sp, {"abstained": info["confidence"] == "Low"})
                 blocks.append(block)
                 told.append(info)
+                checks_by[s["territory"]] = info["checks"]
                 abstained |= info["confidence"] == "Low"
             if events is not None:
                 events.story = None
+            for sid in (default_order(f.found, f.cuts) if order is None else order):  # brief-010: each territory story, then its cut cards
+                if sid in by_cut:
+                    cut = by_cut[sid]
+                    block = memo.cut_block(reg, p, cut, checks_by.get(cut["territory"]))
+                    after = [i for i, b in enumerate(blocks) if b.card and b.card.get("territory") == cut["territory"]
+                             and b.id.partition(":")[0] in ("territory", "plan", "cut")]
+                    blocks.insert(after[-1] + 1 if after else len(blocks), block)
             if left_out:
                 notes.append(f"Left out of this brief by the analyst: {', '.join(left_out)}.")
             if not blocks and not left_out and not p.has("territory"):
@@ -296,7 +314,7 @@ def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBloc
     block = memo.StoryBlock(story_id(s), name(t), lines, chart=chart, detail=detail,
                             card=memo.story_card(name(t), facts, level, [c.driver for c in checks], territory=t, checks=checks, measure=p.col))
     return block, {
-        "territory": t, "confidence": level, "drivers": supported, "lags": lags}
+        "territory": t, "confidence": level, "drivers": supported, "lags": lags, "checks": checks}
 
 
 def _ord(n: int) -> str:
