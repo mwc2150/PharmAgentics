@@ -5,4 +5,4 @@
 - Never import the eval package or open files under `eval/`.
 - `api/roles.json` holds the roles; the server strips evidence from leadership responses.
 - `.dockerignore` is an allow-list: a new top-level path the app needs at runtime must be added there and to the Dockerfile.
-- Module docstrings feed `docs/architecture/CODEMAP.md`. After adding or renaming a module, run `uv run python -m pharmagentics.devtools.codemap`.
+- The first line of a module docstring is its entry in the code map (`uv run python -m pharmagentics.devtools.codemap`, printed on demand). Give every new module one.

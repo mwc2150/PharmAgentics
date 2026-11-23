@@ -10,3 +10,4 @@
 - A new system plugs in through `eval/harness/systems.py` and returns the contract in `eval/harness/envelope.py`: answer text, claims, evidence items.
 - MLflow telemetry stays off in `eval/__init__.py`: it sends usage data to an external service and deadlocks parallel scorer threads in MLflow 3.17.
 - The Forecast golden cases and FE scorers are drafts until Alvin and Sienna confirm them.
+- A change to a golden case is recorded as a new file in `eval/golden/changes/`, not as a row in `eval/golden/CHANGELOG.md`.

@@ -1,6 +1,8 @@
 # Golden set changelog
 
-A case changes only after its source changes (Evaluation Pack, user stories or the Forecast eval design: pack first, then cases). One line per change.
+A case changes only after its source changes (Evaluation Pack, user stories or the Forecast eval design: pack first, then cases).
+
+**From 2026-11-24 a change is a new file in [`changes/`](changes/README.md), not a row here.** Rows added to this one table conflicted whenever two branches merged. The table below is the record up to 2026-11-23.
 
 | Date | Cases | Change | Source |
 | :- | :- | :- | :- |

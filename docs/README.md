@@ -6,15 +6,16 @@ This folder holds the project's written documentation, grouped by type.
 
 - `planning/`: Markdown copies of the source documents from Google Drive. See [planning/README.md](planning/README.md) for their precedence.
 - `adr/`: architecture decision records. Numbered, one decision each.
-- `architecture/`: draw.io diagrams and `CODEMAP.md`, the generated code map (`uv run python -m pharmagentics.devtools.codemap`).
-- `guides/`: how-to guides. `build-and-run.md` and `workflow.md` are here now. `DUCKDB_FIRST_RUN.md`, `MULTI_BRAND_UAT.md` and `BRIEFING_UI_INTEGRATION.md` move here in a later move-only PR. `TEAM.md` moves to `team/`.
+- `architecture/`: draw.io diagrams. The code map is printed on demand: `uv run python -m pharmagentics.devtools.codemap`.
+- `guides/`: how-to guides: `build-and-run.md`, `workflow.md`, `duckdb-first-run.md`, `multi-brand-uat.md` and `briefing-ui-integration.md`.
+- `team/`: `TEAM.md`, how to use, host, run and deploy the web app.
 
 ## Where the rest lives
 
 - Constitutions: [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) (shared) and [`.specify/memory/constitution-briefing.md`](../.specify/memory/constitution-briefing.md) (Briefing lane).
 - Specs: [`specs/README.md`](../specs/README.md).
-- Project status: [`PROJECT_STATE.md`](../PROJECT_STATE.md).
-- Handoffs between sessions: [`conversations/`](../conversations/).
+- Project status: run `uv run python -m pharmagentics.devtools.status`. [`PROJECT_STATE.md`](../PROJECT_STATE.md) holds the open-items list.
+- Handoffs between sessions: [`conversations/`](../conversations/README.md), one new file per branch.
 
 ## Dot folders
 

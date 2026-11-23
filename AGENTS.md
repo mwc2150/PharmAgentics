@@ -8,9 +8,9 @@ This file is the shared instruction set for coding agents; `CLAUDE.md` only impo
 
 ## Read first
 
-- `PROJECT_STATE.md`: where the project stands (newest entry first)
-- `docs/architecture/CODEMAP.md`: folders, context files and every module in one page. Read it before crawling the tree
-- `conversations/`: dated handoffs; read the ones for your task. `conversations/archive/` is history only
+- `uv run python -m pharmagentics.devtools.status`: where the project stands, from the handoffs and git (open work first, then the latest on `main`). `PROJECT_STATE.md` holds only the open-items list
+- `uv run python -m pharmagentics.devtools.codemap`: folders, context files and every module in one page. Run it before crawling the tree
+- `conversations/`: one dated handoff per branch or session; read the ones for your task. Old handoffs are history, not current instructions
 - `docs/README.md`: what lives where in `docs/`, the constitutions (`.specify/memory/`), and the dot folders
 - `specs/README.md`, `eval/README.md`, `data/agent_visible/README.md`, `SoT/README.md`, `docs/planning/README.md` (source-doc precedence)
 
@@ -31,8 +31,8 @@ This file is the shared instruction set for coding agents; `CLAUDE.md` only impo
 ## Workflow (full version: `docs/guides/workflow.md`)
 
 - **Eval loop:** change a system, `uv run python -m eval run --system <name>`, then `uv run python -m eval gate <candidate-run-id> <baseline-run-id>`. No change merges if a gated check regresses (Briefing B-VII).
-- **Specs and state together:** specs hold what and why, constitutions the rules, `PROJECT_STATE.md` where things stand, `conversations/` the handoffs. Code may lead its spec; both catch up in the same pull request. Never delete a spec.
-- **Handoff:** before ending a session, add a dated entry at the top of `PROJECT_STATE.md` and a `conversations/YYYY-MM-DD-topic.md` file.
+- **Specs and state together:** specs hold what and why, constitutions the rules, `conversations/` the handoffs. Code may lead its spec; the spec and the handoff catch up in the same pull request. Never delete a spec.
+- **Handoff:** before ending a session, write `conversations/YYYY-MM-DD-topic.md` with the `branch`, `lane` and `next` header (`conversations/README.md`). It is a new file, so it never conflicts. Never add status to `PROJECT_STATE.md` or to any other file every branch edits; a golden-set change goes in `eval/golden/changes/`.
 - **Source documents:** a new Drive export goes into `SoT/<YYYY-MM-DD>/`; run `SoT/check.py`, then follow `SoT/README.md`.
 
 ## Most-used commands (full reference: `docs/guides/build-and-run.md`)
@@ -45,5 +45,5 @@ Dependencies are managed with uv (`uv sync`; change them only with `uv add` / `u
 - Baselines: `uv run python -m eval run --system briefing_scripted --lane briefing` (and `--system forecast_scripted --lane forecast`)
 - Agent: `uv run python -m eval run --system briefing_agent --lane briefing` (add `--model anthropic:claude-haiku-5-5` for the Haiku team; key in the git-ignored `.env`)
 - Dashboard: `uv run python -m eval ui`, then http://127.0.0.1:5000
-- Code map: `uv run python -m pharmagentics.devtools.codemap` after adding or renaming modules
+- Status and code map: `uv run python -m pharmagentics.devtools.status` and `uv run python -m pharmagentics.devtools.codemap` (printed, never committed)
 - Web app: `uv run python deploy/make_env.py` once, then `docker compose up --build` (`deploy/README.md`)

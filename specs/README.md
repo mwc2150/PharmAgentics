@@ -2,7 +2,7 @@
 
 One Spec Kit feature per component. Specs say WHAT and WHY. Each `plan.md` says HOW. Each `tasks.md` is the work list.
 
-**2026-11-22:** specs work together with [`PROJECT_STATE.md`](../PROJECT_STATE.md), which says where the project stands, and [`conversations/`](../conversations/), which holds the handoffs. Code may run ahead of its spec while iterating, and the spec is brought up to date in the same pull request (`AGENTS.md`, Workflow). Specs are never deleted. A superseded spec or decision is marked **History** here, with what replaced it.
+**2026-11-22:** specs work together with the handoffs in [`conversations/`](../conversations/); `uv run python -m pharmagentics.devtools.status` summarises them (since 2026-11-23 [`PROJECT_STATE.md`](../PROJECT_STATE.md) holds only the open-items list). Code may run ahead of its spec while iterating, and the spec is brought up to date in the same pull request (`AGENTS.md`, Workflow). Specs are never deleted. A superseded spec or decision is marked **History** here, with what replaced it.
 
 **History (2026-10-23):** updated to the Oct 21–22 sources; the Oct 16 numbering (001 to 010) is retired.
 

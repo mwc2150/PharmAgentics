@@ -22,7 +22,6 @@
     "DESIGN.md",
     "specs/README.md",
     "docs/README.md",
-    "docs/architecture/CODEMAP.md",
     "docs/adr/**"
   ],
   "ignore": {

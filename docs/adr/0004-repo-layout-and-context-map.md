@@ -1,26 +1,30 @@
-# Context loads in tiers, and the repo keeps its layout stable for tools
+# Context loads in tiers, status is generated, and no branch edits a shared log
 
-Status: Accepted (2026-11-22)
+Status: Accepted (2026-11-22, revised 2026-11-23)
 
-The repo holds about 975k tokens of tracked text and 160 Markdown files, and agents spent many tokens crawling it to find the right file. A full Repomix dump would cost more, not less, because Claude Code reads lazily. We organise context in tiers, each linking to the next, and keep the dot folders and root files where the tools expect them.
+The repo holds about a million tokens of tracked text and close to 200 Markdown files, and agents spent many tokens crawling it. `PROJECT_STATE.md` had grown to 30k characters read at the start of every session, and it conflicted on nearly every parallel merge because each branch added an entry at the top. A full Repomix dump would cost more, not less, because Claude Code reads files only when it needs them.
 
 ## Decision
 
-1. Context loads in tiers, each linking to the next. `AGENTS.md` holds the global hard rules, a short workflow and the most-used commands. `docs/architecture/CODEMAP.md` is the generated code map (`uv run python -m pharmagentics.devtools.codemap`), checked for staleness by a pytest test and kept under 30k characters; it never reads `eval/`. Nested `CLAUDE.md` files hold folder rules: each starts with `@README.md` and loads only when an agent works in that folder. Below them sit `docs/guides/`, the specs, the ADRs and the code. Nothing leaves `AGENTS.md` without a higher-fidelity home.
-2. Repomix serves readers outside the repo. `repomix.config.json` is committed. It packs `src/`, `agents/`, `eval/harness/` and the root docs into a compressed pack (signatures only) under `local/`, which is git-ignored. Run it with `npx repomix`. We considered gitingest, code2prompt and files-to-prompt (the same idea, smaller user bases), and Aider's repo map (a symbol graph; the code map is a lighter version of it).
-3. Dot folders stay where they are: `.github`, `.claude`, `.agents`, `.specify` and `.impeccable` are mandated by their tools. `.agents/` stays for teammates who work in Codex.
-4. The root keeps `README.md`, `AGENTS.md`, `CLAUDE.md`, `PROJECT_STATE.md`, `GLOSSARY.md` (used by the domain-modeling skill), `PRODUCT.md` and `DESIGN.md` (the impeccable skill reads them at the root). `TEAM.md` moves to `docs/team/`.
-5. `docs/` is organised by type: `guides/`, `planning/`, `architecture/`, `adr/` and `team/`, with `docs/README.md` as the index. `conversations/` stays at the root with an `archive/` folder. Agent prompts and specs are out of scope for this move.
-6. `sql/001_reporting_views.sql` moves to `src/pharmagentics/data/sql/`.
+1. **No feature branch edits a file that every branch writes to.** A branch records its state in one new file, `conversations/YYYY-MM-DD-topic.md`, with a `branch`, `lane` and `next` header (`conversations/README.md`). A golden-set change is a new file in `eval/golden/changes/`. New files cannot conflict in a merge.
+2. **Status is generated, not stored.** `uv run python -m pharmagentics.devtools.status` reads the handoffs and asks git which branches have merged: open handoffs first, then the latest on `main`. `PROJECT_STATE.md` keeps only an open-items list that changes in planning sessions. Its entries up to 2026-11-23 are kept word for word in `conversations/2026-11-23-project-state-history.md`.
+3. **Context loads in tiers, small to large.** `AGENTS.md` (global hard rules, a short workflow, the most-used commands) and the status command; then the code map and the `CLAUDE.md` in the folder being worked on (each starts with `@README.md` and adds that folder's rules; Claude Code loads it only there); then `docs/guides/`, specs, ADRs and full handoffs; then the code. Nothing left `AGENTS.md` without a fuller home.
+4. **The code map is printed, not committed.** `uv run python -m pharmagentics.devtools.codemap` lists folders, context files and every module with the first line of its docstring. It never reads `eval/`.
+5. **Repomix serves readers outside the repo.** `repomix.config.json` packs `src/`, `agents/`, `eval/harness/` and the root docs, compressed to signatures, into `local/` (git-ignored). Run it with `npx repomix`. We considered gitingest, code2prompt and files-to-prompt (the same idea, smaller user bases) and Aider's repo map (a ranked symbol graph; the code map is a lighter version).
+6. **Tool-mandated paths stay.** `.github`, `.claude`, `.agents`, `.specify` and `.impeccable` stay where their tools look for them; `.agents/` stays for teammates on Codex. The root keeps `README.md`, `AGENTS.md`, `CLAUDE.md`, `PROJECT_STATE.md`, `GLOSSARY.md` (the domain-modeling skill) and `PRODUCT.md` and `DESIGN.md` (the impeccable skill reads them at the root).
+7. **`docs/` is organised by type:** `guides/`, `planning/`, `architecture/`, `adr/` and `team/`, with `docs/README.md` as the index. `conversations/` stays flat at the root; merged handoffs are not archived, because the status command already separates open from merged and an agent may need the history. Agent prompts and specs are out of scope.
 
-## Rollout
+## Considered and rejected
 
-- PR-A is additive: this ADR, the code map, the Repomix config, the nested `CLAUDE.md` files, the guides and a shorter `AGENTS.md`. It lands first.
-- PR-B is move-only (`git mv`). It follows core-011 merging and its worktrees being pruned, so the renames do not conflict.
-- PR-C fixes links and moves the SQL file. The new path appears in `.dockerignore`, the `Dockerfile` and a scope string in `src/pharmagentics/tools/stages.py` that is recorded in `tests/fixtures/scripted_answers.json`. The change therefore regenerates the fixture and runs the eval gate.
+- **A committed `CODEMAP.md` with a staleness test** (the first version of this ADR). One day of `main` made 33 of its 189 lines stale. It would be one more file that parallel branches regenerate and conflict on, and the test would turn CI red, which blocks the deploy from `main`.
+- **A test that fails when a handoff has no header.** Handoffs are sometimes committed straight to `main`; a missing header should not block a deploy. The status command lists such files as a warning instead.
+- **`merge=union` in `.gitattributes`** for `PROJECT_STATE.md`. Local git honours it; GitHub's merge button ignores custom merge drivers, so pull requests would still show conflicts.
+- **A separate `state/` folder.** It would repeat what the handoffs already say.
+- **Moving `sql/001_reporting_views.sql` under `src/`.** The path is printed in the agent's evidence text and recorded in a test fixture; moving it changes agent output to remove one root folder.
 
 ## Consequences
 
-- One more generated file, the code map, must stay current. The staleness test catches drift.
-- Folder rules now live at two levels. A global rule stays in `AGENTS.md`; only folder-specific rules go in nested files.
-- Moving the SQL file touches the Docker allow-list and a recorded fixture, so PR-C needs the eval gate, not just a link check.
+- An agent starts a session with one command, about a thousand tokens, where it used to read about 7,500.
+- A handoff with no header still lists, by its title; only the `next` line is lost.
+- A branch that was opened before this change and still adds an entry to `PROJECT_STATE.md` conflicts once on merge: keep `main`'s version and move the entry into the handoff.
+- Folder rules live at two levels: a global rule stays in `AGENTS.md`, a folder-specific one goes in that folder's `CLAUDE.md`.

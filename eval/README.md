@@ -38,7 +38,8 @@ When gating brief-007 Slice C against Slice B, select the same 30 Briefing stori
 | :- | :- |
 | `golden/briefing/` | 30 cases: one per Briefing persona question (C-001 to C-024, P1-Q1 to P4-Q6) and six draft two-turn cases (C-025 to C-030, FU-1 to FU-6; brief-006 FR-013) whose `follow_up` is asked on the brief the first question produced |
 | `golden/forecast/` | 18 cases, one per Forecast persona question (F-001 to F-018, CA-Q1 to FM-Q6). Drafts until Alvin and Sienna confirm them and map each to TC-01 to TC-12 |
-| `golden/CHANGELOG.md` | Every change to a case, and what is still open before freezing |
+| `golden/CHANGELOG.md` | Every change to a case up to 2026-11-23, and what is still open before freezing |
+| `golden/changes/` | One file per change to a case from 2026-11-24 (a new file per branch, so merges do not conflict) |
 | `labels/` | Human labels that check the LLM judge (Evaluation Pack open item 2) |
 | `harness/` | Case model and importer, fact checks, number matching, scorers, systems, answer contract, runner, isolation scans, the store reader |
 | `tests/` | Golden-set integrity, code checks on planted answers, the positive control on all 42 cases, isolation scans, an end-to-end MLflow run |
