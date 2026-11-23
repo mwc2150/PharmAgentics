@@ -20,16 +20,16 @@
      primary action fill (near-black text), the current selection, the focus ring and the highlight block behind
      section headings; nothing else is seafoam. Panels and buttons carry a hard offset shadow (no blur). */
   --color-paper: #0c0d12;      /* the page, input wells */
-  --color-sheet: #1b1d27;      /* panels and the sidebar: one flat, solid layer */
+  --color-sheet: #17181f;      /* panels and the sidebar: one flat, solid layer */
   --color-ink: #f3f3f3;        /* body text (Positivus grey) */
   --color-muted: #a6aabf;      /* secondary text */
   --color-rule: #373a52;       /* panel borders and dividers */
-  --color-edge: #8a8ea6;       /* borders of controls (fields, secondary buttons): 5.8:1 on paper, 5.2:1 on sheet, 4.8:1 on primarybg (3:1 is the floor for UI boundaries) */
+  --color-edge: #8a8ea6;       /* borders of controls (fields, secondary buttons): 6.0:1 on paper, 5.5:1 on sheet, 4.8:1 on primarybg (3:1 is the floor for UI boundaries) */
   --color-slab: #3a3e58;       /* the hard offset shadow under panels and secondary buttons */
   --color-warn: #c9ccd8;
   --color-warnbg: #23253a;
   /* Primary: solid seafoam with near-black text (10.0:1). One accent for the primary action, selection, focus and
-     accent text: 9.7:1 on paper, 8.6:1 on sheet, so links and citations use the same shade (primaryink). */
+     accent text: 10.0:1 on paper, 9.1:1 on sheet, so links and citations use the same shade (primaryink). */
   --color-primary: #3ecfb2;
   --color-primaryhover: #62dbc3;
   --color-primarydeep: #1f7a68;   /* the hard shadow under a seafoam button */

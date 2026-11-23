@@ -88,7 +88,7 @@ _PAGE_CSS = """
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:48px 16px;background:#0c0d12;color:#f3f3f3;
   font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-main{width:100%;max-width:440px;background:#1b1d27;border:1px solid #373a52;border-radius:22px;box-shadow:0 5px 0 #3a3e58;padding:32px}
+main{width:100%;max-width:440px;background:#17181f;border:1px solid #373a52;border-radius:22px;box-shadow:0 5px 0 #3a3e58;padding:32px}
 .mark{display:block;width:56px;height:56px;margin-bottom:24px}
 h1{margin:0;font:700 28px/1.25 "Space Grotesk",system-ui,sans-serif;letter-spacing:-0.02em}
 h1 span{background:#3ecfb2;color:#0b0c10;padding:0.05em 0.4em 0.1em;border-radius:8px}
