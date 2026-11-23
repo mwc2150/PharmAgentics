@@ -23,6 +23,7 @@ from pharmagentics.tools.events import EventLog
 from pharmagentics.tools.lag_checks import run_checks
 from pharmagentics.tools.queries import name
 from pharmagentics.tools.registry import digits_outside_tokens
+from pharmagentics.tools.definition import Definition
 from pharmagentics.tools.window import Comparison
 from pharmagentics.tracing import finish, span
 
@@ -49,33 +50,38 @@ class Front:
 
 
 def answer(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
-           events: EventLog | None = None) -> dict:
-    """The brief. `events` (brief-009), when given, records the run's steps as actor Code; it changes nothing else."""
+           events: EventLog | None = None, definition: Definition | dict | None = None) -> dict:
+    """The brief. `events` (brief-009), when given, records the run's steps as actor Code; it changes nothing else.
+    `definition` (brief-010) is what the brief is built from; None is the pre-selected values, and `comparison`
+    maps into it."""
     reg = Registry(db)
     try:
-        return _brief(reg, question, brand_id=brand_id, comparison=comparison, events=events)
+        return _brief(reg, question, brand_id=brand_id, comparison=comparison, events=events, definition=definition)
     finally:
         reg.close()
 
 
-def scope(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> dict:
+def scope(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
+          definition: Definition | dict | None = None) -> dict:
     """The brief's scope as the API stores it (brand, territory, week): what a follow-up is in or out of."""
     reg = Registry(db)
     try:
-        p = stages.resolve(reg, question, brand_id, comparison=comparison)
+        p = stages.resolve(reg, question, brand_id, comparison=comparison, definition=definition)
     finally:
         reg.close()
     return {"brand_id": p.brand_id, "territory_id": p.focus or "NATIONAL", "week_start": p.requested[-1] if p.requested else "",
-            "comparison": comparison.model_dump(mode="json") if comparison is not None else None}
+            "comparison": p.comparison.model_dump(mode="json") if p.comparison is not None else None,
+            "definition": p.definition.to_json()}
 
 
-def triage(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> dict:
+def triage(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
+           definition: Definition | dict | None = None) -> dict:
     """Stages 1 to 3, then the code triage plan for P1 (brief-002 US8). Its claims are its own run's."""
     from .triage import build_plan
 
     reg = Registry(db)
     try:
-        f = _front(reg, question, brand_id, comparison=comparison)
+        f = _front(reg, question, brand_id, comparison=comparison, definition=definition)
         if f is None:
             raise ValueError("That period is outside the release.")
         return build_plan(reg, f)
@@ -84,12 +90,12 @@ def triage(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: C
 
 
 def run_with_plan(question: str, decision: dict, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
-                  events: EventLog | None = None) -> dict:
+                  events: EventLog | None = None, definition: Definition | dict | None = None) -> dict:
     """Stages 4 to 6 on P1's decision: {plan_id, stories: [ids in order]}. Returns the envelope, the
     triage record (who made each call) and the stage flow."""
     from .triage import stage_flow, triage_record
 
-    plan = triage(question, db, brand_id, comparison=comparison)
+    plan = triage(question, db, brand_id, comparison=comparison, definition=definition)
     if decision.get("plan_id") != plan["plan_id"]:
         raise StalePlan("The triage plan changed; review it again.")
     allowed = [c["id"] for c in plan["stories"] if c["proposed"] == "investigate"]
@@ -101,7 +107,8 @@ def run_with_plan(question: str, decision: dict, db=DEFAULT_DB, brand_id: str = 
     left_out = [titles[s] for s in allowed if s not in order]
     reg = Registry(db)
     try:
-        envelope = _brief(reg, question, order=order, left_out=left_out, brand_id=brand_id, comparison=comparison, events=events)
+        envelope = _brief(reg, question, order=order, left_out=left_out, brand_id=brand_id, comparison=comparison, events=events,
+                          definition=definition)
     finally:
         reg.close()
     record = triage_record(plan, order)
@@ -127,8 +134,8 @@ _VERDICT = {"supported": "supported", "ruled_out": "ruled out", "insufficient": 
 
 
 def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None,
-           events: EventLog | None = None) -> Front | None:
-    p = stages.resolve(reg, question, brand_id, comparison=comparison)
+           events: EventLog | None = None, definition: Definition | dict | None = None) -> Front | None:
+    p = stages.resolve(reg, question, brand_id, comparison=comparison, definition=definition)
     if not p.requested:
         return None
     out: list[str] = []
@@ -172,10 +179,12 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
 
 
 def _brief(reg: Registry, question: str, order: list[str] | None = None, left_out: list[str] = (),
-           brand_id: str = "BXA", *, comparison: Comparison | None = None, events: EventLog | None = None) -> dict:
-    f = _front(reg, question, brand_id, comparison=comparison, events=events)
+           brand_id: str = "BXA", *, comparison: Comparison | None = None, events: EventLog | None = None,
+           definition: Definition | dict | None = None) -> dict:
+    f = _front(reg, question, brand_id, comparison=comparison, events=events, definition=definition)
     if f is None:
-        return _envelope(reg, stages.outside_release(stages.resolve(reg, question, brand_id=brand_id)), False, brand_id)
+        bare = Definition.coerce(definition, None).model_copy(update={"comparison": None})  # no comparison for a period outside the release
+        return _envelope(reg, stages.outside_release(stages.resolve(reg, question, brand_id=brand_id, definition=bare)), False, brand_id)
     p = f.p
     if p.promotion_review:
         return dict(promotion.render_review(reg, p), system="briefing_scripted", brand_id=p.brand_id)
@@ -196,6 +205,8 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             by_id = {story_id(s): s for s in f.found}
             for sid in (default_order(f.found) if order is None else order):
                 if sid == COMPETITOR:
+                    if not p.has("national"):  # the competitor card is a national story
+                        continue
                     comp_facts: dict = {}
                     comp = stages.competitor_status(reg, p, lead=f"Story {_ord(len(blocks) + 1)}: competitor Metacora", facts=comp_facts)
                     if comp and events is not None:
@@ -219,7 +230,9 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
                 events.story = None
             if left_out:
                 notes.append(f"Left out of this brief by the analyst: {', '.join(left_out)}.")
-            if not blocks and not left_out:
+            if not blocks and not left_out and not p.has("territory"):
+                notes.append("Territory stories are not part of this brief: its levels leave them out.")
+            elif not blocks and not left_out:
                 notes.append("Routine week. No material change was found, and territory swings stayed in their normal range.")
             elif f.quiet:
                 dropped.append(stages.dropped_line(reg, p, f.quiet))
@@ -278,7 +291,7 @@ def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBloc
     chart = charts.story(reg, p, t, supported if level != "Low" else [], plan)
     detail = memo.story_detail(reg, p, t)
     block = memo.StoryBlock(story_id(s), name(t), lines, chart=chart, detail=detail,
-                            card=memo.story_card(name(t), facts, level, [c.driver for c in checks], territory=t, checks=checks))
+                            card=memo.story_card(name(t), facts, level, [c.driver for c in checks], territory=t, checks=checks, measure=p.col))
     return block, {
         "territory": t, "confidence": level, "drivers": supported, "lags": lags}
 

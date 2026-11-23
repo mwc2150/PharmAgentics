@@ -26,6 +26,7 @@ from pharmagentics.tools import charts, memo, projection, promotion, splits, sta
 from pharmagentics.tools.checks import (DRIVERS, OWNER, Check, check_competitor, check_data,
                                         confidence, context_baseline)
 from pharmagentics.tools.lag_checks import check_access, check_promotion, check_supply
+from pharmagentics.tools.definition import Definition, words as definition_words
 from pharmagentics.tools.window import Comparison
 
 ADMIN_TOOLS = ("open_run", "export_run", "brief_sections", "story_section", "competitor_section", "dropped_line",
@@ -69,10 +70,11 @@ class RunSession:
         self.competitor_facts: dict = {}
 
     # admin -------------------------------------------------------------------------------------
-    def open_run(self, question: str, comparison: Comparison | None = None) -> str:
+    def open_run(self, question: str, comparison: Comparison | None = None, definition: Definition | None = None) -> str:
+        """Pin the period under the brief definition (brief-010): every tool of the run computes under it."""
         self.close()
         self.reg = Registry(self.db)
-        self.p = stages.resolve(self.reg, question, comparison=comparison)
+        self.p = stages.resolve(self.reg, question, comparison=comparison, definition=definition)
         self.checks, self.stories, self.calls, self.seen = {}, {}, [], {}
         self.story_facts, self.story_detail, self.competitor_facts = {}, {}, {}
         if not self.p.requested:
@@ -81,6 +83,8 @@ class RunSession:
                  f"Data version {self.reg.data_version}. Product: BXA (Cardiovela)."]
         if self.p.note:
             lines.append(self.p.note)
+        if not self.p.definition.is_pre_selected:
+            lines.append("Brief definition: " + " ".join(definition_words(self.p.definition)))
         if self.p.focus:
             lines.append(f"The question names {q.name(self.p.focus)} ({self.p.focus}).")
         return "\n".join(lines)
@@ -181,6 +185,8 @@ class RunSession:
         p = self.p
         if p.calendar:
             return "Calendar mode: most of these weeks are holiday or plan-year-reset weeks, so no territory story is opened."
+        if not p.has("territory"):
+            return "This brief's levels leave out territories, so no territory story is opened."
         found, quiet = stages.screen(self.reg, p)
         if not found:
             return "No territory moved beyond its normal range against its peers. Routine week: no story to investigate."
@@ -254,9 +260,9 @@ class RunSession:
         bottom = memo.bottom_line(reg, p, self.proj, told, self.restated, facts=top)
         cards = {s["territory"]: memo.story_card(q.name(s["territory"]), self.story_facts[s["territory"]], s["confidence"],
                                                  list(self.checks.get(s["territory"], {})), territory=s["territory"],
-                                                 checks=list(self.checks.get(s["territory"], {}).values()))
+                                                 checks=list(self.checks.get(s["territory"], {}).values()), measure=p.col)
                  for s in told if s["territory"] in self.story_facts}
-        if competitor and self.competitor_facts:
+        if competitor and self.competitor_facts and p.has("national"):
             cards["competitor"] = memo.competitor_card(p, self.competitor_facts)
         return {"bottom_line": bottom, "kpis": memo.kpis(p, self.proj, top), "details": {"1": memo.bottom_detail(top)},
                 "story_cards": cards, "story_details": {s["territory"]: self.story_detail.get(s["territory"], []) for s in told},
@@ -282,6 +288,9 @@ class RunSession:
         return "\n".join(lines)
 
     def competitor_section(self, lead: str) -> str:
+        self._reg()
+        if not self.p.has("national"):  # the competitor story is a national story
+            return ""
         facts: dict = {}
         text = stages.competitor_status(self._reg(), self.p, lead=lead, facts=facts) or ""
         self.competitor_facts = facts
@@ -327,6 +336,8 @@ class RunSession:
 
     def competitor_status(self) -> str:
         self._log("competitor_status")
+        if not self.p.has("national"):
+            return "This brief's levels leave out national figures, so the competitor story is not part of it."
         text = stages.competitor_status(self.reg, self.p)
         return self._out(text) if text else "Metacora is not a story in these weeks: not launched yet, or still a small share of the basket."
 
@@ -375,9 +386,9 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
     text = dict(structured_output=False)
 
     @server.tool(**text)
-    async def open_run(question: str, comparison: Comparison | None = None) -> str:
-        """Admin: start a run for one question. Pins the period and the data version. Callers only, not agents."""
-        return s.open_run(question, comparison)
+    async def open_run(question: str, comparison: Comparison | None = None, definition: Definition | None = None) -> str:
+        """Admin: start a run for one question under a brief definition. Pins the period and the data version. Callers only, not agents."""
+        return s.open_run(question, comparison, definition)
 
     @server.tool(**text)
     async def export_run() -> str:

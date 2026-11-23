@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from . import queries as q
 from .brands import briefing_brand
 from .checks import access_events, launch_date
+from .definition import Definition, labels as definition_labels
 from .registry import Registry
 from .window import Comparison, comparison_weeks, parse
 
@@ -60,16 +61,48 @@ class Period:
     promotion_review: bool = False
     comparison: Comparison | None = None
     baseline_source: str = "default"
+    definition: Definition = field(default_factory=Definition)  # brief-010: what this brief is built from
+    ok_cur: list[str] = field(default_factory=list)  # reportable in every week of the period (territories = all_reportable)
+    ok_base: list[str] = field(default_factory=list)  # reportable in every comparison week
+
+    @property
+    def col(self) -> str:
+        """The metric column the story figures use: nbrx for a new-patients brief, trx otherwise (both: trx first)."""
+        return "nbrx" if self.definition.measure == "nbrx" else "trx"
+
+    @property
+    def col_name(self) -> str:
+        return "NBRx" if self.col == "nbrx" else "TRx"
+
+    @property
+    def measure_label(self) -> str:
+        return "new patients (NBRx)" if self.col == "nbrx" else "TRx"
+
+    @property
+    def also_nbrx(self) -> bool:
+        return self.definition.measure == "both"
+
+    def has(self, grain: str) -> bool:
+        return self.definition.has(grain)
 
 
-def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> Period:
+def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None,
+            definition: Definition | dict | None = None) -> Period:
+    """The period of one run. `definition` (brief-010) is what the brief is built from; None is the pre-selected
+    values, and the old `comparison` keyword maps into it."""
     brand_id = briefing_brand(brand_id)
+    d = Definition.coerce(definition, comparison)
+    comparison = d.comparison
     first, latest = reg.rows("select min(week_start)::varchar, max(week_start)::varchar from raw.calendar")[0]
     ask = parse(question, first, latest, briefing=brand_id == "BXA")
-    W = ask["weeks"]
-    p = Period(brand_id=brand_id, question=question, first=first, latest=latest, requested=W, baseline=[], focus=ask["territory"], note=ask["note"])
+    W, explicit, note = ask["weeks"], ask.get("explicit_week", False), ask["note"]
+    if d.first_week:  # the analyst chose the weeks: they win over the question's
+        chosen = q.mondays(d.first_week, d.last_week or d.first_week)
+        W, explicit, note = [w for w in chosen if first <= w <= latest], True, None
+    p = Period(brand_id=brand_id, question=question, first=first, latest=latest, requested=W, baseline=[], focus=ask["territory"], note=note,
+               definition=d)
     p.promotion = ask.get("promotion", False)
-    p.promotion_review = p.promotion and not ask["explicit_week"]
+    p.promotion_review = p.promotion and not (ask["explicit_week"] or explicit)
     p.comparison = comparison
     if comparison is not None:
         if p.promotion_review:
@@ -78,6 +111,7 @@ def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: 
         p.baseline = comparison_weeks(comparison, W, available)
         p.baseline_source = "analyst's choice"
     if not W:
+        reg.labels = definition_labels(d, W, p.baseline)
         return p
     if comparison is None:
         p.baseline = [w for w in (q.shift(W[0], -i) for i in range(BASELINE_WEEKS, 0, -1)) if w >= first]
@@ -89,6 +123,8 @@ def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: 
     p.status = {(w, t): (h, r) for w, t, h, r in health}
     p.terrs = sorted({t for _, t in p.status})
     p.ok = [t for t in p.terrs if all(p.status.get((w, t), ("FLAG", ""))[0] == "PASS" for w in weeks)]
+    p.ok_cur = [t for t in p.terrs if all(p.status.get((w, t), ("FLAG", ""))[0] == "PASS" for w in W)]
+    p.ok_base = [t for t in p.terrs if p.baseline and all(p.status.get((w, t), ("FLAG", ""))[0] == "PASS" for w in p.baseline)]
     cal_rows = reg.rows(f"select week_start::varchar, holiday_name, business_days, plan_year_reset from raw.calendar "
                         f"where week_start in {q._dates(W)} and (holiday_flag = 1 or plan_year_reset = 1)")
     cal_weeks = {r[0] for r in cal_rows}
@@ -98,6 +134,7 @@ def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: 
     if cal_weeks and not p.calendar and not p.promotion_review:
         p.weeks = [w for w in W if w not in cal_weeks]
         p.calendar_note = "Calendar weeks in this period are left out of the stories below, because lower volume there is expected."
+    reg.labels = definition_labels(d, W, p.baseline)
     return p
 
 
@@ -169,33 +206,93 @@ def restatements(reg: Registry, p: Period) -> list[str]:
 
 # Stage 3: competitive intelligence ----------------------------------------------------------------
 
-def kpis(reg: Registry, p: Period, facts: dict | None = None) -> list[str]:
-    """Stage 3 lines. `facts`, when given, receives the same claims by name (avg, wow, changes, calendar), so the
-    memo can build its territory table from them without a second claim for the same number."""
-    facts = {} if facts is None else facts
-    W, B, ok, terrs, calendar = p.weeks, p.baseline, p.ok, p.terrs, p.calendar
-    if not ok:
-        return ["KPIs: no territory passes the feed gate in every one of these weeks, so no like-for-like national figure is given."]
-    cur, base = q.mean_weekly(W, terrs=ok, product=p.brand_id), q.mean_weekly(B, terrs=ok, product=p.brand_id) if B else None
-    n = reg.claim("get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(W)} and {q._in('territory_id', ok)}", "int")
-    avg = reg.claim("get_metric", cur, "int", scope="like-for-like national")
+_SCOPE = {"like_for_like": "like-for-like national", "all_reportable": "national over the territories reportable in the period",
+          "projected": "projected national"}
+
+
+def national_basis(p: Period, col: str) -> str:
+    """Which territories a national figure counts, for this measure: the projected national is a TRx figure only."""
+    mode = p.definition.territories
+    return "like_for_like" if mode == "projected" and col != "trx" else mode
+
+
+def national_sql(p: Period, col: str | None = None) -> tuple[str | None, str | None, list[str] | None, list[str] | None]:
+    """(the period's mean weekly national, the comparison weeks', the territories each counts) under the definition's
+    `territories`. A figure is None when no territory can be counted."""
+    col = col or p.col
+    W, B, brand = p.weeks, p.baseline, p.brand_id
+    mode = national_basis(p, col)
+    if mode == "projected":
+        return q.projected_national(W, product=brand), (q.projected_national(B, product=brand) if B else None), None, None
+    tc, tb = (p.ok_cur, p.ok_base) if mode == "all_reportable" else (p.ok, p.ok)
+    cur = q.mean_weekly(W, terrs=tc, product=brand, col=col) if tc else None
+    base = q.mean_weekly(B, terrs=tb, product=brand, col=col) if B and tb else None
+    return cur, base, tc, tb
+
+
+def _national_block(reg: Registry, p: Period, facts: dict, col: str, key: str) -> list[str]:
+    """The national KPI line for one measure under the definition's `territories`. Claims are made in the order the
+    pre-selected definition always made them."""
+    W, B = p.weeks, p.baseline
+    brand, mode = p.brand_id, national_basis(p, col)
+    label = "TRx" if col == "trx" else "new patients (NBRx)"
+    cur, base, tc, tb = national_sql(p, col)
+    if cur is None:
+        return [f"KPIs: no territory passes the feed gate in every one of these weeks, so no like-for-like national figure is given."
+                if mode == "like_for_like" else
+                "KPIs: no territory is reportable in every one of these weeks, so no national figure is given."]
+    scope = _SCOPE[mode]
+    n = None if mode == "projected" else reg.claim(
+        "get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(W)} and {q._in('territory_id', tc)}", "int")
+    avg = reg.claim("get_metric", cur, "int", scope=scope)
     total = reg.claim("get_metric", "select count(*) from raw.dim_territory", "int")
-    facts["avg"] = {"avg": avg, "n": n, "total": total}
+    facts[key] = {"avg": avg, "n": n, "total": total, "basis": mode, "label": label}
+    n_base = None
+    if mode == "all_reportable" and base:
+        n_base = reg.claim("get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(B)} "
+                           f"and {q._in('territory_id', tb)}", "int", scope="territories reportable in the comparison weeks")
+        facts[key]["n_base"] = n_base
     lines = []
     if base:
         change = reg.scalar(q.pct_change(cur, base)) or 0
-        pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope="like-for-like national")
-        facts["avg"].update(pct=pct, word=word(change))
-        lines.append(f"KPIs: {p.brand_id} TRx averaged {avg} a week across {n} of {total} territories (like for like), "
-                     f"{word(change)} {pct} against the comparison weeks.")
-        # headline total over every reportable cut, which a withheld cut distorts
-        all_cur, all_base = q.mean_weekly(W, product=p.brand_id), q.mean_weekly(B, product=p.brand_id)
-        naive = reg.scalar(q.pct_change(all_cur, all_base)) or 0
-        if len(ok) < len(terrs) and abs(naive - change) >= 5:
-            p2 = reg.claim("get_metric", q.pct_change(all_cur, all_base), "pct1", scope="headline total of reportable cuts")
-            lines.append(f"The headline total of reportable cuts is {word(naive)} {p2}, but that move comes mostly from withheld cuts, so it is a data artifact, not a business change.")
-            facts["artifact"] = lines[-1]
-    if len(W) == 1 and B:
+        pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope=scope)
+        facts[key].update(pct=pct, word=word(change))
+        if mode == "like_for_like":
+            lines.append(f"KPIs: {brand} {label} averaged {avg} a week across {n} of {total} territories (like for like), "
+                         f"{word(change)} {pct} against the comparison weeks.")
+        elif mode == "all_reportable":
+            lines.append(f"KPIs: {brand} {label} averaged {avg} a week across {n} of {total} territories reportable in these weeks, "
+                         f"{word(change)} {pct} against the comparison weeks, when {n_base} of {total} were reportable (all reportable territories).")
+        else:
+            lines.append(f"KPIs: the projected national {brand} TRx averaged {avg} a week, {word(change)} {pct} against the projected "
+                         "national of the comparison weeks.")
+        if key == "avg" and mode == "like_for_like":
+            # headline total over every reportable cut, which a withheld cut distorts
+            all_cur, all_base = q.mean_weekly(W, product=brand, col=col), q.mean_weekly(B, product=brand, col=col)
+            naive = reg.scalar(q.pct_change(all_cur, all_base)) or 0
+            if len(tc) < len(p.terrs) and abs(naive - change) >= 5:
+                p2 = reg.claim("get_metric", q.pct_change(all_cur, all_base), "pct1", scope="headline total of reportable cuts")
+                lines.append(f"The headline total of reportable cuts is {word(naive)} {p2}, but that move comes mostly from withheld cuts, so it is a data artifact, not a business change.")
+                facts["artifact"] = lines[-1]
+    return lines
+
+
+def kpis(reg: Registry, p: Period, facts: dict | None = None) -> list[str]:
+    """Stage 3 lines. `facts`, when given, receives the same claims by name (avg, wow, changes, calendar), so the
+    memo can build its territory table from them without a second claim for the same number. The definition's
+    grain, territories and measure decide which national lines and territory changes exist (brief-010 FR-000c)."""
+    facts = {} if facts is None else facts
+    W, B, ok, terrs, calendar = p.weeks, p.baseline, p.ok, p.terrs, p.calendar
+    lines: list[str] = []
+    if p.has("national"):
+        lines = _national_block(reg, p, facts, p.col, "avg")
+        if "avg" not in facts:
+            return lines
+        if p.also_nbrx:
+            lines += _national_block(reg, p, facts, "nbrx", "avg_nbrx")
+    else:
+        facts["no_national"] = True
+    if len(W) == 1 and B and p.has("national"):
         lines += week_over_week(reg, p, facts)
     lines += territory_changes(reg, p, facts)
     cal_lines = []
@@ -205,7 +302,7 @@ def kpis(reg: Registry, p: Period, facts: dict | None = None) -> list[str]:
             tag = "plan-year reset" if reset and holiday == "NONE" else holiday.lower().replace("_", " ")
             cal_lines.append(f"Calendar effect: the week of {w} is {tag} with {days} business days, so a lower volume is expected.")
         earlier_w, earlier_b = [q.shift(w, -52) for w in W], [q.shift(w, -52) for w in B]
-        if earlier_b and min(earlier_w + earlier_b) >= p.first and p.comparison is None:
+        if earlier_b and min(earlier_w + earlier_b) >= p.first and p.comparison is None and p.has("national") and ok:
             ly_cur, ly_base = q.mean_weekly(earlier_w, terrs=ok, product=p.brand_id), q.mean_weekly(earlier_b, terrs=ok, product=p.brand_id)
             ly = reg.scalar(q.pct_change(ly_cur, ly_base)) or 0
             cal_lines.append(f"The same weeks a year earlier were {word(ly)} {reg.claim('get_metric', q.pct_change(ly_cur, ly_base), 'pct1', scope='same weeks last year')}. This is a calendar effect, not a business event.")
@@ -254,32 +351,42 @@ def territory_changes(reg: Registry, p: Period, facts: dict | None = None) -> li
     facts = {} if facts is None else facts
     facts["changes"] = []
     W, B = p.weeks, p.baseline
-    if not W or not B or not p.terrs:
+    if not W or not B or not p.terrs or not p.has("territory"):
         return []
     single = len(W) == 1
     last, prev = W[-1], q.shift(W[-1], -1)
-    lines = [f"Change by territory, like for like: the week of {last} on the week before, and the period on the "
-             "comparison weeks:" if single else "Change by territory, like for like, on the comparison weeks:"]
+    what = "Change by territory" if p.col == "trx" else f"Change in {p.measure_label} by territory"
+    lines = [f"{what}, like for like: the week of {last} on the week before, and the period on the "
+             "comparison weeks:" if single else f"{what}, like for like, on the comparison weeks:"]
     for t in sorted(p.terrs, key=q.name):
         if t not in p.ok:
             lines.append(f"- {q.name(t)}: no change is given, because a week compared failed the feed gate.")
             facts["changes"].append({"territory": t, "ok": False, "base": None, "wow": None})
             continue
-        base_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id), q.mean_weekly(B, terrs=[t], product=p.brand_id))
+        base_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id, col=p.col), q.mean_weekly(B, terrs=[t], product=p.brand_id, col=p.col))
         base = reg.claim("get_metric", base_sql, "pct1", territory=t, scope="against the comparison weeks")
         base_change = reg.scalar(base_sql) or 0
         entry = {"territory": t, "ok": True, "base": {"word": word(base_change), "token": base, "change": base_change}, "wow": None}
+        if p.col == "nbrx" or p.also_nbrx:
+            entry["level_nbrx"] = reg.claim("get_metric", q.mean_weekly(W, terrs=[t], product=p.brand_id, col="nbrx"), "int",
+                                            territory=t, scope="new patients (NBRx)")
         weekly = ""
         if single:
             weekly = "week-over-week change withheld"
             if all(p.status.get((w, t), ("FLAG", ""))[0] == "PASS" for w in (last, prev)):
-                wow_sql = q.pct_change(q.trx_sum([last], terrs=[t], product=p.brand_id),
-                                       q.trx_sum([prev], terrs=[t], product=p.brand_id))
+                wow_sql = q.pct_change(q.trx_sum([last], terrs=[t], product=p.brand_id, col=p.col),
+                                       q.trx_sum([prev], terrs=[t], product=p.brand_id, col=p.col))
                 wow = reg.claim("get_metric", wow_sql, "pct1", territory=t, scope="week over week")
                 entry["wow"] = {"word": word(reg.scalar(wow_sql) or 0), "token": wow}
                 weekly = f"{entry['wow']['word']} {wow} on the week before"
             weekly += "; "
-        lines.append(f"- {q.name(t)}: {weekly}{entry['base']['word']} {base} on the comparison weeks.")
+        extra = ""
+        if p.also_nbrx:  # new patients beside TRx (brief-010 FR-000c)
+            nb_sql = q.pct_change(q.mean_weekly(W, terrs=[t], product=p.brand_id, col="nbrx"), q.mean_weekly(B, terrs=[t], product=p.brand_id, col="nbrx"))
+            nb = reg.claim("get_metric", nb_sql, "pct1", territory=t, scope="against the comparison weeks, new patients (NBRx)")
+            entry["nbrx"] = {"word": word(reg.scalar(nb_sql) or 0), "token": nb}
+            extra = f"; new patients (NBRx) {entry['nbrx']['word']} {nb}"
+        lines.append(f"- {q.name(t)}: {weekly}{entry['base']['word']} {base} on the comparison weeks{extra}.")
         facts["changes"].append(entry)
     return lines
 
@@ -296,6 +403,8 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
     """Territories whose change is beyond their own normal noise and beyond their peers' change.
     `details`, when given, receives each screened territory's change, gap and threshold."""
     W, ok, focus = p.weeks, p.ok, p.focus
+    if not p.has("territory"):  # the brief's grain leaves territory stories out (brief-010 FR-000c)
+        return [], []
     series = _series(reg, p.brand_id)
     B = p.baseline
     if p.comparison is None and len(p.requested) > 1:
@@ -322,7 +431,7 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
             found.append({"territory": t, "kind": "territory", "impact": abs(x - b), "change": change})
         else:
             quiet.append(t)
-    if not focus or focus == "NATIONAL":
+    if (not focus or focus == "NATIONAL") and p.has("plan"):
         for e in access_events(reg, None, W, brand_id=p.brand_id):
             t = e["territory"]
             if t in ok and not any(s["territory"] == t for s in found) and B:
@@ -347,20 +456,40 @@ def dropped_line(reg: Registry, p: Period, dropped: list[str]) -> str:
 # Stage 4 helpers: the story head and the competitor status -----------------------------------------
 
 def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None) -> str:
-    W, B = p.weeks, p.baseline
-    x, b = q.mean_weekly(W, terrs=[t], product=p.brand_id), q.mean_weekly(B, terrs=[t], product=p.brand_id)
-    peers = [o for o in p.ok if o != t]
-    px, pb = q.mean_weekly(W, terrs=peers, product=p.brand_id), q.mean_weekly(B, terrs=peers, product=p.brand_id)
+    """A story's head. The measure sets the figures (NBRx beside TRx for both); `relative_to` sets what the change is
+    set against: the other territories, the national change under the definition's territories, or nothing."""
+    W, B, col, brand = p.weeks, p.baseline, p.col, p.brand_id
+    x, b = q.mean_weekly(W, terrs=[t], product=brand, col=col), q.mean_weekly(B, terrs=[t], product=brand, col=col)
     change = reg.scalar(q.pct_change(x, b)) or 0
-    peer = reg.scalar(q.pct_change(px, pb)) or 0
     mean_x, mean_b = reg.claim('get_metric', x, 'int', territory=t), reg.claim('get_metric', b, 'int', territory=t)
     pct = reg.claim('get_metric', q.pct_change(x, b), 'pct1', territory=t)
-    peer_pct = reg.claim('get_metric', q.pct_change(px, pb), 'pct1', scope='other territories')
+    kind, peer_word, peer_pct, tail = p.definition.relative_to, None, None, ""
+    if kind == "other_territories":
+        peers = [o for o in p.ok if o != t]
+        px, pb = q.mean_weekly(W, terrs=peers, product=brand, col=col), q.mean_weekly(B, terrs=peers, product=brand, col=col)
+        peer = reg.scalar(q.pct_change(px, pb)) or 0
+        peer_pct, peer_word = reg.claim('get_metric', q.pct_change(px, pb), 'pct1', scope='other territories'), word(peer)
+        tail = f", while the other territories were {peer_word} {peer_pct}"
+    elif kind == "national":
+        nx, nb, _, _ = national_sql(p)
+        if nx and nb:
+            peer = reg.scalar(q.pct_change(nx, nb)) or 0
+            peer_pct, peer_word = reg.claim('get_metric', q.pct_change(nx, nb), 'pct1', scope='national'), word(peer)
+            tail = f", while national was {peer_word} {peer_pct}"
+        else:
+            kind = "none"
     if facts is not None:
-        facts.update(pct=pct, word=word(change), peer_pct=peer_pct, peer_word=word(peer))
-    return (f"{q.name(t)}. {p.brand_id} TRx averaged {mean_x} a week against "
-            f"{mean_b} before ({word(change)} {pct}), "
-            f"while the other territories were {word(peer)} {peer_pct}.")
+        facts.update(pct=pct, word=word(change), peer_pct=peer_pct, peer_word=peer_word, relative=kind)
+    text = f"{q.name(t)}. {brand} {p.measure_label} averaged {mean_x} a week against {mean_b} before ({word(change)} {pct}){tail}."
+    if p.also_nbrx:
+        nx_, nb_ = q.mean_weekly(W, terrs=[t], product=brand, col="nbrx"), q.mean_weekly(B, terrs=[t], product=brand, col="nbrx")
+        n_change = reg.scalar(q.pct_change(nx_, nb_)) or 0
+        n_x, n_b = reg.claim('get_metric', nx_, 'int', territory=t, scope='new patients (NBRx)'), reg.claim('get_metric', nb_, 'int', territory=t, scope='new patients (NBRx)')
+        n_pct = reg.claim('get_metric', q.pct_change(nx_, nb_), 'pct1', territory=t, scope='new patients (NBRx)')
+        if facts is not None:
+            facts.update(nbrx_pct=n_pct, nbrx_word=word(n_change))
+        text += f" New patients (NBRx) averaged {n_x} a week against {n_b} before ({word(n_change)} {n_pct})."
+    return text
 
 
 def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora", facts: dict | None = None) -> str | None:

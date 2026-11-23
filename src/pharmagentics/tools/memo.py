@@ -18,7 +18,7 @@ from .checks import DECISION, OWNER, launch_date
 from .lag_checks import LAG_LABELS
 from .projection import Projection, _label, method_lines
 from .registry import Registry
-from . import splits
+from . import definition, splits
 from .brands import PRODUCTS, briefing_brand
 
 HEADINGS = [("1", "Bottom line"), ("2", "The numbers"), ("3", "What changed and why"),
@@ -218,21 +218,39 @@ def _warning(p, proj: Projection) -> str | None:
     return "Data warning: " + "; ".join(parts) + ". No story is given for " + ("it." if len(cuts) == 1 else "them.")
 
 
-def _like_for_like(reg: Registry, p, facts: dict | None = None) -> str:
+def _like_for_like(reg: Registry, p, facts: dict | None = None, col: str | None = None, key: str = "like") -> str:
+    """§1's national change under the definition's territories and measure (like for like, every territory reportable in
+    each period, or the projected national). The pre-selected definition makes today's sentence and today's claims."""
     W, B, ok = p.weeks, p.baseline, p.ok
-    if not ok:
-        return "No like-for-like change is given: no territory passes the feed gate in every week compared."
-    if not B:
-        return "No like-for-like change is given: the release has no earlier weeks to compare with."
-    cur, base = q.mean_weekly(W, terrs=ok, product=p.brand_id), q.mean_weekly(B, terrs=ok, product=p.brand_id)
+    col = col or p.col
+    label = "TRx" if col == "trx" else "new patients (NBRx)"
+    mode = stages.national_basis(p, col)
+    cur, base, tc, tb = stages.national_sql(p, col)
+    if cur is None:
+        return ("No like-for-like change is given: no territory passes the feed gate in every week compared." if mode == "like_for_like" else
+                "No national change is given: no territory is reportable in every week of the period.")
+    if not B or base is None:
+        return "No like-for-like change is given: the release has no earlier weeks to compare with." if not B else             "No national change is given: no territory is reportable in every comparison week."
     change = reg.scalar(q.pct_change(cur, base)) or 0
-    n = reg.claim("get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(W)} "
-                  f"and {q._in('territory_id', ok)}", "int")
+    n = None if mode == "projected" else reg.claim(
+        "get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(W)} and {q._in('territory_id', tc)}", "int")
     total = reg.claim("get_metric", "select count(*) from raw.dim_territory", "int")
-    pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope="like-for-like national")
+    scope = {"like_for_like": "like-for-like national", "all_reportable": "national over the territories reportable in the period",
+             "projected": "projected national"}[mode]
+    pct = reg.claim("get_metric", q.pct_change(cur, base), "pct1", scope=scope)
     if facts is not None:
-        facts["like"] = {"n": n, "total": total, "pct": pct, "word": stages.word(change)}
-    return f"Like for like on {n} of {total} territories, {p.brand_id} TRx is {stages.word(change)} {pct} against {comparison_text(p)}."
+        facts[key] = {"n": n, "total": total, "pct": pct, "word": stages.word(change), "basis": mode, "label": label}
+    if mode == "like_for_like":
+        return f"Like for like on {n} of {total} territories, {p.brand_id} {label} is {stages.word(change)} {pct} against {comparison_text(p)}."
+    if mode == "projected":
+        return (f"The projected national {p.brand_id} TRx is {stages.word(change)} {pct} against the projected national of "
+                f"{comparison_text(p)}.")
+    n_base = reg.claim("get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(B)} "
+                       f"and {q._in('territory_id', tb)}", "int", scope="territories reportable in the comparison weeks")
+    if facts is not None:
+        facts[key]["n_base"] = n_base
+    return (f"On the {n} of {total} territories reportable in these weeks, {p.brand_id} {label} is {stages.word(change)} {pct} against "
+            f"{comparison_text(p)}, when {n_base} of {total} were reportable.")
 
 
 def comparison_text(p) -> str:
@@ -269,12 +287,12 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
     if stories:
         s = min(stories, key=lambda s: _RANK.get(s["confidence"], 0))
         t = s["territory"]
-        x, b = q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id), q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id)
+        x, b = q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id, col=p.col), q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id, col=p.col)
         change = reg.scalar(q.pct_change(x, b)) or 0
         pct = reg.claim("get_metric", q.pct_change(x, b), "pct1", territory=t)
         return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}); its confidence, {s['confidence']}, "
                 "is the lowest of this brief's stories.")
-    if len(p.weeks) == 1 and p.baseline:
+    if len(p.weeks) == 1 and p.baseline and p.has("national"):
         w = p.weeks[0]
         prev = q.shift(w, -1)
         sql = q.pct_change(q.trx_sum([w], product=p.brand_id), q.trx_sum([prev], product=p.brand_id))
@@ -282,7 +300,7 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
         pct = reg.claim("get_metric", sql, "pct1", scope="week over week, reportable cuts")
         return (f"Least sure: the week-over-week change ({stages.word(change)} {pct}), "
                 "because it compares one week with one week.")
-    if p.ok and p.baseline:
+    if p.ok and p.baseline and p.has("national"):
         return "Least sure: the like-for-like change, the only change this brief states."
     return None
 
@@ -295,22 +313,28 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
     if restated:
         lines.append("Data note: an earlier week was restated. The new value and the reason are in The numbers.")
     W = proj.weeks
-    if proj.national is None:
-        lines.append("This period cannot be reported nationally: no territory's feed can be read.")
-    elif len(W) == 1:
-        lines.append(f"Projected national {p.brand_id} TRx is {proj.national} for the week of {W[0]}.")
+    facts["brand"] = p.brand_id
+    if not p.has("national"):
+        lines.append("National figures are not part of this brief: its levels leave them out.")
     else:
-        lines.append(f"Projected national {p.brand_id} TRx averaged {proj.national} a week from {W[0]} to {W[-1]}.")
-    facts["national"], facts["brand"] = proj.national, p.brand_id
-    lines.append(_like_for_like(reg, p, facts))
-    share = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct1", product=p.brand_id)
-    facts["share"] = share
-    lines.append(f"{p.brand_id} held {share} of the four-brand market basket.")
-    launched = launch_date(reg)
-    if launched is not None and launched <= W[-1] and p.brand_id == "BXA":
-        pre = [q.shift(launched, -i) for i in range(4, 0, -1)]
-        facts["pre"] = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct1", product=p.brand_id, weeks="before launch")
-        facts["share_word"] = stages.word((reg.scalar(q.share(W, p.brand_id)) or 0) - (reg.scalar(q.share(pre, p.brand_id)) or 0))
+        if proj.national is None:
+            lines.append("This period cannot be reported nationally: no territory's feed can be read.")
+        elif len(W) == 1:
+            lines.append(f"Projected national {p.brand_id} TRx is {proj.national} for the week of {W[0]}.")
+        else:
+            lines.append(f"Projected national {p.brand_id} TRx averaged {proj.national} a week from {W[0]} to {W[-1]}.")
+        facts["national"] = proj.national
+        lines.append(_like_for_like(reg, p, facts))
+        if p.also_nbrx:
+            lines.append(_like_for_like(reg, p, facts, col="nbrx", key="like_nbrx"))
+        share = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct1", product=p.brand_id)
+        facts["share"] = share
+        lines.append(f"{p.brand_id} held {share} of the four-brand market basket.")
+        launched = launch_date(reg)
+        if launched is not None and launched <= W[-1] and p.brand_id == "BXA":
+            pre = [q.shift(launched, -i) for i in range(4, 0, -1)]
+            facts["pre"] = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct1", product=p.brand_id, weeks="before launch")
+            facts["share_word"] = stages.word((reg.scalar(q.share(W, p.brand_id)) or 0) - (reg.scalar(q.share(pre, p.brand_id)) or 0))
     least = _least_sure(reg, p, proj, stories)
     if least:
         lines.append(least)
@@ -369,7 +393,8 @@ def assumptions(p, proj: Projection | None) -> list[str]:
     lines = ["Assumptions:", f"- Comparison weeks: {comparison_text(p)}. Source: {source}.{fewer}"]
     lines.append("- Like for like: changes use only territories whose feed passed the gate in every week compared. "
                  "Withheld cuts are left out of every change and story, and never read as zero demand."
-                 + (" Calendar weeks are left out of the stories." if p.calendar_note else "") + " Source: the feed gate.")
+                 + (" Calendar weeks are left out of the stories." if p.calendar_note else "") + " Source: the feed gate."
+                 + (f" {changed}" if (changed := definition.assumption_sentence(p.definition)) else ""))
     marked = [r.territory for r in proj.rows if r.basis != "observed"] if proj else []
     if marked:
         lines.append(f"- Not observed: {', '.join(q.name(t) for t in marked)} "
@@ -457,25 +482,38 @@ def _change_cell(change: dict | None) -> str:
 
 def territory_table(p, proj: Projection, facts: dict) -> dict | None:
     """The §2 territory table (brief-008 FR-001): TRx, the change on the comparison weeks and, for a one-week
-    period only (FR-011), the change on the week before. Values are claim tokens already in the detail."""
-    if proj.national is None:
+    period only (FR-011), the change on the week before. Values are claim tokens already in the detail. The measure
+    sets the level and change columns (new patients for NBRx, both side by side); a brief without the territory
+    level has no table."""
+    if proj.national is None or not p.has("territory"):
         return None
     single, changes = len(proj.weeks) == 1, {c["territory"]: c for c in facts.get("changes", [])}
     has_change = bool(p.baseline) and bool(changes)
-    columns = ["Territory", f"{p.brand_id} TRx" + ("" if single else " a week")]
+    nbrx_primary = p.col == "nbrx"
+    label = "new patients (NBRx)" if nbrx_primary else "TRx"
+    columns = ["Territory", f"{p.brand_id} {label}" + ("" if single else " a week")]
+    if p.also_nbrx:
+        columns.append(f"{p.brand_id} new patients (NBRx)" + ("" if single else " a week"))
     if has_change and single:
         columns.append("On the week before")
     if has_change:
         columns.append("On the comparison weeks")
+        if p.also_nbrx:
+            columns.append("New patients (NBRx), on the comparison weeks")
     columns.append("Basis")
     rows = []
     for r in proj.rows:
         c = changes.get(r.territory) or {}
-        cells = [q.name(r.territory), r.token]
+        level = (c.get("level_nbrx") or "not given") if nbrx_primary else r.token
+        cells = [q.name(r.territory), level]
+        if p.also_nbrx:
+            cells.append(c.get("level_nbrx") or "not given")
         if has_change and single:
             cells.append(_change_cell(c.get("wow")))
         if has_change:
             cells.append(_change_cell(c.get("base")))
+            if p.also_nbrx:
+                cells.append(_change_cell(c.get("nbrx")))
         rows.append({"cells": cells + [r.basis], "basis": r.basis})
     shown = {r.territory for r in proj.rows}
     for t in sorted(set(p.terrs) - shown, key=q.name):
@@ -485,9 +523,28 @@ def territory_table(p, proj: Projection, facts: dict) -> dict | None:
         notes.append(f"Change is against {comparison_text(p)}.")
         if any(not c["ok"] for c in changes.values()):
             notes.append("No change is given where a week compared failed the feed gate.")
+    if nbrx_primary:
+        notes.append("New patients (NBRx) are observed counts, so a projected or estimated territory shows none.")
     if any(r.basis != "observed" for r in proj.rows):
         notes.append("A projected or estimated level is an assumption, not an observed count.")
     return {"columns": columns, "rows": rows, "note": " ".join(notes) or None}
+
+
+def _avg_sentence(avg: dict, brand: str, lead: str = "Like for like, ") -> str:
+    """§2's sentence for the national average under the definition's territories (the pre-selected one is today's)."""
+    label = avg.get("label", "TRx")
+    basis = avg.get("basis", "like_for_like")
+    if basis == "projected":
+        return (f"The projected national {brand} TRx averaged {avg['avg']} a week, {avg['word']} {avg['pct']} against the projected national "
+                "of the comparison weeks." if avg.get("pct") else f"The projected national {brand} TRx averaged {avg['avg']} a week.")
+    if basis == "all_reportable":
+        base = f", when {avg['n_base']} of {avg['total']} were reportable" if avg.get("n_base") else ""
+        change = f", {avg['word']} {avg['pct']} against the comparison weeks{base}." if avg.get("pct") else "."
+        return f"For all reportable territories, {brand} {label} averaged {avg['avg']} a week across {avg['n']} of {avg['total']} territories reportable in these weeks{change}"
+    if avg.get("pct"):
+        return (f"{lead}{brand} {label} averaged {avg['avg']} a week across {avg['n']} of {avg['total']} territories, "
+                f"{avg['word']} {avg['pct']} against the comparison weeks.")
+    return f"{lead}{brand} {label} averaged {avg['avg']} a week across {avg['n']} of {avg['total']} territories."
 
 
 def numbers(proj: Projection, facts: dict, restatement_lines: list[str], p=None) -> dict:
@@ -497,16 +554,17 @@ def numbers(proj: Projection, facts: dict, restatement_lines: list[str], p=None)
     a territory, are the folded detail so the scored answer keeps every number."""
     lines = [scope_line(p, proj)] if p is not None else []
     brand = proj.brand_id
-    if proj.national is None:
+    if proj.national is None and not facts.get("no_national"):
         lines.append("No projected national is given: no territory in these weeks can be read.")
     avg = facts.get("avg")
-    if avg is None:
+    if facts.get("no_national"):
+        lines.append("National figures are not part of this brief: its levels leave them out.")
+    elif avg is None:
         lines.append("No like-for-like national figure is given: no territory passes the feed gate in every one of these weeks.")
-    elif avg.get("pct"):
-        lines.append(f"Like for like, {brand} TRx averaged {avg['avg']} a week across {avg['n']} of {avg['total']} territories, "
-                     f"{avg['word']} {avg['pct']} against the comparison weeks.")
     else:
-        lines.append(f"Like for like, {brand} TRx averaged {avg['avg']} a week across {avg['n']} of {avg['total']} territories.")
+        lines.append(_avg_sentence(avg, brand))
+        if facts.get("avg_nbrx"):
+            lines.append(_avg_sentence(facts["avg_nbrx"], brand))
     if (wow := facts.get("wow")):
         lines.append(f"Week over week, {brand} TRx is {wow['now']} against {wow['prev']} the week before ({wow['word']} {wow['pct']}).")
     if (both := facts.get("wow_both")):
@@ -518,9 +576,10 @@ def numbers(proj: Projection, facts: dict, restatement_lines: list[str], p=None)
         lines.append(facts["artifact"])
     lines += facts.get("calendar", []) + restatement_lines
     detail: list[str] = []
-    if proj.national is not None:
+    if proj.national is not None and (p is None or p.has("territory")):
         single, changes = len(proj.weeks) == 1, {c["territory"]: c for c in facts.get("changes", [])}
         marked = any(r.basis != "observed" for r in proj.rows)
+        nbrx = p is not None and p.col == "nbrx"
         detail.append("By territory, observed unless marked; a projected or estimated level is an assumption, not an "
                       "observed count." if marked else "By territory, all observed.")
         for r in proj.rows:
@@ -534,7 +593,14 @@ def numbers(proj: Projection, facts: dict, restatement_lines: list[str], p=None)
                 elif single:
                     parts.append("the week-over-week change is withheld")
                 parts.append(f"{c['base']['word']} {c['base']['token']} on the comparison weeks")
-            detail.append(f"{q.name(r.territory)}: {r.token} {brand} TRx a week{_label(r, single)}" + (f"; {'; '.join(parts)}." if parts else "."))
+                if c.get("nbrx"):
+                    parts.append(f"new patients (NBRx) {c['nbrx']['word']} {c['nbrx']['token']} on the comparison weeks")
+            if nbrx:
+                level = (c or {}).get("level_nbrx")
+                detail.append(f"{q.name(r.territory)}: {level or 'no count'} {brand} new patients (NBRx) a week" + (f"; {'; '.join(parts)}." if parts else "."))
+                continue
+            also = f" ({c['level_nbrx']} {brand} new patients (NBRx) a week)" if c and c.get("level_nbrx") else ""
+            detail.append(f"{q.name(r.territory)}: {r.token} {brand} TRx a week{_label(r, single)}{also}" + (f"; {'; '.join(parts)}." if parts else "."))
     return {"lines": lines, "detail": detail, "territory_table": territory_table(p, proj, facts) if p is not None else None}
 
 
@@ -542,22 +608,37 @@ def numbers(proj: Projection, facts: dict, restatement_lines: list[str], p=None)
 
 def kpis(p, proj: Projection, facts: dict) -> list[dict]:
     """The §1 KPI strip, in order: national TRx, the like-for-like change, the basket share, territories
-    reportable. Each value is a claim already in §1's text; a tile with no claim behind it is left out."""
+    reportable. Each value is a claim already in §1's text; a tile with no claim behind it is left out. A new-patients
+    brief (NBRx) shows the NBRx level and change; both shows the NBRx tiles beside the TRx ones."""
     W, tiles = proj.weeks, []
-    if facts.get("national"):
+    like, like_n = facts.get("like"), facts.get("like_nbrx")
+    nbrx_only = p.col == "nbrx"
+    if nbrx_only:
+        avg = facts.get("avg")
+        if avg and avg.get("avg"):
+            tiles.append({"label": f"National {p.brand_id} new patients (NBRx)", "value": avg["avg"],
+                          "detail": "a week, like for like" if len(W) > 1 else "like for like", "direction": None})
+    elif facts.get("national"):
         when = f"projected, week of {W[0]}" if len(W) == 1 else f"projected, a week, {W[0]} to {W[-1]}"
         tiles.append({"label": f"National {p.brand_id} TRx", "value": facts["national"], "detail": when, "direction": None})
-    like = facts.get("like")
+    if p.also_nbrx and (avg := facts.get("avg_nbrx")) and avg.get("avg"):
+        tiles.append({"label": f"National {p.brand_id} new patients (NBRx)", "value": avg["avg"], "detail": "a week, like for like",
+                      "direction": None})
     if like:
-        tiles.append({"label": "Change on the comparison weeks", "value": like["pct"],
-                      "detail": f"like for like, against {comparison_text(p)}", "direction": like["word"]})
+        basis = like.get("basis", "like_for_like")
+        how = {"like_for_like": "like for like", "all_reportable": "all reportable territories", "projected": "projected national"}[basis]
+        tiles.append({"label": "Change on the comparison weeks" if not nbrx_only else "Change in new patients (NBRx)",
+                      "value": like["pct"], "detail": f"{how}, against {comparison_text(p)}", "direction": like["word"]})
+    if like_n:
+        tiles.append({"label": "Change in new patients (NBRx)", "value": like_n["pct"],
+                      "detail": f"like for like, against {comparison_text(p)}", "direction": like_n["word"]})
     if facts.get("share"):
         tiles.append({"label": f"{p.brand_id} basket share", "value": facts["share"],
                       "detail": "of the four-brand basket" + (f", against {facts['pre']} before launch" if facts.get("pre") else ""),
                       "direction": facts.get("share_word")})
-    if like:
-        tiles.append({"label": "Territories reportable", "value": like["n"], "detail": f"of {like['total']}, like for like",
-                      "direction": None})
+    if like and like.get("n"):
+        detail = f"of {like['total']}, like for like" if like.get("basis", "like_for_like") == "like_for_like" else             f"of {like['total']} in these weeks, and {like['n_base']} in the comparison weeks"
+        tiles.append({"label": "Territories reportable", "value": like["n"], "detail": detail, "direction": None})
     return tiles
 
 
@@ -577,12 +658,22 @@ def driver_calls(checks) -> tuple[list[str], list[str]]:
 
 
 def story_card(name: str, facts: dict, confidence: str, drivers: list[str], *, territory: str | None = None,
-               checks=()) -> dict:
+               checks=(), measure: str = "trx") -> dict:
     """A territory story's card: the headline from the head's own claims, the confidence, the drivers checked, and
-    (core-011) the territory id, its own direction and the drivers the checks supported or ruled out, all by code."""
-    peers = {"up": f"up {facts['peer_pct']}", "down": f"down {facts['peer_pct']}"}.get(facts["peer_word"], f"flat ({facts['peer_pct']})")
+    (core-011) the territory id, its own direction and the drivers the checks supported or ruled out, all by code.
+    The headline says what the change is set against (the other territories, national, or nothing)."""
     supported, ruled_out = driver_calls(checks)
-    return {"headline": f"{name} {_verb(facts['word'], facts['pct'])} on the comparison weeks, while the other territories were {peers}.",
+    kind = facts.get("relative", "other_territories")
+    subject = f"{name} new patients (NBRx)" if measure == "nbrx" else name
+    if kind == "none" or facts.get("peer_word") is None:
+        tail = "."
+    else:
+        peers = {"up": f"up {facts['peer_pct']}", "down": f"down {facts['peer_pct']}"}.get(facts["peer_word"], f"flat ({facts['peer_pct']})")
+        tail = f", while {'national' if kind == 'national' else 'the other territories'} were {peers}.".replace("national were", "national was")
+    headline = f"{subject} {_verb(facts['word'], facts['pct'])} on the comparison weeks{tail}"
+    if facts.get("nbrx_pct"):
+        headline += f" New patients (NBRx) {_verb(facts['nbrx_word'], facts['nbrx_pct'])}."
+    return {"headline": headline,
             "confidence": confidence, "drivers_checked": [DRIVER_NAMES.get(d, d) for d in drivers],
             "territory": territory, "direction": facts["word"], "drivers_supported": supported, "drivers_ruled_out": ruled_out, "cut": None}
 
