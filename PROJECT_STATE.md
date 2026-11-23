@@ -2,6 +2,17 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-23 (afternoon), demo polish for the Briefing form and runs in progress (Michael, Claude Opus with two Sonnet packets)._
+- Branch `feature/ui-demo-polish` (frontend, realm names, specs; no metric code changed):
+  - Accent is teal: `primary` #2a8c7c for fills, focus and selection; a new `primaryink` #45b8a3 for accent text, because #2a8c7c is 4.1:1 on panels. Logo, favicon, Keycloak theme and the API's sign-in pages follow; DESIGN.md updated.
+  - Form: Territories counted, Measure and Relative to show a Main choice plus "Also show beside it" (brief-010 FR-000e). Grain is plain checkboxes with a description each, because the server ignores grain order. "Compare with" is one row layout whose first option is the default.
+  - One question box: the bottom bar reads the question and fills the form, and the analyst presses Generate (brief-006 FR-002, brief-008 FR-008). The form's question box and the bar's "start an agent brief" path are gone. The bar now stays pinned to the bottom.
+  - Runs in progress: the New briefing tab returns to the running or finished run; other tabs show one status line; the sidebar shows a dot on a lane with something running. An approved brief opens in its own view and no longer drops a running brief. The Forecast workspace stays mounted, so its scope card and open run survive tab and lane switches.
+  - Names: realm accounts and dev stand-ins are Ace (analyst, both lanes), Diana (Brand Director), Miranda (Brand Manager) and Tester, with no "UAT". The greeting reads "Good afternoon, Ace." (brief-008 FR-012 note).
+- Checks: `tsc` and the Vite build pass; 159 focused tests pass (auth, feedback, rbac, brand access, deploy, frontend scope, classification). A Playwright walk on the running app (dev sign-in, Haiku agent) passed with no page errors: question read fills "previous 8 weeks" and the August period; status line and return to the run after Overview, Approved briefings and the Forecast lane; an approved brief opened mid-run keeps the run; Forecast scope card and run kept across lane and sub-tab switches; the chip and greeting say "Ace" and "Tester".
+- Not done: `/code-review`; Bombadil. The hosted Keycloak still shows the old realm ("PharmAgentics UAT", default theme) until `deploy/gcp.py keycloak` is run (Keycloak is deployed by hand). Locally, `docker compose up --build` re-imports the realm.
+- Handoff: `conversations/2026-11-23-ui-demo-polish.md`.
+
 _2026-11-23, UI refresh ready for review: Positivus dark theme, element-tile logo, accessibility pass (Claude Opus, Sonnet and Haiku packets)._
 - Branch `feature/ui-refresh` (frontend and docs only; no Python changed):
   - Michael compared three live directions and picked "Positivus dark": lime #b9ff66 on near-black, Space Grotesk headings, chunky controls with hard offset shadows.
