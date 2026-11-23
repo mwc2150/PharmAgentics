@@ -101,6 +101,10 @@ button:hover{background:#101117}
 button:active{transform:translateY(2px);box-shadow:0 1px 0 #3a3e58}
 button:focus-visible{outline:2px solid #3ecfb2;outline-offset:2px}
 small{display:block;margin-top:2px;color:#a6aabf;font-size:12px;font-weight:400}
+a.go{display:inline-block;margin-top:22px;padding:11px 20px;border-radius:12px;background:#3ecfb2;color:#0b0c10;font-weight:600;
+  text-decoration:none;box-shadow:0 4px 0 #1f7a68}
+a.go:hover{background:#62dbc3}
+a.go:focus-visible{outline:2px solid #f3f3f3;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){button{transition:none}button:active{transform:none}}
 """
 
@@ -154,22 +158,44 @@ async def dev_login(request: Request, username: str = Form(...)):
 async def callback(request: Request):
     if mode() != "oidc":
         raise HTTPException(status_code=404)
-    token = await _client().authorize_access_token(request)  # validates the ID token (issuer, audience, signature, nonce)
+    try:
+        token = await _client().authorize_access_token(request)  # validates the ID token (issuer, audience, signature, nonce)
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001 - a stale or doubled sign-in page (mismatching state), an expired code, a Keycloak error
+        logger.warning("Sign-in callback failed; offering a fresh sign-in", exc_info=True)
+        request.session.clear()
+        return _page("Sign-in did not finish", """<h1>Sign-in did not finish</h1>
+<p>The sign-in page was out of date, perhaps open in another tab or reached with the back button. Nothing was lost.</p>
+<a class="go" href="/auth/login">Sign in again</a>""", status_code=400, headers={"Cache-Control": "no-store"})
     claims = token.get("userinfo") or {}
     _set_user(request, claims["sub"], claims.get("name") or claims.get("preferred_username", ""), list(claims.get("roles", [])))
-    request.session["id_token"] = token.get("id_token")
     return RedirectResponse("/", status_code=303)
 
 
 @router.get("/auth/logout", include_in_schema=False)
 async def logout(request: Request):
-    id_token = request.session.get("id_token")
     request.session.clear()
     if mode() != "oidc":
         return RedirectResponse("/", status_code=303)
     client = _client()
-    metadata = await client.load_server_metadata()
-    params = {"post_logout_redirect_uri": str(request.base_url), "client_id": client.client_id}
-    if id_token:
-        params["id_token_hint"] = id_token
+    try:
+        metadata = await client.load_server_metadata()
+    except Exception:  # noqa: BLE001 - Keycloak unreachable: the app session is already gone, which is the sign-out
+        logger.warning("Sign-in service unreachable at sign-out", exc_info=True)
+        return RedirectResponse("/auth/signed-out", status_code=303)
+    # No id_token_hint: Keycloak keeps no database and makes new signing keys whenever it wakes from idle, so a
+    # token from before then is refused ("invalid_token") and the person was left on its error page (2026-11-23).
+    # Without the hint Keycloak asks "Do you want to log out?" once, then returns to the signed-out page.
+    params = {"post_logout_redirect_uri": f"{str(request.base_url).rstrip('/')}/auth/signed-out", "client_id": client.client_id}
     return RedirectResponse(f"{metadata['end_session_endpoint']}?{urlencode(params)}", status_code=303)
+
+
+@router.get("/auth/signed-out", include_in_schema=False)
+async def signed_out(request: Request):
+    """Where sign-out ends: a page that waits, so the next sign-in starts fresh and may use another account."""
+    if request.session.get("user"):
+        return RedirectResponse("/", status_code=303)
+    return _page("Signed out", """<h1>You are signed out</h1>
+<p>Sign in again with the same account or another one.</p>
+<a class="go" href="/auth/login">Sign in</a>""", headers={"Cache-Control": "no-store"})

@@ -79,6 +79,20 @@ app.add_middleware(
     SessionMiddleware, secret_key=_secret, session_cookie="pa_session", max_age=8 * 3600,
     same_site="lax", https_only=bool(os.environ.get("K_SERVICE") or os.environ.get("PHARMAGENTICS_SECURE_COOKIES")),
 )
+
+
+@app.middleware("http")
+async def _ui_cache(request: Request, call_next):
+    """The UI page is revalidated on every load, so a deploy shows at once; the built files under /assets carry a
+    content hash in their names, so a browser may keep them for good. Without a header a browser guesses, and kept
+    showing the previous release for hours after a deploy (2026-11-23)."""
+    response = await call_next(request)
+    if "cache-control" not in response.headers:
+        if request.url.path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif response.headers.get("content-type", "").startswith("text/html"):
+            response.headers["Cache-Control"] = "no-cache"
+    return response
 app.include_router(auth.router)
 app.include_router(feedback.router)  # UAT feedback (core-008)
 app.include_router(classification.router)  # data classification labels (core-009)

@@ -224,6 +224,7 @@ The Forecast lane's roles are defined now so that the Forecast view can plug in 
 - **FR-013**: Accounts, roles and sign-in settings MUST be reloaded from versioned configuration at every start of the sign-in service. Passwords and client secrets MUST come from a secret store, never from the repository.
 - **FR-014**: A user with no role, or a role not listed in FR-001, MUST see no data.
 - **FR-015**: The sign-in service MUST be the free open-source edition of Keycloak, with no paid subscription or paid add-on.
+- **FR-015a** (2026-11-23): Signing out MUST end the app session even when the sign-in service has restarted since sign-in (it keeps no database and makes new signing keys at each start, so the sign-out request carries no ID token hint) and MUST end on a page that offers a fresh sign-in. A sign-in that cannot complete (a stale or doubled sign-in page, an expired code) MUST clear the session and offer to sign in again, never a server error. The UI page MUST be revalidated on every load, so a deploy is seen at once.
 
 **Hosting and cost**
 
