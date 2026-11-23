@@ -143,7 +143,7 @@ function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
           </tr>
         </thead>
         <tbody>{t.rows.map(r => <tr key={r.case} className="border-t border-rule">
-          <th scope="row" title={r.persona || undefined} className="sticky left-0 bg-sheet px-5 py-2 text-left font-normal"><span className="whitespace-nowrap tabular-nums">{r.case}<span className="text-muted"> · {r.story}</span></span>
+          <th scope="row" title={r.persona ? `Asked by ${r.persona.replace(/^(P[1-4]|CA|BM)\s+/, "")}` : undefined} className="sticky left-0 bg-sheet px-5 py-2 text-left font-normal"><span className="whitespace-nowrap tabular-nums">{r.case}</span>
             {r.below?.map(b => <span key={b.scorer} className="block max-w-xs text-xs text-amber">{belowText(b)}</span>)}</th>
           {cols.map(k => <td key={k} className={`px-3 py-2 text-right tabular-nums${edge(k)}`}><CaseScore v={r.scores[k]} stuck={r.stuck.includes(k)} worse={r.fallen.find(f => f.scorer === k)} lost={k === "numbers_lost"} unit={t.units?.[k]}/></td>)}
         </tr>)}</tbody>
