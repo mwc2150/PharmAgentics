@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from . import queries as q
 from .brands import briefing_brand
-from .checks import access_events, launch_date
+from .checks import access_events, check_competitor_national, launch_date
 from .registry import Registry
 from .window import Comparison, comparison_weeks, parse
 
@@ -363,6 +363,26 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
             f"while the other territories were {word(peer)} {peer_pct}.")
 
 
+def _national_reading(reg: Registry, p: Period) -> dict:
+    """What the national competitor card reads off the comparison weeks (brief-010 FR-006): the competitor check's
+    verdict, each measure's direction (share points and TRx, inside the house flat band). Directions only, no number is
+    stated, so no claim is added. Empty `directions` when the brief has no comparison weeks."""
+    W, B = p.weeks, p.baseline
+    out: dict = {"check": check_competitor_national(reg, W), "directions": {}}
+    if not B:
+        return out
+    for key, product in (("bxa_share", p.brand_id), ("competitor_share", "BXE")):
+        now, then = reg.scalar(q.share(W, product)), reg.scalar(q.share(B, product))
+        if now is None or then is None:
+            continue
+        out["directions"][key] = word(now - then)
+    if p.ok:
+        change = reg.scalar(q.pct_change(q.mean_weekly(W, terrs=p.ok, product=p.brand_id), q.mean_weekly(B, terrs=p.ok, product=p.brand_id)))
+        if change is not None:
+            out["directions"]["trx"] = word(change)
+    return out
+
+
 def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora", facts: dict | None = None) -> str | None:
     """Metacora (BXE) as a continuing story: weeks since launch, direction, and the basket shares."""
     W = p.weeks
@@ -383,6 +403,7 @@ def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora
     bxa_pre = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct1", product=p.brand_id, weeks="before launch")
     if facts is not None:
         facts.update(bxe=bxe, bxa=bxa, pre=bxa_pre)
+        facts.update(_national_reading(reg, p))
     return (f"{lead} (launched {launched}). This is a continuing story, week {since} since launch, {direction}. "
             f"Metacora held {bxe} of the four-brand basket and {p.brand_id} held {bxa}, against {bxa_pre} for {p.brand_id} in the four weeks before launch. "
             f"Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers. Next: involve marketing and sales.")

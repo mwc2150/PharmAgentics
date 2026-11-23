@@ -209,7 +209,8 @@ def _cut(value) -> str | None:
 
 def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[str]]:
     """(points, possible, notes) for one expected finding. A finding with a cut is met only by a card with the same
-    territory and cut; a finding without one only by a card with no cut (core-011 FR-017)."""
+    territory and cut; a finding without one only by a card with no cut (core-011 FR-017). A finding with a `measure`
+    reads the card's direction for that measure from `directions`; without one, from `direction`."""
     same_territory = [c for c in cards if _territory(c["territory"]) == _territory(finding["territory"])
                       and _cut(c.get("cut")) == _cut(finding.get("cut"))]
     if finding.get("withheld"):
@@ -219,8 +220,12 @@ def _finding_points(finding: dict, cards: list[dict]) -> tuple[int, int, list[st
     possible = 1 + len(supported) + len(ruled_out)
     where = finding["territory"] + (f" ({finding['cut']})" if _cut(finding.get("cut")) else "")
     best, notes = 0, [f"{finding['id']}: no {direction or 'any'}-direction card for {where}"]
+    measure = finding.get("measure")
     for card in same_territory:
-        if direction is not None and card.get("direction") != direction:
+        # A finding names the measure its direction belongs to (trx, nbrx, bxa_share, competitor_share); a card
+        # states each in `directions`. No measure: the card's own `direction`, as before (brief-010 FR-006).
+        seen = (card.get("directions") or {}).get(measure) if measure else card.get("direction")
+        if direction is not None and seen != direction:
             continue
         have_s, have_r = card.get("drivers_supported") or [], card.get("drivers_ruled_out") or []
         points = 1 + sum(d in have_s for d in supported) + sum(d in have_r for d in ruled_out)

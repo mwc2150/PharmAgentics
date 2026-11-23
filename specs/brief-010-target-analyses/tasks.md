@@ -34,8 +34,8 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [ ] R3 Tests; scripted run and gate; P1-Q1, P2-Q5, P3-Q6 rise.
 
 ## Packet N: national card (FR-006)
-- [ ] N1 `competitor_card` becomes a national card: territory NATIONAL, direction from the share change (house flat band), competitor supported from the check.
-- [ ] N2 Tests; scripted run and gate; P1-Q5, P3-Q4 findings rise.
+- [x] N1 `competitor_card` becomes a national card: territory NATIONAL, direction from the share change (house flat band), competitor supported from the check.
+- [x] N2 Scorer reads the card direction for the finding's `measure` (`directions`), with tests. (The scripted run and gate are the integration packet's.)
 
 ## Integration (Opus)
 - [ ] I1 After the last packet: full suite, scripted gate, SC-001 (targets met, `over_word_budget` 0).
