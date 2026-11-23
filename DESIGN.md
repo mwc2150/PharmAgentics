@@ -23,7 +23,7 @@ Tokens (Tailwind `@theme`; use as `bg-primary`, `text-muted`, `border-edge`). Th
 | `primarydeep` | #1f7a68 | Hard shadow under the primary button and under the logo tile | shadow, decorative |
 | `primarybg` | #0f2622 | Current sidebar row, hovered citation | `ink` 14.3:1 |
 | `onprimary` | #0b0c10 | Text on seafoam fills (button, highlight block, active view switch, selection) | 10.0:1 on `primary` |
-| `ok` / `okbg` | #8ab4f8 / #14233f | Verified and approved, always with a word or a check mark | 7.4:1 |
+| `ok` / `okbg` | = `primary` / `primarybg` (seafoam, since 2026-11-23) | Verified, approved and "good", always with a word or a check mark | 8.6:1 |
 | `amber` | #e3b47d | Warnings only: the text, icon and title of a warning, ochre; never a fill | 8.9:1 on `sheet`, 10.0:1 on `paper` |
 | `amberline` | #7f6852 | The hairline border of a warning (ochre at 50% over `sheet`) | border only |
 | `amberbg` | #2d2209 | Deprecated: no tinted fills; kept so other branches resolve | not used |
@@ -42,7 +42,7 @@ Every text pair clears WCAG AA (4.5:1), and control borders and focus rings clea
 - One seafoam block per view section: the greeting at the top of a workspace, and the top-level heading of each memo section (`.pa-mark`, `onprimary` text, 8px radius, `box-decoration-break: clone` so a wrapped heading keeps its block). Sub-sections (§3.1 and below) stay plain text with a 2px `rule` bar on the left.
 - The one data series of a chart, and the filled dot for a material change (hollow = not material).
 - Status: a label that is not a problem is neutral (`text-muted` or `text-ink`; no colour, no fill). A warning or an error is a `Notice` (`agent/primitives.tsx`): a 1px hairline border (`amberline` or `negline`), a leading icon, a title in `amber` or `neg`, body in `ink`, on `sheet`. Never a tinted fill, never a bar down one side. A bare ochre or red line of text is for a validation message or a one-word caveat, not a box.
-- Seafoam never means state. Approved, warning, adverse, paused and rejected come from `ok`, `amber`, `neg`, `warn` and always carry a word.
+- Seafoam means the accent and success (approved, verified, good) and nothing else. Warning, adverse, paused and rejected come from `amber`, `neg`, `warn`; every state carries a word or a mark.
 
 ## Type
 
@@ -109,6 +109,6 @@ Avatar circles with initials, coloured badge pills with icons, tinted and ringed
 
 - Seafoam as decoration: a seafoam border, icon, divider or chart fill that carries no action, selection or link.
 - Seafoam on more than one block per view section (a second highlighted heading, a seafoam panel header, a seafoam tile beside the greeting).
-- Seafoam for state (approved, warning, adverse, paused); use `ok`, `amber`, `neg`, `warn` with a word.
+- Seafoam for a problem state (warning, adverse, paused); use `amber`, `neg`, `warn` with a word. Success uses `ok`, which is seafoam.
 - Blurred shadows and glows on solid panels, buttons and tiles; the offset slab is the only depth.
 - Meaning carried by colour alone.

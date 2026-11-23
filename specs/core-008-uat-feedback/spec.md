@@ -12,6 +12,10 @@ core-007 (UAT deployment) records what people do: timings, approvals, flagged cl
 
 ## Clarifications
 
+### Session 2026-11-23
+
+- Q (Michael, demo review): The feedback box under each answer is bulky and repeats the mistakes notice. → A: **One small card on top of the question bar, one question at a time.** First "Was this answer right?" (thumbs, then an optional note); then, for an agent answer when the session has no rating yet, "How is the agent team working for you this session?" (good, fine, bad, then an optional note). The card closes when both are done or when dismissed, and stays closed for that answer in the tab. Where a page has no question bar (the Brand Director's list, the Forecast lane) the card floats at the bottom of the window. The card no longer repeats the mistakes notice: the page footer shows it once on every page. Votes and ratings are stored as before. Good is seafoam, fine ochre, bad red.
+
 ### Session 2026-11-19
 
 - Q (planning session, later the same day): How should feedback improve the agents? → A: **A semi-autonomous loop where the system proposes and people promote** (`docs/adr/0003`). `python -m eval improve`, run on demand or nightly, reads new votes, comments and saved threads (brief-006); drafts lessons for the knowledge base and draft golden cases (downvotes and upvotes, follow-up turns included) with Claude Haiku; reruns each flagged question with each draft lesson; and runs `eval gate`. A lesson is confident only when the rerun no longer shows the reported problem, the gate shows no regression, and the lesson holds no numbers or unapproved terms; anything else is flagged to a reviewer with its reason. A person approves every promotion on a "Feedback review" tab of the Evaluation page (tester admin login only; see Session 2026-11-20): approving a lesson queues it, and `python -m eval promote` puts it on a branch adding it to `agents/brand-briefing/knowledge/lessons.yaml` for a pull request; approving a case adds a draft golden case for labelling. Code and prompt changes are never automatic; they become issues. Postgres testing is a named open item for later.
@@ -111,7 +115,7 @@ The team or the mentor edits one file to reword, add or remove questions. A malf
 
 ### User Story 5 - Rate one answer: thumbs up or down (Priority: P1)
 
-Under every brief and every Forecast explanation, in the analyst and the leadership view, a participant clicks thumbs up or thumbs down and may say why. Clicking the other thumb changes the vote; the comment can be edited.
+Under every brief and every Forecast explanation, in the analyst and the leadership view, a participant clicks thumbs up or thumbs down and may say why. (Since 2026-11-23 the question is a card on top of the question bar that closes once answered; the stored vote can still be replaced through the API, but the card no longer offers a change.)
 
 **Why this priority**: A session rating says how the visit went; it does not say which answer was wrong. Per-answer votes are what can turn into test cases.
 
@@ -157,7 +161,7 @@ An owner downloads the feedback folder and runs `python -m eval candidates`. Eac
 
 - **FR-001**: Any signed-in participant holding a role in either lane MUST be able to submit a session rating of good, fine or bad, with an optional note of at most 300 characters and the workspace they were in. Everyone else MUST be refused before validation (401 signed out, 403 no role).
 - **FR-002**: A session is one sign-in. The report MUST count each session once, by its last rating, and MUST keep every submission in the stored history.
-- **FR-003**: Every generated brief and Forecast explanation MUST offer the session rating beside the per-answer vote, showing the current rating once given and allowing a change. Signing out MUST NOT ask for a rating.
+- **FR-003**: Every generated agent brief and Forecast explanation MUST offer the session rating after the per-answer vote, in the same card, while the session has no rating. Signing out MUST NOT ask for a rating. (Amended 2026-11-23: one question at a time; the card no longer shows the current rating or offers a change.)
 - **FR-004**: The platform questionnaire MUST be defined in one versioned file with question types (agreement 1 to 5, recommend 0 to 10, choice, multiple choice, text), served by the API, and validated on submit: known questions, the right kind of value, allowed options, text length limits. Blank answers MUST be dropped, and a submission with no answers MUST be refused.
 - **FR-005**: The questionnaire MUST include the ten System Usability Scale statements. The SUS score MUST be computed by code (positive statements score the answer minus 1, negative ones 5 minus the answer, summed and multiplied by 2.5) and stored only when all ten were answered.
 - **FR-006**: A participant MUST have at most one stored questionnaire (sending again replaces it) and MUST be able to read back their own answers and nobody else's.
@@ -171,7 +175,7 @@ An owner downloads the feedback folder and runs `python -m eval candidates`. Eac
 - **FR-014**: The app MUST store one vote per participant, answer and view (a new vote replaces the old), holding the pseudonymous participant ID, roles, personas, lane, answer ID, view, vote, comment, scope, engine, data version, the text shown, a timestamp, the app version and the number of updates, and MUST let the participant read back their own vote and nobody else's.
 - **FR-015**: The report (FR-011) MUST count votes by lane, engine and view, and list every downvote with its comment.
 - **FR-016**: `python -m eval candidates --state-dir DIR` MUST write one draft case per voted answer under the git-ignored `eval/candidates/<lane>/`, MUST NOT overwrite an existing draft without `--force`, and MUST NOT write to `eval/golden/`. A draft MUST NOT carry facts or a reference answer: a person writes those.
-- **FR-017**: Every generated brief and Forecast explanation, in both views, MUST show one line saying PharmAgentics can make mistakes and that important figures should be checked (against the evidence for an analyst, with the Commercial Analyst for a leader).
+- **FR-017**: Every page that shows a generated brief or Forecast explanation, in both views, MUST show one line (the page footer, since 2026-11-23) saying PharmAgentics can make mistakes and that important figures should be checked (against the evidence for an analyst, with the Commercial Analyst for a leader).
 - **FR-018**: Any participant with a role MUST be able to send a free-text suggestion for the platform (1 to 1000 characters, a topic of briefing, forecast, agent, design or other) from the sidebar; each is stored under `feedback/comment/` with the pseudonymous ID and listed in the report. The session rating (FR-003) appears only under agent-team answers.
 - **FR-019**: `python -m eval improve` MUST read new votes, comments and saved threads, draft lessons and draft golden cases, rerun each flagged question with each draft lesson, run `eval gate`, and write the proposals with their results to a review list. It MUST live in `eval/`; the knowledge base it proposes to MUST live outside `eval/` (`agents/brand-briefing/knowledge/`), so agents keep never reading `eval/`.
 - **FR-020**: A lesson MUST be marked confident only when the rerun no longer shows the reported problem, the gate shows no regression, and it holds no digit and no unapproved term; every other proposal MUST be flagged with its reason.

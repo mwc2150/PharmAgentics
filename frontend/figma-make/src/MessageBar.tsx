@@ -27,7 +27,7 @@ function TurnView({turn, briefId, mine, onCite, onOpenEvidence, onOfferScope}: {
       {offer && offer.week && onOfferScope && <button type="button" onClick={() => onOfferScope(offer)} className="mt-2 text-xs font-medium text-primaryink hover:underline">
         {offer.choose_comparison ? "Set up a brief with a new comparison" : <>Generate a brief for {offer.brand} · {(offer.territory ?? "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} · week of {offer.week}</>}</button>}
     </div>
-    {mine && <AnswerFeedback lane="briefing" refId={`${briefId}:t${turn.n}`} view="analyst" agent={turn.n === 3}/>}
+    {mine && <AnswerFeedback inline lane="briefing" refId={`${briefId}:t${turn.n}`} view="analyst" agent={turn.n === 3}/>}
   </li>
 }
 

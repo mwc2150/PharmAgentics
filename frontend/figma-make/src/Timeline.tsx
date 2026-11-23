@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import type { Claim, RunEvent } from "./agent/briefingApi"
+import { Icon } from "./agent/primitives"
 
 // brief-009 FR-004: the timeline of how a brief was built. It reads the run's event log (plan.md): live from the job's
 // `progress` while the brief builds, then from the brief's saved `events`. Findings link to the claims they produced
@@ -96,9 +97,11 @@ function Row({ e, claims, onJump }: { e: RunEvent, claims?: Claim[], onJump: (c:
   </li>
 }
 
-export function Timeline({ events, claims, live = false, titles, onOpenSource }: {
-  events: RunEvent[], claims?: Claim[], live?: boolean, titles?: Record<string, string>, onOpenSource?: (evidenceId: string) => void
+// `collapsed`: start folded to its header line (an approved brief, where the memo is what the reader came for).
+export function Timeline({ events, claims, live = false, titles, onOpenSource, collapsed = false }: {
+  events: RunEvent[], claims?: Claim[], live?: boolean, titles?: Record<string, string>, onOpenSource?: (evidenceId: string) => void, collapsed?: boolean
 }) {
+  const [shut, setShut] = useState(collapsed)
   const groups = useMemo(() => groupEvents(events, titles), [events, titles])
   const [open, setOpen] = useState<Record<string, boolean>>({})  // "<group>|<actor>" unfolded
   const last = events.length ? events.reduce((a, b) => b.seq > a.seq ? b : a) : null
@@ -106,15 +109,17 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource }:
   const checks = countChecks(events)
   return <section aria-label="How this brief was built" className="rounded-xl border border-rule bg-sheet px-6 py-5">
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-      <h3 className="text-sm font-semibold">{live ? "Building the brief" : "How this brief was built"}</h3>
+      {collapsed ? <h3 className="text-sm font-semibold"><button type="button" aria-expanded={!shut} aria-controls="timeline-steps" onClick={() => setShut(v => !v)} className="flex items-center gap-1.5 hover:text-primaryink">
+        <Icon name="chevronRight" className={`h-4 w-4 transition-transform duration-200 ${shut ? "" : "rotate-90"}`}/>How this brief was built</button></h3>
+        : <h3 className="text-sm font-semibold">{live ? "Building the brief" : "How this brief was built"}</h3>}
       <span className="text-xs text-muted">{events.length} step{events.length === 1 ? "" : "s"}{checks ? ` · ${checks} check${checks === 1 ? "" : "s"}` : ""}{produced ? ` · ${produced} number${produced === 1 ? "" : "s"} produced` : ""}</span>
     </div>
     {live && <p role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-xs text-muted">
       <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-primary pa-pulse"/>
       {last ? `Now: ${last.actor}, ${last.step.toLowerCase()}` : "Waiting for the first step…"}
     </p>}
-    {!events.length && !live && <p className="mt-3 text-sm text-muted">No steps were recorded for this brief.</p>}
-    <div className="mt-2 divide-y divide-rule">
+    {!shut && !events.length && !live && <p className="mt-3 text-sm text-muted">No steps were recorded for this brief.</p>}
+    <div id="timeline-steps" hidden={shut} className="mt-2 divide-y divide-rule">
       {groups.map(g => {
         const seen: Record<string, number> = {}
         const hidden: Record<string, number> = {}

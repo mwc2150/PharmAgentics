@@ -2,6 +2,14 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-23 (evening), demo polish round 3 (Michael, Claude Opus)._
+- PR #28 (demo polish) merged to `main` (d86e7c2) and deployed by CI. Branch `feature/ui-demo-polish-2` (frontend and specs only):
+  - Answer feedback is one card on top of the question bar, one question at a time: "Was this answer right?" (thumbs, then an optional note), then, for an agent answer when the session has no rating, the session rating (then an optional note). It closes when done or dismissed. Pages with no bar (the Brand Director's list, Forecast) float it at the bottom of the window. The repeated mistakes notice is gone from the card; the page footer keeps it (core-008 clarification 2026-11-23, FR-003 and FR-017 amended).
+  - `ok` is seafoam (was soft blue): Approved, verified and "Good" share the accent. "Fine" is ochre, "Bad" red (DESIGN.md).
+  - "How this brief was built" starts folded on an opened approved brief.
+- Checks: `tsc` passes; a Playwright walk on the running app (dev sign-in) checked the folded timeline, the vote, note and session steps, the solid stack over the bar, and no page errors.
+- Handoff: `conversations/2026-11-23-ui-demo-polish.md` (round 3).
+
 _2026-11-23 (afternoon), demo polish for the Briefing form and runs in progress (Michael, Claude Opus with two Sonnet packets)._
 - Branch `feature/ui-demo-polish` (frontend, realm names, specs; no metric code changed):
   - Accent changed from lime (first teal #2a8c7c, then seafoam; see Round 2). Logo, favicon, Keycloak theme and the API's sign-in pages follow; DESIGN.md updated.
