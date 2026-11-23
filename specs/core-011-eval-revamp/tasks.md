@@ -48,6 +48,8 @@ Packets and file ownership are in `plan.md`.
 - [x] H5 `eval insights` and the Evaluation page: below-target cases, misses split by `needs` (FR-018).
 - [x] H6 Tests for each; `eval check`; eval and frontend-scope tests; tsc and build.
 
+- Integration (Opus, 2026-11-22): word budget set to the measured maxima (836 analyst, 705 leader; `3a63f92`). Scripted run `ebb2952a8faf491cbffc5513c279d322` gated against `a5a4968270cb47af890796f2c2979c45`: exit 0, all seven 1.000. key_fact_recall_pooled 0.682, finding_recall_pooled 0.529, over_word_budget 2 (C-001, C-016). Full suite 948 passed (10 subtests).
+
 ## Integration (Opus)
 - [x] I1 Merge A, B, D; full suite; one scripted run; gate (unchanged gated checks); `eval insights` over the brief-008 runs.
 - [x] I2 After brief-008 merges: C and E; one scripted and one Haiku run; two report-only runs, then propose `GATED` changes to Michael (FR-006). Runs a5a49682 and 727bc006; the GATED proposal waits for the golden review (D5, G2).
