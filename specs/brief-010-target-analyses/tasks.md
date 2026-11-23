@@ -9,8 +9,8 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [ ] DB4 Tests: pre-selected definition gives today's brief unchanged (answer, claims, evidence); each field changes what it should.
 
 ## Packet D-U: the brief definition, form (FR-000b)
-- [ ] DU1 Six selectors at the start of the Briefing form, pre-selected, editable; the scope reader's proposal fills them; the request sends `definition`.
-- [ ] DU2 The Assumptions block shows the definition in both views; tsc, build, frontend-scope test.
+- [x] DU1 Six selectors at the start of the Briefing form, pre-selected, editable; the scope reader's proposal fills them; the request sends `definition`.
+- [x] DU2 The Assumptions block shows the definition in both views; tsc, build, frontend-scope test.
 
 ## Packet G: golden definitions and the review (FR-000d; grill 2026-11-22)
 - [x] G1 `Case.definition` (explicit, all fields) replaces `comparison` (the loader maps old files); the harness passes it to systems; findings take an optional `measure`.
