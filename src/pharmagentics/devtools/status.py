@@ -13,6 +13,7 @@ REPO = Path(__file__).resolve().parents[3]
 FOLDER = "docs/handoffs"
 LEGACY = "conversations"  # where handoffs lived until 2026-11-23; a branch opened before the move may still add one there
 FOLDERS = (FOLDER, LEGACY)
+RETIRED = "PROJECT_STATE.md"  # every branch added an entry at its top, so parallel merges conflicted on it
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})-.+\.md$")
 HEADER_SINCE = "2026-11-24"  # handoffs from this date on start with the header; older ones are left as written
 HEADER_KEYS = ("branch", "lane", "next")
@@ -164,6 +165,9 @@ def render(limit: int = 10) -> str:
     if stray:
         lines += ["", f"## Handoffs in the old `{LEGACY}/` folder: move them to `{FOLDER}/`", ""]
         lines.extend(f"- `{path}`" for path in stray)
+    if (REPO / RETIRED).exists():
+        lines += ["", f"## `{RETIRED}` is back at the root",
+                  "", f"It was retired on 2026-11-23. Move its entries into a handoff in `{FOLDER}/` and delete it."]
     return "\n".join(lines) + "\n"
 
 
