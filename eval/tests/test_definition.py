@@ -54,7 +54,7 @@ def test_comparison_is_explicit_and_cases_without_one_use_the_previous_four_week
     assert by["P1-Q1"].definition.comparison == DEFAULT_COMPARISON
     assert by["P1-Q5"].definition.comparison.kind == "custom"
     assert by["WIN-1"].definition.comparison.kind == "last_year"
-    assert {c.story for c in BRIEFING if c.comparison} == {"WIN-1", "WIN-2", "P1-Q5", "P2-Q3", "P2-Q4", "P4-Q4"}
+    assert {c.story for c in BRIEFING if c.comparison} == {"WIN-1", "WIN-2", "P1-Q4", "P1-Q5", "P2-Q3", "P2-Q4", "P4-Q4"}
 
 
 def test_an_old_top_level_comparison_is_read_into_the_definition():
@@ -114,7 +114,7 @@ def test_findings_may_name_a_measure_and_finding_recall_ignores_it_for_now():
     assert Finding(id="x", territory="NATIONAL").measure is None  # None means BXA TRx
     by = {c.story: c for c in BRIEFING}
     got = {(c.story, f.id): f.measure for c in BRIEFING for f in c.findings if f.measure}
-    assert got == {("P3-Q1", "national_metacora_share_gain"): "bxa_share",
+    assert got == {("P1-Q4", "mid_atlantic_plan_nbrx_drop"): "nbrx", ("P3-Q1", "national_metacora_share_gain"): "bxa_share",
                    ("P3-Q4", "national_metacora_continuing"): "competitor_share",
                    ("P1-Q5", "national_metacora_competitor"): "competitor_share"}
     expect = by["P3-Q4"].expectations()
@@ -148,4 +148,11 @@ def test_review_decisions_are_applied():
                         ("P2-Q4", "rose 10.1% against June and July. Mid-Atlantic rose only 4.3%"),
                         ("P1-Q5", "(−13.8%)")]:
         assert text in next(c for c in BRIEFING if c.story == story).reference_answer, story
+    p24 = next(c for c in BRIEFING if c.story == "P2-Q4")
+    assert {f.id: f.value for f in p24.facts if f.id in ("plan_change_pct", "ma_other_channels_change_pct", "plan_trx_drop_per_week",
+                                                         "plan_primary_care_nbrx_after")} == {
+        "plan_change_pct": -20.7, "ma_other_channels_change_pct": 15.9, "plan_trx_drop_per_week": 38, "plan_primary_care_nbrx_after": 7.7}
+    assert "fell 20.7% (about 38 TRx a week)" in p24.reference_answer and "12.1 to 7.7" in p24.reference_answer
+    p14 = next(c for c in BRIEFING if c.story == "P1-Q4")
+    assert (p14.definition.comparison.kind, str(p14.definition.comparison.start), str(p14.definition.comparison.end)) == ("custom", "2025-06-02", "2025-07-28")
     assert not re.search(r"10\.8|467 below", next(c for c in BRIEFING if c.story == "P1-Q5").reference_answer)

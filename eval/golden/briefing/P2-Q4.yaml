@@ -25,7 +25,7 @@ story_text: As Marcus, I want a national number broken down to where it actually
 given: a plan-level access change hidden inside a rising national trend.
 when: the brief runs.
 then: concentration names territory, channel, plan and specialty, and the segment contributions sum to the territory change.
-reference_answer: 'Nationally the dip is invisible: like for like, BXA TRx rose 10.1% against June and July. Mid-Atlantic rose only 4.3%. Inside Mid-Atlantic, one Medicare Part D plan with 26% of the territory''s covered lives fell 22.5% (about 41 TRx a week), while the territory''s other channels rose 15.1%. The largest NBRx loss on that plan is in primary care, 12.1 to 7.3 a week.'
+reference_answer: 'Nationally the dip is invisible: like for like, BXA TRx rose 10.1% against June and July. Mid-Atlantic rose only 4.3%. Inside Mid-Atlantic, one Medicare Part D plan with 26% of the territory''s covered lives fell 20.7% (about 38 TRx a week), while the territory''s other channels rose 15.9%. The largest NBRx loss on that plan is in primary care, 12.1 to 7.7 a week.'
 must_not_say:
   text: '"Mid-Atlantic Medicare is down" without the plan, or "BXA is growing nationally, no issues."'
   phrases:
@@ -48,19 +48,19 @@ facts:
   role: must
   reviewed: true
 - id: plan_change_pct
-  value: -22.5
-  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: -20.7
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'' and week_start <> DATE ''2025-09-01'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
   role: must
   reviewed: true
   needs: plan_cut
 - id: ma_other_channels_change_pct
-  value: 15.1
-  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''MID_ATLANTIC'' and payer_channel <> ''MEDICARE_PART_D'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''MID_ATLANTIC'' and payer_channel <> ''MEDICARE_PART_D'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  value: 15.9
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''MID_ATLANTIC'' and payer_channel <> ''MEDICARE_PART_D'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'' and week_start <> DATE ''2025-09-01'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''MID_ATLANTIC'' and payer_channel <> ''MEDICARE_PART_D'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
   role: context
   reviewed: false
 - id: plan_trx_drop_per_week
-  value: 41
-  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'')'
+  value: 38
+  sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'' and week_start <> DATE ''2025-09-01'')'
   role: context
   reviewed: false
   needs: plan_cut
@@ -71,8 +71,8 @@ facts:
   reviewed: false
   needs: plan_cut
 - id: plan_primary_care_nbrx_after
-  value: 7.3
-  sql: 'select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and hcp_specialty = ''PRIMARY_CARE'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'')'
+  value: 7.7
+  sql: 'select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and hcp_specialty = ''PRIMARY_CARE'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'' and week_start <> DATE ''2025-09-01'')'
   role: context
   reviewed: false
   needs: plan_cut

@@ -55,3 +55,11 @@ Reference prose updated: P2-Q3 ("Like for like (the seven territories that repor
 ## Next step
 
 Packet D-B: have the engines take `definition=` (the harness already passes it when the parameter exists). Then packets P, S, R, N raise the `needs`-tagged facts and findings. `PROJECT_STATE.md` is left for the integrator.
+
+## Follow-ups from the integrator (after the first report)
+
+- **P2-Q4**: restated with the Labor Day week (2025-09-01) out of the period, same rule as the other restatements: `plan_change_pct` -22.5 to -20.7 (exact -20.7195), `ma_other_channels_change_pct` (context) 15.1 to 15.9 (15.9242), `plan_trx_drop_per_week` (context) 41 to 38 (37.92), `plan_primary_care_nbrx_after` (context) 7.3 to 7.7 (7.667). `plan_primary_care_nbrx_before` stays 12.1. Each fact's SQL gained `and week_start <> DATE '2025-09-01'` on the period window (the per-week mean divides by the distinct weeks counted). Prose: "fell 20.7% (about 38 TRx a week)", "other channels rose 15.9%", "12.1 to 7.7 a week".
+- **P1-Q4**: `definition.comparison` is custom 2025-06-02 to 2025-07-28 (the Monday range its facts use: 9 weeks, to the week of 2025-07-28, before the 2025-08-01 change). Facts kept: the case traces the user's own claim ("fell 37%": 15.0 against 23.8 NBRx a week), which uses all 13 weeks of the period. They do not exactly follow the brief's holiday-week rule: with Labor Day week out, the plan NBRx would be 15.9 a week, -33.1%. Michael can say if the claim should instead be restated.
+- **P1-Q4** finding `mid_atlantic_plan_nbrx_drop`: `measure: nbrx`.
+- P3-Q1 untouched.
+- Tests: `eval check` 181 of 181; `test_definition.py`, `test_golden_integrity.py`, `test_scope.py` 27 passed (the two tests that list cases with a comparison now include P1-Q4). The full eval suite was not re-run after these edits.

@@ -14,8 +14,9 @@ definition:
   first_week: '2025-08-04'
   last_week: '2025-10-27'
   comparison:
-    kind: previous
-    weeks: 4
+    kind: custom
+    start: '2025-06-02'
+    end: '2025-07-28'
   territories: like_for_like
   measure: both
   grain: [national, territory, plan, channel, specialty]
@@ -75,4 +76,5 @@ findings:
   reviewed: true
   cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1
   needs: plan_cut
+  measure: nbrx
 source: docs/planning/user-stories.md#P1-Q4
