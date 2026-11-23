@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import { FeedbackReview } from "./FeedbackReview"
 import { Notice } from "./agent/primitives"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
+import { modelName } from "./agent/primitives"
 import { getTelemetry, getUsage, type CaseTable, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
@@ -24,12 +25,6 @@ const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toF
 // A score as people read it: a share as a percent, a count as a whole number, a flag as Yes/No; no unit means a share.
 const fmt = (v: number, unit?: "share" | "count" | "flag") =>
   unit === "count" ? String(Math.round(v)) : unit === "flag" ? (v >= 0.5 ? "Yes" : "No") : pct(v)
-// A model id in plain words; an id not listed shows as it is.
-function modelName(model: string | null | undefined) {
-  if (!model) return ""
-  const m = model.toLowerCase()
-  return m.includes("claude-haiku") ? "Haiku" : m.includes("claude-sonnet") ? "Sonnet" : m.includes("qwen3:4b") ? "Qwen 3 4B" : m.includes("gemma3:4b") ? "Gemma 3 4B" : model
-}
 // Exported: Forecast driver recovery prints its dates the same way.
 export const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 const name = (r: TelemetryRun) => NAMES[r.system] ?? r.system

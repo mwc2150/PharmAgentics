@@ -74,3 +74,22 @@ export function useModalFocus(root: RefObject<HTMLElement | null>, onClose: () =
     return () => { document.removeEventListener("keydown", key); if (opener?.isConnected) opener.focus() }
   }, [root])
 }
+
+// A model id in plain words ("ollama:qwen3:4b-instruct-2507-q4_K_M" -> "Qwen 3 4B", "anthropic:claude-haiku-5-5" ->
+// "Haiku"). Raw ids are plumbing: the UI never prints one.
+export function modelName(model: string | null | undefined): string {
+  if (!model) return ""
+  const m = model.toLowerCase().replace(/^(ollama|anthropic|gemini):/, "")
+  if (m.includes("claude-haiku")) return "Haiku"
+  if (m.includes("claude-sonnet")) return "Sonnet"
+  if (m.includes("claude-opus")) return "Opus"
+  if (m.startsWith("gemini")) return "Gemini"
+  const local = /^(qwen|gemma|llama)(\d+(?:\.\d+)?):(\d+(?:\.\d+)?b)/.exec(m)
+  if (local) return `${local[1][0].toUpperCase()}${local[1].slice(1)} ${local[2]} ${local[3].toUpperCase()}`
+  return m === "none" ? "" : model
+}
+const MODEL_ID = /(?:(?:ollama|anthropic|gemini):)?(?:claude-[\w.-]+|(?:qwen|gemma|llama)\d+(?:\.\d+)?:[\w.-]+|gemini-[\w.-]+)/gi
+/** Free text (a step or actor name from the server) with any model id in it made readable. */
+export function plainModels(text: string): string {
+  return text.replace(MODEL_ID, id => modelName(id))
+}

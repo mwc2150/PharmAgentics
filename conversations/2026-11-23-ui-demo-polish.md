@@ -32,3 +32,8 @@ Michael asked for a clean demo: six UI items, planned first and approved as reco
 - "Start a new briefing" (result header, opened approved brief). The New briefing tab returns to a run only while it is pending, its plan waits for review, or its result is unseen (`held` in AnalystApp).
 - How it works: `IntroWithHow` disclosure (button with a `help` icon, inline panel, Escape closes) on the New briefing intro and Diana's list; the tab is gone (`briefing.how` stays classified on the panel).
 - Icons: `briefcase` for Weekly briefing, `clipboard` for Evaluation.
+
+## Round 3 (same day): Evaluation page, status colours, model names
+- Evaluation page cleanup (packet `feature/ui-demo-eval`, merged) and `insights.py` fixes: see PROJECT_STATE. `telemetry.json` re-exported with `--store ../PharmAgentics/eval/mlflow/mlflow.db --store ../pa-010/eval/mlflow/mlflow.db`.
+- Status colours (packet `feature/ui-demo-status`, merged): `Notice` in `agent/primitives.tsx`; tokens `amber` #e3b47d, `amberline` #7f6852, `negline` #8a474c; `amberbg` deprecated (unused). DESIGN.md has a Status rule. Still ochre text without a box: Overview adverse change, Evaluation "below target" lines, Forecast driver off-diagonal counts, memo basis labels and confidence Low, chart strokes.
+- Model ids: `modelName()` and `plainModels()` (display only; agents and evals unchanged). The backend still defaults to local Qwen when no model is set (`llm.py`, `forecast.py`).

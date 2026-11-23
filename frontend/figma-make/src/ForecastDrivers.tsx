@@ -3,7 +3,7 @@
 // Shown only to Forecast roles: anyone else gets 403 from the route and this renders nothing.
 import { useEffect, useState } from "react"
 import { forecastDrivers, type DriverBoard } from "./agent/forecastApi"
-import { Icon } from "./agent/primitives"
+import { Icon, modelName } from "./agent/primitives"
 import { when } from "./Telemetry"
 
 // Mirrors PANEL in App.tsx (not exported from there).
@@ -19,7 +19,7 @@ export function ForecastDriverRecovery() {
     <div className="pt-2"><h3 className="text-xs uppercase tracking-[0.06em] text-muted">Forecast driver recovery</h3>
       <p className="mt-1 text-sm text-muted">Each question asks what explains a forecast miss in a window where the user stories say which drivers act, or that none does. A hit names exactly those drivers. This compares the rules with a model as investigator; the product uses the rules. The expected drivers are a {board?.labels} until the Forecast team confirms them.</p></div>
     {systems.map(([key, sys]) => <section key={key} className={`${PANEL} p-6`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2"><h4 className="text-sm font-semibold">{SYSTEM[key] ?? key}{sys.model ? ` · ${sys.model}` : ""}</h4><span className="text-xs text-muted">run {sys.run_id} · {when(sys.exported)}</span></div>
+      <div className="flex flex-wrap items-baseline justify-between gap-2"><h4 className="text-sm font-semibold">{SYSTEM[key] ?? key}{sys.model ? ` · ${modelName(sys.model)}` : ""}</h4><span className="text-xs text-muted">run {sys.run_id} · {when(sys.exported)}</span></div>
       <dl className="mt-4 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Drivers recovered", `${Math.round(sys.metrics.driver_recall * 100)}%`], ["Drivers named wrongly", String(sys.metrics.false_drivers)], ["Exactly right", `${Math.round(sys.metrics.exact_set_share * sys.metrics.probes)} of ${sys.metrics.probes} questions`]].map(([k, v]) => <div key={k} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{k}</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums">{v}</dd></div>)}</dl>
       <div className="mt-4 overflow-x-auto"><table className="text-xs tabular-nums"><thead><tr><th scope="col" className="pr-4 text-left font-medium text-muted">Actual driver / Driver named</th>{sys.drivers.map(d => <th key={d} scope="col" className="px-3 text-right font-medium text-muted">{d}</th>)}</tr></thead>
         <tbody>{sys.drivers.map(t => <tr key={t}><th scope="row" className="py-1 pr-4 text-left font-normal text-muted">{t}</th>{sys.drivers.map(d => { const n = sys.confusion[t]?.[d] ?? 0; return <td key={d} className={`px-3 py-1 text-right ${n ? (t === d ? "font-medium text-ink" : "font-medium text-amber") : "text-muted"}`}>{n}</td> })}</tr>)}</tbody></table></div>

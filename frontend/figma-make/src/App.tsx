@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
-import { BrandMark, Icon, Notice, useModalFocus, type IconName } from "./agent/primitives"
+import { BrandMark, Icon, Notice, modelName, plainModels, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
@@ -294,7 +294,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
       {!!r.sources.length && <p className="mt-1 text-xs text-muted">From: {r.sources.map(s=>s.scope).join(" · ")}</p>}
       {r.review_note && <Notice tone="warn" title="Brand Manager review note" className="mt-3">{r.review_note}</Notice>}
     </article>
-    {drafting && <div role="status" className="rounded-xl border border-rule bg-paper px-5 py-4 text-sm text-ink">{r.job?.step ?? "Drafting"}{r.model ? ` (${r.model})` : ""}<span aria-hidden="true"> · {draftSecs} s</span>. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
+    {drafting && <div role="status" className="rounded-xl border border-rule bg-paper px-5 py-4 text-sm text-ink">{r.job?.step ?? "Drafting"}{r.model ? ` (${modelName(r.model)})` : ""}<span aria-hidden="true"> · {draftSecs} s</span>. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
     {r.job?.status === "failed" && r.job.message && <Notice tone="error" role="alert">{r.job.message} The last good version is kept.</Notice>}
     {!r.sections.length && !drafting && <p className="text-sm text-muted">No draft yet.</p>}
     {r.sections.map((sec,i)=><section key={i} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text} charts={r.charts} kpis={r.kpis} passages={r.blocks}/></section>)}
@@ -577,7 +577,7 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
         <div><h3 className="text-sm font-semibold">How the agent reads your question</h3><p className="mt-1 text-xs text-muted">Check the scope before anything runs. Change what the question asks, the territory or the weeks if this is not what you meant.</p></div>
         {scope.out_of_scope ? <Notice tone="warn">{scope.out_of_scope}</Notice> : <>
           <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[120px_1fr]">
-            <dt className="text-muted">Read by</dt><dd>{scope.read_by === "model" ? `the model (${scope.engine}); code checked every field` : "keyword rules (no model is configured, or the model's reading was unusable)"}</dd>
+            <dt className="text-muted">Read by</dt><dd>{scope.read_by === "model" ? `${modelName(scope.engine) || "the model"}; code checked every field` : "keyword rules (no model is configured, or the model's reading was unusable)"}</dd>
             <dt className="text-muted">Period</dt><dd>{scope.period} · {scope.n_weeks} week{scope.n_weeks === 1 ? "" : "s"}</dd>
             <dt className="text-muted">Where</dt><dd>{scope.territory_name}</dd>
             <dt className="text-muted">Investigation</dt><dd>{scope.investigator === "model" ? "the model investigates (comparison arm)" : "the rules investigate; code computes every number"}</dd>
@@ -837,8 +837,8 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
         {plan.manager_note && <p className="mt-1">Manager's note: {plan.manager_note}</p>}
       </>
         return plan.flagged
-          ? <Notice tone="warn" className="mt-4" title={<>The manager's plan is flagged for your review<span className="font-normal text-ink"> · agent ({plan.model})</span></>}>{detail}</Notice>
-          : <div className="mt-4 rounded-xl border border-rule bg-paper p-4 text-sm text-ink"><p className="font-medium">The manager kept code's plan<span className="font-normal"> · agent ({plan.model})</span></p>{detail}</div> })()}
+          ? <Notice tone="warn" className="mt-4" title={<>The manager's plan is flagged for your review<span className="font-normal text-ink"> · agent ({modelName(plan.model)})</span></>}>{detail}</Notice>
+          : <div className="mt-4 rounded-xl border border-rule bg-paper p-4 text-sm text-ink"><p className="font-medium">The manager kept code's plan<span className="font-normal"> · agent ({modelName(plan.model)})</span></p>{detail}</div> })()}
     </div>
     {plan.state==="OUT_OF_SCOPE" ? <Notice tone="warn" title="The data cannot answer this question as asked." className="px-6 py-5"><p className="mt-1">{plan.scope}</p><p className="mt-2">The brief will state this and give the scripted brief for the week. No investigation runs.</p></Notice> :
     plan.state!=="TRIAGE_REVIEW" ? <div className="pa-panel rounded-xl bg-sheet px-6 py-5 text-sm border border-rule">{plan.promotion_review ? "The review will compare coverage lapses and recoveries across the release." : plan.state==="CALENDAR" ? "Calendar week: lower volume is expected, so code opens no story." : "Routine week: code found no material change, so there is no story to triage."}</div> :
@@ -875,7 +875,7 @@ function FlowPanel({flow, triage}: {flow: Stage[], triage?: TriageRecord | null}
     <ol className="mt-4 space-y-3">{flow.map(s=><li key={s.stage} className="grid gap-1 sm:grid-cols-[28px_1fr]">
       <span className="font-mono text-xs text-muted">{s.stage}</span>
       <div><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-medium">{s.name}</span>{s.states.map(st=><span key={st} className="rounded bg-paper px-1.5 py-0.5 font-mono text-[10px] text-muted border border-rule">{st}</span>)}</div>
-        <div className="mt-1 flex flex-wrap gap-1.5">{s.actors.length ? s.actors.map((a,i)=><span key={i} className={`${chip} ${ACTOR[a.kind][1]}`}>{ACTOR[a.kind][0]}: {a.name}</span>) : <span className="text-xs text-muted">Skipped</span>}</div>
+        <div className="mt-1 flex flex-wrap gap-1.5">{s.actors.length ? s.actors.map((a,i)=><span key={i} className={`${chip} ${ACTOR[a.kind][1]}`}>{ACTOR[a.kind][0]}: {plainModels(a.name)}</span>) : <span className="text-xs text-muted">Skipped</span>}</div>
         <p className="mt-1 text-xs text-muted">{s.note}</p></div>
     </li>)}</ol>
     {triage && <div className="mt-5 border-t border-rule pt-4"><h4 className="text-xs font-semibold uppercase tracking-wider text-muted">Triage record</h4>
@@ -1159,7 +1159,7 @@ function AnalystApp({me}: {me: Me}) {
         <fieldset><legend className="mb-1.5 text-xs font-medium text-muted">Engine</legend>
           <div className="divide-y divide-rule rounded-lg border border-rule">
             <label className="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-paper/50"><input type="radio" name="engine" checked={engine==="scripted"} onChange={()=>setEngine("scripted")} className="mt-1"/><span><span className={`block text-sm ${engine==="scripted" ? "text-ink" : "text-muted"}`}>Scripted</span><span className="block text-xs text-muted">Instant. Runs the standard checks in a fixed order.</span></span></label>
-            {agentSupported && <label className={`flex items-start gap-3 px-4 py-3 transition-colors ${!agentSupported || agent?.configured===false ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-paper/50"}`}><input type="radio" name="engine" checked={engine==="agent"} disabled={!agentSupported || agent?.configured===false} onChange={()=>setEngine("agent")} className="mt-1"/><span title={agent?.model ? `Model: ${agent.model}` : undefined}><span className={`block text-sm ${engine==="agent" ? "text-ink" : "text-muted"}`}>Agent team <span className="text-xs text-muted">· experimental</span></span><span className="block text-xs text-muted">A manager and two specialist agents investigate the week. {agent?.builtin ? "Usually a minute or two." : agent?.online ? "A few minutes per step." : agent?.cloud?.enabled && agent.cloud.seconds_left>0 ? `About ${agent.cloud.eta_minutes ?? 15} minutes for a brief.` : "Waits until an agent host is available."}</span></span></label>}
+            {agentSupported && <label className={`flex items-start gap-3 px-4 py-3 transition-colors ${!agentSupported || agent?.configured===false ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-paper/50"}`}><input type="radio" name="engine" checked={engine==="agent"} disabled={!agentSupported || agent?.configured===false} onChange={()=>setEngine("agent")} className="mt-1"/><span title={agent?.model ? `Model: ${modelName(agent.model)}` : undefined}><span className={`block text-sm ${engine==="agent" ? "text-ink" : "text-muted"}`}>Agent team <span className="text-xs text-muted">· experimental</span></span><span className="block text-xs text-muted">A manager and two specialist agents investigate the week. {agent?.builtin ? "Usually a minute or two." : agent?.online ? "A few minutes per step." : agent?.cloud?.enabled && agent.cloud.seconds_left>0 ? `About ${agent.cloud.eta_minutes ?? 15} minutes for a brief.` : "Waits until an agent host is available."}</span></span></label>}
           </div>
         </fieldset>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-4">

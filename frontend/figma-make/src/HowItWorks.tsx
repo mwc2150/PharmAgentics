@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from "react"
 import { getAgentsInfo, type AgentCard, type AgentComparison, type AgentsInfo, type CompareRow } from "./agent/briefingApi"
 import { KIND_NAME, KIND_STYLE } from "./Timeline"
-import { Notice } from "./agent/primitives"
+import { Notice, modelName } from "./agent/primitives"
 
 // brief-009 FR-006: how the briefing is made. The flow from question to brief, the four actors the architecture names
 // (Manager, Data Forensics, Driver Investigator, and the Writer, which is an LLM step and not an agent), what each
@@ -86,7 +86,7 @@ function Comparison({ c }: { c: AgentComparison }) {
 function modelLine(m: AgentsInfo["model"]) {
   if (!m.spec) return <>The agent team runs on a model that is set when it is switched on. No model is set in this app now.</>
   const haiku = /haiku/i.test(m.spec)
-  return <>{haiku ? "Claude Haiku, a small and fast model from Anthropic, drives the agent team: " : "The agent team runs on "}<span className="font-mono text-[13px]">{m.spec}</span>.
+  return <>{haiku ? "Claude Haiku, a small and fast model from Anthropic, drives the agent team: " : "The agent team runs on "}<span>{modelName(m.spec)}</span>.
     {" "}The Manager, Data Forensics, Driver Investigator and Writer all call the same model.{m.source === "evaluation" ? " (Read from the latest evaluation run; this app is not running the team itself.)" : ""}</>
 }
 
