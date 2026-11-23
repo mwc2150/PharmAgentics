@@ -113,3 +113,17 @@ See the results block at the end of this file.
 - The agent path was not run against a model; its scripted parts (open_run, plan, prompts) are covered, the Haiku run belongs to the integration step.
 - The leadership KPI strip can now hold more than four tiles when extras are chosen; the form should wrap them.
 - `Definition.comparison` is a list even for the pre-selected value (`[]`); the form sends `null`, which is read as `[]`.
+
+## Results (focused runs only; no full suite, no eval run, no model)
+
+- `tests/test_brief_definition.py`: 41 tests (the model and lists, pre-launch weeks and refusal, words, the pre-selected definition against the
+  nine-question snapshot three ways, labels, nbrx, `measure: ["trx","nbrx"]` equals `"both"`, first measure primary, grain, relative_to with an
+  extra value, all_reportable, projected, an extra territories rule, two comparisons (previous four + pre_launch) with the same stories, the
+  refusal for a period before launch, MCP session, triage plan, API round trip with null comparison, top-level comparison plus definition,
+  leader view in words, scope proposal, a model's proposed selectors) all pass.
+- With the existing tests of the touched files (`test_comparison_windows`, `test_briefing_api`, `test_briefing_scope`, `test_triage`,
+  `test_mcp_server`, `test_agent_build3`, `test_run_events`, `test_rbac`, `test_tools`, `test_memo`, `test_promotion_review`, `test_followup`,
+  `test_projection`, `test_charts`, `test_jobs`, `test_agent_host`): 302 passed, 4 failed in one 56-minute run, and the 4 are fixed and re-run
+  green: three `test_briefing_api` tests mocked `answer` with a fixed signature (the service now passes the old `comparison` keyword when a
+  request has no `definition`, so that call is unchanged; 35 pass), and `test_triage::test_answer_unchanged` compares claims to a frozen
+  fixture (its `comparable()` now ignores the claim `labels` and the one holiday sentence).
