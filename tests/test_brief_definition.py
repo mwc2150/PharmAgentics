@@ -47,7 +47,7 @@ def section(env: dict, number: str) -> dict:
 
 
 def cards(env: dict) -> list[dict]:
-    return [s["card"] for s in env["sections"] if s["number"].startswith("3.") and s.get("card") and s["card"]["territory"]]
+    return [s["card"] for s in env["sections"] if s["number"].startswith("3.") and s.get("card") and s["card"]["territory"] not in ("", "NATIONAL")]  # territory cards; the national card is packet NC's
 
 
 # -- DB1: the model -----------------------------------------------------------------------------------
