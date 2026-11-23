@@ -130,13 +130,11 @@ def run_checks(reg: Registry, terr: str, W, B, *, brand_id: str = "BXA",
             check_supply(reg, terr, W, B), check_competitor(reg, terr, W, ref, exact_comparison=use_selected_baseline, pct_format="pct")]
 
 
-def national_ruled_out(reg: Registry, terrs: list[str], W, B, *, brand_id: str = "BXA", use_selected_baseline: bool = False) -> list[str]:
-    """Drivers ruled out nationally (brief-010 FR-006): access, promotion or supply, when every reportable territory's
-    own check rules it out on the brief's weeks. The same checks the territory stories run, on a scratch registry so
-    no claim or evidence is added; a territory whose check is inconclusive or supported keeps the driver off the list."""
-    if not terrs:
-        return []
-    scratch = reg.scratch()
-    verdicts = [{c.driver: c.verdict for c in run_checks(scratch, t, W, B, brand_id=brand_id, use_selected_baseline=use_selected_baseline)}
-                for t in terrs]
+def national_ruled_out(story_checks) -> list[str]:
+    """Drivers ruled out nationally (brief-010 FR-006, packet NC): access, promotion or supply is ruled out unless a
+    territory that has its own story card in this brief supports it or cannot rule it out (inconclusive, insufficient
+    or never tested). `story_checks` holds each story territory's checks, as a list or a {driver: Check} dict, exactly
+    the ones the brief ran for its cards, so no check runs again and no claim is added. A territory without a story
+    does not keep a driver off the list; a brief with no story territory rules all three out."""
+    verdicts = [{c.driver: c.verdict for c in (checks.values() if isinstance(checks, dict) else checks)} for checks in story_checks]
     return [d for d in ("access", "promotion", "supply") if all(v.get(d) == "ruled_out" for v in verdicts)]

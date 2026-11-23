@@ -201,6 +201,8 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
     told: list[dict] = []  # territory stories for §1 and §5: {territory, confidence, drivers}
     notes: list[str] = []
     dropped: list[str] = []  # folded under §3's detail
+    checks_by: dict[str, list] = {}  # each told territory's checks, which its cut cards and the national card reuse
+    comp_facts: dict = {}
 
     if events is not None and order is not None:  # a run on the analyst's decision
         events.emit("Person", "person", "Review the plan", story=None, summary=(
@@ -212,21 +214,19 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
         else:
             by_id = {story_id(s): s for s in f.found}
             by_cut = {cut_id(c): c for c in f.cuts}
-            checks_by: dict[str, list] = {}  # each told territory's checks, which its cut cards reuse
             for sid in (default_order(f.found, f.cuts) if order is None else order):
                 if sid in by_cut:  # built after the territory stories, once their checks are known
                     continue
                 if sid == COMPETITOR:
                     if not p.has("national"):  # the competitor card is a national story
                         continue
-                    comp_facts: dict = {}
                     comp = stages.competitor_status(reg, p, lead=f"Story {_ord(len(blocks) + 1)}: competitor Metacora", facts=comp_facts)
                     if comp and events is not None:
                         events.story = sid
                         _note(events, "Check the competitor", tool="competitor_status", text=comp)
                     if comp:
                         blocks.append(memo.StoryBlock(COMPETITOR, "Competitor Metacora", [memo.without_next(comp)],
-                                                      chart=charts.competitor(reg, p), card=memo.competitor_card(p, comp_facts)))
+                                                      chart=charts.competitor(reg, p)))  # its card is set below, once the stories' checks are known
                         competitor = True
                     continue
                 s = by_id[sid]
@@ -256,6 +256,13 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
                 notes.append("Routine week. No material change was found, and territory swings stayed in their normal range.")
             elif f.quiet:
                 dropped.append(stages.dropped_line(reg, p, f.quiet))
+        if p.has("national"):  # packet NC: every brief carries one national card, with the competitor story's when there is one
+            reading = stages.national_reading(reg, p, checks_by.values(), comp_facts or None, f.facts.get("avg"))
+            comp_block = next((b for b in blocks if b.id == COMPETITOR), None)
+            if comp_block is not None:
+                comp_block.card = memo.competitor_card(p, reading or comp_facts)
+            elif reading:
+                blocks.append(memo.national_block(p, reading))
         finish(sp, {"abstained": abstained})
 
     with span("5_narrative") as sp:

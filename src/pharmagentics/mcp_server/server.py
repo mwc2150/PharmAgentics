@@ -269,8 +269,14 @@ class RunSession:
                                                  list(self.checks.get(s["territory"], {})), territory=s["territory"],
                                                  checks=list(self.checks.get(s["territory"], {}).values()), measure=p.col)
                  for s in told if s["territory"] in self.story_facts}
-        if competitor and self.competitor_facts and p.has("national"):
-            cards["competitor"] = memo.competitor_card(p, self.competitor_facts)
+        national_story = None  # packet NC: every brief has one national card; the competitor story's, else a block of its own
+        if p.has("national"):
+            comp = self.competitor_facts if competitor and self.competitor_facts else None
+            reading = stages.national_reading(reg, p, [self.checks.get(s["territory"], {}) for s in told], comp, self.facts.get("avg"))
+            if comp:
+                cards["competitor"] = memo.competitor_card(p, reading or comp)
+            elif reading:
+                national_story = asdict(memo.national_block(p, reading))
         cut_stories, cut_details = [], {}
         for plan in dict.fromkeys(cuts or []):
             t = splits.plan_territory(reg, plan)
@@ -281,7 +287,7 @@ class RunSession:
             cut_stories.append({"id": block.id, "territory": t, "title": block.title, "section": "\n".join(block.lines)})
         return {"bottom_line": bottom, "kpis": memo.kpis(p, self.proj, top), "details": {"1": memo.bottom_detail(top)},
                 "story_cards": cards, "story_details": {**{s["territory"]: self.story_detail.get(s["territory"], []) for s in told}, **cut_details},
-                "cut_stories": cut_stories,
+                "cut_stories": cut_stories, "national_story": national_story,
                 "next_checks": memo.next_checks(p, told, competitor),
                 "driver_timing": memo.driver_timing(told),
                 "charts": {**({"2": charts.trend(reg, p)} if p.has("national") else {}), "4": charts.coverage(reg, p), "stories": story_charts,

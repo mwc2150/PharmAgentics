@@ -674,13 +674,12 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
     return text
 
 
-def _national_reading(reg: Registry, p: Period) -> dict:
-    """What the national competitor card reads off the comparison weeks (brief-010 FR-006): the competitor check's
-    verdict, each measure's direction (share points, inside the house flat band; national TRx lives in the KPI strip). Directions only, no number is
-    stated, so no claim is added. Empty `directions` when the brief has no comparison weeks."""
+def _competitor_reading(reg: Registry, p: Period) -> dict:
+    """What the national card reads of the competitor off the comparison weeks (brief-010 FR-006): the competitor
+    check's verdict and the direction of each share (points, inside the house flat band). Directions only, no number
+    is stated, so no claim is added. Empty `directions` when the brief has no comparison weeks."""
     W, B = p.weeks, p.baseline
-    out: dict = {"check": check_competitor_national(reg, W), "directions": {},
-                 "ruled_out": national_ruled_out(reg, p.ok, W, B, brand_id=p.brand_id, use_selected_baseline=p.comparison is not None)}
+    out: dict = {"check": check_competitor_national(reg, W), "directions": {}}
     if not B:
         return out
     for key, product in (("bxa_share", p.brand_id), ("competitor_share", "BXE")):
@@ -689,6 +688,56 @@ def _national_reading(reg: Registry, p: Period) -> dict:
             continue
         out["directions"][key] = word(now - then)
     return out
+
+
+def calendar_weeks_of(reg: Registry, weeks: list[str]) -> int:
+    """How many of these weeks are holiday or plan-year-reset weeks (the flags the period's calendar mode reads)."""
+    if not weeks:
+        return 0
+    return int(reg.scalar(f"select count(*) from raw.calendar where week_start in {q._dates(weeks)} "
+                          f"and (holiday_flag = 1 or plan_year_reset = 1)") or 0)
+
+
+def holiday_effect(reg: Registry, p: Period) -> bool:
+    """The holiday driver (brief-010 packet NC): the period's weeks are calendar weeks (the period's own calendar mode,
+    half or more of them) and the primary comparison weeks are not (fewer than half). Holiday weeks against last year's
+    same holiday weeks carry no holiday effect, since both sides have it."""
+    if not p.calendar or not p.baseline:
+        return False
+    return calendar_weeks_of(reg, p.baseline) * 2 < len(p.baseline)
+
+
+def national_trx_direction(reg: Registry, p: Period) -> str | None:
+    """Direction of national BXA TRx on the comparison weeks: the territories the brief counts (`territories`), the
+    primary comparison, the house flat band. None without comparison weeks or a countable territory. No claim."""
+    cur, base, _, _ = national_sql(p, "trx")
+    if not (cur and base):
+        return None
+    return word(reg.scalar(q.pct_change(cur, base)) or 0)
+
+
+def national_reading(reg: Registry, p: Period, story_checks, comp: dict | None = None, kpi: dict | None = None) -> dict | None:
+    """The national card's facts, every brief (brief-010 FR-006, packet NC): national TRx direction, the competitor
+    reading when Metacora has one (`comp` is `competitor_status`'s facts), the holiday driver and the drivers ruled
+    out nationally from the checks of the territories that have a story (`story_checks`). None when the brief has no
+    national direction to state. `kpi` is the KPI strip's own national facts: its percent token is reused, so the card
+    adds no claim."""
+    trx = national_trx_direction(reg, p)
+    reading = dict(comp or {})
+    if comp:
+        reading.update(_competitor_reading(reg, p))
+    directions = dict(reading.get("directions") or {})
+    if trx:
+        directions["trx"] = trx
+    if not directions:
+        return None
+    reading["directions"] = directions
+    reading["trx"] = trx
+    if kpi and trx and p.col == "trx" and kpi.get("pct"):
+        reading["trx_pct"] = kpi["pct"]
+    reading["holiday"] = holiday_effect(reg, p)
+    reading["ruled_out"] = [] if p.calendar else national_ruled_out(story_checks)  # a calendar week opens no story, so no driver was tested
+    return reading
 
 
 def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora", facts: dict | None = None) -> str | None:
@@ -711,7 +760,6 @@ def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora
     bxa_pre = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct", product=p.brand_id, weeks="before launch")
     if facts is not None:
         facts.update(bxe=bxe, bxa=bxa, pre=bxa_pre)
-        facts.update(_national_reading(reg, p))
     return (f"{lead} (launched {launched}). This is a continuing story, week {since} since launch, {direction}. "
             f"Metacora held {bxe} of the four-brand basket and {p.brand_id} held {bxa}, against {bxa_pre} for {p.brand_id} in the four weeks before launch. "
             f"Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers. Next: involve marketing and sales.")

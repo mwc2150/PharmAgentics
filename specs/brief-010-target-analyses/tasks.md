@@ -42,6 +42,11 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [x] X2 `memo.data_artifact_block`: the national data-artifact card, built in `stages._national_block` (`facts["data_artifact"]`) on the house gap `MATERIAL_GAP`; wired into the scripted pipeline and the agent session (`data_artifact_stories`, `write.assemble`).
 - [x] X3 Tests (`tests/test_data_notes.py`). The scripted run, gate and the P2-Q1 rise are the integrator's.
 
+## Packet NC: national TRx card (FR-006a to FR-006c)
+- [x] NC1 `stages.national_reading`: national TRx direction (house flat band), the holiday driver (`holiday_effect`), and the ruled-out list from the story territories' own checks (`lag_checks.national_ruled_out` now takes those checks).
+- [x] NC2 `memo.competitor_card` adds `trx` to `directions` and the holiday driver; `memo.national_block` is the card of a brief with no competitor reading; the scripted pipeline, `memo_close` and `write.assemble` carry it.
+- [x] NC3 Tests (`tests/test_national_trx.py`, `tests/test_memo.py`, `tests/test_brief_definition.py`); targets P3-Q2, WIN-1 and P3-Q1 reach full points. The full suite, gate and Haiku run are the integrator's.
+
 ## Integration (Opus)
 - [ ] I1 After the last packet: full suite, scripted gate, SC-001 (targets met, `over_word_budget` 0).
 - [ ] I2 Haiku agent run and gate (SC-002).

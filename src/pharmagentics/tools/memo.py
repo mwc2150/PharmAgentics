@@ -35,7 +35,9 @@ METHOD = ("Method: like-for-like figures use only territories whose feed passed 
           "The projected national divides each territory's observed TRx by its panel coverage, and estimates a "
           "territory that cannot be read from its recent share of national. Changes, stories and drivers use "
           "like-for-like cuts only.")
-DRIVER_NAMES = {"data": "data quality", "access": "access", "promotion": "promotion", "supply": "supply", "competitor": "competitor"}
+DRIVER_NAMES = {"data": "data quality", "access": "access", "promotion": "promotion", "supply": "supply", "competitor": "competitor",
+                "holiday": "holiday"}
+NATIONAL = "national:trx"  # the id of the national TRx block when no competitor story carries the card
 
 # What a reader needs to know about each term the brief uses (from GLOSSARY.md; no digits).
 GLOSSARY = {
@@ -784,19 +786,42 @@ def story_card(name: str, facts: dict, confidence: str, drivers: list[str], *, t
 
 
 def competitor_card(p, facts: dict) -> dict:
-    """The competitor story is a national card (brief-010 FR-006): territory NATIONAL, no cut, the national competitor
-    check's verdict, and the direction of BXA's basket share on the comparison weeks (house flat band) with each
-    measure's direction in `directions` (bxa_share, competitor_share; no trx, national TRx lives in the KPI strip). `facts` comes from competitor_status."""
-    d = facts.get("directions") or {}
-    # The headline keeps its measured length: MEASURED_ANCHORS (the word budget) counts it.
-    headline = f"Metacora holds {facts['bxe']} of the four-brand basket, and {p.brand_id} holds {facts['bxa']}."
-    check = facts.get("check")
+    """The one national card of a brief (brief-010 FR-006, packet NC): territory NATIONAL, no cut, the direction of
+    national BXA TRx on the comparison weeks (house flat band) in `directions["trx"]`, and when Metacora has a reading
+    the direction of each share (bxa_share, competitor_share), the national competitor check's verdict and the card's
+    direction (BXA's share; otherwise TRx). The holiday driver is supported when `facts["holiday"]` says the period is
+    calendar weeks and the comparison is not. `facts` comes from `stages.national_reading`. Without a competitor
+    reading (before launch, a calendar week) the card is the national TRx line and claims no competitor."""
+    d = dict(facts.get("directions") or {})
+    holiday = bool(facts.get("holiday"))
+    check = facts.get("check") if facts.get("bxe") else None
     supported, ruled_out = driver_calls([check] if check else [])
-    ruled_out += [x for x in facts.get("ruled_out") or [] if x not in ruled_out]  # access, promotion, supply: every territory ruled it out
+    ruled_out += [x for x in facts.get("ruled_out") or [] if x not in ruled_out]  # access, promotion, supply: no story territory has it
+    checked = (["competitor"] if check else []) + [r for r in ruled_out if r != "competitor"]
+    if holiday:
+        supported, checked = ["holiday", *supported], ["holiday", *checked]
+    if facts.get("bxe"):
+        # The headline keeps its measured length: MEASURED_ANCHORS (the word budget) counts it.
+        headline = f"Metacora holds {facts['bxe']} of the four-brand basket, and {p.brand_id} holds {facts['bxa']}."
+        direction = d.get("bxa_share") or d.get("trx")
+    else:
+        direction = d.get("trx")
+        pct = facts.get("trx_pct")
+        headline = (f"National {p.brand_id} TRx {_verb(direction, pct, 'rose', 'fell')} on the comparison weeks."
+                    if pct else f"National {p.brand_id} TRx was {direction} on the comparison weeks.")
+        if holiday:
+            headline += " The period is holiday weeks, when fewer business days lower volume."
     return {"headline": headline, "confidence": "Medium",
-            "drivers_checked": [DRIVER_NAMES[x] for x in ["competitor"] + [r for r in ruled_out if r != "competitor"]],
-            "territory": "NATIONAL", "direction": d.get("bxa_share"), "directions": dict(d), "drivers_supported": supported,
+            "drivers_checked": [DRIVER_NAMES[x] for x in checked],
+            "territory": "NATIONAL", "direction": direction, "directions": d, "drivers_supported": supported,
             "drivers_ruled_out": ruled_out, "cut": None}
+
+
+def national_block(p, facts: dict) -> StoryBlock:
+    """The national TRx card for a brief with no competitor story (packet NC): the card shows its headline and the
+    sentence sits in the folded detail, so it is in the answer and adds the headline's words only."""
+    card = competitor_card(p, facts)
+    return StoryBlock(NATIONAL, f"National {p.brand_id} TRx", [], card=card, detail=[card["headline"]])
 
 
 _DRIVER_ORDER = ("data", "access", "promotion", "supply", "competitor")
