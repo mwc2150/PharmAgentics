@@ -92,6 +92,12 @@ def brief_id(result: dict) -> str:
     if comparison := result.get("comparison"):
         choice = {k: v for k, v in comparison.items() if v is not None}
         key += "|comparison:" + json.dumps(choice, sort_keys=True, separators=(",", ":"))
+    if d := result.get("definition"):
+        chosen = {k: d.get(k) for k in ("territories", "measure", "grain", "relative_to")}
+        chosen["extra_comparisons"] = (d.get("comparison") or [])[1:]
+        if chosen != {"territories": ["like_for_like"], "measure": ["trx"], "grain": ["national", "territory", "plan", "channel", "specialty"],
+                      "relative_to": ["other_territories"], "extra_comparisons": []}:
+            key += "|definition:" + json.dumps(chosen, sort_keys=True, separators=(",", ":"))  # a different definition is a different brief
     triage = result.get("triage") or {}
     if triage and not triage.get("default", True):  # P1 changed the plan: a different brief (brief-002 R6)
         key += "|triage:" + ",".join(triage.get("order", []))

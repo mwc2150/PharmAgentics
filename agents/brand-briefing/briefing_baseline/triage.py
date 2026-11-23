@@ -101,8 +101,10 @@ def build_plan(reg, f: Front) -> dict:
     pinned = [p.comparison.model_dump_json(), *p.baseline] if p.comparison is not None else []
     if p.brand_id != "BXA":
         pinned.append(p.brand_id)
-    if not p.definition.is_pre_selected:  # a different definition is a different plan; the pre-selected one keeps today's ID
-        pinned.append(p.definition.model_dump_json(exclude={"comparison"}))
+    d = p.definition
+    if not d.is_pre_selected or d.extra_comparisons:  # a different definition is a different plan; the pre-selected one keeps today's ID
+        pinned.append(d.model_dump_json(exclude={"comparison"}))
+        pinned += [c.model_dump_json() for c in d.extra_comparisons]
     plan_id = "t-" + hashlib.sha256("|".join([p.question, reg.data_version, *pinned, *proposed_ids]).encode()).hexdigest()[:12]
     for c in cards:
         for k in ("what_moved", "decision", "population", "granularity", "time"):

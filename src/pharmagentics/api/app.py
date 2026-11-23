@@ -396,7 +396,9 @@ def accept_result(job_id: str, ok: bool, result: dict | None, error: str | None)
             if "events" in plan:
                 plan["events"] = events_mod.clean(plan["events"])
             service._matching_brand(query.brand_id, plan)
-            service._matching_comparison(query.comparison, plan)
+            definition = service.effective_definition(query)
+            service._matching_comparison(definition.primary_comparison, plan)
+            service._matching_definition(definition, plan)
             if plan.get("state") != "OUT_OF_SCOPE":
                 service._traceable(plan.get("claims", []), plan.get("evidence", []))
             plan.update(brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start.isoformat())

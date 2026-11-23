@@ -17,6 +17,7 @@ from pathlib import Path
 
 import httpx
 
+from pharmagentics.tools.definition import Definition
 from pharmagentics.tools.window import Comparison
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -46,6 +47,8 @@ def run_job(job: dict, model: str | None, progress=None) -> dict:
         options = {}
         if comparison := (payload.get("query") or {}).get("comparison"):
             options["comparison"] = Comparison.model_validate(comparison)
+        if definition := (payload.get("query") or {}).get("definition"):
+            options["definition"] = Definition.model_validate(definition)
         plan = agent.triage(payload["question"], model, events=log, **options)
         return dict(plan, events=log.public())  # the brief job continues this log
     log = agent.events_for(on_event=on_event, seed=payload["plan"].get("events"))

@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import threading
+from contextlib import contextmanager
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -143,6 +144,15 @@ class Registry:
 
     def close(self) -> None:
         self.con.close()
+
+    @contextmanager
+    def under(self, **labels):
+        """Claims made inside the block record these definition values instead of the primary ones (an extra value's figure)."""
+        old, self.labels = self.labels, {**self.labels, **labels}
+        try:
+            yield
+        finally:
+            self.labels = old
 
     def rows(self, sql: str) -> list[tuple]:
         """Internal screening query: governed, not recorded as evidence."""

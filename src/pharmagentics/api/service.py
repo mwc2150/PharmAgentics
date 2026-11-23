@@ -13,6 +13,8 @@ from pathlib import Path
 from .schemas import BriefingQuery, BriefingResult, ReleaseContext
 from pharmagentics.tools import events
 from pharmagentics.tools.brands import BRIEFING_ENGINES, PRODUCTS
+from pharmagentics.tools import definition as definitions
+from pharmagentics.tools.definition import Definition
 from pharmagentics.tools.window import Comparison, comparison_weeks
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -115,6 +117,45 @@ class BadDecision(ValueError):
     """The triage decision names a story the plan does not propose (brief-002 FR-023; HTTP 400)."""
 
 
+def launch_week() -> str | None:
+    """The competitor's launch week, read from the release (the pre-launch comparison and its words need it)."""
+    from pharmagentics.tools import Registry
+    from pharmagentics.tools.checks import launch_date
+
+    reg = Registry(DB)
+    try:
+        return launch_date(reg)
+    finally:
+        reg.close()
+
+
+def definition_words(definition: Definition) -> list[str]:
+    needs = any(c.kind == "pre_launch" for c in definition.comparison)
+    return definitions.words(definition, launch_week() if needs else None)
+
+
+def effective_definition(request: BriefingQuery) -> Definition:
+    """The definition a request is built from, complete: the brief's weeks and comparison filled in (the Promotion review
+    is release-wide, so it takes neither) and every other field as chosen or pre-selected."""
+    d = Definition.coerce(request.definition, request.comparison)
+    if request.intent == "promotion_review":
+        return d
+    return d.model_copy(update={"first_week": request.week_start.isoformat(),
+                                "last_week": (request.week_end or request.week_start).isoformat()})
+
+
+def engine_options(request: BriefingQuery) -> dict:
+    """The keywords the scripted engine is called with: the definition when the request carries one, else the old
+    `comparison` keyword (or nothing), so a request without a definition is the call it always was."""
+    if request.definition is not None:
+        return {"definition": effective_definition(request)}
+    return {"comparison": request.comparison} if request.comparison is not None else {}
+
+
+def effective_comparison(request: BriefingQuery) -> Comparison | None:
+    return effective_definition(request).primary_comparison
+
+
 def _check_scope(request: BriefingQuery) -> None:
     bounds = release_context()
     if request.brand_id not in bounds.product_ids:
@@ -128,12 +169,13 @@ def _check_scope(request: BriefingQuery) -> None:
         raise OutsideRelease("Territory not present in the supported synthetic data release.")
     if request.intent == "promotion_review" and request.brand_id != "BXA":
         raise OutsideRelease("The release-wide Promotion review is available for BXA.")
-    if request.comparison is not None:
+    if (chosen := effective_definition(request).comparison):
         if request.intent == "promotion_review":
             raise OutsideRelease("The release-wide Promotion review uses its own lapse comparison.")
         try:
-            comparison_weeks(request.comparison, period_weeks(request),
-                             {week.isoformat() for week in bounds.available_weeks})
+            for each in chosen:  # every comparison, the primary and the extras
+                comparison_weeks(each, period_weeks(request), {week.isoformat() for week in bounds.available_weeks},
+                                 launch=launch_week() if each.kind == "pre_launch" else None)
         except ValueError as exc:
             raise OutsideRelease(str(exc)) from exc
     # Import the existing lane directly, exactly as eval/harness/systems.py does.
@@ -159,6 +201,17 @@ def _matching_brand(expected: str, result: dict) -> None:
         raise RuntimeError("The engine returned a different brand from the request.")
 
 
+def _matching_definition(expected: Definition, result: dict) -> None:
+    """The engine must have built the brief from the definition asked for: the selectors that change the figures."""
+    raw = result.get("definition")
+    if raw is None:
+        return
+    got = Definition.model_validate(raw)
+    fields = ("territories", "measure", "grain", "relative_to")
+    if any(getattr(got, f) != getattr(expected, f) for f in fields) or got.extra_comparisons != expected.extra_comparisons:
+        raise RuntimeError("The worker returned a different brief definition from the request.")
+
+
 def _matching_comparison(expected: Comparison | None, result: dict) -> None:
     raw = result.get("comparison")
     actual = Comparison.model_validate(raw) if raw is not None else None
@@ -171,7 +224,7 @@ def run_triage(request: BriefingQuery) -> dict:
     _check_scope(request)
     from briefing_baseline.pipeline import triage
 
-    options = {"comparison": request.comparison} if request.comparison is not None else {}
+    options = engine_options(request)
     plan = triage(normalize_question(request), db=DB, brand_id=request.brand_id, **options)
     _matching_brand(request.brand_id, plan)
     _traceable(plan["claims"], plan["evidence"])
@@ -184,7 +237,8 @@ def run_triage(request: BriefingQuery) -> dict:
 def run_briefing(request: BriefingQuery) -> BriefingResult:
     _check_scope(request)
     question = normalize_question(request)
-    options = {"comparison": request.comparison} if request.comparison is not None else {}
+    definition = effective_definition(request)
+    options = engine_options(request)
     extra = {}
     log = events.EventLog()  # brief-009: the scripted run's steps, actor Code; recording changes nothing in the brief
     if request.triage is None:
@@ -210,7 +264,8 @@ def run_briefing(request: BriefingQuery) -> BriefingResult:
     return BriefingResult(
         system=raw["system"], question=question,
         brand_id=request.brand_id, territory_id=request.territory_id,
-        week_start=request.week_start, week_end=request.week_end, comparison=request.comparison,
+        week_start=request.week_start, week_end=request.week_end, comparison=definition.primary_comparison,
+        definition=definition, definition_words=definition_words(definition),
         answer=raw["answer"], claims=claims, evidence=evidence,
         data_version=_traceable(claims, evidence),
         abstained=bool(raw.get("abstained", False)), citations=raw.get("citations"), sections=raw.get("sections"), **extra,
@@ -236,7 +291,9 @@ def accept_agent_brief(query: BriefingQuery, posted: dict) -> BriefingResult:
     require_engine(query.brand_id, "agent")
     env = posted.get("envelope") or {}
     _matching_brand(query.brand_id, env)
-    _matching_comparison(query.comparison, env)
+    definition = effective_definition(query)
+    _matching_comparison(definition.primary_comparison, env)
+    _matching_definition(definition, env)
     claims, evidence = env.get("claims") or [], env.get("evidence") or []
     version = _traceable(claims, evidence)
     if version != current_data_version():
@@ -248,7 +305,8 @@ def accept_agent_brief(query: BriefingQuery, posted: dict) -> BriefingResult:
     return BriefingResult(
         engine="agent", system=str(env.get("system", "briefing_agent")), question=normalize_question(query),
         brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start, week_end=query.week_end,
-        comparison=query.comparison, answer=env.get("answer", ""), claims=claims, evidence=evidence, data_version=version,
+        comparison=definition.primary_comparison, definition=definition, definition_words=definition_words(definition),
+        answer=env.get("answer", ""), claims=claims, evidence=evidence, data_version=version,
         abstained=bool(env.get("abstained", False)), triage=posted.get("triage"), flow=posted.get("flow"),
         sections=env.get("sections"), events=events.clean(posted.get("events")) or None,
         claim_events=events.clean_claim_events(posted.get("claim_events"), len(claims)),
@@ -338,7 +396,57 @@ def validate_scope(proposal: dict, release: ReleaseContext, brand_id: str) -> di
     if not isinstance(promotion, bool) or (promotion and brand_id != "BXA"):
         raise ValueError("The proposed promotion flag is not usable.")
     return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": territory or None,
-            "comparison_weeks": count, "promotion_review": promotion, "notes": notes}
+            "comparison_weeks": count, "promotion_review": promotion, "notes": notes,
+            "definition": proposed_definition(weeks[0], weeks[-1], count, promotion, proposal, notes)}
+
+
+_NBRX = re.compile(r"\b(new patients?|new-to-brand|nbrx)\b", re.I)
+_PRE_LAUNCH = re.compile(r"\b(before (?:metacora|the competitor|competitor|the launch|launch)\b|pre-?launch)", re.I)
+_TRX = re.compile(r"\b(trx|total prescriptions?|total scripts?)\b", re.I)
+
+
+def _question_words(question: str) -> dict:
+    """What the question's own words name (rules; no model): new patients or NBRx (with or without TRx), and a comparison
+    with the weeks before Metacora launched."""
+    out: dict = {}
+    if _NBRX.search(question):
+        out["measure"] = ["trx", "nbrx"] if _TRX.search(question) else ["nbrx"]
+    if _PRE_LAUNCH.search(question):
+        out["comparison"] = "pre_launch"
+    return out
+
+
+def proposed_definition(first: str, last: str, comparison_weeks: int | None, promotion: bool, words: dict, notes: list[str]) -> dict | None:
+    """The brief definition the form is filled with: the period and comparison the reader found, and any measure,
+    territories, levels or relative_to the question's words or the model proposed. An unusable proposed value is left at
+    its pre-selected value with a note, never an error. None for the release-wide Promotion review."""
+    if promotion:
+        return None
+    fields: dict = {"first_week": first, "last_week": last}
+    if comparison_weeks:
+        fields["comparison"] = [{"kind": "previous", "weeks": comparison_weeks}]
+    if words.get("comparison") == "pre_launch":  # only for a period that starts on or after the competitor launch
+        launch = launch_week()
+        if launch is not None and first >= launch:
+            fields["comparison"] = [{"kind": "pre_launch"}]
+        else:
+            notes.append("The pre-launch comparison needs a period that starts on or after the competitor launch, so the form keeps the previous weeks.")
+    for name, allowed in (("measure", definitions.MEASURES), ("territories", definitions.TERRITORIES), ("relative_to", definitions.RELATIVE)):
+        value = words.get(name)
+        if value is None:
+            continue
+        values = ["trx", "nbrx"] if value == "both" else value if isinstance(value, list) else [value]
+        if values and len(set(values)) == len(values) and all(v in allowed for v in values):
+            fields[name] = values
+        else:
+            notes.append(f"The proposed {name.replace('_', ' ')} is not one the form offers, so it keeps its pre-selected value.")
+    grain = words.get("grain")
+    if grain is not None:
+        if isinstance(grain, list) and grain and all(g in definitions.GRAINS for g in grain):
+            fields["grain"] = grain
+        else:
+            notes.append("The proposed levels are not usable, so the form keeps its pre-selected levels.")
+    return Definition.model_validate(fields).to_json()
 
 
 def _shortened_note(fit: int, first: str) -> str:
@@ -370,8 +478,10 @@ def rules_scope(question: str, release: ReleaseContext, brand_id: str) -> dict:
         notes.append("No territory was named, so the form keeps the territory you chose.")
     if got["promotion"] and not promotion:
         notes.append("The Promotion review is available for BXA only.")
+    words = _question_words(question)
     return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": got["territory"],
-            "comparison_weeks": count or None, "promotion_review": promotion, "notes": notes}
+            "comparison_weeks": count or None, "promotion_review": promotion, "notes": notes,
+            "definition": proposed_definition(weeks[0], weeks[-1], count or None, promotion, words, notes)}
 
 
 def _ask_model(spec: str, question: str, release: ReleaseContext, brand_id: str) -> dict:

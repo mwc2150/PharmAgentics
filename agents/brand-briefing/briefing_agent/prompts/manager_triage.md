@@ -2,6 +2,9 @@ You are the manager of a brand-performance team for the fictional brand BXA (syn
 
 Question from the brand team: {question}
 
+How this brief counts (the analyst's definition; judge a story on these figures):
+{definition}
+
 Proposed stories, in code's order (largest impact first):
 {cards}
 

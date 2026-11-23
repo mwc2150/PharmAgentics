@@ -250,7 +250,7 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             next_checks=memo.next_checks(p, told, competitor),
             appendix=memo.appendix(reg, p=p, proj=f.proj) + memo.driver_timing(told),
             stories=blocks, story_notes=notes,
-            charts={"2": charts.trend(reg, p), "4": charts.coverage(reg, p)},  # brief-003 FR-024
+            charts={**({"2": charts.trend(reg, p)} if p.has("national") else {}), "4": charts.coverage(reg, p)},  # brief-003 FR-024
             kpis=memo.kpis(p, f.proj, top), territory_table=nums["territory_table"],
             details={"1": memo.bottom_detail(top), "2": nums["detail"], "3": dropped, "4": lim["detail"]})
         template, sections = memo.compose(parts)

@@ -23,7 +23,7 @@ class Comparison(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    kind: Literal["previous", "last_year", "custom"]
+    kind: Literal["previous", "last_year", "custom", "pre_launch"]  # pre_launch: the four weeks before Metacora launched
     weeks: int | None = Field(default=None, strict=True, ge=1, le=13)
     start: date | None = None
     end: date | None = None
@@ -35,15 +35,26 @@ class Comparison(BaseModel):
                 raise ValueError("Custom comparison needs a start and end week.")
             if self.start.weekday() or self.end.weekday() or self.start > self.end:
                 raise ValueError("Custom comparison needs ordered Monday reporting weeks.")
-        elif self.start is not None or self.end is not None or (self.weeks is None) != (self.kind == "last_year"):
-            raise ValueError("Previous comparison needs a week count. Last year takes no extra fields.")
+        elif self.start is not None or self.end is not None or (self.weeks is None) != (self.kind in ("last_year", "pre_launch")):
+            raise ValueError("Previous comparison needs a week count. Last year and pre-launch take no extra fields.")
         return self
 
 
-def comparison_weeks(choice: Comparison, requested: list[str], available: set[str]) -> list[str]:
+PRE_LAUNCH_WEEKS = 4
+
+
+def comparison_weeks(choice: Comparison, requested: list[str], available: set[str], launch: str | None = None) -> list[str]:
+    """The comparison weeks of an explicit choice. `launch` is the competitor's launch week from the data, needed only for
+    the pre-launch comparison (the four weeks before it)."""
     if not requested:
         raise ValueError("Choose a reporting window inside the release before setting its comparison.")
-    if choice.kind == "last_year":
+    if choice.kind == "pre_launch":
+        if launch is None:
+            raise ValueError("No competitor launch is recorded in the release, so there are no pre-launch weeks to compare with.")
+        if requested[0] < launch:
+            raise ValueError(f"The pre-launch comparison needs a period that starts on or after the competitor launch ({launch}).")
+        weeks = [shift(launch, -i) for i in range(PRE_LAUNCH_WEEKS, 0, -1)]
+    elif choice.kind == "last_year":
         weeks = [shift(w, -52) for w in requested]
     elif choice.kind == "previous":
         weeks = [shift(requested[0], -i) for i in range(choice.weeks, 0, -1)]

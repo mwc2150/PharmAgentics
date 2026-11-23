@@ -268,7 +268,7 @@ class RunSession:
                 "story_cards": cards, "story_details": {s["territory"]: self.story_detail.get(s["territory"], []) for s in told},
                 "next_checks": memo.next_checks(p, told, competitor),
                 "driver_timing": memo.driver_timing(told),
-                "charts": {"2": charts.trend(reg, p), "4": charts.coverage(reg, p), "stories": story_charts,
+                "charts": {**({"2": charts.trend(reg, p)} if p.has("national") else {}), "4": charts.coverage(reg, p), "stories": story_charts,
                            "competitor": charts.competitor(reg, p) if competitor else None}}
 
     def story_section(self, territory: str, n: int) -> str:
