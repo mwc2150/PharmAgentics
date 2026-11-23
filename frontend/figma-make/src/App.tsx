@@ -47,7 +47,8 @@ function dataText(input: unknown): string {
   return input === null || input === undefined ? "—" : typeof input === "string" ? input : JSON.stringify(input, null, 2)
 }
 const message = (e: unknown) => e instanceof Error ? e.message : String(e)
-const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
+// Status and actor tags: an outlined word, never a filled pill.
+const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
 // One vocabulary for every screen: the primary action, a secondary action, a field, its label, a panel.
 const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary shadow-[0_4px_0_var(--color-primarydeep)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-primaryhover active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-primarydeep)] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted disabled:shadow-none"
 const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)] disabled:cursor-not-allowed disabled:text-muted disabled:shadow-none"
@@ -55,24 +56,21 @@ const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
 const REVIEW_CHIP = {
-  pending: [`${chip} bg-amberbg text-amber`, "Draft · Awaiting analyst review"],
-  approved: [`${chip} bg-okbg text-ok`, "Approved · Visible to the Brand Director"],
-  rejected: [`${chip} bg-warnbg text-warn`, "Rejected · Hidden from the Brand Director"],
+  pending: [`${chip} border-amberline text-amber`, "Draft · Awaiting analyst review"],
+  approved: [`${chip} border-ok text-ok`, "Approved · Visible to the Brand Director"],
+  rejected: [`${chip} border-edge text-warn`, "Rejected · Hidden from the Brand Director"],
 } as const
 
 function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, selectedId: string, onClose: () => void}) {
   const [id, setId] = useState(selectedId)
   useEffect(() => setId(selectedId), [selectedId])
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if(e.key === "Escape") onClose() }
-    document.addEventListener("keydown", esc)
-    return () => document.removeEventListener("keydown", esc)
-  }, [onClose])
+  const drawer = useRef<HTMLElement>(null)
+  useModalFocus(drawer, onClose)
   const claims = result.claims.filter(c=>c.evidence_id===id)
   const selected = result.evidence.find(e=>e.id===id)
   return <div className="fixed inset-0 z-40 flex justify-end">
     <button className="absolute inset-0 bg-black/60" aria-label="Close evidence" onClick={onClose}/>
-    <aside role="dialog" aria-modal="true" aria-label="Source evidence" className="relative z-10 flex h-full w-full max-w-xl flex-col border-l border-rule bg-sheet pa-slide">
+    <aside ref={drawer} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Source evidence" className="relative z-10 flex h-full w-full max-w-xl flex-col border-l border-rule bg-sheet pa-slide">
       <div className="flex items-start justify-between border-b border-rule p-5">
         <div><div className="text-xs uppercase tracking-widest text-muted">Governed evidence</div><h2 className="mt-1 text-lg font-semibold">Source records</h2><p className="mt-1 text-xs text-muted">{result.evidence.length} evidence records · pinned version {result.data_version ?? "unavailable"}</p></div>
         <button onClick={onClose} aria-label="Close evidence panel" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-5 w-5"/></button>
@@ -826,7 +824,7 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
 }
 
 // brief-002 US7: who did each of the seven stages (Briefing Architecture §6 states, §9 modes).
-const ACTOR = {code:["Code","bg-paper text-ink border border-rule"], agent:["Agent","bg-primarybg text-primary"], llm:["LLM step","bg-amberbg text-amber"], human:["Person","bg-humanbg text-human"]} as const
+const ACTOR = {code:["Code","border-edge text-ink"], agent:["Agent","border-edge text-ink"], llm:["LLM step","border-amberline text-amber"], human:["Person","border-human/60 text-human"]} as const
 
 function FlowPanel({flow, triage}: {flow: Stage[], triage?: TriageRecord | null}) {
   return <details className="pa-panel rounded-xl bg-sheet px-6 py-5 border border-rule">
@@ -879,7 +877,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted"><span>{result.engine==="agent" ? "Agent team · experimental" : "Scripted"}</span><ClassLabel tab="briefing.view.analyst"/></div>
         <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : result.week_end && result.week_end > result.week_start ? `weeks ${labelWeek(result.week_start)} to ${labelWeek(result.week_end)}` : `week of ${labelWeek(result.week_start)}`}</h2>
         <p className="mt-1.5 text-sm text-muted">{result.brand_id}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <span className={`${chip} bg-amberbg text-amber`}>Unresolved findings</span>}</div>
+        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <span className={`${chip} border-amberline text-amber`}>Unresolved findings</span>}</div>
       </div>
       <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
         <p className="mt-4 text-[11px] text-muted">Each underlined number is a claim: click it, or its source number, to open the query and record behind it.</p></div>

@@ -33,7 +33,7 @@ Every text pair clears WCAG AA (4.5:1), and control borders and focus rings clea
 ### Where lime is allowed
 
 - The primary action (`BTN`): lime fill, `onprimary` text. One per view.
-- The current selection: the current sidebar item's icon, the current tab's label, the active view-switch segment, the current marker in a chart. Focus: the 2px `primary` outline (offset 2px) on every `:focus-visible`, and the text-selection colour.
+- The current selection: the current sidebar item's icon, the current tab's label, the active view-switch segment, the current marker in a chart. Focus: the 2px `primary` outline (offset 2px) on every `:focus-visible`, including memo citations and menu items (an inset ring there), and the text-selection colour. Under `forced-colors` the highlight block becomes a rule and the current item an outline.
 - Links and citations: a cited figure is underlined with a dotted lime line and carries a lime evidence number; "Ask about this" is a lime text link.
 - One lime block per view section: the greeting at the top of a workspace, and the top-level heading of each memo section (`.pa-mark`, `onprimary` text, 8px radius, `box-decoration-break: clone` so a wrapped heading keeps its block). Sub-sections (§3.1 and below) stay plain text with a 2px `rule` bar on the left.
 - The one data series of a chart, and the filled dot for a material change (hollow = not material).
@@ -41,7 +41,7 @@ Every text pair clears WCAG AA (4.5:1), and control borders and focus rings clea
 
 ## Type
 
-- **Space Grotesk** (self-hosted variable, weights 300 to 700, `public/fonts`) for the page title, the greeting, memo section headings, panel headings and figures (KPI values, dashboard numbers). h1 to h3 are 700 with -0.02em tracking and balanced wrapping. The wordmark is Space Grotesk 18px bold. `font-display` is the class; `font-serif` is a legacy alias for the same face.
+- **Space Grotesk** (self-hosted variable, weights 300 to 700, `public/fonts`) for the page title, the greeting (a paragraph, not a heading), memo section headings, panel headings and figures (KPI values, dashboard numbers). h1 to h3 are 700 with -0.02em tracking and balanced wrapping. The wordmark is Space Grotesk 18px bold. `font-display` is the class; `font-serif` is a legacy alias for the same face.
 - **IBM Plex Sans** (self-hosted variable, 100 to 700) for the interface, labels, tables, data and brief prose. Numbers use `tabular-nums`. Body is 15px.
 - Brief prose is Plex Sans now (it was a serif): 16px, line height 1.65, at most 68 characters a line. One reading face keeps a figure inside a sentence in the same digits as the tables and tiles beside it, and Space Grotesk's wide, geometric letters tire over a paragraph.
 - Scale in use: page title 18px (20px from `sm`) bold; greeting 32px, line height 1.25; memo section heading 20px bold, line height 1.5, with a 14px mono `§n` marker in `muted`; memo sub-section 16px semibold; panel heading 14px semibold; KPI value 28px bold; button and field text 14px; field label 12px medium `muted`; KPI label and classification 11px uppercase (0.05em and 0.06em tracking); chips 11px medium; chart text 9 to 11px.
@@ -54,12 +54,12 @@ Use the shared class constants in `App.tsx` (`Overview.tsx` keeps its own copy o
 - `BTN` (primary, one per view): `primary` fill, `onprimary` 14px semibold, 14px radius, padding 20/10px, hard shadow `0 4px 0 primarydeep`. Hover `primaryhover`. Press: moves down 3px and the shadow shrinks to `0 1px 0`. Disabled: `rule` fill, `muted` text, no shadow.
 - `BTN2` (secondary): transparent, 1px `edge` border, `ink` 14px medium, shadow `0 3px 0 slab`. Hover fills `paper`. Press: down 2px, shadow `0 1px 0`.
 - `FIELD`: `paper` well, 1px `edge` border, 14px radius, 14px text. `LABEL` above it. `PANEL`: `.pa-panel`, 22px radius, 1px `rule` border, `sheet` fill.
-- Controls are 14px radius (`--radius-lg`); panels are 22px (`--radius-xl`); the highlight block is 8px; chips 4px (status chips may be a full pill). Nested tiles (KPI tiles) use the 14px control radius.
-- Tabs (`SubTabs`): plain text; the current tab is `primary` semibold. A pill slides behind the current tab: `paper` fill, 1px `edge` border, 14px radius, shadow `0 3px 0 slab` (280ms ease-out; none with reduced motion). The current tab's data classification sits at the row's end.
-- View switch (`ViewToggle`, analyst/leadership): a small bordered control (1px `edge`, 14px radius) with a solid lime segment for the open view and `muted` text on the other.
+- Controls are 14px radius (`--radius-lg`); panels are 22px (`--radius-xl`); the highlight block is 8px; status and actor tags 6px. Nested tiles (KPI tiles) use the 14px control radius.
+- Tabs (`SubTabs`): plain text; the current tab is `primary` semibold. A pill slides behind the current tab: `paper` fill, 1px `edge` border, 14px radius, shadow `0 3px 0 slab` (280ms ease-out; none with reduced motion). The row wraps rather than scrolls. They follow the tab pattern: roving tabindex, arrow keys and Home/End move focus, Enter or Space selects. The current tab's data classification sits at the row's end.
+- View switch (`ViewToggle`, analyst/leadership): a small bordered control (1px `edge`, 14px radius) with a solid lime segment for the open view and `muted` text on the other. It is a group of `aria-pressed` buttons, not tabs; the open view stays focusable.
 - Sidebar items: 14px radius rows, 20px icon. Current: `primarybg` fill, `ink` text, semibold, lime icon, `aria-current="page"`. Hover: `paper` fill, `ink` text, lime icon. Not current: `muted`.
 - Lists are rows divided by `rule` inside one panel, never grids of cards.
-- Chips only for status (in review, approved, paused, confidence), each with a word.
+- Tags only for status (in review, approved, paused, confidence) and actors (Code, Agent, Person): an outlined word (1px border in the state colour or `edge`), never a filled pill. Approved adds a check mark.
 - Data classification (core-009) is a quiet uppercase text label, never a coloured pill; only Sensitive takes a colour (`neg`).
 - Memo: KPI tiles (up to four across; 14px radius, `rule` border, `sheet` at 60%) with the value in Space Grotesk 28px and a direction arrow plus a screen-reader word; story cards (22px radius, `rule` border, `sheet` at 40%); tables in Plex Sans 13px with tabular figures.
 
@@ -76,7 +76,7 @@ Use the shared class constants in `App.tsx` (`Overview.tsx` keeps its own copy o
 
 - Depth is a hard offset slab: `0 5px 0 slab` under panels (`.pa-panel`), `0 4px 0 primarydeep` under the primary button, `0 3px 0 slab` under the secondary button and tab pill. No blur radius, no spread, no glow, no soft shadow.
 - Panels are one flat `sheet` layer on the `paper` page; the sidebar and header are separated by a 1px `rule` line, not a shadow.
-- Frosted glass (`.glass`, `sheet` at 80%, 16px blur) only on things that float over the page: the phone drawer, menus and toasts. The dialog scrim is black at 60%.
+- Frosted glass (`.glass`, `sheet` at 80%, 16px blur) only on things that float over the page: the phone drawer and toasts. Menus are solid panels (`.pa-panel`), so nothing shows through them. The dialog scrim is black at 60%.
 - Motion is state only: 150 to 300ms, exponential ease-out; none with `prefers-reduced-motion`.
 - Print: the memo prints as a plain light A4 page. Tokens are redefined to light values, shadows and the lime block are removed (the heading prints as text), and app chrome and buttons are hidden.
 
