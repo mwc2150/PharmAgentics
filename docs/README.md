@@ -14,8 +14,8 @@ This folder holds the project's written documentation, grouped by type.
 
 - Constitutions: [`.specify/memory/constitution.md`](../.specify/memory/constitution.md) (shared) and [`.specify/memory/constitution-briefing.md`](../.specify/memory/constitution-briefing.md) (Briefing lane).
 - Specs: [`specs/README.md`](../specs/README.md).
-- Project status: run `uv run python -m pharmagentics.devtools.status`. [`PROJECT_STATE.md`](../PROJECT_STATE.md) holds the open-items list.
-- Handoffs between sessions: [`conversations/`](../conversations/README.md), one new file per branch.
+- Project status: run `uv run python -m pharmagentics.devtools.status`. Known open work: [`open-items.md`](open-items.md).
+- Handoffs between sessions: [`handoffs/`](handoffs/README.md), one new file per branch.
 
 ## Dot folders
 

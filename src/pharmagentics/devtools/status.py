@@ -1,4 +1,4 @@
-"""Print where the project stands, from the handoffs in conversations/ and from git: open work first, then the latest on main."""
+"""Print where the project stands, from the handoffs in docs/handoffs/ and from git: open work first, then the latest on main."""
 
 from __future__ import annotations
 
@@ -10,7 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-FOLDER = "conversations"
+FOLDER = "docs/handoffs"
+LEGACY = "conversations"  # where handoffs lived until 2026-11-23; a branch opened before the move may still add one there
+FOLDERS = (FOLDER, LEGACY)
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})-.+\.md$")
 HEADER_SINCE = "2026-11-24"  # handoffs from this date on start with the header; older ones are left as written
 HEADER_KEYS = ("branch", "lane", "next")
@@ -32,9 +34,13 @@ def _git(*args: str) -> str:
     return result.stdout.decode("utf-8", errors="replace")
 
 
+def _name(path: str) -> str:
+    return path.rsplit("/", 1)[-1]
+
+
 def parse(path: str, text: str) -> Handoff | None:
     """A handoff from its path and text; None when the file name carries no date (README.md, for one)."""
-    match = NAME.match(path.rsplit("/", 1)[-1])
+    match = NAME.match(_name(path))
     if not match:
         return None
     lines = text.replace("\r\n", "\n").split("\n")
@@ -59,43 +65,46 @@ def base_ref() -> str:
 
 
 def _added_order(base: str) -> dict[str, int]:
-    """Commit time at which each handoff first appeared on the base, so handoffs of one day sort newest first."""
+    """Commit time at which each handoff was first written, by file name, so handoffs of one day sort newest first."""
     order: dict[str, int] = {}
     stamp = 0
-    for line in _git("log", "--format=@%ct", "--name-only", "--diff-filter=A", base, "--", FOLDER).splitlines():
+    for line in _git("log", "--format=@%ct", "--name-only", "--diff-filter=A", base, "--", *FOLDERS).splitlines():
         if line.startswith("@"):
             stamp = int(line[1:] or 0)
         elif line.strip():
-            order.setdefault(line.strip(), stamp)
+            order[_name(line.strip())] = stamp  # the log runs newest first, so the first commit to add the name wins
     return order
 
 
 def on_base(base: str) -> list[Handoff]:
     order = _added_order(base)
     found = []
-    for path in _git("ls-tree", "--name-only", base, f"{FOLDER}/").splitlines():
-        local = REPO / path
-        text = local.read_text(encoding="utf-8", errors="replace") if local.is_file() else _git("show", f"{base}:{path}")
-        handoff = parse(path, text)
-        if handoff:
-            found.append(handoff)
-    return sorted(found, key=lambda h: (h.date, order.get(h.path, 0), h.path), reverse=True)
+    for folder in FOLDERS:
+        for path in _git("ls-tree", "--name-only", base, f"{folder}/").splitlines():
+            local = REPO / path
+            text = local.read_text(encoding="utf-8", errors="replace") if local.is_file() else _git("show", f"{base}:{path}")
+            handoff = parse(path, text)
+            if handoff:
+                found.append(handoff)
+    return sorted(found, key=lambda h: (h.date, order.get(_name(h.path), 0), h.path), reverse=True)
 
 
 def open_work(base: str, merged: set[str]) -> tuple[list[tuple[str, list[Handoff]]], list[str]]:
     """Handoffs that are not on the base yet, grouped by where they live, and the unmerged branches that have none."""
     groups: list[tuple[str, list[Handoff]]] = []
+    merged_names = {_name(path) for path in merged}
     here = []
-    for local in sorted((REPO / FOLDER).glob("*.md")):
-        path = f"{FOLDER}/{local.name}"
-        if path not in merged:
-            handoff = parse(path, local.read_text(encoding="utf-8", errors="replace"))
-            if handoff:
-                here.append(handoff)
+    for folder in FOLDERS:
+        for local in sorted((REPO / folder).glob("*.md")):
+            path = f"{folder}/{local.name}"
+            if local.name not in merged_names:
+                handoff = parse(path, local.read_text(encoding="utf-8", errors="replace"))
+                if handoff:
+                    here.append(handoff)
     if here:
         groups.append((f"this checkout ({_git('branch', '--show-current').strip() or 'detached'})", here))
     seen = {_git("rev-parse", "HEAD").strip()}
-    shown = {h.path for h in here}
+    shown = {_name(h.path) for h in here}
     bare: list[str] = []
     refs = _git("for-each-ref", f"--no-merged={base}", "--sort=-committerdate",
                 "--format=%(objectname) %(committerdate:short) %(refname:short)", "refs/heads", "refs/remotes/origin")
@@ -106,11 +115,11 @@ def open_work(base: str, merged: set[str]) -> tuple[list[tuple[str, list[Handoff
         seen.add(sha)
         ahead = _git("rev-list", "--count", f"{base}..{ref}").strip() or "?"
         label = f"{ref} ({ahead} ahead, {day})"
-        added = [p for p in _git("diff", "--name-only", "--diff-filter=A", f"{base}...{ref}", "--", FOLDER).splitlines()
-                 if p not in merged and p not in shown]
+        added = [p for p in _git("diff", "--name-only", "--diff-filter=A", f"{base}...{ref}", "--", *FOLDERS).splitlines()
+                 if _name(p) not in merged_names and _name(p) not in shown]
         handoffs = [h for h in (parse(p, _git("show", f"{ref}:{p}")) for p in added) if h]
         if handoffs:
-            shown.update(h.path for h in handoffs)
+            shown.update(_name(h.path) for h in handoffs)
             groups.append((label, handoffs))
         else:
             bare.append(label)
@@ -131,7 +140,7 @@ def render(limit: int = 10) -> str:
     merged = on_base(base)
     groups, bare = open_work(base, {h.path for h in merged})
     lines = [f"# Project status (against {base} at {tip})", "",
-             "Priorities are in `PROJECT_STATE.md`. Run `git fetch` first if the date above looks old.", "",
+             "Open items are in `docs/open-items.md`. Run `git fetch` first if the date above looks old.", "",
              f"## Open: not on {base} yet", ""]
     for label, handoffs in groups:
         lines.append(f"{label}:")
@@ -149,8 +158,12 @@ def render(limit: int = 10) -> str:
     missing = sorted(h.path for h in everything
                      if h.date >= HEADER_SINCE and not all(h.header.get(key) for key in HEADER_KEYS))
     if missing:
-        lines += ["", "## Handoffs missing the branch, lane or next header (see conversations/README.md)", ""]
+        lines += ["", f"## Handoffs missing the branch, lane or next header (see {FOLDER}/README.md)", ""]
         lines.extend(f"- `{path}`" for path in missing)
+    stray = sorted(h.path for h in everything if h.path.startswith(f"{LEGACY}/"))
+    if stray:
+        lines += ["", f"## Handoffs in the old `{LEGACY}/` folder: move them to `{FOLDER}/`", ""]
+        lines.extend(f"- `{path}`" for path in stray)
     return "\n".join(lines) + "\n"
 
 

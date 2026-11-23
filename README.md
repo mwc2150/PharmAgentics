@@ -79,4 +79,4 @@ See [DuckDB first-run instructions](docs/guides/duckdb-first-run.md) for install
 - No output line identifies an individual rep.
 - "Competitive intelligence", never "surveillance". "New patients" only for NBRx.
 
-`AGENTS.md` holds the full instructions for coding agents (`CLAUDE.md` imports it); `uv run python -m pharmagentics.devtools.status` prints where the project stands, from the handoffs in `conversations/`.
+`AGENTS.md` holds the full instructions for coding agents (`CLAUDE.md` imports it); `uv run python -m pharmagentics.devtools.status` prints where the project stands, from the handoffs in `docs/handoffs/`.

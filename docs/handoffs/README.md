@@ -26,6 +26,6 @@ Then the body: what changed, tests and gate results with run IDs, the data versi
 
 ## Rules
 
-- Never edit another branch's handoff, and do not add status to `PROJECT_STATE.md`.
+- Never edit another branch's handoff, and do not add status to `docs/open-items.md` or any other shared file.
 - Handoffs stay in this folder after their branch merges. Old handoffs are history, not current instructions.
 - The status command lists a handoff with a missing header under a warning; fix it when you see it.

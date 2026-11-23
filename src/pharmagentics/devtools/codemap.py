@@ -58,11 +58,7 @@ FOLDERS: list[tuple[str, str]] = [
     ),
     (
         "docs/",
-        "README.md (index), guides/ (build and run, workflow, DuckDB first run, UAT), planning/ (Markdown copies of the source docs), adr/, architecture/ (diagrams), team/",
-    ),
-    (
-        "conversations/",
-        "one dated handoff per branch or session (YYYY-MM-DD-topic.md), never edited by other branches; `python -m pharmagentics.devtools.status` summarises them",
+        "README.md (index), handoffs/ (one dated handoff per branch or session; `python -m pharmagentics.devtools.status` summarises them), open-items.md, guides/ (build and run, workflow, DuckDB first run, UAT), planning/ (Markdown copies of the source docs), adr/, architecture/ (diagrams), team/",
     ),
     (
         "SoT/",

@@ -1,6 +1,6 @@
 # Tasks: brief-008 A Readable Memo
 
-Work packets for agents working in parallel (`plan.md` has the file contract and the block schema). Wave 1 runs F, M and R at once; G and W follow when M merges. Each packet works in its own worktree and branch, commits by path, and writes a short handoff in `conversations/` before it stops. The integrator (Opus) reviews, merges the packets, runs the full suite and the scripted gate, and opens the pull request.
+Work packets for agents working in parallel (`plan.md` has the file contract and the block schema). Wave 1 runs F, M and R at once; G and W follow when M merges. Each packet works in its own worktree and branch, commits by path, and writes a short handoff in `docs/handoffs/` before it stops. The integrator (Opus) reviews, merges the packets, runs the full suite and the scripted gate, and opens the pull request.
 
 ## Wave 1
 
