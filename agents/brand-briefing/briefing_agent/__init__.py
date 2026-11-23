@@ -312,7 +312,7 @@ async def _answer(question: str, model: str | None, comparison: Comparison | Non
     try:
         plan = await _triage(question, spec, log, comparison, definition)
     except ValueError:  # outside the release: the scripted engine says so, with no model
-        if comparison is not None or (definition is not None and Definition.coerce(definition, None).comparison is not None):
+        if comparison is not None or (definition is not None and Definition.coerce(definition, None).primary_comparison is not None):
             raise
         return dict(scripted.answer(question, **_options(None, definition)), system=f"{NAME}:{spec}")
     result = await _run(question, plan, plan.get("manager_order", []), spec, reviewed=False, log=log)

@@ -264,10 +264,11 @@ class RunSession:
             plan = (access.detail or {}).get("plan") if access else None
             drivers = s["drivers"] if s["confidence"] != "Low" else []
             story_charts[s["territory"]] = charts.story(reg, p, s["territory"], drivers, plan)
+        investigated = list(told)  # the story territories the checks ran on, before any continuing card joins `told`
         running_stories, running_details, running_cards = [], {}, {}
         if running:  # brief-010 FR-012: a continuing card joins §1 and §5 like a territory story
             covered = {s["territory"] for s in told} | {splits.plan_territory(reg, plan) for plan in (cuts or [])}
-            for event in continuing.screen(reg, p, covered, set(cuts or [])):
+            for event in continuing.screen(reg, p, covered, set(cuts or []), most=None):  # every running event: the kept ones are picked by territory, never re-ranked out
                 if event["territory"] in running:
                     block, info = continuing.block(reg, p, event)
                     running_cards[block.id], running_details[block.id] = block.card, block.detail
@@ -283,7 +284,7 @@ class RunSession:
         national_story = None  # packet NC: every brief has one national card; the competitor story's, else a block of its own
         if p.has("national"):
             comp = self.competitor_facts if competitor and self.competitor_facts else None
-            reading = stages.national_reading(reg, p, [self.checks.get(s["territory"], {}) for s in told], comp, self.facts.get("avg"),
+            reading = stages.national_reading(reg, p, [self.checks.get(s["territory"], {}) for s in investigated], comp, self.facts.get("avg"),
                                               data_artifact=bool(self.facts.get("data_artifact")))
             if comp:
                 cards["competitor"] = memo.competitor_card(p, reading or comp)

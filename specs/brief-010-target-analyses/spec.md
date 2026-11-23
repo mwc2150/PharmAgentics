@@ -2,8 +2,8 @@
 
 **Spec ID**: `brief-010-target-analyses` (Briefing lane; owners: Michael, Meghna)
 **Feature Branch**: `feature/brief-010-targets`
-**Created**: 2026-11-22 | **Updated**: 2026-11-22
-**Status**: Building. Packet D (the brief definition) first; the golden review was done in the grill of 2026-11-22. Work packets in `tasks.md`, file contract in `plan.md`.
+**Created**: 2026-11-22 | **Updated**: 2026-11-23
+**Status**: Built and integrated (2026-11-23). Packets D-B, D-U, G, N, R, P, S, X, NC, C and I; integration and review fixes. Work packets in `tasks.md`, file contract in `plan.md`.
 **Input**: Grill with Michael, 2026-11-22 (night). core-011 SC-002 (key-fact recall ≥ 0.85, finding recall ≥ 0.90, inside the word budget) and FR-016 to FR-021. Scripted run `ef64671bd20941cc804e19a665c971dc` (brief-008 polish) scored on exact values. Briefing constitution B-II, B-III, B-VI, B-VII.
 
 ## Why
@@ -107,6 +107,6 @@ A leader asks whether the issue is new or continuing. The competitor story is a 
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: On the scripted engine after all four packets: pooled key-fact recall ≥ 0.85, finding recall ≥ 0.90, `over_word_budget` 0.
+- **SC-001**: On the scripted engine after all four packets: pooled key-fact recall ≥ 0.85, finding recall ≥ 0.90, `over_word_budget` 0. *(2026-11-23: met on recall, 1.000 and 1.000, run `60927c3280374d748a44c55ca309b8d1`. Michael dropped the word budget as a target the same day; it stays report-only, 8 briefs over.)*
 - **SC-002**: The Haiku agent run at the end: the same finding recall as scripted or better, "numbers lost by the agent" 0, all seven gated checks 1.000.
 - **SC-003**: The full suite and the scripted gate pass after every packet; Forecast scores are unchanged.

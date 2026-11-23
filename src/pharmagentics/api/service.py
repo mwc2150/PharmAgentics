@@ -138,8 +138,8 @@ def effective_definition(request: BriefingQuery) -> Definition:
     """The definition a request is built from, complete: the brief's weeks and comparison filled in (the Promotion review
     is release-wide, so it takes neither) and every other field as chosen or pre-selected."""
     d = Definition.coerce(request.definition, request.comparison)
-    if request.intent == "promotion_review":
-        return d
+    if request.intent == "promotion_review":  # release-wide: a chosen week would turn it into a weekly brief
+        return d.model_copy(update={"first_week": None, "last_week": None, "comparison": []})
     return d.model_copy(update={"first_week": request.week_start.isoformat(),
                                 "last_week": (request.week_end or request.week_start).isoformat()})
 
