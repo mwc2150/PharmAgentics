@@ -6,7 +6,7 @@ Reads the documents the app stored (the local state folder, default local/state 
 markdown report: sessions rated good, fine or bad by persona, thumbs up and down on answers (with every downvote), the System Usability Scale score, per-question means, the
 net promoter score and every written answer. --csv also writes pulses.csv, votes.csv and survey.csv for a spreadsheet. --xlsx writes one
 workbook (Summary, Questionnaire, Answer votes, Session ratings, Comments) for the repo's feedback/ folder: pseudonymous IDs and
-role names only, the test login's records left out unless --include-test. For the cloud
+role names only, the shared tester login's records included (the class uses it) unless --exclude-test. For the cloud
 copy run `uv run python deploy/gcp.py feedback --project pharmagentics --account <you>`, which downloads the bucket's
 feedback/ folder first and then runs this. Nothing here sends anything anywhere.
 """
@@ -130,12 +130,12 @@ def write_xlsx(path: Path, q: dict, pulses: list[dict], surveys: list[dict], vot
     for s in sorted(surveys, key=lambda d: d["ts"]):
         u = s.get("umux")
         old = feedback.earlier_answers_text(s, set(by_id))
-        body.append([_when(s["ts"]), s["user"], feedback.role_label(s), s["version"], *(_cell(s["answers"].get(i)) for i in item_ids),
+        body.append([_when(s["ts"]), s.get("respondent", s["user"]), feedback.role_label(s), s["version"], *(_cell(s["answers"].get(i)) for i in item_ids),
                      u["raw"] if u else None, round(u["sus_equivalent"], 1) if u else None, s.get("sus"), old or None])
     _sheet(wb, "Questionnaire", header, body, [18, 20, 22, 14, *([30] * len(item_ids)), 14, 16, 12, 50])
 
     _sheet(wb, "Answer votes", ["Submitted", "User (pseudonymous)", "Role", "Lane", "View", "Answer", "Vote", "Engine", "Data version", "Comment"],
-           [[_when(v["ts"]), v["user"], feedback.role_label(v), v["lane"], v["view"], v["ref"], v["vote"], v.get("engine"),
+           [[_when(v["ts"]), v.get("respondent", v["user"]), feedback.role_label(v), v["lane"], v["view"], v["ref"], v["vote"], v.get("engine"),
              v.get("data_version"), v.get("comment")] for v in sorted(votes, key=lambda d: d["ts"])], [18, 20, 22, 10, 12, 20, 8, 12, 24, 50])
     _sheet(wb, "Session ratings", ["Submitted", "User (pseudonymous)", "Role", "Session", "Rating", "Where", "Comment"],
            [[_when(p["ts"]), p["user"], feedback.role_label(p), p["session"], p["rating"], p["where"], p.get("comment")]
@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, help="write the markdown report here instead of printing it")
     ap.add_argument("--csv", type=Path, metavar="DIR", help="also write pulses.csv, votes.csv and survey.csv into this folder")
     ap.add_argument("--xlsx", type=Path, metavar="FILE", help="also write one workbook: Summary, Questionnaire, Answer votes, Session ratings, Comments")
-    ap.add_argument("--include-test", action="store_true", help="keep the test login's records in the workbook (left out by default)")
+    ap.add_argument("--exclude-test", action="store_true", help="leave out the shared tester login's records (kept by default: the class uses it)")
     a = ap.parse_args(argv)
     if not a.state_dir.is_dir():
         print(f"No state folder at {a.state_dir}: nothing has been stored there yet.", file=sys.stderr)
@@ -190,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
                     for s in sorted(surveys, key=lambda d: d["ts"])])
         print(f"CSV files written to {a.csv}")
     if a.xlsx:
-        keep = (lambda docs: docs) if a.include_test else feedback.real_only
+        keep = feedback.real_only if a.exclude_test else (lambda docs: docs)
         write_xlsx(a.xlsx, q, keep(pulses), keep(surveys), keep(votes), keep(summary["comments"]))
         print(f"Workbook written to {a.xlsx}. Skim the free-text answers before committing it: the repository is public.")
     return 0

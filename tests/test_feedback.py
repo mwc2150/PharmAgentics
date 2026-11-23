@@ -211,6 +211,17 @@ def test_survey_is_stored_scored_and_replaced_on_resubmit(tmp_path):
     assert c.get("/api/feedback/status").json()["survey"] == {"submitted_at": doc["ts"], "version": Q["version"]}
 
 
+def test_a_shared_login_keeps_one_response_per_browser(tmp_path):
+    a, b = signed_in("dev-tester"), signed_in("dev-tester")  # two classmates on the same login, two browsers
+    a.post("/api/feedback/survey", json={"version": Q["version"], "answers": {"o_change": "A's idea."}})
+    b.post("/api/feedback/survey", json={"version": Q["version"], "answers": {"o_change": "B's idea."}})
+    assert b.get("/api/feedback/survey").json()["answers"] == {"o_change": "B's idea."}  # never the other's answers
+    a.post("/api/feedback/survey", json={"version": Q["version"], "answers": {"o_change": "A, revised."}})
+    docs = stored(tmp_path, "feedback/survey")
+    assert sorted(d["answers"]["o_change"] for d in docs) == ["A, revised.", "B's idea."]
+    assert len({d["respondent"] for d in docs}) == 2 and all(d["test"] for d in docs)
+
+
 def test_a_partial_survey_has_no_umux_score(tmp_path):
     signed_in("dev-director").post("/api/feedback/survey", json={"version": Q["version"], "answers": {"umux_needs": 4, "t_trace": 5}})
     assert stored(tmp_path, "feedback/survey")[0]["umux"] is None
@@ -365,13 +376,14 @@ def test_workbook_has_the_five_sheets_and_pseudonymous_rows(tmp_path):
     assert wb.sheetnames == ["Summary", "Questionnaire", "Answer votes", "Session ratings", "Comments"]
     sheet = wb["Questionnaire"]
     header = [cell.value for cell in sheet[1]]
-    assert sheet.max_row == 2 and sheet.freeze_panes == "A2" and sheet["A1"].font.bold  # the tester login's response is left out
+    assert sheet.max_row == 3 and sheet.freeze_panes == "A2" and sheet["A1"].font.bold  # the shared tester login counts
+    assert sheet.cell(row=3, column=3).value.endswith("(shared tester login)")
     row = dict(zip(header, [cell.value for cell in sheet[2]]))
-    assert row["User (pseudonymous)"] == rbac.pseudonym("dev-analyst") and row["Role"] == "Commercial Analyst"
+    assert row["User (pseudonymous)"].startswith(rbac.pseudonym("dev-analyst")) and row["Role"] == "Commercial Analyst"
     assert row["What one thing would you change?"] == "Faster." and row["PharmAgentics is easy to use."] == 4
     assert row["UMUX-Lite (0-100)"] == 87.5 and row["Questionnaire version"] == 2
     summary = {r[0].value: r[1].value for r in wb["Summary"].iter_rows(min_row=2)}
-    assert summary["Questionnaire responses"] == 1 and summary["Net promoter score (-100 to 100)"] == 100
+    assert summary["Questionnaire responses"] == 2 and summary["Net promoter score (-100 to 100)"] == 100
     assert wb["Session ratings"]["E2"].value == "good" and wb["Comments"]["E2"].value == "Add a glossary."
     everything = " ".join(str(cell.value) for ws in wb for r in ws.iter_rows() for cell in r if cell.value is not None)
     assert "dev-analyst" not in everything and auth.DEV_USERS["dev-analyst"][0] not in everything
@@ -407,8 +419,10 @@ def test_workbook_stores_text_never_a_formula_and_drops_characters_excel_refuses
 def test_updating_from_an_older_questionnaire_keeps_the_older_answers(tmp_path):
     user = rbac.pseudonym("dev-analyst")
     old = {**survey("P1", 5, 1, 10, x_fix="The export."), "kind": "survey", "user": user, "roles": ["briefing-analyst"], "updates": 0}
-    store.backend().write(feedback._survey_key(user), json.dumps(old))
-    r = signed_in("dev-analyst").post("/api/feedback/survey", json={"version": Q["version"], "answers": {"umux_needs": 4, "umux_easy": 4}})
+    c = signed_in("dev-analyst")
+    c.cookies.set(feedback.BROWSER_COOKIE, "0123456789ab")
+    store.backend().write(feedback._survey_key(user, "0123456789ab"), json.dumps(old))
+    r = c.post("/api/feedback/survey", json={"version": Q["version"], "answers": {"umux_needs": 4, "umux_easy": 4}})
     assert r.status_code == 200
     (doc,) = stored(tmp_path, "feedback/survey")
     assert doc["version"] == 2 and doc["previous"]["version"] == 1 and doc["previous"]["answers"]["x_fix"] == "The export."
@@ -426,7 +440,7 @@ def test_responses_endpoint_is_for_the_tester_admin_only():
         assert signed_in(user).get("/api/feedback/responses").status_code == 403
 
 
-def test_responses_endpoint_returns_pseudonymous_rows_without_test_submissions(tmp_path):
+def test_responses_endpoint_counts_the_shared_tester_login_and_labels_it(tmp_path):
     signed_in("dev-analyst").post("/api/feedback/survey", json={"version": Q["version"], "answers": {"umux_needs": 4, "umux_easy": 4, "o_nps": 10, "o_change": "More weeks."}})
     signed_in("dev-director").post("/api/feedback/survey", json={"version": Q["version"], "answers": {"umux_needs": 2, "o_nps": 3}})
     t = signed_in("dev-tester")
@@ -434,9 +448,10 @@ def test_responses_endpoint_returns_pseudonymous_rows_without_test_submissions(t
     r = t.get("/api/feedback/responses")
     assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
     body = r.json()
-    assert body["responses"] == 2 and body["questionnaire_version"] == 2
-    assert body["umux"]["n"] == 1 and body["umux"]["raw_mean"] == 75.0 and body["nps"]["nps"] == 0
-    assert sorted(x["role"] for x in body["rows"]) == ["Brand Director", "Commercial Analyst"]
-    assert {x["user"] for x in body["rows"]} == {rbac.pseudonym("dev-analyst"), rbac.pseudonym("dev-director")}
+    assert body["responses"] == 3 and body["questionnaire_version"] == 2
+    assert body["umux"]["n"] == 2 and body["umux"]["raw_mean"] == 37.5 and body["nps"]["nps"] == 0
+    roles = sorted(x["role"] for x in body["rows"])
+    assert roles[:2] == ["Brand Director", "Commercial Analyst"] and roles[2].endswith("(shared tester login)")
+    assert {x["user"].rsplit("-", 1)[0] for x in body["rows"]} == {rbac.pseudonym(u) for u in ("dev-analyst", "dev-director", "dev-tester")}
     text = json.dumps(body)
     assert "dev-analyst" not in text and auth.DEV_USERS["dev-analyst"][0] not in text
