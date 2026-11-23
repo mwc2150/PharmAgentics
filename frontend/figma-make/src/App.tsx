@@ -484,7 +484,7 @@ const FORECAST_EXAMPLES = [
 ]
 
 type ForecastSection = "workbench" | "approved" | "reports"
-function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastSection, onSection: (s: ForecastSection) => void}) {
+function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: ForecastSection, onSection: (s: ForecastSection) => void, onBusy?: (busy: boolean) => void}) {
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
@@ -501,11 +501,18 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
   const [busy,setBusy] = useState(false)
   const [error,setError] = useState<string | null>(null)
   const [note,setNote] = useState("")
-  useEffect(()=>setSelected(null), [section])
+  // The workspace stays mounted across sub-tabs and lanes, so the open run, the scope card and the typed question
+  // survive; only "All forecast questions" clears the run. The ref lets a late poll refresh the tab now showing.
+  const sectionRef = useRef(section)
+  sectionRef.current = section
+  const [bgRunning,setBgRunning] = useState(false)  // some run of this analyst is still investigating (reported to the sidebar)
+  const isRunning = (rs: ForecastSummary[]) => rs.some(x=>x.job_status === "running")
   // Match the Briefing workspace: the analyst can always return to the list of
   // their own runs, while the approved view is a strictly filtered list.
-  const refresh = async () => { setLoading(true); setError(null); try { const status = section === "approved" ? "approved" : analyst ? undefined : "pending_review"; const values = await Promise.all([listForecasts(status), analyst && section === "workbench" ? forecastContext() : Promise.resolve(null)]); setRuns(values[0]); setContext(values[1]) } catch(e) { setError(message(e)) } finally { setLoading(false) } }
+  const refresh = async () => { setLoading(true); setError(null); try { const status = sectionRef.current === "approved" ? "approved" : analyst ? undefined : "pending_review"; const values = await Promise.all([listForecasts(status), analyst && sectionRef.current === "workbench" ? forecastContext() : Promise.resolve(null)]); setRuns(values[0]); if (values[1]) setContext(values[1]); if (analyst && !status) setBgRunning(isRunning(values[0])) } catch(e) { setError(message(e)) } finally { setLoading(false) } }
   useEffect(()=>{ void refresh() }, [analyst, section])
+  // With no run open, a list that still shows one investigating is polled quietly until it finishes.
+  useEffect(()=>{ if (!analyst || selected || !bgRunning) return; const t = setInterval(()=>{ listForecasts().then(rs=>{ setBgRunning(isRunning(rs)); if (sectionRef.current === "workbench") setRuns(rs) }).catch(()=>{}) }, 3000); return ()=>clearInterval(t) }, [analyst, selected, bgRunning])
   // Step one reads the question into a scope card; step two runs the investigation on the (possibly edited) scope.
   const readScope = async (q: string) => { setBusy(true); setError(null); try { const sc = await forecastScope({question: q}); setScope(sc); setIntent(sc.intent); setTerritory(sc.territory); setWeekFrom(sc.weeks[0] ?? ""); setWeekTo(sc.weeks[sc.weeks.length - 1] ?? "") } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const onAsk = async (event: React.FormEvent) => { event.preventDefault(); if (question.trim().length >= 3) await readScope(question.trim()) }
@@ -516,8 +523,10 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
   useEffect(()=>{ if (pendingRun && section === "workbench") { const id = pendingRun; pendingRun = null; void open(id) } }, [section])
   const followup = async (q: string) => { if (!selected) return; setError(null); try { setSelected(await askFollowup(selected.forecast_run_id, q)) } catch(e) { setError(message(e)) } }
   const followupsRunning = !!selected?.followups?.some(f=>f.status === "running")
+  const working = selected?.job_status === "running" || followupsRunning || bgRunning
+  useEffect(()=>{ onBusy?.(working) }, [working])  // eslint-disable-line react-hooks/exhaustive-deps
   // A running investigation, or one with a follow-up in flight, is polled until it finishes.
-  useEffect(()=>{ if (!selected || (selected.job_status !== "running" && !followupsRunning)) return; const id = selected.forecast_run_id, view = selected.view; const t = setInterval(()=>{ void openForecast(id, view).then(r=>{ setSelected(cur => cur && cur.forecast_run_id === id ? r : cur); if (r.job_status !== "running" && !r.followups?.some(f=>f.status === "running")) void refresh() }).catch(()=>{}) }, 2000); return ()=>clearInterval(t) }, [selected?.forecast_run_id, selected?.job_status, selected?.view, followupsRunning])
+  useEffect(()=>{ if (!selected || (selected.job_status !== "running" && !followupsRunning)) return; const id = selected.forecast_run_id, view = selected.view; const t = setInterval(()=>{ void openForecast(id, view).then(r=>{ setSelected(cur => cur && cur.forecast_run_id === id ? r : cur); if (r.job_status !== "running" && !r.followups?.some(f=>f.status === "running")) { void refresh(); if (analyst) listForecasts().then(rs=>setBgRunning(isRunning(rs))).catch(()=>{}) } }).catch(()=>{}) }, 2000); return ()=>clearInterval(t) }, [selected?.forecast_run_id, selected?.job_status, selected?.view, followupsRunning])
   const open = async (id: string, view?: ForecastRun["view"]) => {
     setBusy(true)
     setError(null)
@@ -532,7 +541,7 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
   const submit = async () => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await submitForecast(selected.forecast_run_id)); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const decide = async (decision: "approved" | "rejected" | "returned") => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await reviewForecast(selected.forecast_run_id, decision, note)); setNote(""); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   return <div className={`${section === "reports" ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
-    {!selected && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
+    {(!selected || section !== "workbench") && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
     <SubTabs label="Forecast explanation" value={section} onChange={onSection} options={(analyst
       ? [["workbench", "New explanation", "forecast.new"], ["reports", "Reports", "forecast.reports"], ["approved", "Approved reports", "forecast.approved"]]
       : [["reports", "Reports to review", "forecast.review"], ["approved", "Approved reports", "forecast.approved"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
@@ -595,11 +604,13 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
 const OPEN_KEY = "pa_sidebar_open"
 const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
 
-function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onTelemetry, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onAnyClick?: () => void}) {
+function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy, onBriefing, onForecast, onTelemetry, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, briefingBusy: boolean, forecastBusy: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onAnyClick?: () => void}) {
   const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-primarybg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
-  const item = (icon: IconName, text: string, active: boolean, go: () => void) =>
-    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-primaryink" : "group-hover:text-primaryink"}`}/>{label(text)}</button>
+  // A run still going shows a small dot (on the icon in the rail, at the row's end when open); the words are for screen readers.
+  const dot = (cls: string) => <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full bg-primary motion-safe:animate-pulse ${cls}`}/>
+  const item = (icon: IconName, text: string, active: boolean, go: () => void, busy = false) =>
+    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : busy ? `${text} · in progress` : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><span className="relative shrink-0"><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-primaryink" : "group-hover:text-primaryink"}`}/>{busy && !expanded && dot("absolute -right-1 -top-1")}</span>{label(text)}{busy && <span className="sr-only">, in progress</span>}{busy && expanded && dot("ml-auto")}</button>
   return <div className="flex h-full flex-col">
     <div className="flex h-16 items-center gap-3 px-[14px]">
       <BrandMark/>
@@ -607,8 +618,8 @@ function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onT
       {expanded ? <span className="pa-fade flex-1 truncate whitespace-nowrap font-display text-[18px] font-bold tracking-tight">PharmAgentics</span> : <span className="sr-only">PharmAgentics</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
-      {onBriefing && item("briefings", "Weekly briefing", !forecast && !telemetry, onBriefing)}
-      {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast)}
+      {onBriefing && item("briefings", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy)}
+      {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast, forecastBusy)}
       {item("layers", "Evaluation", telemetry, onTelemetry)}
     </nav>
     <div className="mt-auto space-y-2 px-3 pb-4">
@@ -627,9 +638,11 @@ function MobileNav({onClose, children}: {onClose: () => void, children: ReactNod
     <div ref={drawer} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide">{children}</div></div>
 }
 
-function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, onBriefingHome?: () => void, children: ReactNode, startInForecast?: boolean}) {
+function Shell({me, onBriefingHome, children, startInForecast=false, briefingBusy=false}: {me: Me, onBriefingHome?: () => void, children: ReactNode, startInForecast?: boolean, briefingBusy?: boolean}) {
   const [mobileNav,setMobileNav] = useState(false)
   const [forecast,setForecast] = useState(startInForecast)
+  const [forecastVisited,setForecastVisited] = useState(startInForecast)  // once opened, the workspace stays mounted so a running investigation survives lane switches
+  const [forecastBusy,setForecastBusy] = useState(false)
   const [telemetry,setTelemetry] = useState(false)
   const forecastHome: ForecastSection = me.lanes.forecast?.actions.includes("run") ? "workbench" : "reports"
   const [forecastSection,setForecastSection] = useState<ForecastSection>(forecastHome)
@@ -642,7 +655,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, o
     return () => window.removeEventListener("keydown", key)
   },[])
   const goBriefing = onBriefingHome ? () => { setTelemetry(false); setForecast(false); onBriefingHome() } : undefined
-  const goForecast = () => { setTelemetry(false); setForecast(true); setForecastSection(forecastHome) }
+  const goForecast = () => { setTelemetry(false); setForecast(true); setForecastVisited(true); setForecastSection(forecastHome) }
   const goTelemetry = () => setTelemetry(true)
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
   const title = telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"
@@ -652,9 +665,9 @@ function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, o
   return <FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
     <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
-      <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
+      <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
     </aside>
-    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
+    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
     <main className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
@@ -665,7 +678,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false}: {me: Me, o
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecast && !telemetry && <ForecastWorkspace key={forecastSection} me={me} section={forecastSection} onSection={setForecastSection}/>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace/>}{telemetry && me.tester && <FeedbackReview/>}{forecastVisited && <div hidden={!forecast || telemetry}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
     <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
@@ -922,6 +935,14 @@ function AnalystApp({me}: {me: Me}) {
   const [result,setResult] = useState<BriefingResult | null>(null)
   const [runError,setRunError] = useState<string | null>(null)
   const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved" | "how">("overview")
+  // The current run's own view: the New briefing tab returns to it, so a run keeps going while the analyst looks elsewhere.
+  const [runView,setRunView] = useState<"triage" | "result" | null>(null)
+  const [looked,setLooked] = useState(true)  // false from the moment a run starts until its finished plan or brief has been on screen
+  // An approved brief opened from the list has its own state, so opening one never touches a run in progress.
+  const [opened,setOpened] = useState<BriefingResult | null>(null)
+  const [openedLoading,setOpenedLoading] = useState(false)
+  const [openedError,setOpenedError] = useState<string | null>(null)
+  const openedToken = useRef(0)
   const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,weekEnd:string,promotion:boolean,question:string,
     comparison:Comparison | null,definition:BriefDefinition} | null>(null)
   const [promotion,setPromotion] = useState(false)
@@ -959,7 +980,7 @@ function AnalystApp({me}: {me: Me}) {
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
     setTriageJob(null); setJobNote(null); setJobState(null); setLiveEvents([]); setPending(false)
     setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparisons([]); setChoices(DEFAULT_CHOICES); setProposed([])
-    setView(v=>v==="triage" || v==="result" ? "home" : v)
+    setView(v=>v==="triage" || v==="result" ? "home" : v); setRunView(null)
   }
 
   useEffect(()=>{
@@ -1009,7 +1030,7 @@ function AnalystApp({me}: {me: Me}) {
     // Plan review is always on in UAT (brief-002 FR-019): stages 1 to 3 and the code triage first.
     const token=++generation.current
     const active=()=>token===generation.current
-    setPending(true);setRunError(null);setResult(null);setPlan(null);setRequestScope(selected);setView("triage");setJobNote(null);setLiveEvents([])
+    setPending(true);setRunError(null);setResult(null);setPlan(null);setRequestScope(selected);setView("triage");setRunView("triage");setJobNote(null);setLiveEvents([])
     try {
       if (engine==="agent") {
         const job = await submitAgentJob({kind:"triage", query: query(selected)})
@@ -1031,7 +1052,7 @@ function AnalystApp({me}: {me: Me}) {
   const approvePlan = async (decision: TriageDecision) => {
     if(!requestScope) return
     const token=++generation.current, active=()=>token===generation.current
-    setPending(true);setRunError(null);setResult(null);setView("result");setJobNote(null);setLiveEvents([])
+    setPending(true);setRunError(null);setResult(null);setView("result");setRunView("result");setJobNote(null);setLiveEvents([])
     try {
       if (plan?.engine==="agent" && triageJob) {
         const job = await submitAgentJob({kind:"brief", query: query(requestScope), triage_job: triageJob, decision})
@@ -1048,26 +1069,42 @@ function AnalystApp({me}: {me: Me}) {
     finally {if(active()){setPending(false);setJobNote(null);setJobState(null);setLiveEvents([])}}
   }
   const openApproved = async (id: string) => {
-    const token=++generation.current, active=()=>token===generation.current
-    setRunError(null);setResult(null);setRequestScope(null);setPlan(null);setView("result");setPending(true)
-    setChip(null);setBarEvidence(null)
+    const token=++openedToken.current, active=()=>token===openedToken.current
+    setOpened(null);setOpenedError(null);setOpenedLoading(true);setView("approved");setChip(null);setBarEvidence(null)
     try {
       const next=await openBrief(id, "analyst")
-      if (active()) {setBrand(next.brand_id);setEngine(e=>context?.brands.find(b=>b.id===next.brand_id)?.engines.includes(e)?e:"scripted");setResult(next)}
-    } catch(e) {if(active()) setRunError(message(e))} finally {if(active()) setPending(false)}
+      if (active()) setOpened(next)
+    } catch(e) {if(active()) setOpenedError(message(e))} finally {if(active()) setOpenedLoading(false)}
   }
+  const closeOpened = () => { openedToken.current++; setOpened(null);setOpenedError(null);setOpenedLoading(false);setChip(null);setBarEvidence(null) }
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
   const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : view==="how" ? "how" : "new"
+  const scopeText = (s: NonNullable<typeof requestScope>) => `${s.brand} · ${labelTerritory(s.territory)} · ${s.promotion ? "release-wide Promotion review" : s.weekEnd > s.week ? `weeks ${labelWeek(s.week)} to ${labelWeek(s.weekEnd)}` : `week of ${labelWeek(s.week)}`}`
+  // Back on the form with nothing running, the last run is let go; while one runs, the New briefing tab still leads back to it.
+  useEffect(()=>{ if (view==="home" && !pending) setRunView(null) },[view])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ if (pending) setLooked(false); else if (view==="triage" || view==="result") setLooked(true) },[pending,view])
+  // One quiet line on the other tabs while a run is going, or has finished and not been looked at yet.
+  const awayFromRun = view==="home" || view==="overview" || view==="approved" || view==="how"
+  const runLine = !awayFromRun || !runView ? null
+    : pending ? {text: `A briefing is being prepared${requestScope ? ` · ${scopeText(requestScope)}` : ""}`, go: "View progress"}
+    : runView==="triage" && plan ? {text: "The plan for your briefing is ready for review", go: "Review it"}
+    : runView==="result" && result && !looked ? {text: `Your briefing is ready${requestScope ? ` · ${scopeText(requestScope)}` : ""}`, go: "Open it"}
+    : runError && !looked ? {text: "Your briefing could not be generated", go: "See why"}
+    : null
+  const openedShown = !!(opened || openedLoading || openedError)
+  const openedBack = useRef<HTMLButtonElement>(null)
+  useEffect(()=>{ if (view==="approved" && openedShown) openedBack.current?.focus() },[view, openedShown])
   // When the scope form gives way to the plan or the brief, the button that was pressed is gone: put focus on the
   // first control of the new view, so a keyboard user does not start again from the top of the page.
   const scopeBack = useRef<HTMLButtonElement>(null)
   useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
-  return <Shell me={me} onBriefingHome={()=>setView("overview")}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || view==="approved" || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="pa-noprint flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
+  return <Shell me={me} onBriefingHome={()=>setView("overview")} briefingBusy={pending}>
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || (view==="approved" && !openedShown) || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="pa-noprint flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>setView(t==="approved" || t==="overview" || t==="how" ? t : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/></div>
+      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>setView(t==="approved" || t==="overview" || t==="how" ? t : runView ?? "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/></div>
     {contextError && <div role="alert" className="workspace-content py-4 text-sm text-amber">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></div>}
+    {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
 
@@ -1097,22 +1134,27 @@ function AnalystApp({me}: {me: Me}) {
           <button type="submit" disabled={!selectable || !!invalidComparison || !!invalidPeriod || !!invalidChoices} className={BTN}>Generate briefing</button>
         </div>
       </form>
-    </div> : view==="how" ? <div key="how" className="workspace-content pa-fade py-8"><HowItWorks/></div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
+    </div> : view==="how" ? <div key="how" className="workspace-content pa-fade py-8"><HowItWorks/></div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8">{openedShown ? <>
+      <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={closeOpened}><Icon name="back" className="h-4 w-4"/>All approved briefings</button>
+      {openedLoading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
+      {openedError && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{openedError}</div>}
+      {opened && <AnalystBrief result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
+    </> : <><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></>}</div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
-        {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · {requestScope.promotion ? "release-wide Promotion review" : requestScope.weekEnd > requestScope.week ? `weeks ${labelWeek(requestScope.week)} to ${labelWeek(requestScope.weekEnd)}` : `week of ${labelWeek(requestScope.week)}`}</span>}
+        {requestScope && <span className="text-xs text-muted">{scopeText(requestScope)}</span>}
       </div>
       {pending && (jobState
         ? <JobProgress kind={jobState.kind} status={jobState.status} note={jobNote}/>
         : <div role="status" className="space-y-3"><span className="sr-only">{view === "triage" ? "Preparing the triage plan…" : "Preparing the briefing…"}</span>
             <div className="pa-skeleton h-5 w-2/5"/><div className={`${PANEL} space-y-3 p-6`}><div className="pa-skeleton h-6 w-3/5"/><div className="pa-skeleton h-3 w-full"/><div className="pa-skeleton h-3 w-11/12"/><div className="pa-skeleton h-3 w-4/5"/></div></div>)}
       {pending && engine==="agent" && jobState && <Timeline events={liveEvents} live/>}
-      {runError && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber"><strong>{view==="triage" ? "The triage plan could not be built." : "Briefing could not be generated."}</strong><p className="mt-2">{runError}</p><p className="mt-2">No mock result was substituted.</p>{view==="result" && plan && <button className="mt-2 underline" onClick={()=>{setRunError(null);setView("triage")}}>Back to the triage plan</button>}</div>}
+      {runError && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber"><strong>{view==="triage" ? "The triage plan could not be built." : "Briefing could not be generated."}</strong><p className="mt-2">{runError}</p><p className="mt-2">No mock result was substituted.</p>{view==="result" && plan && <button className="mt-2 underline" onClick={()=>{setRunError(null);setView("triage");setRunView("triage")}}>Back to the triage plan</button>}</div>}
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
       {view==="result" && result && <AnalystBrief result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </div>}</div>
-    {brand && view!=="approved" && view!=="how" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
+    {brand && view!=="approved" && view!=="how" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : tab==="approved" && opened ? opened.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
       onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
