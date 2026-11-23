@@ -104,7 +104,14 @@ def chat_options(spec: str | None = None, temperature: float = 0.0) -> dict:
     Current Claude models reject a non-default temperature, so the Anthropic provider sends none."""
     provider = model_spec(spec).partition(":")[0]
     if provider == "anthropic":
-        return {"max_tokens": ANTHROPIC_MAX_TOKENS}
+        opts: dict = {"max_tokens": ANTHROPIC_MAX_TOKENS}
+        # Opt-in: Claude Haiku 5.5 thinks by default, and its thinking blocks are bound to the conversation that made
+        # them. Magentic's orchestrator rewrites its own history, which Anthropic refuses (HTTP 400, "Invalid
+        # `signature` in `thinking` block") on accounts held to that check. PHARMAGENTICS_ANTHROPIC_THINKING=off sends
+        # no thinking blocks at all; unset, the request is unchanged.
+        if os.environ.get("PHARMAGENTICS_ANTHROPIC_THINKING", "").strip().lower() in ("off", "disabled", "0"):
+            opts["thinking"] = {"type": "disabled"}
+        return opts
     opts: dict = {"temperature": temperature}
     if provider == "ollama":
         opts["num_ctx"] = OLLAMA_NUM_CTX
