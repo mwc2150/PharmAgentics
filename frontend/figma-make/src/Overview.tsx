@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
 import { Icon } from "./agent/primitives"
 
-const PANEL = "rounded-xl border border-rule bg-sheet"
-const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-onprimary transition-[background-color,transform] duration-150 hover:bg-primaryhover active:scale-[0.98]"
+// These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
+const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
+const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary shadow-[0_4px_0_var(--color-primarydeep)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-primaryhover active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-primarydeep)] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted disabled:shadow-none"
+const FIELD = "rounded-lg border border-edge bg-paper px-3 py-1.5 text-sm text-ink"
 const int = (v: number | null | undefined) => (v == null ? "–" : Math.round(v).toLocaleString())
 const pct = (v: number | null | undefined, signed = true) =>
   v == null ? "–" : `${signed && v > 0 ? "+" : ""}${(v * 100).toFixed(1)}%`
@@ -23,8 +25,8 @@ function Drawer({ title, kicker, onClose, children }: { title: string, kicker: s
     <button className="absolute inset-0 bg-black/60" aria-label="Close panel" tabIndex={-1} onClick={onClose}/>
     <aside role="dialog" aria-modal="true" aria-labelledby="overview-drawer-title" className="pa-slide relative z-10 flex h-full w-full max-w-lg flex-col border-l border-rule bg-sheet">
       <div className="flex items-start justify-between gap-3 border-b border-rule p-5">
-        <div><div className="text-[11px] uppercase tracking-[0.06em] text-muted">{kicker}</div><h2 id="overview-drawer-title" className="mt-1 font-serif text-xl">{title}</h2></div>
-        <button ref={close} onClick={onClose} aria-label="Close panel" className="rounded-lg p-2 hover:bg-paper"><Icon name="close" className="h-4 w-4"/></button>
+        <div><div className="text-xs uppercase tracking-[0.06em] text-muted">{kicker}</div><h2 id="overview-drawer-title" className="mt-1 text-xl">{title}</h2></div>
+        <button ref={close} onClick={onClose} aria-label="Close panel" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-5 w-5"/></button>
       </div>
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-5">{children}</div>
     </aside>
@@ -35,7 +37,7 @@ function Query({ ev }: { ev: Evidence }) {
   const scope = typeof ev.params.scope === "string" ? ev.params.scope : ev.tool
   return <li className="py-3">
     <div className="flex items-baseline justify-between gap-3 text-sm"><span>{scope}</span><span className="tabular-nums text-muted">{String(ev.result)}</span></div>
-    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-paper p-3 font-mono text-[11px] leading-relaxed text-muted">{ev.query}</pre>
+    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-paper p-3 font-mono text-xs leading-relaxed text-muted">{ev.query}</pre>
   </li>
 }
 
@@ -71,11 +73,15 @@ function WeekChart({ series, field, label, baseline }: { series: WeekPoint[], fi
     <svg viewBox={`0 0 ${w} ${h}`} className="mt-2 h-24 w-full touch-none" preserveAspectRatio="none" role="img"
       aria-label={`${label}, ${series.length} weeks, from ${int(vals[0])} to ${int(vals[vals.length - 1])}`}
       onPointerMove={e => pick(e.clientX, e.currentTarget)} onPointerLeave={() => setHover(null)}>
-      {base.length > 0 && <rect x={x(base[0])} width={x(base[base.length - 1]) - x(base[0])} y={0} height={h} className="fill-rule/50"/>}
+      {base.length > 0 && <g>
+        <rect x={x(base[0])} width={x(base[base.length - 1]) - x(base[0])} y={0} height={h} className="fill-rule/50"/>
+        <line x1={x(base[0])} x2={x(base[0])} y1={0} y2={h} className="stroke-edge" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke"/>
+        <line x1={x(base[base.length - 1])} x2={x(base[base.length - 1])} y1={0} y2={h} className="stroke-edge" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke"/>
+      </g>}
       <polyline points={vals.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" className="stroke-primary" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round"/>
-      <line x1={x(shown)} x2={x(shown)} y1={0} y2={h} className="stroke-muted/40" strokeWidth="1" vectorEffect="non-scaling-stroke"/>
+      <line x1={x(shown)} x2={x(shown)} y1={0} y2={h} className="stroke-muted" strokeWidth="1" vectorEffect="non-scaling-stroke"/>
     </svg>
-    <div className="mt-1 flex justify-between text-[11px] text-muted"><span>{day(series[0].week)}</span><span>Shaded: the 4 comparison weeks</span><span>{day(series[series.length - 1].week)}</span></div>
+    <div className="mt-1 flex justify-between gap-2 text-xs text-muted"><span>{day(series[0].week)}</span><span className="text-center">Shaded: the 4 comparison weeks</span><span>{day(series[series.length - 1].week)}</span></div>
   </figure>
 }
 
@@ -116,13 +122,13 @@ function StatBar({ stats, onOpen }: { stats: Stat[], onOpen: (s: Stat) => void }
     {stats.map((s, i) => <button key={s.key} onClick={() => onOpen(s)}
       className={`group p-5 text-left transition-colors hover:bg-paper/60 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
       <div className="text-xs text-muted">{s.label}</div>
-      <div className="mt-2 font-serif text-3xl tabular-nums">{s.value}</div>
+      <div className="mt-2 font-display text-3xl font-bold tabular-nums">{s.value}</div>
       <div className={`mt-1.5 text-xs tabular-nums ${s.adverse ? "text-amber" : "text-muted"}`}>
         {s.key === "material" ? `of ${s.change?.value ?? "–"} like-for-like territories`
           : s.key === "health" ? (s.raw ? "flagged feeds this week" : "every feed passed")
           : s.change ? `${s.adverse ? "Down " : s.change.raw && s.change.raw >= 0.05 ? "Up " : ""}${s.change.value.replace("-", "")} on the prior week` : "no prior week"}
       </div>
-      <div className="mt-2 text-[11px] text-muted opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">Show the query</div>
+      <div className="mt-2 text-xs text-muted underline-offset-4 group-hover:text-ink group-hover:underline">Show the query</div>
     </button>)}
   </section>
 }
@@ -130,11 +136,11 @@ function StatBar({ stats, onOpen }: { stats: Stat[], onOpen: (s: Stat) => void }
 function Strip({ t, domain, onOpen }: { t: TerritoryRow, domain: number, onOpen: () => void }) {
   const pos = (v: number) => `${50 + (v / domain) * 50}%`
   if (t.status === "held_back" || t.status === "no_baseline" || t.change == null || t.threshold == null)
-    return <div className="relative h-7"><div className="absolute inset-y-1 left-1/2 w-px bg-rule"/><span className="absolute inset-y-0 left-2 flex items-center text-xs text-muted">not judged</span></div>
+    return <div className="relative h-7"><div className="absolute inset-y-1 left-1/2 w-px bg-edge"/><span className="absolute inset-y-0 left-2 flex items-center text-xs text-muted">not judged</span></div>
   const size = 10 + Math.min(8, Math.sqrt(Math.max(t.trx ?? 0, 0)) / 4)
   return <div className="relative h-7">
-    <div className="absolute inset-y-1.5 rounded bg-rule/70" style={{ left: pos(-t.threshold), right: `calc(100% - ${pos(t.threshold)})` }}/>
-    <div className="absolute inset-y-0 left-1/2 w-px bg-muted/40"/>
+    <div className="absolute inset-y-1.5 rounded border border-edge bg-paper" style={{ left: pos(-t.threshold), right: `calc(100% - ${pos(t.threshold)})` }}/>
+    <div className="absolute inset-y-0 left-1/2 w-px bg-muted"/>
     <button onClick={onOpen} aria-label={`${t.label}: ${pct(t.change)} against a normal range of ±${pct(t.threshold, false)}; ${STATUS[t.status]}`}
       title={`${t.label}: ${pct(t.change)} (normal range ±${pct(t.threshold, false)}), ${int(t.trx)} TRx`}
       className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary outline-offset-2 ${t.status === "material" ? "bg-primary" : "bg-sheet"}`}
@@ -151,13 +157,13 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
   const cols = "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 md:grid-cols-[11rem_96px_minmax(0,1fr)_4.5rem_4.5rem]"
   return <section className={PANEL} aria-labelledby="territories-title">
     <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
-      <h3 id="territories-title" className="text-sm font-semibold">Territories to look at</h3>
+      <h2 id="territories-title" className="text-sm font-semibold">Territories to look at</h2>
       <p className="text-xs text-muted"><span aria-hidden className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-primary align-middle"/>material change
         <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-2.5 rounded-full border-2 border-primary align-middle"/>within normal range
-        <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-5 rounded bg-rule align-middle"/>the territory's normal range</p>
+        <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-5 rounded border border-edge bg-paper align-middle"/>the territory's normal range</p>
     </div>
     <p className="px-5 pt-1 text-xs leading-relaxed text-muted">Week of {day(o.week)} against the 4 weeks before. A change is material when it is past the territory's own normal range (at least {pct(o.rule.material_change, false)}, wider where weekly volume is noisy) and at least {(o.rule.material_gap * 100).toFixed(0)} points apart from the other territories: the rule the brief's triage uses.</p>
-    <div className={`${cols} mt-4 border-b border-rule px-5 pb-2 text-[11px] text-muted`}>
+    <div className={`${cols} mt-4 border-b border-rule px-5 pb-2 text-xs text-muted`}>
       <span>Territory</span><span className="hidden md:block">13 weeks of TRx</span>
       <span className="relative hidden h-4 md:block">{ticks.map((v, i) => <span key={v} style={{ left: `${50 + (v / domain) * 50}%` }}
         className={`absolute tabular-nums ${i === 0 ? "" : i === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2"}`}>{v > 0 ? "+" : ""}{Math.round(v * 100)}%</span>)}</span>
@@ -166,7 +172,7 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
     <ul className="divide-y divide-rule">
       {o.territories.map(t => <li key={t.id} className={`${cols} px-5 py-3`}>
         <button onClick={() => onOpen(t)} className="min-w-0 text-left">
-          <span className="block truncate text-sm hover:underline">{t.label}</span>
+          <span className="block truncate text-sm font-medium hover:underline">{t.label}</span>
           <span className={`block text-xs ${t.status === "material" ? "text-ink" : "text-muted"}`}>{STATUS[t.status]}</span>
         </button>
         <span className="hidden md:block"><Sparkline points={t.series.map(p => p.trx)} label={`${t.label} TRx over ${t.series.length} weeks`}/></span>
@@ -194,7 +200,7 @@ export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: st
     <div className="flex flex-wrap items-end justify-between gap-4">
       <p className="text-sm text-muted">{o ? `${o.product_name} (${o.product}), week of ${day(o.week)}. Every figure is computed from the governed data; select one to see its query.` : "Loading the week…"}</p>
       <label className="flex items-center gap-2 text-xs text-muted">Week
-        <select value={week} onChange={e => onWeek(e.target.value)} className="rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-sm text-ink">
+        <select value={week} onChange={e => onWeek(e.target.value)} className={FIELD}>
           {[...weeks].reverse().map(w => <option key={w} value={w}>{day(w)}</option>)}
         </select>
       </label>
