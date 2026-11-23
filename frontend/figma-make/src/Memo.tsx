@@ -138,17 +138,17 @@ function TableView({table, name}: {table: DataTable, name: string}) {
   const shown = table.columns.map((_, j) => j).filter(j => sql || table.columns[j] !== "query")
   return <div className="rounded-lg border border-rule">
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2 text-xs">
-      <span className="font-mono text-primary">{table.evidence_id}</span>
+      <span className="font-mono text-xs font-medium text-ink">{table.evidence_id}</span>
       <span className="flex gap-3">
         <button type="button" className="text-primary hover:underline" onClick={() => setSql(!sql)} aria-expanded={sql}>{sql ? "Hide query" : "Show query"}</button>
         <button type="button" className="text-primary hover:underline" onClick={() => download(name, table)}>Download CSV</button>
       </span>
     </div>
-    {sql && !perRow && <pre className="overflow-x-auto whitespace-pre-wrap break-all border-b border-rule bg-paper p-3 font-mono text-[11px] leading-relaxed">{table.query}</pre>}
+    {sql && !perRow && <pre className="overflow-x-auto whitespace-pre-wrap break-all border-b border-rule bg-paper p-3 font-mono text-xs leading-relaxed">{table.query}</pre>}
     <div className="max-h-64 overflow-auto">
-      <table className="w-full text-left font-mono text-[11px]">
-        <thead className="sticky top-0 bg-sheet text-muted"><tr>{shown.map(j => <th key={j} className="px-3 py-1.5 font-normal">{table.columns[j]}</th>)}</tr></thead>
-        <tbody>{table.rows.map((r, i) => <tr key={i} className="border-t border-rule/60 align-top">{shown.map(j => <td key={j} className={`px-3 py-1 ${table.columns[j] === "query" ? "whitespace-pre-wrap break-all text-muted" : ""}`}>{r[j] === null ? "" : String(r[j])}</td>)}</tr>)}</tbody>
+      <table className="w-full text-left font-sans text-xs tabular-nums">
+        <thead className="sticky top-0 bg-sheet text-muted"><tr>{shown.map(j => <th key={j} className="px-3 py-2 font-medium">{table.columns[j]}</th>)}</tr></thead>
+        <tbody>{table.rows.map((r, i) => <tr key={i} className="border-t border-rule align-top">{shown.map(j => <td key={j} className={`px-3 py-1.5 ${table.columns[j] === "query" ? "whitespace-pre-wrap break-all font-mono text-[11px] text-muted" : ""}`}>{r[j] === null ? "" : String(r[j])}</td>)}</tr>)}</tbody>
       </table>
     </div>
   </div>
@@ -165,7 +165,7 @@ function DataBehind({section, claims, evidence, briefId}: {section: MemoSection,
     rows: used.map(c => [c.value, c.evidence_id, byId.get(c.evidence_id)?.tool ?? "", byId.get(c.evidence_id)?.query ?? ""]),
   } : null
   return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3 text-sm">
-    <summary className="cursor-pointer text-xs font-medium text-primary">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
+    <summary className="cursor-pointer text-[13px] font-medium text-primary">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
     <div className="mt-3 space-y-3">
       {claimTable && <TableView table={claimTable} name={`brief-${briefId}-section-${section.number}-claims.csv`}/>}
       {tables.map(t => <TableView key={t.evidence_id} table={t} name={`brief-${briefId}-section-${section.number}-${t.evidence_id}.csv`}/>)}
@@ -288,7 +288,7 @@ function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[
 function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   const [open, setOpen] = useState(false)
   return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
-    <summary className="cursor-pointer font-sans text-xs font-medium text-primary">{open ? "Hide detail" : "Show detail"}</summary>
+    <summary className="cursor-pointer font-sans text-[13px] font-medium text-primary">{open ? "Hide detail" : "Show detail"}</summary>
     <div className="mt-2"><Paragraphs text={text} spans={spans} claims={claims} onOpen={onOpen}/></div>
   </details>
 }
