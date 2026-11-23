@@ -228,8 +228,9 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
             finish(sp, {"notes": notes, "tool_sequence": log.tools})
         competitor = any(s["id"].startswith("competitor:") for s in stories)
         cuts = [s.partition(":")[2] for s in order if s.startswith("cut:")]  # plan ids of the cut cards kept
-        close = json.loads(await _call(mcp, "memo_close", competitor=competitor, cuts=cuts))  # §1 and §5, and the cut cards, by code
-        stories = write.place_cuts(stories, close.get("cut_stories") or [])
+        running = [s.partition(":")[2] for s in order if s.startswith("continuing:")]  # territories of the continuing cards kept
+        close = json.loads(await _call(mcp, "memo_close", competitor=competitor, cuts=cuts, running=running))  # §1 and §5, and the cut and continuing cards, by code
+        stories = write.place_continuing(write.place_cuts(stories, close.get("cut_stories") or []), close.get("continuing_stories") or [])
         dropped_line = await _call(mcp, "dropped_line")
         await trace.note(log, "Build the bottom line and next checks", json.dumps(close) + dropped_line, tool="memo_close",
                          summary="Code wrote the bottom line, the next checks and the dropped-territories line.")

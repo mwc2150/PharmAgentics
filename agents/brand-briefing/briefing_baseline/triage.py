@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 
 from pharmagentics.tools import queries as qy
-from pharmagentics.tools import splits, stages
+from pharmagentics.tools import continuing, splits, stages
 from pharmagentics.tools.checks import launch_date
 from pharmagentics.tools.registry import digits_outside_tokens
 
@@ -61,6 +61,25 @@ def _cut_card(reg, f: Front, cut: dict, rank: int) -> dict:
     }
 
 
+def _continuing_card(reg, f: Front, event: dict, rank: int) -> dict:
+    """A continuing card as a candidate story (brief-010 FR-010): a promotion lapse or access restriction that began
+    before the comparison weeks and still runs; code measures it against the weeks before it began and builds the card."""
+    p, t = f.p, event["territory"]
+    first = continuing.figures(reg, p, event)[0]
+    title = continuing.subject(event)
+    cause = "rep coverage lapse" if event["kind"] == "lapse" else "access restriction"
+    moved = (f"{title} (continuing since {event['start']}): {p.brand_id} {first['label']} averaged {first['after']} a week in these weeks "
+             f"against {first['before']} in the four weeks before the {cause} began ({first['word']} {first['pct']}).")
+    return {
+        "id": continuing.continuing_id(event), "kind": "continuing", "territory": t, "title": f"{title} (continuing)", "rank": rank,
+        "proposed": "investigate", "what_moved": moved,
+        "decision": (f"The {cause} began on {event['start']}, before the comparison weeks, so the change on those weeks hides it "
+                     f"(code screen). " + CUT_ACTION),
+        "population": _population(p), "granularity": f"Territory {qy.name(t)}" + (f", plan {event['plan']}." if event["plan"] else "."),
+        "time": _time(p),
+    }
+
+
 def _card(reg, f: Front, s: dict | None, rank: int, proposed: str) -> dict:
     p = f.p
     if s is None:  # the continuing competitor story
@@ -108,6 +127,8 @@ def build_plan(reg, f: Front) -> dict:
             cards.append(_card(reg, f, s, len(cards) + 1, "investigate" if i < MAX_STORIES else "over_cap"))
         for c in f.cuts:  # cut cards sit beside their territory stories, never over the cap
             cards.append(_cut_card(reg, f, c, len(cards) + 1))
+        for e in f.continuing:  # continuing cards follow the regular territory and cut cards (FR-010)
+            cards.append(_continuing_card(reg, f, e, len(cards) + 1))
         if p.has("national") and stages.competitor_status(reg, p) is not None:
             cards.append(_card(reg, f, None, len(cards) + 1, "investigate"))
     texts = [c[k] for c in cards for k in ("what_moved", "decision", "population", "granularity", "time")]

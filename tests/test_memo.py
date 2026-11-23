@@ -316,7 +316,9 @@ def test_blocks_follow_the_schema_for_a_one_week_brief():
     assert all(len(r["cells"]) == len(table["columns"]) == len(r["cell_citations"]) for r in table["rows"])
     assert table["rows"][0]["cell_citations"][0] == [] and len(table["rows"][0]["cell_citations"][1]) == 1
     assert "four weeks before" in table["note"]
-    story = by_number(env)["3.1"]
+    southeast = by_number(env)["3.1"]["card"]  # brief-010 FR-010: the Southeast lapse, still running on 2026-08-24, comes first
+    assert (southeast["territory"], southeast["continuing"], southeast["drivers_supported"]) == ("SOUTHEAST", True, ["promotion"])
+    story = next(s for n, s in by_number(env).items() if n.startswith("3.") and (s.get("card") or {}).get("territory") == "NATIONAL")
     assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"][0] == "competitor"  # the competitor story
     assert "Metacora holds 15.9%" in story["card"]["headline"] and story["card"]["headline_citations"]
     card = story["card"]  # brief-010 FR-006: the national card
