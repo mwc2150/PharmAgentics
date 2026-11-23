@@ -77,7 +77,8 @@ function InUse({ u }: { u: Usage }) {
       })}
       <div className="p-5"><h4 className="text-sm font-semibold">Ratings</h4><div className="mt-2"><Rows rows={[
         ["Sessions rated", list(u.sessions)],
-        ["System Usability Scale", u.sus ? `${u.sus.mean} of 100 (${u.sus.n} responses)` : "no responses yet"],
+        ["Usability (SUS-equivalent, UMUX-Lite)", u.umux ? `${u.umux.sus_equivalent_mean} of 100 (${u.umux.n} responses)` : "no responses yet"],
+        ...(u.sus ? [["System Usability Scale, first questionnaire", `${u.sus.mean} of 100 (${u.sus.n} responses)`] as [string, string]] : []),
         ...(u.cloud_seconds ? [["Cloud agent time this month", `${u.cloud_seconds.used.toLocaleString()} of ${u.cloud_seconds.limit.toLocaleString()} s`] as [string, ReactNode]] : []),
       ]}/></div></div>
     </section>
@@ -235,7 +236,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
       ["Approved", reviewed ? `${Math.round((approved / reviewed) * 100)}%` : "–", reviewed ? `${approved} of ${reviewed} reviewed` : "nothing reviewed yet"],
       ["Typical response (live use)", b.scripted_ms ? `${((b.scripted_ms.p50 ?? 0) / 1000).toFixed(1)} s` : "–", b.scripted_ms ? "scripted engine, median of live requests" : "no timed requests",
         goldenBrief != null && `golden set: ${goldenBrief.toFixed(1)} s a brief`],
-      ["Usability (SUS)", u.sus ? String(u.sus.mean) : "–", u.sus ? `of 100, ${u.sus.n} responses` : "no responses yet"],
+      ["Usability (SUS-equivalent)", u.umux ? String(u.umux.sus_equivalent_mean) : u.sus ? String(u.sus.mean) : "–", u.umux ? `of 100, ${u.umux.n} responses` : u.sus ? `of 100, ${u.sus.n} responses` : "no responses yet"],
     ]}/>}
     {u && <InUse u={u}/>}
     {t && <>

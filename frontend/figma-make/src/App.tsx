@@ -13,7 +13,7 @@ import { DEFAULT_CHOICES, DefinitionPicker, choicesError, type DefinitionChoices
 import { MessageBar, type Chip } from "./MessageBar"
 import { sharedFromLocation } from "./agent/threadApi"
 import { AnswerFeedback, FeedbackDock, FeedbackProvider, ShareFeedbackLink, useFeedbackActions } from "./Feedback"
-import { ApprovedNewsProvider, NewDot, isNewer, useApprovedNews } from "./ApprovedNews"
+import { ActiveWorkspace, ApprovedNewsProvider, NewDot, useApprovedList, useApprovedNews } from "./ApprovedNews"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -345,17 +345,18 @@ function ForecastReports({me, onOpenRun, approvedOnly=false}: {me: Me, onOpenRun
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
-  const [rows,setRows] = useState<ReportSummary[] | null>(null)
+  const [all,setAll] = useState<ReportSummary[] | null>(null)
   const [open,setOpen] = useState<string | null>(()=>{ const p = pendingReport; pendingReport = null; return p })
-  const [error,setError] = useState<string | null>(null)
-  const news = useApprovedNews()
-  const [since] = useState(()=>news.seen("forecast"))
-  useEffect(()=>{ if (!open) listReports().then(rs=>{ const shown = approvedOnly ? rs.filter(x=>x.review_status === "approved") : rs; setRows(shown); if (approvedOnly) for (const x of shown) news.markSeen("forecast", x.reviewed_at) }).catch(e=>setError(message(e))) }, [open, approvedOnly])  // eslint-disable-line react-hooks/exhaustive-deps
+  const [failed,setFailed] = useState<string | null>(null)
+  // The approved list follows newly approved reports; the working list loads when it opens or a report closes.
+  const approved = useApprovedList<ReportSummary>("forecast", approvedOnly && !open, async()=>(await listReports()).filter(x=>x.review_status === "approved"), x=>x.reviewed_at)
+  const rows = approvedOnly ? approved.items : all, error = approvedOnly ? approved.error : failed
+  useEffect(()=>{ if (!open && !approvedOnly) listReports().then(setAll).catch(e=>setFailed(message(e))) }, [open, approvedOnly])
   if (open) return <ReportEditor id={open} analyst={analyst} canPreview={canPreview} onBack={()=>setOpen(null)} onOpenRun={onOpenRun}/>
   return <div className="space-y-6">
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {analyst && !approvedOnly && <p className="text-sm text-muted">A report starts from a question: investigate it under New explanation, pin the follow-ups you want, then choose Create report. The model drafts from everything pinned, you ask for revisions, and code checks every number before the Brand Manager sees it.</p>}
-    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{approvedOnly && isNewer(x.reviewed_at, since) && <><span className="font-semibold text-primaryink">New</span> · </>}{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
+    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{approvedOnly && approved.isNew(x) && <><span className="font-semibold text-primaryink">New</span> · </>}{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
   </div>
 }
 
@@ -677,7 +678,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
   useEffect(()=>{ document.title = `${title} · PharmAgentics` },[title])  // 2.4.2: the tab names the workspace that is open
   const content = useRef<HTMLElement>(null)
   // --rail is the width the sidebar occupies; .workspace-content uses it to centre on the whole page (0 on phones).
-  return <SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
+  return <ActiveWorkspace.Provider value={telemetry ? "evaluation" : forecast ? "forecast" : "briefing"}><SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
     <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
       <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
@@ -696,7 +697,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
     <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
-  </div></FeedbackProvider></SignedInName.Provider>
+  </div></FeedbackProvider></SignedInName.Provider></ActiveWorkspace.Provider>
 }
 
 function Centered({children}: {children: ReactNode}) {
@@ -786,16 +787,12 @@ function ListSkeleton({rows=3}: {rows?: number}) {
 }
 
 function PublishedList({onOpen}: {onOpen: (id: string) => void}) {
-  const [items,setItems] = useState<PublishedBrief[] | null>(null)
-  const [error,setError] = useState<string | null>(null)
-  const news = useApprovedNews()
-  const [since] = useState(()=>news.seen("briefing"))  // rows approved after this say "New"; opening the list marks them seen
-  useEffect(()=>{listPublished().then(xs=>{ setItems(xs); for (const x of xs) news.markSeen("briefing", x.reviewed_at) }).catch(e=>setError(message(e)))},[])  // eslint-disable-line react-hooks/exhaustive-deps
+  const {items, error, isNew} = useApprovedList<PublishedBrief>("briefing", true, listPublished, b=>b.reviewed_at)
   if (error) return <Notice tone="error" role="alert">{error}</Notice>
   if (!items) return <ListSkeleton/>
   if (!items.length) return <p className="text-sm text-muted">No approved briefings yet. A briefing appears here once the Commercial Analyst approves it.</p>
   return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={()=>onOpen(b.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
-    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{isNewer(b.reviewed_at, since) && <><span className="font-semibold text-primaryink">New</span> · </>}Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
+    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{isNew(b) && <><span className="font-semibold text-primaryink">New</span> · </>}Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
     <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul>
 }
 
