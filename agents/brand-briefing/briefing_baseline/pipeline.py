@@ -14,7 +14,8 @@ on the stories P1 approved, in P1's order.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field
 
 from pharmagentics.tools import DEFAULT_DB, Registry
 from pharmagentics.tools import charts, continuing, memo, projection, promotion, splits, stages
@@ -251,6 +252,8 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
                     if events is not None:
                         events.story = sid
                     block, info = continuing.block(reg, p, by_running[sid])
+                    _note(events, "Split the change", tool="continuing_card", args={"territory": block.card.get("territory")},
+                          summary=block.card.get("headline", ""), text=json.dumps(asdict(block)))  # its claims belong to this step
                     continuing.place(blocks, block)
                     told.append(info)
                     abstained |= info["confidence"] == "Low"
@@ -258,7 +261,13 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
                         events.story = None
                 if sid in by_cut:
                     cut = by_cut[sid]
+                    if events is not None:
+                        events.story = sid
                     block = memo.cut_block(reg, p, cut, checks_by.get(cut["territory"]))
+                    _note(events, "Split the change", tool="split_change", args={"territory": cut["territory"], "cut": sid},
+                          summary=block.card.get("headline", "") if block.card else "", text=json.dumps(asdict(block)))  # brief-009: every claim has its step
+                    if events is not None:
+                        events.story = None
                     after = [i for i, b in enumerate(blocks) if b.card and b.card.get("territory") == cut["territory"]
                              and b.id.partition(":")[0] in ("territory", "plan", "cut")]
                     blocks.insert(after[-1] + 1 if after else len(blocks), block)

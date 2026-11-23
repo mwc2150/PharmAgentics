@@ -55,7 +55,7 @@ def test_comparison_is_explicit_and_cases_without_one_use_the_previous_four_week
     assert by["P1-Q5"].definition.primary_comparison.kind == "custom"
     assert by["WIN-1"].definition.primary_comparison.kind == "last_year"
     assert by["P3-Q1"].definition.primary_comparison.kind == "pre_launch"
-    assert {c.story for c in BRIEFING if c.comparison} == {"WIN-1", "WIN-2", "P1-Q4", "P1-Q5", "P2-Q3", "P2-Q4", "P3-Q1", "P4-Q4"}
+    assert {c.story for c in BRIEFING if c.comparison} == {"WIN-1", "WIN-2", "P1-Q4", "P1-Q5", "P2-Q1", "P2-Q3", "P2-Q4", "P3-Q1", "P4-Q4"}
 
 
 def test_an_old_top_level_comparison_is_read_into_the_definition():
@@ -117,7 +117,9 @@ def test_findings_may_name_a_measure_and_a_card_must_cover_it():
     got = {(c.story, f.id): f.measure for c in BRIEFING for f in c.findings if f.measure}
     assert got == {("P1-Q4", "mid_atlantic_plan_nbrx_drop"): "nbrx", ("P3-Q1", "national_metacora_share_gain"): "bxa_share",
                    ("P3-Q4", "national_metacora_continuing"): "competitor_share",
-                   ("P1-Q5", "national_metacora_competitor"): "competitor_share"}
+                   ("P1-Q5", "national_metacora_competitor"): "competitor_share",
+                   ("P2-Q5", "mid_atlantic_restated_figure"): "restated_figure",  # packet X: the restatement is a data note
+                   ("P3-Q6", "mid_atlantic_restated_figure"): "restated_figure"}
     expect = by["P3-Q4"].expectations()
     assert expect["findings"][0]["measure"] == "competitor_share"
     card = {"headline": "Story", "territory": "NATIONAL", "direction": "down", "drivers_supported": ["competitor"],

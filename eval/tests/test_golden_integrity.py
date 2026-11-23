@@ -15,7 +15,7 @@ def test_one_case_per_persona_question():
     assert {c.story for c in CASES if c.lane == "forecast"} == FORECAST_STORIES
     assert len({c.id for c in CASES}) == 50
     assert {c.story for c in CASES if c.follow_up} == {f"FU-{n}" for n in range(1, 7)}
-    assert {c.story for c in CASES if c.comparison} == {"WIN-1", "WIN-2", "P1-Q4", "P1-Q5", "P2-Q3", "P2-Q4", "P3-Q1", "P4-Q4"}  # core-011 G: windows the case text names
+    assert {c.story for c in CASES if c.comparison} == {"WIN-1", "WIN-2", "P1-Q4", "P1-Q5", "P2-Q1", "P2-Q3", "P2-Q4", "P3-Q1", "P4-Q4"}  # core-011 G: windows the case text names
 
 
 def test_eval_items_exist_in_their_lane():

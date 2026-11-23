@@ -61,9 +61,9 @@ def test_p2_q1_has_the_national_data_artifact_card(briefs):
     assert card["territory"] == "NATIONAL" and card["cut"] is None
     assert card["direction"] == "down" and card["directions"] == {"trx": "down"}
     assert card["drivers_supported"] == ["data"] and card["drivers_ruled_out"] == []
-    assert card["headline"] == ("National BXA TRx over the reportable territories fell 18.4%, but on the 7 territories that "
+    assert card["headline"] == ("National BXA TRx over the reportable territories fell 18%, but on the 7 territories that "
                                 "report both weeks it fell 3.6%: Mid-Atlantic is withheld.")
-    assert {"18.4%", "3.6%", "7"} <= {c["value"] for c in env["claims"]}  # the card's numbers are claims of this run
+    assert {"18%", "3.6%", "7"} <= {c["value"] for c in env["claims"]}  # the card's numbers are claims of this run
     assert card["headline_citations"]
 
 

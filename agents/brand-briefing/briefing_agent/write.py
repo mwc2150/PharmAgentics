@@ -381,12 +381,14 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
     return memo.compose(parts)
 
 
-def render(template: str, claims: list[dict]) -> tuple[str, list[dict], list[dict], dict[int, int]]:
+def render(template: str, claims: list[dict], also: str = "") -> tuple[str, list[dict], list[dict], dict[int, int]]:
     """Fill tokens from the run's claims; return the text, the claims it uses (in order of use), where each sits
-    in the text (inline citations, indexed into the used claims) and the token-number-to-used-index map."""
+    in the text (inline citations, indexed into the used claims) and the token-number-to-used-index map. `also` is
+    other memo text whose tokens the brief shows outside the answer text (card headlines, such as the national card
+    reusing a KPI token, brief-010 NC): its claims join the used list after the answer's, so every shown token is cited."""
     from pharmagentics.tools.registry import cite
 
-    used = list(dict.fromkeys(int(m.group(1)) for m in TOKEN.finditer(template) if 0 < int(m.group(1)) <= len(claims)))
+    used = list(dict.fromkeys(int(m.group(1)) for m in TOKEN.finditer(template + "\n" + also) if 0 < int(m.group(1)) <= len(claims)))
     index = {n: i for i, n in enumerate(used)}
     text, spans = cite(template, claims, index=index)
     return text, [claims[n - 1] for n in used], spans, index

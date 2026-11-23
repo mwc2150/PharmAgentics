@@ -328,7 +328,7 @@ def test_the_agent_session_builds_the_same_cut_card_and_assembles_it_after_its_t
     assert [x["id"] for x in stories] == ["territory:MID_ATLANTIC", cut["id"]]
     _template, built = write.assemble(sections, close, stories, "", {}, [], s.dropped_line())
     rendered = memo.render_sections(built, s.reg.claims)
-    cards = [x for x in rendered if x["number"].startswith("3.")]
+    cards = [x for x in rendered if x["number"].startswith("3.") and (x.get("card") or {}).get("territory") != "NATIONAL"]  # the national card (packet NC) is not a territory story
     assert [bool(x["card"].get("cut")) for x in cards] == [False, True]
     assert cards[1]["detail"].startswith("Checked for this plan")
     s.close()

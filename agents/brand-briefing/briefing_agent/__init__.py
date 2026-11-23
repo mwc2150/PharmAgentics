@@ -257,7 +257,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
                                              _left_out(plan, order), dropped_line, chart_lines)
     if (bad := digits_outside_tokens(template)):  # code sections are clean; this guards the assembly itself
         raise AssertionError(f"digit outside a claim token: {bad[:3]}")
-    text, used, citations, index = write.render(template, claims)
+    text, used, citations, index = write.render(template, claims, also=json.dumps(memo_sections, default=str))
     await trace.note(log, "Assemble the memo", template, summary="Code assembled the memo from the sections, the writer's sentences and claim tokens.")
     keep = {c["evidence_id"] for c in used}
     record = planmod.record(plan, order, reviewed)

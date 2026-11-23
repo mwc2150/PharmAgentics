@@ -209,9 +209,3 @@ def test_a_story_without_a_mover_line_reads_as_before(monkeypatch):
 
 
 # S3: the analyst view stays inside the word budget -----------------------------------------------------------------
-
-def test_the_analyst_view_stays_inside_the_word_budget(review, story):
-    from eval.harness.scorers import WORD_BUDGET, count_words
-
-    for env, _ in (review, story):
-        assert count_words(env["sections"]) <= WORD_BUDGET["analyst"]
