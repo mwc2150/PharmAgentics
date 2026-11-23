@@ -1,28 +1,44 @@
-import { useEffect, useRef, type RefObject } from "react"
+import { useEffect, useRef, type ReactNode, type RefObject } from "react"
 
 /* Visual identity and SVG icon geometry. One icon set, outline style, stroke 1.6 next to 14px text.
    Always pass a size class (h-4 w-4, h-5 w-5): a className without one lets the SVG grow to fill its row. */
 const PATHS={
-  briefings:"M6 3h9l4 4v14H6zM9 12h7M9 16h7M9 8h3",
   send:"M5 12h14M13 6l6 6-6 6",
   evidence:"M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3",
   close:"M6 6l12 12M18 6L6 18",
   back:"M15 18l-6-6 6-6",
   menu:"M4 7h16M4 12h16M4 17h16",
-  layers:"M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5",
   chevronRight:"M9 6l6 6-6 6",
   check:"M5 12.5l4.5 4.5L19 7.5",
   panel:"M4 5h16v14H4zM9.5 5v14",
   trend:"M4 17l5-5 4 3 7-8M15 7h5v5",
-  user:"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0"
+  user:"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0",
+  help:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01",
+  clipboard:"M8 4h8v3H8zM8 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-2M9 12h6M9 16h6",
+  briefcase:"M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18",
+  warning:"M12 4L2.8 19.5a1 1 0 0 0 .9 1.5h16.6a1 1 0 0 0 .9-1.5zM12 10v4.5M12 17.5h.01",
+  alert:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5M12 16h.01"
 } as const
 export type IconName = keyof typeof PATHS
 export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string}) {
   return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATHS[name]}/></svg>
 }
 
+/* A warning or an error: a hairline border, a leading icon and a toned title; never a tinted fill or a side bar.
+   The words carry the meaning, the tone only helps. Keep role="alert" for a failure the person must hear about. */
+export function Notice({tone,title,children,role,className="",action}:{tone:"warn"|"error",title?:ReactNode,children?:ReactNode,role?:"alert"|"status",className?:string,action?:ReactNode}){
+  const warn=tone==="warn"
+  // a caller's own padding or text size replaces the default, so the two never fight over CSS order
+  const pad=/(^|\s)p[xy]?-/.test(className)?"":"px-4 py-3", size=/(^|\s)text-(xs|sm)(\s|$)/.test(className)?"":"text-sm"
+  return <div role={role} className={`flex gap-3 rounded-xl border bg-sheet ${pad} ${size} ${warn?"border-amberline":"border-negline"} ${className}`}>
+    <Icon name={warn?"warning":"alert"} className={`mt-0.5 h-4 w-4 shrink-0 ${warn?"text-amber":"text-neg"}`}/>
+    <div className="min-w-0 flex-1 text-ink">{title&&<p className={`font-semibold ${warn?"text-amber":"text-neg"}`}>{title}</p>}{children}</div>
+    {action}
+  </div>
+}
+
 /* The "Pa" mark (public/pa-mark.svg): styled like a periodic-table tile, with the version "v1" where an element's
-   number would sit. Space Grotesk outlines on lime with the lime-button shadow; it scales to any size.
+   number would sit. Space Grotesk outlines on teal with the teal-button shadow; it scales to any size.
    public/favicon.svg drops the version for 16px. */
 const MARK={sm:"h-9 w-9",lg:"h-14 w-14"} as const
 export function BrandMark({size="sm"}:{size?:keyof typeof MARK}){
@@ -58,3 +74,25 @@ export function useModalFocus(root: RefObject<HTMLElement | null>, onClose: () =
     return () => { document.removeEventListener("keydown", key); if (opener?.isConnected) opener.focus() }
   }, [root])
 }
+
+// A model id in plain words ("ollama:qwen3:4b-instruct-2507-q4_K_M" -> "Qwen 3 4B", "anthropic:claude-haiku-5-5" ->
+// "Haiku"). Raw ids are plumbing: the UI never prints one.
+export function modelName(model: string | null | undefined): string {
+  if (!model) return ""
+  const provider = /^(ollama|anthropic|gemini):/.exec(model.toLowerCase())?.[1]
+  const m = model.toLowerCase().replace(/^(ollama|anthropic|gemini):/, "")
+  if (m.startsWith("claude")) return m.includes("haiku") ? "Haiku" : m.includes("sonnet") ? "Sonnet" : m.includes("opus") ? "Opus" : "Claude"
+  if (m.startsWith("gemini") || (provider === "gemini")) return "Gemini"
+  if (!m) return provider === "anthropic" ? "Claude" : ""
+  const local = /^(qwen|gemma|llama)(\d+(?:\.\d+)?):(\d+(?:\.\d+)?b)/.exec(m)
+  if (local) return `${local[1][0].toUpperCase()}${local[1].slice(1)} ${local[2]} ${local[3].toUpperCase()}`
+  return m === "none" ? "" : model
+}
+const MODEL_ID = /(?:(?:ollama|anthropic|gemini):)?(?:claude-[\w.-]+|(?:qwen|gemma|llama)\d+(?:\.\d+)?:[\w.-]+|gemini-[\w.-]+)/gi
+/** Free text (a step or actor name from the server) with any model id in it made readable. */
+export function plainModels(text: string): string {
+  return text.replace(MODEL_ID, id => modelName(id))
+}
+
+/** A date as the app prints it everywhere ("Nov 23, 2026"); a bare ISO date is read as local midnight. */
+export const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })

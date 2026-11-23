@@ -18,7 +18,7 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     parts.push(text.slice(pos, sp.start))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
       aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="pa-cite rounded-sm font-medium underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[10px] font-normal text-primary">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(text.slice(pos))
@@ -143,8 +143,8 @@ function TableView({table, name}: {table: DataTable, name: string}) {
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2 text-xs">
       <span className="font-mono text-xs font-medium text-ink">{table.evidence_id}</span>
       <span className="flex gap-3">
-        <button type="button" className="text-primary hover:underline" onClick={() => setSql(!sql)} aria-expanded={sql}>{sql ? "Hide query" : "Show query"}</button>
-        <button type="button" className="text-primary hover:underline" onClick={() => download(name, table)}>Download CSV</button>
+        <button type="button" className="text-primaryink hover:underline" onClick={() => setSql(!sql)} aria-expanded={sql}>{sql ? "Hide query" : "Show query"}</button>
+        <button type="button" className="text-primaryink hover:underline" onClick={() => download(name, table)}>Download CSV</button>
       </span>
     </div>
     {sql && !perRow && <pre className="overflow-x-auto whitespace-pre-wrap break-all border-b border-rule bg-paper p-3 font-mono text-xs leading-relaxed">{table.query}</pre>}
@@ -168,7 +168,7 @@ function DataBehind({section, claims, evidence, briefId}: {section: MemoSection,
     rows: used.map(c => [c.value, c.evidence_id, byId.get(c.evidence_id)?.tool ?? "", byId.get(c.evidence_id)?.query ?? ""]),
   } : null
   return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3 text-sm">
-    <summary className="cursor-pointer text-[13px] font-medium text-primary">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
+    <summary className="cursor-pointer text-[13px] font-medium text-primaryink">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
     <div className="mt-3 space-y-3">
       {claimTable && <TableView table={claimTable} name={`brief-${briefId}-section-${section.number}-claims.csv`}/>}
       {tables.map(t => <TableView key={t.evidence_id} table={t} name={`brief-${briefId}-section-${section.number}-${t.evidence_id}.csv`}/>)}
@@ -222,7 +222,7 @@ function Paragraphs({text, spans, claims, onOpen, flow}: {text: string, spans?: 
 }
 
 const DIRECTION = {
-  up: {word: "up", color: "text-primary", d: "M12 5l7 9H5z"},
+  up: {word: "up", color: "text-primaryink", d: "M12 5l7 9H5z"},
   down: {word: "down", color: "text-neg", d: "M12 19l-7-9h14z"},
   flat: {word: "unchanged", color: "text-muted", d: "M5 11h14v2H5z"},
 } as const
@@ -276,7 +276,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
 
 const CONFIDENCE = {
   High: "bg-okbg text-ok",
-  Medium: "bg-amberbg text-amber",
+  Medium: "bg-paper text-ink",
   Low: "bg-warnbg text-neg",
 } as const
 
@@ -293,7 +293,7 @@ function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[
 function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   const [open, setOpen] = useState(false)
   return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
-    <summary className="cursor-pointer font-sans text-[13px] font-medium text-primary">{open ? "Hide detail" : "Show detail"}</summary>
+    <summary className="cursor-pointer font-sans text-[13px] font-medium text-primaryink">{open ? "Hide detail" : "Show detail"}</summary>
     <div className="mt-2"><Paragraphs text={text} spans={spans} claims={claims} onOpen={onOpen}/></div>
   </details>
 }
@@ -334,7 +334,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
   const heading = (s: MemoSection, sub: boolean) => { const Tag = sub ? "h4" : "h3"; return <div className="flex items-baseline justify-between gap-3">
     <Tag id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
       <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</Tag>
-    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} aria-label={`Ask about this: section ${s.number}, ${s.title}`} className="pa-noprint shrink-0 text-xs text-primary hover:underline">Ask about this</button>}
+    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} aria-label={`Ask about this: section ${s.number}, ${s.title}`} className="pa-noprint shrink-0 text-xs text-primaryink hover:underline">Ask about this</button>}
   </div> }
   // The Assumptions block lives in §6; a memo without a §6 shows the definition under its last section.
   const topLevel = sections.filter(s => !s.number.includes("."))

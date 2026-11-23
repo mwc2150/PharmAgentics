@@ -49,7 +49,8 @@ def main(argv=None) -> int:
     ins.add_argument("--last", type=int, default=5, help="runs per system to list (default 5)")
     ins.add_argument("--out", type=Path, help="output folder (default eval/mlflow/insights)")
 
-    sub.add_parser("export-telemetry", help="write the golden-set scores the hosted app shows (src/pharmagentics/api/telemetry.json)")
+    exp = sub.add_parser("export-telemetry", help="write the golden-set scores the hosted app shows (src/pharmagentics/api/telemetry.json)")
+    exp.add_argument("--store", action="append", type=Path, help="MLflow sqlite store to read (repeatable; default eval/mlflow/mlflow.db)")
     uat = sub.add_parser("import-uat", help="log the hosted app's live use to MLflow (experiment pharmagentics-uat)")
     uat.add_argument("--state-dir", type=Path, help="downloaded state folder (default: local/uat-export)")
 
@@ -144,7 +145,7 @@ def main(argv=None) -> int:
 
     if args.cmd == "export-telemetry":
         from .harness import telemetry_export
-        snap = telemetry_export.export()
+        snap = telemetry_export.export(stores=args.store)
         print(f"wrote {telemetry_export.OUT} ({len(snap['runs'])} runs, {len(snap['latest'])} system/lane pairs)")
         return 0
 

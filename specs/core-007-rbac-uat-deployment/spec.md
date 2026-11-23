@@ -250,7 +250,7 @@ The Forecast lane's roles are defined now so that the Forecast view can plug in 
 
 **UAT tracking**
 
-- **FR-025**: The hosted app MUST record one UAT event per briefing: role, pseudonymous participant ID, question time, insight time (when the participant marks that they have what they need), server latency, approve or reject with reason, flagged claims, engine, engine version and data version. UAT events MUST NOT hold names, email addresses or other direct identifiers of participants, and MUST NOT identify an individual rep (B-VI). Recording MUST NOT use the eval package, and a failed recording MUST NOT stop the briefing from being served.
+- **FR-025**: The hosted app MUST record one UAT event per briefing: role, pseudonymous participant ID, question time, insight time (since 2026-11-23: the analyst's approve or reject decision; leaders have no decision, so their insight time is not measured, Michael), server latency, approve or reject with reason, flagged claims, engine, engine version and data version. UAT events MUST NOT hold names, email addresses or other direct identifiers of participants, and MUST NOT identify an individual rep (B-VI). Recording MUST NOT use the eval package, and a failed recording MUST NOT stop the briefing from being served.
 - **FR-026**: The owners MUST be able to import UAT events into the local MLflow store as a UAT experiment, separate from golden-set runs, reporting time to insight, approval rate, flagged-claim rate (the UAT accuracy measure), latency and cost by role and by engine.
 
 **Agent snapshots**

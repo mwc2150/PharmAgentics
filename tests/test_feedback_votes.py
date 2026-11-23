@@ -11,7 +11,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pharmagentics.api import feedback, forecast_store, rbac, store
+from pharmagentics.api import auth, feedback, forecast_store, rbac, store
 from pharmagentics.api.app import app
 
 Q = feedback.questionnaire()
@@ -73,7 +73,7 @@ def test_analyst_votes_on_a_brief_and_reads_it_back(tmp_path):
     assert doc["engine"] == "scripted" and doc["data_version"] == "dv-1" and doc["scope"]["territory_id"] == "GREAT_LAKES"
     assert "SQL detail" in doc["shown"]  # the analyst saw the full brief
     assert doc["user"] == rbac.pseudonym("dev-analyst") and doc["personas"] == ["P1"]
-    assert "dev-analyst" not in json.dumps(doc) and "Dev Commercial" not in json.dumps(doc)
+    assert "dev-analyst" not in json.dumps(doc) and auth.DEV_USERS["dev-analyst"][0] not in json.dumps(doc)
     assert c.get("/api/feedback/vote", params=q).json()["vote"] == "up"
 
 

@@ -7,7 +7,7 @@ Every gcloud call passes --project, so the global gcloud config is never changed
   uv run python deploy/gcp.py app      --project ID                        # manual app deploy (CI does this on main)
   uv run python deploy/gcp.py agent    --project ID                        # the cloud CPU agent host (a Cloud Run job)
   uv run python deploy/gcp.py feedback --project ID                        # download UAT feedback and print the report
-  uv run python deploy/gcp.py telemetry --project ID                       # golden-set scores from local MLflow -> the app
+  uv run python deploy/gcp.py telemetry --project ID [--store DB ...]     # golden-set scores from local MLflow -> the app
   uv run python deploy/gcp.py uat      --project ID                        # live use from the bucket -> local MLflow
   uv run python deploy/gcp.py status   --project ID
   uv run python deploy/gcp.py rollback --project ID [--service app|keycloak]
@@ -277,14 +277,19 @@ def feedback(c: Ctx) -> None:
     print(out.read_text(encoding="utf-8"))
 
 
-def telemetry(c: Ctx) -> None:
-    """Export the golden-set scores from the local MLflow store and upload them; the app reads them within 5 minutes."""
-    if not (ROOT / "eval" / "mlflow" / "mlflow.db").is_file():
+def telemetry(c: Ctx, stores: list[str] | None = None) -> None:
+    """Export the golden-set scores and upload them; the app reads them within 5 minutes. `stores` are MLflow stores to
+    read (worktrees keep their own); without any, the local eval/mlflow/mlflow.db."""
+    if not stores and not (ROOT / "eval" / "mlflow" / "mlflow.db").is_file():
         print("No local MLflow store (eval/mlflow/mlflow.db): the app keeps its current scores.")
         return
     out = ROOT / "local" / "telemetry-eval.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run([sys.executable, "-m", "eval.harness.telemetry_export", str(out)], cwd=ROOT, check=True)
+    if stores:
+        subprocess.run([sys.executable, "-c", "import sys; from pathlib import Path; from eval.harness.telemetry_export import export; "
+                        "export(Path(sys.argv[1]), stores=[Path(s) for s in sys.argv[2:]])", str(out), *stores], cwd=ROOT, check=True)
+    else:
+        subprocess.run([sys.executable, "-m", "eval.harness.telemetry_export", str(out)], cwd=ROOT, check=True)
     c.gc("storage", "cp", str(out), f"gs://{c.bucket}/telemetry/eval.json", "--content-type=application/json")
 
 
@@ -492,6 +497,7 @@ def main() -> None:
     p.add_argument("--viewer", action="append", default=[], help="team: Google account to give read-only access (repeatable)")
     p.add_argument("--remove", action="append", default=[], help="team: Google account to revoke (repeatable)")
     p.add_argument("--force", action="store_true", help="env-pull: replace a local file that differs")
+    p.add_argument("--store", action="append", default=[], help="telemetry: MLflow store to read (repeatable; default eval/mlflow/mlflow.db)")
     a = p.parse_args()
     if a.account:
         # Applies to every gcloud call and to Docker's gcloud credential helper, for this process only.
@@ -508,7 +514,7 @@ def main() -> None:
     elif a.command == "feedback":
         feedback(c)
     elif a.command == "telemetry":
-        telemetry(c)
+        telemetry(c, a.store)
     elif a.command == "uat":
         uat(c)
     elif a.command == "status":
