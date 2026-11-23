@@ -63,7 +63,7 @@ def _access_runs(reg: Registry, p, territory: str | None) -> list[dict]:
     return runs
 
 
-def screen(reg: Registry, p, covered: set[str], cut_plans: set[str] = frozenset()) -> list[dict]:
+def screen(reg: Registry, p, covered: set[str], cut_plans: set[str] = frozenset(), *, most: int | None = MOST_CONTINUING) -> list[dict]:
     """The events still running in the period, in territories with no regular story or cut card, largest first, at most
     two (FR-012). A lapse is running when it began before the period's first week, had run long enough to count by the
     period's last week, and had not ended before the period; an access restriction when it began before the first week
@@ -106,7 +106,7 @@ def screen(reg: Registry, p, covered: set[str], cut_plans: set[str] = frozenset(
         if e["territory"] not in seen:
             seen.add(e["territory"])
             out.append(e)
-    return out[:MOST_CONTINUING]
+    return out if most is None else out[:most]
 
 
 def _labels(event: dict) -> dict:

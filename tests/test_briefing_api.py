@@ -323,3 +323,17 @@ def test_the_default_comparison_runs_for_the_releases_first_week():
     response = CLIENT.post("/api/briefing/query", json={**VALID, "week_start": "2024-10-14", "question": "What changed?"})
     assert response.status_code == 200, response.text
     assert response.json().get("comparison") is None
+
+
+def test_a_promotion_review_ignores_chosen_weeks_in_its_definition():
+    """brief-010 review: the Promotion review is release-wide, so a definition with weeks or a comparison never turns
+    it into a weekly brief."""
+    from pharmagentics.api import service
+    from pharmagentics.api.schemas import BriefingQuery
+
+    q = BriefingQuery.model_validate({"brand_id": "BXA", "territory_id": "SOUTHEAST", "week_start": "2026-08-24",
+                                      "question": "Did it work?", "intent": "promotion_review",
+                                      "definition": {"first_week": "2026-08-24", "last_week": "2026-08-24",
+                                                     "comparison": [{"kind": "previous", "weeks": 1}]}})
+    d = service.effective_definition(q)
+    assert d.first_week is None and d.last_week is None and d.comparison == []
