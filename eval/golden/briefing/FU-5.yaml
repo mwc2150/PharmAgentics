@@ -10,6 +10,16 @@ question: 'Week of 2026-05-04 in New England: What happened in New England?'
 review_note: Drafted by Claude on 2026-11-20 for brief-006 FR-013 (Session 2026-11-20); Michael labels it.
 period: null
 anchor: 'Two-turn: a why with no supported driver'
+definition:
+  first_week: '2026-05-04'
+  last_week: '2026-05-04'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want to ask about a section of the brief, so that I can check or extend it without a new brief.
 given: the New England brief for 2026-05-04, where New England's feed is incomplete.
 when: the analyst asks why it dropped.
@@ -28,6 +38,7 @@ facts:
   role: must
   value: 0.656
   sql: select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: true
 follow_up:
   question: Why did New England drop?
   then: the answer says no driver can be named for New England, because its level is projected from panel coverage, an assumption (brief-003 FR-023).
@@ -43,5 +54,5 @@ findings:
   drivers_supported: []
   drivers_ruled_out: []
   withheld: true
-  reviewed: false
+  reviewed: true
 source: specs/brief-006-follow-ups/spec.md#FR-013

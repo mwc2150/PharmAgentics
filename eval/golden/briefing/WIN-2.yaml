@@ -6,10 +6,17 @@ status: draft
 question: 'Week of 2026-08-24, Southeast: How did BXA TRx compare with the selected July weeks?'
 period: week of 2026-08-24, Southeast
 review_note: Draft for Michael to label.
-comparison:
-  kind: custom
-  start: '2026-07-06'
-  end: '2026-07-27'
+definition:
+  first_week: '2026-08-24'
+  last_week: '2026-08-24'
+  comparison:
+    kind: custom
+    start: '2026-07-06'
+    end: '2026-07-27'
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: An analyst compares a late-August week with four July weeks.
 given: Southeast BXA TRx for the week of 2026-08-24 and a custom July comparison.
 when: The analyst runs the brief with those dates.
@@ -33,11 +40,12 @@ facts:
     sql: |
       select sum(trx) from reporting.v_reportable_rx
       where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = date '2026-08-24'
+    reviewed: true
   - id: southeast_change_pct
     value: -26.6
     sql: 'select 100.0 * ((select sum(trx) from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start = date ''2026-08-24'') / (select sum(trx) / 4.0 from reporting.v_reportable_rx where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between date ''2026-07-06'' and date ''2026-07-27'') - 1)'
     role: must
-    reviewed: false
+    reviewed: true
 findings:
 - id: southeast_july_window
   territory: SOUTHEAST
@@ -45,5 +53,5 @@ findings:
   drivers_supported: []
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: specs/brief-007-windows-and-evidence/spec.md#FR-014

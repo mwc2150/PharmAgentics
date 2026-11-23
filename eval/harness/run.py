@@ -12,7 +12,7 @@ from .cases import golden_fingerprint, load_cases
 from .paths import EXPERIMENT, MLFLOW_DIR, tracking_uri
 from .scorers import (DETERMINISTIC, EVIDENCE, REPORT_ONLY, TARGETS, TRAJECTORY, WORD_BUDGET, count_words, finding_counts,
                       judge_scorers, key_fact_counts, leader_words)
-from .systems import SYSTEMS
+from .systems import SYSTEMS, definition_option
 from .versions import code_version, data_fingerprint
 
 
@@ -57,14 +57,15 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
 
     @mlflow.trace(name=f"{system}.predict", span_type="AGENT")
     def predict_fn(question: str, follow_up: str | None = None, section: str | None = None,
-                   comparison: dict | None = None) -> dict:
+                   comparison: dict | None = None, definition: dict | None = None) -> dict:
         try:
             started = time.perf_counter()
             options = {"comparison": comparison} if comparison and system in ("briefing_scripted", "briefing_agent") else {}
             if follow_up and hasattr(sut, "predict_follow_up"):
-                out = sut.predict_follow_up(question, follow_up, section, **options)
+                method = sut.predict_follow_up
+                out = method(question, follow_up, section, **options, **definition_option(method, definition))
             else:
-                out = sut.predict(question, **options)
+                out = sut.predict(question, **options, **definition_option(sut.predict, definition))
             timed = (out.get("latency") if isinstance(out, dict) else None) or {"brief": time.perf_counter() - started}
             for kind, secs in timed.items():
                 if kind in latency and secs is not None:

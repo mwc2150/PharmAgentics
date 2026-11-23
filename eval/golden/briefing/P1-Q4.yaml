@@ -10,6 +10,16 @@ question: 'Weeks of 2025-08-04 to 2025-10-27: Where did this number come from?'
 review_note: null
 period: weeks of 2025-08-04 to 2025-10-27
 anchor: Mid-Atlantic access change, Aug to Oct 2025
+definition:
+  first_week: '2025-08-04'
+  last_week: '2025-10-27'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: both
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want one click from any figure to the query behind it, so that tracing takes seconds, not an afternoon.
 given: a story that cites a plan-level NBRx change and an access change.
 when: Ace clicks either number.
@@ -29,27 +39,32 @@ facts:
   value: -37
   sql: 'select (100.0 * ((select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_nbrx_before_per_week
   value: 23.8
   sql: 'select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'')'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_nbrx_after_per_week
   value: 15.0
   sql: 'select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'')'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_tier_before_change
   value: 2
   sql: 'select formulary_tier from raw.access_status_monthly where plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and product_id = ''BXA'' and month = DATE ''2025-07-01'''
   role: context
   reviewed: false
+  needs: plan_cut
 - id: plan_tier_after_change
   value: 3
   sql: 'select formulary_tier from raw.access_status_monthly where plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and product_id = ''BXA'' and month = DATE ''2025-08-01'''
   role: context
   reviewed: false
+  needs: plan_cut
 findings:
 - id: mid_atlantic_plan_nbrx_drop
   territory: MID_ATLANTIC
@@ -57,5 +72,7 @@ findings:
   drivers_supported: [access]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
+  cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1
+  needs: plan_cut
 source: docs/planning/user-stories.md#P1-Q4

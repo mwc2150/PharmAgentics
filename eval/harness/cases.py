@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from pharmagentics.tools.queries import TERRITORY_NAMES
 from pharmagentics.tools.window import Comparison, parse
@@ -35,6 +35,41 @@ class Fact(BaseModel):
 
 
 Driver = Literal["access", "promotion", "supply", "competitor", "data", "holiday", "none"]
+# brief-010 FR-000d: what a finding is about; None means BXA TRx.
+Measure = Literal["trx", "nbrx", "bxa_share", "competitor_share"]
+GRAINS = ("national", "territory", "plan", "channel", "specialty")
+DEFAULT_COMPARISON = Comparison(kind="previous", weeks=4)  # the house comparison: the four weeks before the period
+
+
+class Definition(BaseModel):
+    """The brief definition a case is written under (brief-010 FR-000a, plan.md "The brief definition"). The eval-side
+    twin of `pharmagentics.tools.definition.Definition`, with the same JSON names; the eval package never imports
+    from `src/` for its own models. A week left None means the question's weeks, else the latest closed week."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    first_week: str | None = None
+    last_week: str | None = None
+    comparison: Comparison | None = None  # None: the previous four weeks
+    territories: Literal["like_for_like", "all_reportable", "projected"] = "like_for_like"
+    measure: Literal["trx", "nbrx", "both"] = "trx"
+    grain: list[Literal["national", "territory", "plan", "channel", "specialty"]] = list(GRAINS)
+    relative_to: Literal["other_territories", "national", "none"] = "other_territories"
+
+    @property
+    def explicit_comparison(self) -> Comparison | None:
+        """The comparison when it is a choice: None for no comparison or the house default (previous four weeks),
+        which the engines read as "no choice made" (a release-wide Promotion review refuses an explicit one)."""
+        c = self.comparison
+        return None if c is None or c == DEFAULT_COMPARISON else c
+
+    def payload(self, *, engine: bool = False) -> dict:
+        """The JSON with every field, comparison without its Nones. `engine=True` is what a system receives: the
+        house default comparison goes as None, which means the same thing (previous four weeks)."""
+        out = self.model_dump(mode="json")
+        choice = self.explicit_comparison if engine else self.comparison
+        out["comparison"] = choice.model_dump(mode="json", exclude_none=True) if choice else None
+        return out
 
 
 class Finding(BaseModel):
@@ -49,6 +84,7 @@ class Finding(BaseModel):
     reviewed: bool = True
     cut: str | None = None  # core-011 FR-017: "plan:<id>", "channel:<name>" or "segment:<name>"; None = the whole territory
     needs: Needs | None = None  # core-011 FR-018
+    measure: Measure | None = None  # brief-010 FR-000d: None = BXA TRx
 
     @field_validator("cut")
     @classmethod
@@ -162,15 +198,35 @@ class Case(BaseModel):
     facts: list[Fact] = []
     findings: list[Finding] = []
     follow_up: FollowUp | None = None  # two-turn cases (brief-006 FR-013)
-    comparison: Comparison | None = None
+    definition: Definition | None = None  # brief-010 FR-000d; an old top-level `comparison:` is read into it
     scope: Scope | None = None  # explicit expected scope; absent, expectations() derives it from the question prefix
     source: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def _old_comparison(cls, data):
+        """Files written before brief-010 carry a top-level `comparison:`; it becomes `definition.comparison`."""
+        if isinstance(data, dict) and "comparison" in data:
+            data = dict(data)
+            comparison = data.pop("comparison")
+            definition = dict(data.get("definition") or {})
+            if comparison is not None and definition.get("comparison") is None:
+                definition["comparison"] = comparison
+            if definition:
+                data["definition"] = definition
+        return data
+
+    @property
+    def comparison(self) -> Comparison | None:
+        """The comparison the case makes a choice of (None: the house default), as the old `comparison:` field was."""
+        return self.definition.explicit_comparison if self.definition else None
 
     def inputs(self) -> dict:
         """What the system under test receives: the question, and the follow-up for a two-turn case."""
         return {"question": self.question, "follow_up": self.follow_up.question if self.follow_up else None,
                 "section": self.follow_up.section if self.follow_up else None,
-                **({"comparison": self.comparison.model_dump(mode="json", exclude_none=True)} if self.comparison else {})}
+                **({"comparison": self.comparison.model_dump(mode="json", exclude_none=True)} if self.comparison else {}),
+                **({"definition": self.definition.payload(engine=True)} if self.definition else {})}
 
     def expected_scope(self) -> Scope:
         comparison = self.comparison.model_dump(mode="json", exclude_none=True) if self.comparison else None
@@ -200,6 +256,7 @@ class Case(BaseModel):
             "findings": [f.model_dump() for f in self.findings],
             "must_say": self.must_say.phrases if self.must_say else [],
             "scope": self.expected_scope().model_dump(),
+            "definition": self.definition.payload() if self.definition else None,
             "eval_items": self.eval_items,
         }
 

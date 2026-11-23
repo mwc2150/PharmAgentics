@@ -10,6 +10,16 @@ question: 'Weeks of 2026-06-01 to 2026-06-29, Pacific: Why did it happen, in ter
 review_note: null
 period: weeks of 2026-06-01 to 2026-06-29, Pacific
 anchor: Pacific supply, Jun 2026
+definition:
+  first_week: '2026-06-01'
+  last_week: '2026-06-29'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Diana, I want the explanation in plain words with one number each, so that I can repeat it upward.
 given: a regional supply shortfall with a clean recovery.
 when: the brief writes the story.
@@ -29,7 +39,7 @@ facts:
   value: -34.0
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''PACIFIC'' and week_start between DATE ''2026-06-01'' and DATE ''2026-06-29'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''PACIFIC'' and week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'') - 1))'
   role: must
-  reviewed: false
+  reviewed: true
 - id: other_territories_change_pct
   value: -1
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''PACIFIC'' and week_start between DATE ''2026-06-01'' and DATE ''2026-06-29'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''PACIFIC'' and week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'') - 1))'
@@ -39,7 +49,7 @@ facts:
   value: 0.7
   sql: 'select avg(inventory_fill_rate) from raw.inventory_weekly where product_id = ''BXA'' and territory_id = ''PACIFIC'' and week_start between DATE ''2026-06-01'' and DATE ''2026-06-29'''
   role: must
-  reviewed: false
+  reviewed: true
 findings:
 - id: pacific_supply_shortfall
   territory: PACIFIC
@@ -47,5 +57,5 @@ findings:
   drivers_supported: [supply]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: docs/planning/user-stories.md#P3-Q3

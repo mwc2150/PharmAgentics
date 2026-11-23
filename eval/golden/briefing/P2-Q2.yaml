@@ -10,6 +10,16 @@ question: 'Weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic: What explanations we
 review_note: null
 period: weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic
 anchor: Mid-Atlantic access change
+definition:
+  first_week: '2025-08-04'
+  last_week: '2025-10-27'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Marcus, I want competing explanations tested and recorded, so that "what about the competitor?" has an answer on the spot.
 given: a regional weakness with one access change and stable promotion, supply and feeds.
 when: the brief investigates.
@@ -34,37 +44,45 @@ facts:
   role: context
   value: 2
   sql: select formulary_tier from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-07-01'
+  needs: plan_cut
 - id: plan_tier_aug_2025
   role: context
   value: 3
   sql: select formulary_tier from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-08-01'
+  needs: plan_cut
 - id: plan_prior_auth_aug_2025
   role: context
   value: 1
   sql: select prior_authorization from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-08-01'
+  needs: plan_cut
 - id: plan_step_therapy_aug_2025
   role: context
   value: 1
   sql: select step_therapy from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-08-01'
+  needs: plan_cut
 - id: plan_tier_nov_2025
   role: context
   value: 2
   sql: select formulary_tier from raw.access_status_monthly where plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA' and month = DATE '2025-11-01'
+  needs: plan_cut
 - id: plan_trx_before_per_week
   value: 158
   sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'')'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_trx_after_per_week
   value: 142
   sql: 'select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'')'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: plan_change_pct
   value: -10.1
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'') - 1))'
   role: must
-  reviewed: false
+  reviewed: true
+  needs: plan_cut
 - id: lipidara_change_pct
   value: 33.4
   sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXC'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXC'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-07-07'' and DATE ''2025-07-28'') - 1))'
@@ -97,5 +115,7 @@ findings:
   drivers_supported: [access]
   drivers_ruled_out: [promotion, supply, competitor, data]
   withheld: false
-  reviewed: false
+  reviewed: true
+  cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1
+  needs: plan_cut
 source: docs/planning/user-stories.md#P2-Q2

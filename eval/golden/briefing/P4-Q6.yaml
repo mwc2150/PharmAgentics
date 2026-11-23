@@ -10,6 +10,16 @@ question: Where should the next dollar go?
 review_note: The story states no period; add the weeks to the question before freezing.
 period: null
 anchor: Great Lakes and Southeast together
+definition:
+  first_week: null
+  last_week: null
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Magdalena, I want budget arguments grounded in evidence, so that shifts are not argued from anecdote.
 given: two lapses where calls and digital fell together.
 when: the brief writes next steps.
@@ -41,14 +51,14 @@ findings:
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 - id: southeast_promotion_lapse
   territory: SOUTHEAST
   direction: down
   drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 must_say:
   phrases:
   - 'keep promotion running|keep promotion'
