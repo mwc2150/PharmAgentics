@@ -909,7 +909,7 @@ function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceI
 // brief-009: story id to its card title, from the triage record, so the timeline names a story the way the memo does.
 const storyTitles = (r: BriefingResult): Record<string, string> => Object.fromEntries((r.triage?.calls ?? []).map(c=>[c.story, c.title]))
 
-function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = false}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null, stepsFolded?: boolean}) {
+function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = false, onStartNew}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null, stepsFolded?: boolean, onStartNew?: () => void}) {
   const [evidenceId,setEvidenceId] = useState<string | null>(null)
   useEffect(()=>{ if(openEvidence) setEvidenceId(openEvidence.id) },[openEvidence])
   const [mode,setMode] = useState<"analyst" | "leadership">("analyst")
@@ -921,7 +921,8 @@ function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = fals
     try { setPreview(await openBrief(result.brief_id, "leadership")) } catch(e) { setPreviewError(message(e)) }
   }
   return <>
-    <div className="flex justify-end"><ViewToggle value={mode} onChange={v=>{ if (v==="analyst") setMode("analyst"); else void showPreview() }}/></div>
+    {/* "Start a new briefing" at the left of the view toggles' row */}
+    <div className="flex flex-wrap items-center justify-between gap-3">{onStartNew ? <button type="button" onClick={onStartNew} className={BTN2}>Start a new briefing</button> : <span/>}<ViewToggle value={mode} onChange={v=>{ if (v==="analyst") setMode("analyst"); else void showPreview() }}/></div>
     {mode==="leadership" ? (previewError ? <Notice tone="error" role="alert">{previewError}</Notice> : preview ? <SummaryCard brief={preview} preview/> : <p className="text-sm text-muted">Loading the leadership view…</p>) :
     <article className={`${PANEL} overflow-hidden`}>
       <div className="border-b border-rule px-6 py-5">
@@ -1176,18 +1177,16 @@ function AnalystApp({me}: {me: Me}) {
     </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8">{openedShown ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={closeOpened}><Icon name="back" className="h-4 w-4"/>All approved briefings</button>
-        {opened && <button type="button" onClick={startNew} className={BTN2}>Start a new briefing</button>}
       </div>
       {openedLoading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
       {openedError && <Notice tone="error" role="alert">{openedError}</Notice>}
-      {opened && <AnalystBrief stepsFolded result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
+      {opened && <AnalystBrief stepsFolded onStartNew={startNew} result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </> : <><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></>}</div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>{ setView("home"); if (!pending) setRunView(null) }}><Icon name="back"/>Change scope</button>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {requestScope && <span className="text-xs text-muted">{scopeText(requestScope)}</span>}
-          {view==="result" && result && !pending && <button type="button" onClick={startNew} className={BTN2}>Start a new briefing</button>}
         </div>
       </div>
       {pending && (jobState
@@ -1197,7 +1196,7 @@ function AnalystApp({me}: {me: Me}) {
       {pending && engine==="agent" && jobState && <Timeline events={liveEvents} live/>}
       {runError && <Notice tone="error" role="alert" title={view==="triage" ? "The triage plan could not be built." : "Briefing could not be generated."}><p className="mt-2">{runError}</p><p className="mt-2">No mock result was substituted.</p>{view==="result" && plan && <button className="mt-2 underline" onClick={()=>{setRunError(null);setView("triage");setRunView("triage")}}>Back to the triage plan</button>}</Notice>}
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
-      {view==="result" && result && <AnalystBrief result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
+      {view==="result" && result && <AnalystBrief onStartNew={pending ? undefined : startNew} result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </div>}</div>
     {brand && (view==="home" || (view==="result" && (!!result || agentSupported)) || (view==="triage" && agentSupported) || (view==="approved" && !!opened)) && <div className="workspace-content sticky bottom-0 z-20"><div ref={setDock} className="pa-dock"/>{/* the feedback card on the open answer sits here, on top of the bar */}<MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : view==="approved" && opened ? opened.brief_id : null} pending={view==="approved" ? false : pending} chip={chip} onClearChip={()=>setChip(null)}
       onRead={view==="home" ? reader.run : undefined} readBusy={reader.busy} readError={view==="home" ? reader.error : null}
