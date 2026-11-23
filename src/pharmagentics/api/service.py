@@ -11,6 +11,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from .schemas import BriefingQuery, BriefingResult, ReleaseContext
+from pharmagentics.tools import events
 from pharmagentics.tools.brands import BRIEFING_ENGINES, PRODUCTS
 from pharmagentics.tools.window import Comparison, comparison_weeks
 
@@ -185,15 +186,16 @@ def run_briefing(request: BriefingQuery) -> BriefingResult:
     question = normalize_question(request)
     options = {"comparison": request.comparison} if request.comparison is not None else {}
     extra = {}
+    log = events.EventLog()  # brief-009: the scripted run's steps, actor Code; recording changes nothing in the brief
     if request.triage is None:
         from briefing_baseline.pipeline import answer
 
-        raw = answer(question, db=DB, brand_id=request.brand_id, **options)
+        raw = answer(question, db=DB, brand_id=request.brand_id, events=log, **options)
     else:
         from briefing_baseline import pipeline
 
         try:
-            out = pipeline.run_with_plan(question, request.triage.model_dump(), db=DB, brand_id=request.brand_id, **options)
+            out = pipeline.run_with_plan(question, request.triage.model_dump(), db=DB, brand_id=request.brand_id, events=log, **options)
         except pipeline.StalePlan as exc:
             raise StalePlan(str(exc)) from exc
         except ValueError as exc:
@@ -203,6 +205,8 @@ def run_briefing(request: BriefingQuery) -> BriefingResult:
     _matching_brand(request.brand_id, raw)
     claims = raw.get("claims", [])
     evidence = raw.get("evidence", [])
+    if log.events:
+        extra["events"], extra["claim_events"] = log.finalize(len(claims))
     return BriefingResult(
         system=raw["system"], question=question,
         brand_id=request.brand_id, territory_id=request.territory_id,
@@ -246,7 +250,8 @@ def accept_agent_brief(query: BriefingQuery, posted: dict) -> BriefingResult:
         brand_id=query.brand_id, territory_id=query.territory_id, week_start=query.week_start, week_end=query.week_end,
         comparison=query.comparison, answer=env.get("answer", ""), claims=claims, evidence=evidence, data_version=version,
         abstained=bool(env.get("abstained", False)), triage=posted.get("triage"), flow=posted.get("flow"),
-        sections=env.get("sections"),
+        sections=env.get("sections"), events=events.clean(posted.get("events")) or None,
+        claim_events=events.clean_claim_events(posted.get("claim_events"), len(claims)),
         citations=_valid_citations(env.get("answer", ""), claims, env.get("citations")),
     )
 

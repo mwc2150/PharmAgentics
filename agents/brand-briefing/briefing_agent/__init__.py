@@ -30,9 +30,11 @@ from briefing_baseline import pipeline as scripted
 from briefing_baseline.triage import stage_flow
 from briefing_lowcode.team import RunLog, _call
 
+from pharmagentics.tools.events import EventLog
+
 from . import lessons
 from . import plan as planmod
-from . import reader, write
+from . import reader, trace, write
 from .investigate import investigate, server
 from .scope import out_of_scope
 
@@ -56,13 +58,20 @@ def answer(question: str, model: str | None = None, *, comparison: Comparison | 
     return asyncio.run(_answer(question, model, comparison))
 
 
-def triage(question: str, model: str | None = None, *, comparison: Comparison | None = None) -> dict:
+def events_for(*, on_event=None, seed: list[dict] | None = None) -> EventLog:
+    """brief-009: an event log that knows this build's prompts. The worker passes one to `triage` and `run_with_plan`."""
+    return trace.new_log(load_config(), HERE, on_event=on_event, seed=seed)
+
+
+def triage(question: str, model: str | None = None, *, comparison: Comparison | None = None,
+           events: EventLog | None = None) -> dict:
     """UAT: the plan P1 reviews (code plan plus the manager's calls)."""
     cfg = load_config()
-    return asyncio.run(_triage(question, model_spec(model or cfg.get("model")), RunLog(), comparison))
+    return asyncio.run(_triage(question, model_spec(model or cfg.get("model")), RunLog(events), comparison))
 
 
-def run_with_plan(question: str, decision: dict, plan: dict, model: str | None = None) -> dict:
+def run_with_plan(question: str, decision: dict, plan: dict, model: str | None = None, *,
+                  events: EventLog | None = None) -> dict:
     """UAT: the brief on P1's decision over the reviewed plan. Returns envelope, triage record and flow."""
     cfg = load_config()
     if decision.get("plan_id") != plan.get("plan_id"):
@@ -71,7 +80,7 @@ def run_with_plan(question: str, decision: dict, plan: dict, model: str | None =
     order = list(decision.get("stories", []))
     if any(s not in allowed for s in order) or len(set(order)) != len(order):
         raise ValueError(f"Not a story this plan proposes: {', '.join(s for s in order if s not in allowed)}")
-    return asyncio.run(_run(question, plan, order, model_spec(model or cfg.get("model")), reviewed=True, log=RunLog()))
+    return asyncio.run(_run(question, plan, order, model_spec(model or cfg.get("model")), reviewed=True, log=RunLog(events)))
 
 
 async def _ask(spec: str, prompt: str, log: RunLog, name: str) -> str:
@@ -83,11 +92,13 @@ async def _triage(question: str, spec: str, log: RunLog, comparison: Comparison 
     cfg = load_config()
     code_plan = scripted.triage(question, comparison=comparison) if comparison else scripted.triage(question)
     if code_plan["promotion_review"]:
+        await trace.note(log, "Screen territories", summary=trace.screened(code_plan))
         return dict(planmod.apply(code_plan, '{"order": []}', question), model=spec)
     scope = out_of_scope(question)
-    if scope:
+    if scope:  # no territories were screened for a question outside the release
         return dict(code_plan, engine="agent", state="OUT_OF_SCOPE", scope=scope, stories=[], flagged=False, flags=[],
                     manager_order=[], manager_drop={}, manager_note="", model=spec)
+    await trace.note(log, "Screen territories", summary=trace.screened(code_plan))
     if code_plan["state"] != "TRIAGE_REVIEW":
         return dict(planmod.apply(code_plan, '{"order": []}', question), model=spec)
     prompt = (HERE / cfg["prompts"]["manager_triage"]).read_text(encoding="utf-8").format(
@@ -96,6 +107,7 @@ async def _triage(question: str, spec: str, log: RunLog, comparison: Comparison 
         reply = await _ask(spec, prompt, log, "manager_triage")
         plan = planmod.apply(code_plan, reply, question)
         finish(sp, {"reply": reply, "order": plan["manager_order"], "flags": plan["flags"]})
+    await trace.note(log, "Review the manager's plan", summary=trace.manager_check(plan))
     return dict(plan, model=spec)
 
 
@@ -168,6 +180,10 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
         chart_lines = {k: write.fill(v, cmp, write.link_verb(confidences[k] == "High" if k in confidences else all_high))
                        for k, v in chart_lines.items()}
         finish(sp, {"problems": bad, "revised": revised, "dropped": dropped, "chart_lines": sorted(chart_lines)})
+    n_bad = sum(len(v) for v in bad.values())  # `bad` maps each part to its list of problems
+    await trace.note(log, "Check the writer's sentences", summary=(
+        f"Code checked every sentence: {n_bad} problem{'' if n_bad == 1 else 's'} found" + ("; rewritten once" if revised else "")
+        + f"; {len(dropped)} dropped."))
     return answer_text, sentences, chart_lines, revised, dropped
 
 
@@ -182,7 +198,8 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
             env = json.loads(await _call(mcp, "promotion_review"))
         env.update(system=f"{NAME}:{spec}", trajectory={"llm_calls": 0, "model": spec, "scope": "promotion_review"})
         record = planmod.record(plan, [], reviewed)
-        return {"envelope": env, "triage": record, "flow": stage_flow(plan, record, verified=True)}
+        return trace.attach({"envelope": env, "triage": record, "flow": stage_flow(plan, record, verified=True)},
+                            log, len(env.get("claims") or []), None)  # the saved brief keeps its timeline
     if plan.get("state") == "OUT_OF_SCOPE":
         choice = Comparison.model_validate(plan["comparison"]) if plan.get("comparison") else None
         env = scripted.answer(question, comparison=choice) if choice else scripted.answer(question)
@@ -190,19 +207,29 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
                    comparison=plan.get("comparison"),
                    trajectory={"scope": "out", "tools": [], "llm_calls": 0, "capped": None, "model": spec,
                                "config_version": config_version(), "seconds": round(time.time() - started, 1)})
-        return {"envelope": env, "triage": None, "flow": None}
+        return trace.attach({"envelope": env, "triage": None, "flow": None}, log, len(env.get("claims") or []), None)
     async with Client(server()) as mcp:
+        if log.events is not None:
+            log.events.fetch = lambda: trace.claims_of(mcp)
+            if reviewed:
+                log.events.emit("Person", "person", "Review the plan", story=None, summary=(
+                    f"The analyst reviewed the plan and approved {len(order)} stor{'y' if len(order) == 1 else 'ies'}."))
         with span("1_load_and_pin", inputs={"question": question}, model=spec, config_version=config_version()) as sp:
             args = {"comparison": plan["comparison"]} if plan.get("comparison") else {}
             pinned = await _call(mcp, "open_run", question=question, **args)
             sections = json.loads(await _call(mcp, "brief_sections"))
             finish(sp, {"run_context": pinned})
+        await trace.note(log, "Pin the data and period", pinned, tool="open_run")
+        await trace.note(log, "Build the memo's code sections", json.dumps(sections), tool="brief_sections",
+                         summary="Code built the title, numbers, limits and appendix sections.")
         with span("4a_investigation", inputs={"order": order}) as sp:
             stories, notes = (await investigate(cfg, spec, mcp, plan, order, log)) if plan["state"] == "TRIAGE_REVIEW" else ([], [])
             finish(sp, {"notes": notes, "tool_sequence": log.tools})
         competitor = any(s["id"].startswith("competitor:") for s in stories)
         close = json.loads(await _call(mcp, "memo_close", competitor=competitor))  # §1 and §5, by code
         dropped_line = await _call(mcp, "dropped_line")
+        await trace.note(log, "Build the bottom line and next checks", json.dumps(close) + dropped_line, tool="memo_close",
+                         summary="Code wrote the bottom line, the next checks and the dropped-territories line.")
         run = json.loads(await _call(mcp, "export_run"))
     claims = run["claims"]
     answer_text, sentences, chart_lines, revised, dropped = await _write(cfg, spec, question, sections, close, stories, claims,
@@ -212,6 +239,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
     if (bad := digits_outside_tokens(template)):  # code sections are clean; this guards the assembly itself
         raise AssertionError(f"digit outside a claim token: {bad[:3]}")
     text, used, citations, index = write.render(template, claims)
+    await trace.note(log, "Assemble the memo", template, summary="Code assembled the memo from the sections, the writer's sentences and claim tokens.")
     keep = {c["evidence_id"] for c in used}
     record = planmod.record(plan, order, reviewed)
     flow_record = dict(record, calls=[dict(c, outcome="investigated") if c["outcome"] == "restored" else c for c in record["calls"]])
@@ -228,7 +256,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
                        "would_pause": record["would_pause"], "seconds": round(time.time() - started, 1),
                        "config_version": config_version(), "model": spec},
     }
-    return {"envelope": envelope, "triage": record, "flow": flow}
+    return trace.attach({"envelope": envelope, "triage": record, "flow": flow}, log, len(used), index)
 
 
 def _release_bounds() -> tuple[str, str, list[str]]:
