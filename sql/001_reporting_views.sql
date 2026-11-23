@@ -1,3 +1,5 @@
+-- The loader stores each view below as a table of the same name after it builds (core-001 FR-003a),
+-- in file order: a view may read only views defined above it.
 -- Provisional Day 1 rules, not yet the governed metrics from Specs 002–004.
 -- Every product has a source cell even before launch (with zero counts).
 CREATE OR REPLACE VIEW reporting.v_rx_expected_keys AS
