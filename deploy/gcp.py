@@ -6,7 +6,7 @@ Every gcloud call passes --project, so the global gcloud config is never changed
   uv run python deploy/gcp.py keycloak --project ID                        # realm or Keycloak change
   uv run python deploy/gcp.py app      --project ID                        # manual app deploy (CI does this on main)
   uv run python deploy/gcp.py agent    --project ID                        # the cloud CPU agent host (a Cloud Run job)
-  uv run python deploy/gcp.py feedback --project ID                        # download UAT feedback and print the report
+  uv run python deploy/gcp.py feedback --project ID                        # download UAT feedback, print the report, write feedback/class-demo-feedback.xlsx
   uv run python deploy/gcp.py telemetry --project ID [--store DB ...]     # golden-set scores from local MLflow -> the app
   uv run python deploy/gcp.py uat      --project ID                        # live use from the bucket -> local MLflow
   uv run python deploy/gcp.py status   --project ID
@@ -285,8 +285,10 @@ def feedback(c: Ctx) -> None:
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     out, csv_dir = ROOT / "local" / "feedback-report.md", ROOT / "local" / "feedback-csv"
-    mod.main(["--state-dir", str(dest), "--out", str(out), "--csv", str(csv_dir)])
+    xlsx = ROOT / "feedback" / "class-demo-feedback.xlsx"
+    mod.main(["--state-dir", str(dest), "--out", str(out), "--csv", str(csv_dir), "--xlsx", str(xlsx)])
     print(out.read_text(encoding="utf-8"))
+    print(f"\nWorkbook: {xlsx}\nSkim its free-text answers before you commit it: the repository is public (feedback/README.md).")
 
 
 def telemetry(c: Ctx, stores: list[str] | None = None) -> None:

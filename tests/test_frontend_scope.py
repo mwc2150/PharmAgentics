@@ -13,6 +13,7 @@ def test_frontend_contains_only_supported_feature_modules():
         "BriefingScope.tsx",
         "ComparisonPicker.tsx",
         "Feedback.tsx",
+        "FeedbackResponses.tsx",
         "FeedbackReview.tsx",
         "ForecastCharts.tsx",
         "ForecastDrivers.tsx",

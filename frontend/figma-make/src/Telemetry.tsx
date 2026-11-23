@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react"
+import { FeedbackResponses } from "./FeedbackResponses"
 import { FeedbackReview } from "./FeedbackReview"
 import { Notice } from "./agent/primitives"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
@@ -244,6 +245,6 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
         </table></div></details>}
     </>}
     <ForecastDriverRecovery/>
-    {tester && <><Heading title="Feedback review" note="Lessons and cases proposed from answer votes and saved threads. Approving one queues it; it reaches the golden set through a reviewed pull request."/><FeedbackReview/></>}
+    {tester && <><Heading title="Feedback review" note="Lessons and cases proposed from answer votes and saved threads. Approving one queues it; it reaches the golden set through a reviewed pull request."/><FeedbackReview/><Heading title="Questionnaire responses"/><FeedbackResponses/></>}
   </div>
 }

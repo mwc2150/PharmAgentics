@@ -140,7 +140,7 @@ function AccountMenu({me}: {me: Me}) {
       {me.tester && <ViewAsSwitch me={me}/>}
       <DropdownMenuSeparator/>
       <DropdownMenuItem onSelect={openSuggest}>Suggest an improvement</DropdownMenuItem>
-      <DropdownMenuItem onSelect={openSurvey}><span className="flex-1">Platform questionnaire</span><span className="text-[11px] text-muted">{surveyDone ? "Update" : "5 min"}</span></DropdownMenuItem>
+      <DropdownMenuItem onSelect={openSurvey}><span className="flex-1">Platform questionnaire</span><span className="text-[11px] text-muted">{surveyDone ? "Update" : "1 min"}</span></DropdownMenuItem>
       <DropdownMenuItem onSelect={signOut}>Sign out</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
