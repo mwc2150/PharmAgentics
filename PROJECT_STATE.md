@@ -2,7 +2,7 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
-_2026-11-23 (early), Forecast: Claude Haiku measured as an internal trial model; default stays local Qwen (Sienna, Claude Opus). Branch `feature/fcst-haiku-option`, docs only, not committed or pushed._
+_2026-11-23 (early), Forecast: Claude Haiku measured as an internal trial model; default stays local Qwen (Sienna, Claude Opus). Branch `feature/fcst-haiku-option`, docs only, pushed; no pull request yet._
 - No code change: the model is a server setting for trials, as in Briefing. `FORECAST_AGENT_MODEL=anthropic:claude-haiku-5-5` in the git-ignored `.env` (or exported before `docker compose up`) switches the Forecast lane to Haiku after a restart; unset is local Qwen 3 4B. Users never choose it. A per-question picker was built and then dropped at Sienna's request.
 - Measured on the forty scope paraphrases, current reader: rules 37.5%, local Qwen 92.5% (`300ab924`, 10.5 s), Haiku 97.5% (`301b4800`, 1.9 s). Golden set with Haiku: `accf8a276cbb43d6bbb741a8edcc6164`, all seven gated 1.000, golden number recall 0.593, about 11 s a question; `eval gate` against `227ed3253e3d4e72b642075054f134f6` exit 0. fcst-002 SC-004 updated (its open item for a Haiku rerun is resolved). Data version unchanged.
 - Open: Alvin to agree whether Haiku replaces Qwen once the designs are set; the hosted app would bill the team key (Michael). Handoff: `conversations/2026-11-22-fcst-haiku-option.md`.

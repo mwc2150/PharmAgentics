@@ -1,6 +1,6 @@
 # 2026-11-22 Forecast: Claude Haiku as an internal trial model
 
-Sienna, with Claude Opus. Branch `feature/fcst-haiku-option` from `main` at `3f36238`. Docs only; not committed or pushed.
+Sienna, with Claude Opus. Branch `feature/fcst-haiku-option` from `main` at `3f36238`. Docs only; pushed to the branch, no pull request yet.
 
 ## Decision
 
