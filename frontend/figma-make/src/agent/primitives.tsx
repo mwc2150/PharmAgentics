@@ -19,9 +19,9 @@ export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string
   return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATHS[name]}/></svg>
 }
 
-/* The "Pa" mark (public/pa-mark.png): the product owner's artwork, with the "a" lowered like a subscript, the
-   way Rx is set. The source is 64px; ask for a vector before using it larger than the sign-in card. */
+/* The "Pa" mark (public/pa-mark.svg): a periodic-table tile, since Pa is protactinium, element 91. Space Grotesk
+   outlines on lime with the lime-button shadow; it scales to any size. public/favicon.svg drops the number for 16px. */
 const MARK={sm:"h-9 w-9",lg:"h-14 w-14"} as const
 export function BrandMark({size="sm"}:{size?:keyof typeof MARK}){
-  return <img src="/pa-mark.png" alt="" width={64} height={64} draggable={false} className={`shrink-0 select-none ${MARK[size]}`}/>
+  return <img src="/pa-mark.svg" alt="" width={64} height={64} draggable={false} className={`shrink-0 select-none ${MARK[size]}`}/>
 }

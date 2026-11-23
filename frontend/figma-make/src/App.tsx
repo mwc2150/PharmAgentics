@@ -566,10 +566,10 @@ const OPEN_KEY = "pa_sidebar_open"
 const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
 
 function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onTelemetry, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onAnyClick?: () => void}) {
-  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-agent font-semibold text-onaccent" : "text-muted hover:bg-paper hover:text-ink"}`
+  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-agentbg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   const item = (icon: IconName, text: string, active: boolean, go: () => void) =>
-    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-onaccent" : "group-hover:text-agent"}`}/>{label(text)}</button>
+    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-agent" : "group-hover:text-agent"}`}/>{label(text)}</button>
   return <div className="flex h-full flex-col">
     <div className="flex h-16 items-center gap-3 px-[14px]">
       <BrandMark/>
