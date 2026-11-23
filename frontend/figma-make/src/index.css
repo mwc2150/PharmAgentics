@@ -19,7 +19,7 @@
      step lighter, one accent: seafoam #3ecfb2. It is the
      primary action fill (near-black text), the current selection, the focus ring and the highlight block behind
      section headings; nothing else is seafoam. Panels and buttons carry a hard offset shadow (no blur). */
-  --color-paper: #101117;      /* the page, input wells */
+  --color-paper: #0c0d12;      /* the page, input wells */
   --color-sheet: #1b1d27;      /* panels and the sidebar: one flat, solid layer */
   --color-ink: #f3f3f3;        /* body text (Positivus grey) */
   --color-muted: #a6aabf;      /* secondary text */

@@ -10,7 +10,7 @@ Tokens (Tailwind `@theme`; use as `bg-primary`, `text-muted`, `border-edge`). Th
 
 | Token | Value | Use | Contrast |
 | :- | :- | :- | :- |
-| `paper` | #101117 | Page, input wells, hover fill on rows | base |
+| `paper` | #0c0d12 | Page, input wells, hover fill on rows | base |
 | `sheet` | #1b1d27 | Panels and the sidebar (one flat, solid layer) | base |
 | `ink` | #f3f3f3 | Body text | 17.0:1 on `paper`, 15.1:1 on `sheet`, 13.9:1 on `primarybg` |
 | `muted` | #a6aabf | Secondary text, labels, axis text | 8.2:1 on `paper`, 7.3:1 on `sheet`, 6.7:1 on `primarybg`, 4.8:1 on `rule` |

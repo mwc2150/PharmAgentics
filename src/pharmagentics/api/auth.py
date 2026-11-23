@@ -86,7 +86,7 @@ _PAGE_CSS = """
 @font-face{font-family:"IBM Plex Sans";font-weight:100 700;font-display:swap;src:url("/fonts/ibm-plex-sans-latin.woff2") format("woff2")}
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:48px 16px;background:#101117;color:#f3f3f3;
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:48px 16px;background:#0c0d12;color:#f3f3f3;
   font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 main{width:100%;max-width:440px;background:#1b1d27;border:1px solid #373a52;border-radius:22px;box-shadow:0 5px 0 #3a3e58;padding:32px}
 .mark{display:block;width:56px;height:56px;margin-bottom:24px}
@@ -97,7 +97,7 @@ form{margin-top:20px;display:grid;gap:12px}
 button{display:block;width:100%;padding:12px 16px;border:1px solid #8a8ea6;border-radius:14px;background:transparent;color:#f3f3f3;
   text-align:left;font:500 15px/1.4 inherit;font-family:inherit;cursor:pointer;box-shadow:0 3px 0 #3a3e58;
   transition:background-color .15s,transform .15s,box-shadow .15s}
-button:hover{background:#101117}
+button:hover{background:#0c0d12}
 button:active{transform:translateY(2px);box-shadow:0 1px 0 #3a3e58}
 button:focus-visible{outline:2px solid #3ecfb2;outline-offset:2px}
 small{display:block;margin-top:2px;color:#a6aabf;font-size:12px;font-weight:400}
@@ -111,7 +111,7 @@ a.go:focus-visible{outline:2px solid #f3f3f3;outline-offset:2px}
 
 def _page(title: str, body: str, *, head: str = "", status_code: int = 200, headers: dict[str, str] | None = None) -> HTMLResponse:
     return HTMLResponse(f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101117">{head}
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c0d12">{head}
 <title>{html.escape(title)} · PharmAgentics</title><link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" href="/favicon.ico" sizes="any"><style>{_PAGE_CSS}</style></head>
 <body><main><img class="mark" src="/pa-mark.svg" alt="PharmAgentics" width="56" height="56">{body}</main></body></html>""",
