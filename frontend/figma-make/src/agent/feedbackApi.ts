@@ -98,3 +98,18 @@ export async function getMySurvey(): Promise<MySurvey> {
 export async function sendSurvey(version: number, answers: Answers): Promise<{ submitted_at: string; answered: number }> {
   return await api("/api/feedback/survey", post({ version, answers }))
 }
+
+// The questionnaire responses, pseudonymous, for the tester admin's read-only panel (the server answers 403 to anyone else).
+export type SurveyRow = { ts: string; user: string; role: string; version: number; answers: Record<string, number | string | string[]> }
+export type SurveyResponses = {
+  questionnaire_version: number
+  responses: number
+  umux: { n: number; raw_mean: number; sus_equivalent_mean: number } | null
+  nps: { n: number; mean: number; nps: number } | null
+  rows: SurveyRow[]
+}
+export async function getSurveyResponses(): Promise<SurveyResponses> {
+  const v: unknown = await api("/api/feedback/responses")
+  if (!isObject(v) || !Array.isArray(v.rows) || typeof v.responses !== "number") throw new Error("The questionnaire responses are unavailable.")
+  return v as unknown as SurveyResponses
+}

@@ -149,6 +149,7 @@ def summarize_usage(events: list[dict], job_docs: list[dict], pulses: list[dict]
         "lanes": lanes,
         "sessions": summary["pulse"]["by_rating"],
         "sus": summary["survey"]["sus"],
+        "umux": summary["survey"].get("umux"),
     }
 
 

@@ -103,7 +103,7 @@ The token comes from `PHARMAGENTICS_WORKER_TOKEN` in `deploy/.env.uat` (also a s
 
 The app's **Evaluation** page (all five logins, each seeing only their own lanes) shows two things, as aggregates only:
 
-- **In use:** requests per week, scripted response time and agent time to result (median, p95), review decisions, answer votes, session ratings, the SUS score and the cloud agent budget. Computed from the bucket's events, jobs and feedback, refreshed every 5 minutes. The test login is left out and only counted.
+- **In use:** requests per week, scripted response time and agent time to result (median, p95), review decisions, answer votes, session ratings, the usability score (SUS from the first questionnaire, UMUX-Lite's SUS-equivalent from the current one) and the cloud agent budget. Computed from the bucket's events, jobs and feedback, refreshed every 5 minutes. The test login is left out and only counted.
 - **Golden-set scores:** the latest run of each system and control, from the local MLflow store. The image never holds `eval/`, so the scores travel as a snapshot.
 
 ```powershell
@@ -116,6 +116,8 @@ uv run python deploy/gcp.py uat       --project pharmagentics --account <you>   
 ## UAT feedback (core-008)
 
 The app stores session ratings and questionnaire responses in the state bucket under `feedback/` (one JSON document per rating and per participant questionnaire, pseudonymous like the other UAT events). Read them with `uv run python deploy/gcp.py feedback --project pharmagentics --account <you>`, which downloads the folder into `local/feedback-export/` (git-ignored), writes `local/feedback-report.md` and CSV files in `local/feedback-csv/`, and prints the report. It is read-only and works for anyone with access to the bucket (deployers, and the mentor's read-only access). The questions are in `src/pharmagentics/api/questionnaire.json`.
+
+It also writes `feedback/class-demo-feedback.xlsx` (Summary, Questionnaire, Answer votes, Session ratings and Comments sheets; pseudonymous IDs and role names only; text is always stored as text, never as a formula). That file is meant to be committed, and the repository is public: skim the free text for personal details first. In the app, only the tester login can read other people's questionnaire answers, on the Evaluation page (`GET /api/feedback/responses`).
 
 ## Cloud agent host (core-007 FR-031)
 

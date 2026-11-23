@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react"
+import { FeedbackResponses } from "./FeedbackResponses"
 import { FeedbackReview } from "./FeedbackReview"
 import { Notice } from "./agent/primitives"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
@@ -76,7 +77,8 @@ function InUse({ u }: { u: Usage }) {
       })}
       <div className="p-5"><h4 className="text-sm font-semibold">Ratings</h4><div className="mt-2"><Rows rows={[
         ["Sessions rated", list(u.sessions)],
-        ["System Usability Scale", u.sus ? `${u.sus.mean} of 100 (${u.sus.n} responses)` : "no responses yet"],
+        ["Usability (SUS-equivalent, UMUX-Lite)", u.umux ? `${u.umux.sus_equivalent_mean} of 100 (${u.umux.n} responses)` : "no responses yet"],
+        ...(u.sus ? [["System Usability Scale, first questionnaire", `${u.sus.mean} of 100 (${u.sus.n} responses)`] as [string, string]] : []),
         ...(u.cloud_seconds ? [["Cloud agent time this month", `${u.cloud_seconds.used.toLocaleString()} of ${u.cloud_seconds.limit.toLocaleString()} s`] as [string, ReactNode]] : []),
       ]}/></div></div>
     </section>
@@ -216,6 +218,10 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
   const reviewed = b ? Object.values(b.decisions).reduce((x, y) => x + y, 0) : 0
   const approved = b ? (b.decisions.approved ?? b.decisions.approve ?? 0) : 0
   const lead = t?.latest.find(r => !r.control)
+  // The SUS of the first questionnaire and the UMUX-Lite SUS-equivalent of the second, weighted by responses
+  const parts = [u?.sus && {n: u.sus.n, mean: u.sus.mean}, u?.umux && {n: u.umux.n, mean: u.umux.sus_equivalent_mean}].filter(Boolean) as {n: number, mean: number}[]
+  const total = parts.reduce((a, x) => a + x.n, 0)
+  const usability = total ? {n: total, mean: Math.round(parts.reduce((a, x) => a + x.n * x.mean, 0) / total * 10) / 10} : null
   const goldenBrief = t?.latest.find(r => !r.control && r.system === "briefing_scripted")?.metrics.latency_brief_p50
   return <div className="workspace-wide pa-stagger space-y-6 pb-12 pt-8 sm:pt-10">
     <header className="flex items-baseline justify-between gap-4"><h2 className="sr-only">Evaluation</h2>
@@ -227,7 +233,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
       ["Approved", reviewed ? `${Math.round((approved / reviewed) * 100)}%` : "–", reviewed ? `${approved} of ${reviewed} reviewed` : "nothing reviewed yet"],
       ["Typical response (live use)", b.scripted_ms ? `${((b.scripted_ms.p50 ?? 0) / 1000).toFixed(1)} s` : "–", b.scripted_ms ? "scripted engine, median of live requests" : "no timed requests",
         goldenBrief != null && `golden set: ${goldenBrief.toFixed(1)} s a brief`],
-      ["Usability (SUS)", u.sus ? String(u.sus.mean) : "–", u.sus ? `of 100, ${u.sus.n} responses` : "no responses yet"],
+      ["Usability (SUS scale)", usability ? String(usability.mean) : "–", usability ? `of 100, ${usability.n} response${usability.n === 1 ? "" : "s"}` : "no responses yet"],
     ]}/>}
     {u && <InUse u={u}/>}
     {t && <>
@@ -244,6 +250,6 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
         </table></div></details>}
     </>}
     <ForecastDriverRecovery/>
-    {tester && <><Heading title="Feedback review" note="Lessons and cases proposed from answer votes and saved threads. Approving one queues it; it reaches the golden set through a reviewed pull request."/><FeedbackReview/></>}
+    {tester && <><Heading title="Feedback review" note="Lessons and cases proposed from answer votes and saved threads. Approving one queues it; it reaches the golden set through a reviewed pull request."/><FeedbackReview/><Heading title="Questionnaire responses"/><FeedbackResponses/></>}
   </div>
 }

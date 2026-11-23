@@ -36,6 +36,7 @@ export type Usage = {
   lanes: Partial<Record<"briefing" | "forecast", LaneUsage>>
   sessions: Record<string, number>
   sus: { n: number; mean: number; median: number; min: number; max: number } | null
+  umux?: { n: number; raw_mean: number; sus_equivalent_mean: number } | null  // questionnaire v2 (UMUX-Lite)
   cloud_seconds?: { used: number; limit: number }
 }
 

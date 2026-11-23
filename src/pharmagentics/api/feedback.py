@@ -3,8 +3,8 @@
 Both are stored as small JSON documents next to the other UAT state (the local folder or the Cloud Storage
 bucket), keyed by a pseudonymous participant ID: never a name or an email (core-007 FR-025). The questions live
 in questionnaire.json, so the team or the mentor can change them without code. Results are read by an owner
-through deploy/feedback_report.py (or `gcp.py feedback`), not through the web app: no role can read other people's
-answers in the browser.
+through deploy/feedback_report.py (or `gcp.py feedback`); in the web app only the tester admin reads the
+questionnaire responses (GET /api/feedback/responses), nobody else sees other people's answers.
 """
 from __future__ import annotations
 
@@ -52,9 +52,15 @@ def check_questionnaire(q: dict) -> None:
         if i["type"] in ("choice", "multi") and not i.get("options"):
             raise ValueError(f"questionnaire.json: {i['id']} needs options")
     by_id = {i["id"]: i for i in items(q)}
-    for sid in q.get("scoring", {}).get("sus", []):
-        if by_id.get(sid, {}).get("type") != "agree5":
-            raise ValueError(f"questionnaire.json: SUS item {sid} must exist and be agree5")
+    scoring = q.get("scoring", {})
+    if "sus" in scoring and len(scoring["sus"]) != 10:
+        raise ValueError("questionnaire.json: scoring.sus needs the ten SUS statements")
+    if "umux_lite" in scoring and len(scoring["umux_lite"]) != 2:
+        raise ValueError("questionnaire.json: scoring.umux_lite needs exactly two items")
+    for key, label in (("sus", "SUS"), ("umux_lite", "UMUX-Lite")):
+        for sid in scoring.get(key, []):
+            if by_id.get(sid, {}).get("type") != "agree5":
+                raise ValueError(f"questionnaire.json: {label} item {sid} must exist and be agree5")
 
 
 @lru_cache(maxsize=1)
@@ -111,6 +117,16 @@ def sus_score(q: dict, answers: dict[str, Any]) -> float | None:
     if len(ids) != 10 or any(i not in answers for i in ids):
         return None
     return sum((answers[i] - 1) if n % 2 == 0 else (5 - answers[i]) for n, i in enumerate(ids)) * 2.5
+
+
+def umux_lite(q: dict, answers: dict[str, Any]) -> dict | None:
+    """UMUX-Lite (Lewis et al. 2013) on a 5-point scale, by code. raw = ((a - 1) + (b - 1)) / 8 * 100; the SUS-equivalent
+    regression is 0.65 * raw + 22.9. None unless both items were answered."""
+    ids = q.get("scoring", {}).get("umux_lite") or []
+    if len(ids) != 2 or any(i not in answers for i in ids):
+        return None
+    raw = ((answers[ids[0]] - 1) + (answers[ids[1]] - 1)) / 8 * 100
+    return {"raw": raw, "sus_equivalent": 0.65 * raw + 22.9}
 
 
 # --- requests -------------------------------------------------------------------------------------
@@ -282,9 +298,30 @@ def submit_survey(body: SurveyIn, response: Response, who=Depends(participant)) 
     user = rbac.pseudonym(p.sub)
     before = _read_survey(user)
     doc = {"kind": "survey", "ts": store.now(), "version": q["version"], **_who(p, roles), "answers": answers,
-           "sus": sus_score(q, answers), "updates": (before["updates"] + 1) if before else 0}
+           "sus": sus_score(q, answers), "umux": umux_lite(q, answers), "updates": (before["updates"] + 1) if before else 0}
+    if before and before.get("version") != q["version"]:  # an older questionnaire's answers are kept, not overwritten
+        doc["previous"] = {k: before[k] for k in ("version", "ts", "answers", "sus") if k in before}
+    elif before and before.get("previous"):
+        doc["previous"] = before["previous"]
+    if doc["sus"] is None and doc.get("previous", {}).get("sus") is not None:
+        doc["sus"] = doc["previous"]["sus"]  # the version 1 SUS score still counts in the version 1 figure
     _write(_survey_key(user), doc)
     return {"submitted_at": doc["ts"], "answered": len(answers)}
+
+
+def tester(p: rbac.Principal = Depends(rbac.require_user)) -> rbac.Principal:
+    if not p.is_tester:
+        raise HTTPException(status_code=403, detail="Only the tester admin can read questionnaire responses.")
+    return p
+
+
+@router.get("/responses")
+def responses(response: Response, p: rbac.Principal = Depends(tester)) -> dict:
+    """The questionnaire responses, pseudonymous, for the tester admin's read-only panel. The tester's own test
+    submissions are left out, as in every other result."""
+    _no_store(response)
+    _, surveys = load_feedback(store.backend())
+    return responses_view(surveys, questionnaire())
 
 
 # --- votes on one answer (User Story 5) -----------------------------------------------------------
@@ -402,6 +439,42 @@ def _role_order(key: str) -> tuple[int, int, str]:
     return (len(parts), min((PERSONA_ORDER.index(x) if x in PERSONA_ORDER else 99) for x in parts), key)
 
 
+def role_label(doc: dict) -> str:
+    """The role names a person sees ("Commercial Analyst"), not the persona codes; a login holding two roles of the
+    same name shows it once."""
+    known = rbac.roles()
+    labels = [known[n].label for n in doc.get("roles") or [] if n in known]
+    return " / ".join(dict.fromkeys(labels)) or "Unknown role"
+
+
+def real_only(docs: list[dict]) -> list[dict]:
+    """Leave out the tester login's documents: they are tests, not the class's answers."""
+    return [d for d in docs if not d.get("test")]
+
+
+def responses_view(surveys: list[dict], q: dict) -> dict:
+    """What the tester panel shows: the headline numbers and one pseudonymous row per response, newest first."""
+    real = real_only(surveys)
+    survey = summarize([], real, q)["survey"]
+    nps = next((r for r in survey["items"] if r["id"] == "o_nps"), None)
+    rows = [{"ts": s["ts"], "user": s["user"], "role": role_label(s), "version": s["version"], "answers": s["answers"]}
+            for s in sorted(real, key=lambda d: d["ts"], reverse=True)]
+    return {"questionnaire_version": q["version"], "responses": survey["responses"], "umux": survey["umux"],
+            "nps": ({"mean": nps["mean"], "nps": nps["nps"], "n": nps["n"]} if nps else None), "rows": rows}
+
+
+def earlier_answers(doc: dict, current: set[str]) -> dict[str, Any]:
+    """Answers to items the current questionnaire no longer asks: from a response to an older version, or kept under
+    `previous` when that person later answered the new one."""
+    out = {k: v for k, v in doc.get("answers", {}).items() if k not in current}
+    out.update({k: v for k, v in doc.get("previous", {}).get("answers", {}).items() if k not in current and k not in out})
+    return out
+
+
+def earlier_answers_text(doc: dict, current: set[str]) -> str:
+    return "; ".join(f"{k}: {'; '.join(v) if isinstance(v, list) else v}" for k, v in earlier_answers(doc, current).items())
+
+
 def load_comments(backend) -> list[dict]:
     """Every platform suggestion in a state backend, oldest first."""
     return sorted((json.loads(t) for k in backend.keys(COMMENT_PREFIX) if (t := backend.read(k))), key=lambda d: d["ts"])
@@ -440,9 +513,13 @@ def summarize(pulses: list[dict], surveys: list[dict], q: dict, votes: list[dict
 
     by_id = {i["id"]: i for i in items(q)}
     sus = [s["sus"] for s in surveys if s.get("sus") is not None]
+    umux = [s["umux"] for s in surveys if s.get("umux")]  # only people who answered both items
     survey: dict[str, Any] = {"responses": len(surveys), "versions": dict(Counter(s["version"] for s in surveys)),
+                              "legacy_sus_responses": sum(s["version"] == 1 for s in surveys),
                               "sus": ({"n": len(sus), "mean": round(mean(sus), 1), "median": median(sus),
-                                       "min": min(sus), "max": max(sus)} if sus else None)}
+                                       "min": min(sus), "max": max(sus)} if sus else None),
+                              "umux": ({"n": len(umux), "raw_mean": round(mean(u["raw"] for u in umux), 1),
+                                        "sus_equivalent_mean": round(mean(u["sus_equivalent"] for u in umux), 1)} if umux else None)}
     rows: list[dict] = []
     for item_id, item in by_id.items():
         given = [(s, s["answers"][item_id]) for s in surveys if item_id in s["answers"]]
@@ -487,6 +564,12 @@ def to_markdown(summary: dict, q: dict) -> str:
                   *(f"| {role} | {c['good']} | {c['fine']} | {c['bad']} |" for role, c in sorted(pulse["by_role"].items(), key=lambda kv: _role_order(kv[0]))), ""]
         if pulse["comments"]:
             lines += ["Comments:", "", *(f"- {c['ts']} · {c['role']} · {c['rating']} · {c['where']}: {c['comment']}" for c in pulse["comments"]), ""]
+    earlier = [(d, earlier_answers(d, {i["id"] for i in items(q)})) for d in summary.get("surveys", [])]
+    earlier = [(d, e) for d, e in earlier if e]
+    if earlier:
+        lines += ["## Answers to earlier questionnaire versions", "",
+                  *(f"- {d['ts']} · {_role_key(d)}: " + "; ".join(f"{k}: {'; '.join(v) if isinstance(v, list) else v}" for k, v in e.items())
+                    for d, e in earlier), ""]
     if summary.get("comments") is not None:
         c = summary["comments"]
         lines += ["## Suggestions for the platform", ""]
@@ -511,12 +594,18 @@ def to_markdown(summary: dict, q: dict) -> str:
     lines.append(f"{survey['responses']} responses (questionnaire versions: "
                  + ", ".join(f"v{k}: {v}" for k, v in sorted(survey["versions"].items())) + ").")
     lines.append("")
+    if survey.get("umux"):
+        u = survey["umux"]
+        lines += [f"**UMUX-Lite:** {u['raw_mean']} of 100 (SUS-equivalent {u['sus_equivalent_mean']}, {u['n']} answered both items). "
+                  "68 is the commonly cited SUS average across products; above 80 is usually read as excellent.", ""]
+    elif any(k >= 2 for k in survey["versions"]):
+        lines += ["UMUX-Lite: no respondent answered both items.", ""]
     if survey["sus"]:
         s = survey["sus"]
-        lines += [f"**System Usability Scale:** mean {s['mean']} (median {s['median']}, range {s['min']} to {s['max']}, "
-                  f"{s['n']} complete). 68 is the commonly cited average across products; above 80 is usually read as excellent.", ""]
-    else:
-        lines += ["System Usability Scale: no respondent answered all ten statements.", ""]
+        lines += [f"**System Usability Scale (questionnaire version 1):** mean {s['mean']} (median {s['median']}, range {s['min']} to {s['max']}, "
+                  f"{s['n']} complete).", ""]
+    elif survey.get("legacy_sus_responses"):
+        lines += ["System Usability Scale (questionnaire version 1): no respondent answered all ten statements.", ""]
     for section in q["sections"]:
         rows = [r for r in survey["items"] if r["id"] in {i["id"] for i in section["items"]}]
         if not rows:

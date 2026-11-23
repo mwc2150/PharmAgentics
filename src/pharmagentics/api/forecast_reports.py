@@ -354,7 +354,8 @@ def routes(Forecast) -> None:
         analyst = "run" in role.actions
         rows = [r for r in all_reports() if analyst or r["review_status"] != forecast_store.NOT_SUBMITTED]
         return {"reports": [{"id": r["id"], "title": view(r, False)["title"], "review_status": r["review_status"],
-                             "created_at": r["created_at"], "findings": len(r["findings"]), "version": r["current"]}
+                             "created_at": r["created_at"], "reviewed_at": r.get("reviewed_at"), "findings": len(r["findings"]),
+                             "version": r["current"]}
                             for r in rows]}
 
     @router.get("/{rid}")
