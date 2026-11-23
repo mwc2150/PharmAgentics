@@ -28,7 +28,7 @@ export function DropdownMenuSeparator({ className = "", ...props }: ComponentPro
 export const DropdownMenuRadioGroup = Menu.RadioGroup
 
 export function DropdownMenuRadioItem({ className = "", children, ...props }: ComponentPropsWithoutRef<typeof Menu.RadioItem>) {
-  return <Menu.RadioItem className={`flex cursor-pointer select-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm outline-none transition data-[highlighted]:bg-paper data-[state=checked]:text-agentdeep ${className}`} {...props}>
+  return <Menu.RadioItem className={`flex cursor-pointer select-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm outline-none transition data-[highlighted]:bg-paper data-[state=checked]:text-primary ${className}`} {...props}>
     {children}
     <Menu.ItemIndicator><svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></Menu.ItemIndicator>
   </Menu.RadioItem>

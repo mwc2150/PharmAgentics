@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react"
 import type { ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
-const COLORS = ["var(--color-agent)", "var(--color-human)"]
+const COLORS = ["var(--color-primary)", "var(--color-human)"]
 const PANEL_COLOR = "var(--color-amber)"
 
 function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
@@ -16,7 +16,7 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     if (!claim || sp.start < pos || text.slice(sp.start, sp.end) !== claim.value) return
     parts.push(text.slice(pos, sp.start))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
-      className="pa-cite rounded-sm font-medium underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-agentdeep">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-primary">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(text.slice(pos))
@@ -51,7 +51,7 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
   const x = (w: string) => PAD.l + (W - PAD.l - PAD.r) * (weeks.length < 2 ? 0.5 : weeks.indexOf(w) / (weeks.length - 1))
   const ticks = [weeks[0], weeks[Math.floor((weeks.length - 1) / 2)], weeks[weeks.length - 1]]
   return <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
-    {band && <g><rect x={PAD.l} width={W - PAD.l - PAD.r} y={sc.y(band.high)} height={Math.max(1, sc.y(band.low) - sc.y(band.high))} fill="var(--color-agent)" opacity={0.1}/>
+    {band && <g><rect x={PAD.l} width={W - PAD.l - PAD.r} y={sc.y(band.high)} height={Math.max(1, sc.y(band.low) - sc.y(band.high))} fill="var(--color-primary)" opacity={0.1}/>
       <text x={W - PAD.r} y={sc.y(band.high) - 3} textAnchor="end" className="fill-muted text-[10px]">baseline band</text></g>}
     {[sc.min, (sc.min + sc.max) / 2, sc.max].map((v, i) => <g key={i}>
       <line x1={PAD.l} x2={W - PAD.r} y1={sc.y(v)} y2={sc.y(v)} stroke="var(--color-rule)"/>
@@ -91,7 +91,7 @@ function CoverageStrip({chart}: {chart: ChartSpec}) {
         const cx = left + chart.weeks.indexOf(c.week) * cell, cy = top + ri * cell
         return <g key={c.week}>
           <rect x={cx + 1} y={cy + 1} width={cell - 2} height={cell - 2} rx={2}
-            fill={c.basis === "observed" ? "var(--color-agent)" : "var(--color-sheet)"} opacity={c.basis === "observed" ? 0.35 : 1}
+            fill={c.basis === "observed" ? "var(--color-primary)" : "var(--color-sheet)"} opacity={c.basis === "observed" ? 0.35 : 1}
             stroke={c.basis === "observed" ? "none" : "var(--color-amber)"} strokeWidth={1.2}/>
           {c.basis === "estimated" && <path d={`M${cx + 3} ${cy + 3}L${cx + cell - 3} ${cy + cell - 3}M${cx + cell - 3} ${cy + 3}L${cx + 3} ${cy + cell - 3}`} stroke="var(--color-amber)" strokeWidth={1.2}/>}
           {c.restated && <circle cx={cx + cell / 2} cy={cy + cell / 2} r={cell / 2 - 0.5} fill="none" stroke="var(--color-human)" strokeWidth={1.2}/>}
@@ -138,10 +138,10 @@ function TableView({table, name}: {table: DataTable, name: string}) {
   const shown = table.columns.map((_, j) => j).filter(j => sql || table.columns[j] !== "query")
   return <div className="rounded-lg border border-rule">
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2 text-xs">
-      <span className="font-mono text-agentdeep">{table.evidence_id}</span>
+      <span className="font-mono text-primary">{table.evidence_id}</span>
       <span className="flex gap-3">
-        <button type="button" className="text-agentdeep hover:underline" onClick={() => setSql(!sql)} aria-expanded={sql}>{sql ? "Hide query" : "Show query"}</button>
-        <button type="button" className="text-agentdeep hover:underline" onClick={() => download(name, table)}>Download CSV</button>
+        <button type="button" className="text-primary hover:underline" onClick={() => setSql(!sql)} aria-expanded={sql}>{sql ? "Hide query" : "Show query"}</button>
+        <button type="button" className="text-primary hover:underline" onClick={() => download(name, table)}>Download CSV</button>
       </span>
     </div>
     {sql && !perRow && <pre className="overflow-x-auto whitespace-pre-wrap break-all border-b border-rule bg-paper p-3 font-mono text-[11px] leading-relaxed">{table.query}</pre>}
@@ -165,7 +165,7 @@ function DataBehind({section, claims, evidence, briefId}: {section: MemoSection,
     rows: used.map(c => [c.value, c.evidence_id, byId.get(c.evidence_id)?.tool ?? "", byId.get(c.evidence_id)?.query ?? ""]),
   } : null
   return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3 text-sm">
-    <summary className="cursor-pointer text-xs font-medium text-agentdeep">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
+    <summary className="cursor-pointer text-xs font-medium text-primary">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
     <div className="mt-3 space-y-3">
       {claimTable && <TableView table={claimTable} name={`brief-${briefId}-section-${section.number}-claims.csv`}/>}
       {tables.map(t => <TableView key={t.evidence_id} table={t} name={`brief-${briefId}-section-${section.number}-${t.evidence_id}.csv`}/>)}
@@ -217,7 +217,7 @@ function Paragraphs({text, spans, claims, onOpen}: {text: string, spans?: Span[]
 }
 
 const DIRECTION = {
-  up: {word: "up", color: "text-agentdeep", d: "M12 5l7 9H5z"},
+  up: {word: "up", color: "text-primary", d: "M12 5l7 9H5z"},
   down: {word: "down", color: "text-neg", d: "M12 19l-7-9h14z"},
   flat: {word: "unchanged", color: "text-muted", d: "M5 11h14v2H5z"},
 } as const
@@ -288,7 +288,7 @@ function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[
 function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   const [open, setOpen] = useState(false)
   return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
-    <summary className="cursor-pointer font-sans text-xs font-medium text-agentdeep">{open ? "Hide detail" : "Show detail"}</summary>
+    <summary className="cursor-pointer font-sans text-xs font-medium text-primary">{open ? "Hide detail" : "Show detail"}</summary>
     <div className="mt-2"><Paragraphs text={text} spans={spans} claims={claims} onOpen={onOpen}/></div>
   </details>
 }
@@ -326,7 +326,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
   const heading = (s: MemoSection, sub: boolean) => <div className="flex items-baseline justify-between gap-3">
     <h3 id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
       <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</h3>
-    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-agentdeep hover:underline">Ask about this</button>}
+    {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-primary hover:underline">Ask about this</button>}
   </div>
   return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>
     {sections.filter(s => !s.number.includes(".")).map(s => {

@@ -3,7 +3,7 @@ import { getOverview, type Evidence, type Overview as O, type Stat, type Territo
 import { Icon } from "./agent/primitives"
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
-const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-medium text-onaccent transition-[background-color,transform] duration-150 hover:bg-navyhover active:scale-[0.98]"
+const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-onprimary transition-[background-color,transform] duration-150 hover:bg-primaryhover active:scale-[0.98]"
 const int = (v: number | null | undefined) => (v == null ? "–" : Math.round(v).toLocaleString())
 const pct = (v: number | null | undefined, signed = true) =>
   v == null ? "–" : `${signed && v > 0 ? "+" : ""}${(v * 100).toFixed(1)}%`
@@ -72,7 +72,7 @@ function WeekChart({ series, field, label, baseline }: { series: WeekPoint[], fi
       aria-label={`${label}, ${series.length} weeks, from ${int(vals[0])} to ${int(vals[vals.length - 1])}`}
       onPointerMove={e => pick(e.clientX, e.currentTarget)} onPointerLeave={() => setHover(null)}>
       {base.length > 0 && <rect x={x(base[0])} width={x(base[base.length - 1]) - x(base[0])} y={0} height={h} className="fill-rule/50"/>}
-      <polyline points={vals.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" className="stroke-agent" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round"/>
+      <polyline points={vals.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" className="stroke-primary" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round"/>
       <line x1={x(shown)} x2={x(shown)} y1={0} y2={h} className="stroke-muted/40" strokeWidth="1" vectorEffect="non-scaling-stroke"/>
     </svg>
     <div className="mt-1 flex justify-between text-[11px] text-muted"><span>{day(series[0].week)}</span><span>Shaded: the 4 comparison weeks</span><span>{day(series[series.length - 1].week)}</span></div>
@@ -137,7 +137,7 @@ function Strip({ t, domain, onOpen }: { t: TerritoryRow, domain: number, onOpen:
     <div className="absolute inset-y-0 left-1/2 w-px bg-muted/40"/>
     <button onClick={onOpen} aria-label={`${t.label}: ${pct(t.change)} against a normal range of ±${pct(t.threshold, false)}; ${STATUS[t.status]}`}
       title={`${t.label}: ${pct(t.change)} (normal range ±${pct(t.threshold, false)}), ${int(t.trx)} TRx`}
-      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-agent outline-offset-2 ${t.status === "material" ? "bg-agent" : "bg-sheet"}`}
+      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary outline-offset-2 ${t.status === "material" ? "bg-primary" : "bg-sheet"}`}
       style={{ left: pos(Math.max(-domain, Math.min(domain, t.change))), width: size, height: size }}/>
   </div>
 }
@@ -152,8 +152,8 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
   return <section className={PANEL} aria-labelledby="territories-title">
     <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-5">
       <h3 id="territories-title" className="text-sm font-semibold">Territories to look at</h3>
-      <p className="text-xs text-muted"><span aria-hidden className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-agent align-middle"/>material change
-        <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-2.5 rounded-full border-2 border-agent align-middle"/>within normal range
+      <p className="text-xs text-muted"><span aria-hidden className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-primary align-middle"/>material change
+        <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-2.5 rounded-full border-2 border-primary align-middle"/>within normal range
         <span aria-hidden className="ml-3 mr-1 inline-block h-2.5 w-5 rounded bg-rule align-middle"/>the territory's normal range</p>
     </div>
     <p className="px-5 pt-1 text-xs leading-relaxed text-muted">Week of {day(o.week)} against the 4 weeks before. A change is material when it is past the territory's own normal range (at least {pct(o.rule.material_change, false)}, wider where weekly volume is noisy) and at least {(o.rule.material_gap * 100).toFixed(0)} points apart from the other territories: the rule the brief's triage uses.</p>

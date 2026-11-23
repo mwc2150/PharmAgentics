@@ -70,7 +70,7 @@ export function ShareFeedbackLink({ expanded, onOpen }: { expanded: boolean; onO
     className="relative flex w-full items-center gap-3 rounded-xl px-[10px] py-2 text-left text-xs text-muted transition hover:bg-paper/60 hover:text-ink">
     <span className="relative shrink-0">
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /></svg>
-      {pending && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-agent ring-2 ring-sheet" />}
+      {pending && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-sheet" />}
     </span>
     <span className={expanded ? "whitespace-nowrap" : "sr-only"}>Share feedback</span>
   </button>
@@ -123,7 +123,7 @@ export function AnswerFeedback({ lane, refId, view, agent = false }: { lane: Ans
         placeholder={vote === "down" ? "What was wrong? (optional, no names please)" : "What worked? (optional, no names please)"}
         className="min-w-0 flex-1 rounded-xl border border-rule bg-paper p-2.5 text-sm" />
       <button type="button" disabled={busy || noted || !comment.trim()} onClick={() => void send(vote, comment)}
-        className="rounded-lg px-3 py-2 text-xs font-semibold text-agentdeep border border-rule hover:bg-paper disabled:text-muted disabled:opacity-60">{noted ? "Comment saved" : "Send comment"}</button>
+        className="rounded-lg px-3 py-2 text-xs font-semibold text-primary border border-rule hover:bg-paper disabled:text-muted disabled:opacity-60">{noted ? "Comment saved" : "Send comment"}</button>
     </div>}
     {error && <p role="alert" className="text-xs text-amber">{error}</p>}
     {agent && <SessionRating refId={refId} />}
@@ -151,7 +151,7 @@ function SessionRating({ refId }: { refId: string }) {
   }
   if (current && !editing) return <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule pt-3 text-xs text-muted">
     <span className="flex items-center gap-1.5"><Face kind={current} className={`h-4 w-4 ${TONE[current]}`} />This session: <span className="text-ink">{LABEL[current]}</span></span>
-    <button type="button" onClick={() => setEditing(true)} className="text-agentdeep underline-offset-4 hover:underline">Change or add a note</button>
+    <button type="button" onClick={() => setEditing(true)} className="text-primary underline-offset-4 hover:underline">Change or add a note</button>
   </div>
   return <div className="space-y-2 border-t border-rule pt-3">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -167,7 +167,7 @@ function SessionRating({ refId }: { refId: string }) {
       <textarea id={`pulse-note-${refId}`} value={comment} onChange={e => setComment(e.target.value)} maxLength={300} rows={2}
         placeholder={current === "good" ? "What is working? (optional)" : "What happened? (optional)"} className="min-w-0 flex-1 rounded-xl border border-rule bg-paper p-2.5 text-sm" />
       <div className="flex gap-2">
-        <button type="button" disabled={busy || !comment.trim()} onClick={() => void send(current, comment)} className="rounded-lg px-3 py-2 text-xs font-semibold text-agentdeep border border-rule hover:bg-paper disabled:text-muted disabled:opacity-60">Send note</button>
+        <button type="button" disabled={busy || !comment.trim()} onClick={() => void send(current, comment)} className="rounded-lg px-3 py-2 text-xs font-semibold text-primary border border-rule hover:bg-paper disabled:text-muted disabled:opacity-60">Send note</button>
         <button type="button" onClick={() => setEditing(false)} className="rounded-lg px-3 py-2 text-xs text-muted hover:text-ink">Done</button>
       </div>
     </div>}
@@ -211,8 +211,8 @@ function SuggestModal({ onClose, onSurvey, surveyDone }: { onClose: () => void; 
         {error && <p role="alert" className="text-xs text-amber">{error}</p>}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-6 py-3">
-        <button type="button" onClick={onSurvey} className="text-xs text-agentdeep underline-offset-4 hover:underline">{surveyDone ? "Update your questionnaire answers" : "Or take the five-minute questionnaire"}</button>
-        <button type="button" disabled={busy || !text.trim()} onClick={() => void send()} className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-onaccent transition-[background-color,transform] duration-150 hover:bg-navyhover active:scale-[0.98] disabled:bg-rule disabled:text-muted">{busy ? "Sending…" : "Send"}</button>
+        <button type="button" onClick={onSurvey} className="text-xs text-primary underline-offset-4 hover:underline">{surveyDone ? "Update your questionnaire answers" : "Or take the five-minute questionnaire"}</button>
+        <button type="button" disabled={busy || !text.trim()} onClick={() => void send()} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-onprimary transition-[background-color,transform] duration-150 hover:bg-primaryhover active:scale-[0.98] disabled:bg-rule disabled:text-muted">{busy ? "Sending…" : "Send"}</button>
       </div>
     </div>
   </div>
@@ -222,7 +222,7 @@ function SuggestModal({ onClose, onSurvey, surveyDone }: { onClose: () => void; 
 
 function Question({ item, scale, value, onChange }: { item: QItem; scale: string[]; value: unknown; onChange: (v: number | string | string[] | undefined) => void }) {
   const legend = <legend className="text-sm font-medium leading-snug">{item.text}</legend>
-  const chip = (on: boolean) => `rounded-lg px-2 py-2 text-xs font-medium ring-1 transition ${on ? "bg-navy text-onaccent ring-navy" : "text-ink ring-rule hover:bg-paper"}`
+  const chip = (on: boolean) => `rounded-lg px-2 py-2 text-xs font-medium ring-1 transition ${on ? "bg-primary text-onprimary ring-primary" : "text-ink ring-rule hover:bg-paper"}`
   if (item.type === "agree5") return <fieldset className="space-y-2">{legend}
     <div role="radiogroup" aria-label={item.text} className="grid grid-cols-5 gap-1.5">
       {[1, 2, 3, 4, 5].map(n => <button key={n} type="button" role="radio" aria-checked={value === n} title={scale[n - 1]} onClick={() => onChange(value === n ? undefined : n)} className={chip(value === n)}>{n}</button>)}
@@ -299,10 +299,10 @@ function SurveyModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitte
       {!q && !loadError && <p role="status" className="px-6 py-8 text-sm text-muted">Loading the questionnaire…</p>}
       {q && done && <div className="px-6 py-10 text-center"><p className="text-lg font-semibold">Thank you.</p>
         <p className="mt-1 text-sm text-muted">Your answers are saved. You can reopen the questionnaire from the sidebar or your account menu to change them.</p>
-        <button type="button" onClick={onClose} className="mt-5 rounded-xl bg-navy px-5 py-2.5 text-sm font-semibold text-onaccent hover:bg-navyhover">Close</button></div>}
+        <button type="button" onClick={onClose} className="mt-5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary hover:bg-primaryhover">Close</button></div>}
       {q && !done && <>
         <div className="space-y-7 px-6 py-5">
-          {updating && <p className="rounded-xl bg-agentbg px-3 py-2 text-xs text-agentdeep">You answered this before. Your earlier answers are filled in; change anything and send again to replace them.</p>}
+          {updating && <p className="rounded-xl bg-primarybg px-3 py-2 text-xs text-primary">You answered this before. Your earlier answers are filled in; change anything and send again to replace them.</p>}
           {q.sections.map(section => <section key={section.id} className="space-y-5">
             <h3 className="border-b border-rule pb-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.05em] text-muted">{section.title}</h3>
             {section.items.map(item => <Question key={item.id} item={item} scale={q.scale.agree5} value={answers[item.id]} onChange={v => set(item.id, v)} />)}
@@ -312,7 +312,7 @@ function SurveyModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitte
           <span className="text-xs text-muted">{count} of {total} answered. Every question is optional.</span>
           <span className="flex items-center gap-3">
             {error && <span role="alert" className="max-w-[18rem] text-xs text-amber">{error}{error.includes("changed") && <button type="button" onClick={load} className="ml-1 underline">Reload</button>}</span>}
-            <button type="button" disabled={busy || count === 0} onClick={() => void submit()} className="rounded-xl bg-navy px-5 py-2.5 text-sm font-semibold text-onaccent hover:bg-navyhover disabled:bg-rule disabled:text-muted">{busy ? "Sending…" : updating ? "Send updated answers" : "Send"}</button>
+            <button type="button" disabled={busy || count === 0} onClick={() => void submit()} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary hover:bg-primaryhover disabled:bg-rule disabled:text-muted">{busy ? "Sending…" : updating ? "Send updated answers" : "Send"}</button>
           </span>
         </div>
       </>}

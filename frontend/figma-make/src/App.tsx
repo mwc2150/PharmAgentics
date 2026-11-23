@@ -49,7 +49,7 @@ function dataText(input: unknown): string {
 const message = (e: unknown) => e instanceof Error ? e.message : String(e)
 const chip = "rounded px-2 py-0.5 text-[11px] font-medium"
 // One vocabulary for every screen: the primary action, a secondary action, a field, its label, a panel.
-const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-onaccent shadow-[0_4px_0_var(--color-limedeep)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-navyhover active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-limedeep)] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted disabled:shadow-none"
+const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary shadow-[0_4px_0_var(--color-primarydeep)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-primaryhover active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-primarydeep)] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted disabled:shadow-none"
 const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)] disabled:cursor-not-allowed disabled:text-muted disabled:shadow-none"
 const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
@@ -79,8 +79,8 @@ function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, 
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="border-b border-rule p-3">
-          {result.evidence.map(ev=><button key={ev.id} onClick={()=>setId(ev.id)} aria-current={id===ev.id} className={`flex w-full items-start gap-3 rounded-xl p-3 text-left text-sm ${id===ev.id?"bg-agentbg ring-1 ring-agent/20":"hover:bg-paper"}`}>
-            <span className="font-mono text-xs text-agentdeep">{ev.id}</span><span className="min-w-0 flex-1">{ev.tool}<span className="block text-xs text-muted">{result.claims.filter(c=>c.evidence_id===ev.id).map(c=>c.value).join(", ") || "Context evidence"}</span></span>
+          {result.evidence.map(ev=><button key={ev.id} onClick={()=>setId(ev.id)} aria-current={id===ev.id} className={`flex w-full items-start gap-3 rounded-xl p-3 text-left text-sm ${id===ev.id?"bg-primarybg ring-1 ring-primary/20":"hover:bg-paper"}`}>
+            <span className="font-mono text-xs text-primary">{ev.id}</span><span className="min-w-0 flex-1">{ev.tool}<span className="block text-xs text-muted">{result.claims.filter(c=>c.evidence_id===ev.id).map(c=>c.value).join(", ") || "Context evidence"}</span></span>
           </button>)}
         </div>
         {selected && <div className="space-y-4 p-5">
@@ -272,7 +272,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
   useEffect(()=>{ if (!drafting) return; const t = setInterval(()=>{ openReport(id).then(setR).catch(()=>{}) }, 2000); return ()=>clearInterval(t) }, [drafting, id])
   // The report follows its pins: when they changed, it redrafts by itself (once per change).
   useEffect(()=>{ if (!r || !editable || drafting || !r.stale) return; const key = `${r.version}:${(r.findings ?? []).map(f=>f.id).join(",")}`; if (autoDrafted.current === key) return; autoDrafted.current = key; void act(()=>draftReport(id)) }, [r?.stale, r?.version, drafting, editable])
-  if (!r) return <div className="space-y-3"><button className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={onBack}><Icon name="back"/>All reports</button>{error ? <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div> : <ListSkeleton/>}</div>
+  if (!r) return <div className="space-y-3"><button className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={onBack}><Icon name="back"/>All reports</button>{error ? <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div> : <ListSkeleton/>}</div>
   const unpin = async (runId: string, fid?: string) => { if (!fid) return; setBusy(true); setError(null); try { await unpinFollowup(runId, fid); setR(await openReport(id)) } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const reportPane = <div className="min-w-0 space-y-4">
     <article className="pa-panel rounded-xl border border-rule bg-sheet p-6">
@@ -281,7 +281,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
       {!!r.sources.length && <p className="mt-1 text-xs text-muted">From: {r.sources.map(s=>s.scope).join(" · ")}</p>}
       {r.review_note && <p className="mt-3 rounded-lg bg-amberbg px-3 py-2 text-sm text-amber">Brand Manager: {r.review_note}</p>}
     </article>
-    {drafting && <div className="rounded-xl bg-agentbg px-5 py-4 text-sm text-agentdeep">{r.job?.step ?? "Drafting"}{r.model ? ` (${r.model})` : ""} · {draftSecs} s. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
+    {drafting && <div className="rounded-xl bg-primarybg px-5 py-4 text-sm text-primary">{r.job?.step ?? "Drafting"}{r.model ? ` (${r.model})` : ""} · {draftSecs} s. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
     {r.job?.status === "failed" && r.job.message && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{r.job.message} The last good version is kept.</div>}
     {!r.sections.length && !drafting && <p className="text-sm text-muted">No draft yet.</p>}
     {r.sections.map((sec,i)=><section key={i} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text} charts={r.charts} kpis={r.kpis} passages={r.blocks}/></section>)}
@@ -290,7 +290,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
         <input value={instruction} onChange={e=>setInstruction(e.target.value)} maxLength={500} disabled={busy || drafting || !r.model} placeholder={r.model ? "Ask for a revision, e.g. shorter, lead with the Southeast, put the chart first" : "Revising by request needs a language model on the server"} className={`${FIELD} flex-1`}/>
         <button type="submit" disabled={busy || drafting || !r.model || !instruction.trim()} className={BTN2}>Revise</button>
       </form>
-      {!!r.versions?.length && <details><summary className="cursor-pointer text-xs text-muted">Versions ({r.versions.length})</summary><ol className="mt-2 space-y-1 text-xs">{[...r.versions].reverse().map(v=><li key={v.n} className="flex flex-wrap items-baseline justify-between gap-2"><span><span className="tabular-nums">{v.n}</span> · {v.author} · {v.instruction ?? "first draft"}</span>{v.n !== r.version && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>restoreReportVersion(id, v.n))} className="text-agentdeep hover:underline">Restore</button>}</li>)}</ol></details>}
+      {!!r.versions?.length && <details><summary className="cursor-pointer text-xs text-muted">Versions ({r.versions.length})</summary><ol className="mt-2 space-y-1 text-xs">{[...r.versions].reverse().map(v=><li key={v.n} className="flex flex-wrap items-baseline justify-between gap-2"><span><span className="tabular-nums">{v.n}</span> · {v.author} · {v.instruction ?? "first draft"}</span>{v.n !== r.version && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>restoreReportVersion(id, v.n))} className="text-primary hover:underline">Restore</button>}</li>)}</ol></details>}
       <div className="flex justify-end border-t border-rule pt-4"><button type="button" disabled={busy || drafting || !r.version || !!r.stale} onClick={()=>void act(()=>submitReport(id))} className={BTN}>Submit to Brand Manager</button></div>
     </section>}
     {!analyst && r.review_status === "pending_review" && <section className={`${PANEL} p-5`}>
@@ -309,7 +309,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
       <p className="mt-1 text-xs text-muted">Everything pinned on the question pages. The report is drafted from all of it and updates when the pins change.</p>
       {(r.runs ?? []).map(run=><div key={run.run_id} className="mt-4">
         <div className="flex items-baseline justify-between gap-2"><p className="min-w-0 text-xs font-medium text-muted">{run.question}</p>
-          <span className="flex shrink-0 gap-3 text-xs"><button type="button" onClick={()=>onOpenRun(run.run_id)} className="text-agentdeep hover:underline">Pin more</button>{run.run_id !== sourceIds[0] && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>removeReportRun(id, run.run_id))} className="text-muted hover:text-ink">Remove</button>}</span></div>
+          <span className="flex shrink-0 gap-3 text-xs"><button type="button" onClick={()=>onOpenRun(run.run_id)} className="text-primary hover:underline">Pin more</button>{run.run_id !== sourceIds[0] && <button type="button" disabled={busy || drafting} onClick={()=>void act(()=>removeReportRun(id, run.run_id))} className="text-muted hover:text-ink">Remove</button>}</span></div>
         <ul className="mt-1 divide-y divide-rule text-sm">{(r.findings ?? []).filter(f=>f.source.run_id === run.run_id).map(f=><li key={f.id} className="flex items-baseline justify-between gap-3 py-2"><span className="min-w-0"><span className="mr-2 text-xs text-muted">{f.id}</span>{f.kind === "run" ? "The investigation" : f.question ?? f.title}<span className="block text-xs text-muted">{KIND_LABEL[f.kind] ?? f.kind} · {f.scope}</span></span>{f.kind !== "run" && editable && <button type="button" disabled={busy || drafting} onClick={()=>void unpin(f.source.run_id, f.source.followup_id)} className="shrink-0 text-xs text-muted hover:text-ink">Unpin</button>}</li>)}</ul>
       </div>)}
       {editable && runs.filter(x=>!sourceIds.includes(x.forecast_run_id)).length > 0 && <div className="mt-5 flex flex-col gap-2 border-t border-rule pt-4 sm:flex-row">
@@ -319,7 +319,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
     </section>
   </aside>
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><button disabled={busy} className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={onBack}><Icon name="back"/>All reports</button>{canPreview && <ViewToggle value={preview ? "leadership" : "analyst"} busy={busy} onChange={v=>setPreview(v === "leadership")}/>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><button disabled={busy} className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={onBack}><Icon name="back"/>All reports</button>{canPreview && <ViewToggle value={preview ? "leadership" : "analyst"} busy={busy} onChange={v=>setPreview(v === "leadership")}/>}</div>
     {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
     {/* Contents left, report right (like source and preview); on a phone the report comes first. */}
     {editable ? <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]"><div className="order-2 min-w-0 lg:order-1">{contentsPane}</div><div className="order-1 min-w-0 lg:order-2">{reportPane}</div></div> : reportPane}
@@ -338,7 +338,7 @@ function ForecastReports({me, onOpenRun, approvedOnly=false}: {me: Me, onOpenRun
   return <div className="space-y-6">
     {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
     {analyst && !approvedOnly && <p className="text-sm text-muted">A report starts from a question: investigate it under New explanation, pin the follow-ups you want, then choose Create report. The model drafts from everything pinned, you ask for revisions, and code checks every number before the Brand Manager sees it.</p>}
-    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-agent"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
+    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
   </div>
 }
 
@@ -356,16 +356,16 @@ function ForecastFollowups({run, onAsk, onOpen, onPin}: {run: ForecastRun, onAsk
     <p className="mt-1 text-xs text-muted">Ask about this answer: rerun it elsewhere, drop control territories, explain a decision, show it by week, plot it, or split an unexplained gap. Code computes every number. The investigation above always goes into this question's report; pin the follow-ups you want in it too.</p>
     {!!items.length && <ol className="mt-4 space-y-4">{items.map(f=><li key={f.id} className="text-sm">
       <p className="font-medium">{f.question}</p>
-      {f.status === "running" ? <p className="mt-1 text-muted">Working…</p> : <div className="mt-1 rounded-lg bg-paper px-3 py-2">{f.chart && f.op === "chart" ? <ForecastChart spec={f.chart}/> : <><SectionText text={f.answer ?? ""}/>{f.chart && <div className="mt-2"><ForecastChart spec={f.chart}/></div>}</>}<div className="mt-2 flex flex-wrap gap-4 text-xs">{f.child_run_id && <button type="button" onClick={()=>onOpen(f.child_run_id!)} className="text-agentdeep hover:underline">Open the full rerun</button>}
+      {f.status === "running" ? <p className="mt-1 text-muted">Working…</p> : <div className="mt-1 rounded-lg bg-paper px-3 py-2">{f.chart && f.op === "chart" ? <ForecastChart spec={f.chart}/> : <><SectionText text={f.answer ?? ""}/>{f.chart && <div className="mt-2"><ForecastChart spec={f.chart}/></div>}</>}<div className="mt-2 flex flex-wrap gap-4 text-xs">{f.child_run_id && <button type="button" onClick={()=>onOpen(f.child_run_id!)} className="text-primary hover:underline">Open the full rerun</button>}
         {onPin && f.status === "done" && f.op && PINNABLE_OPS.has(f.op) && (run.pins?.includes(f.id)
-          ? <button type="button" onClick={()=>void onPin(f.id, false)} className="text-agentdeep">Pinned to the report · unpin</button>
+          ? <button type="button" onClick={()=>void onPin(f.id, false)} className="text-primary">Pinned to the report · unpin</button>
           : <button type="button" onClick={()=>void onPin(f.id, true)} className="text-muted hover:text-ink">Pin to the report</button>)}</div></div>}
     </li>)}</ol>}
     <form onSubmit={e=>{ e.preventDefault(); void send(text) }} className="mt-4 flex flex-col gap-2 sm:flex-row">
       <input value={text} onChange={e=>setText(e.target.value)} maxLength={300} disabled={sending} placeholder="e.g. Drop South Central from the controls and rerun" className={`${FIELD} flex-1`}/>
       <button type="submit" disabled={sending || text.trim().length < 3} className={BTN}>{sending ? "Asking…" : "Ask"}</button>
     </form>
-    <div className="mt-2 flex flex-wrap gap-2">{FOLLOWUP_EXAMPLES.map(q=><button key={q} type="button" disabled={sending} onClick={()=>void send(q)} className="rounded-full border border-rule px-3 py-1 text-xs text-muted transition-colors hover:border-agent hover:text-ink disabled:opacity-60">{q}</button>)}</div>
+    <div className="mt-2 flex flex-wrap gap-2">{FOLLOWUP_EXAMPLES.map(q=><button key={q} type="button" disabled={sending} onClick={()=>void send(q)} className="rounded-full border border-rule px-3 py-1 text-xs text-muted transition-colors hover:border-primary hover:text-ink disabled:opacity-60">{q}</button>)}</div>
   </section>
 }
 
@@ -397,7 +397,7 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
       {report.bias_trx !== null && report.bias_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm text-muted"><span>Usual forecast bias</span><span className="tabular-nums">{formatNumber(report.bias_trx)} TRx</span></li>}
       {report.residual_trx !== null && report.residual_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span>Unexplained residual</span><span className="tabular-nums">{formatNumber(report.residual_trx)} TRx</span></li>}</ul></section>}
     {!running && report.sections?.map(sec=><section key={sec.id} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text}/></section>)}
-    {!running && analystView && !!report.decisions?.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How the investigation decided</h3><p className="mt-1 text-xs text-muted">Each decision, who made it and why. Reasons are words only: the agent cannot write a number.</p><ol className="mt-3 space-y-2">{report.decisions.map((d,i)=><li key={i} className="text-sm"><span className={`${chip} mr-2 ${d.by.startsWith("agent") ? "bg-agentbg text-agentdeep" : "bg-paper text-muted"}`}>{d.by}</span><span className="font-medium">{d.action.replace(/_/g, " ")}</span> <span className="text-muted">{d.target}</span><p className="mt-0.5 text-muted">{d.reason}</p></li>)}</ol></section>}
+    {!running && analystView && !!report.decisions?.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How the investigation decided</h3><p className="mt-1 text-xs text-muted">Each decision, who made it and why. Reasons are words only: the agent cannot write a number.</p><ol className="mt-3 space-y-2">{report.decisions.map((d,i)=><li key={i} className="text-sm"><span className={`${chip} mr-2 ${d.by.startsWith("agent") ? "bg-primarybg text-primary" : "bg-paper text-muted"}`}>{d.by}</span><span className="font-medium">{d.action.replace(/_/g, " ")}</span> <span className="text-muted">{d.target}</span><p className="mt-0.5 text-muted">{d.reason}</p></li>)}</ol></section>}
     {!running && analystView && !!report.comparisons?.length && <details className="pa-panel rounded-xl border border-rule bg-sheet p-6"><summary className="cursor-pointer text-sm font-semibold">Comparisons run ({report.comparisons.length})</summary><ul className="mt-3 space-y-3 text-xs">{report.comparisons.map(c=><li key={c.id}><p className="font-medium">{c.id} · {c.episode} · {c.method.replace(/_/g, " ")}{c.flags.length ? ` · flags: ${c.flags.join(", ")}` : ""}</p>{!!c.controls.length && <p className="text-muted">Controls: {c.controls.map(labelTerritory).join(", ")}</p>}<p className="text-muted tabular-nums">{Object.entries(c.stats).flatMap(([k,v])=>v && typeof v === "object" && !Array.isArray(v) ? Object.entries(v as Record<string, unknown>) : [[k,v] as [string, unknown]]).filter(([,v])=>v !== null && v !== undefined && typeof v !== "object").map(([k,v])=>`${k.replace(/_/g, " ")} ${String(v)}`).join(" · ")}</p></li>)}</ul></details>}
     {!running && analystView && report.verification?.checks && <p className="text-xs text-muted">Verification {report.verification.verdict}: {report.verification.checks.map(c=>`${c.detail} (${c.status})`).join("; ")}.</p>}
     {!running && analystView && run.job_status === "done" && onFollowup && onOpen && <ForecastFollowups run={run} onAsk={onFollowup} onOpen={onOpen} onPin={onPin}/>}
@@ -417,7 +417,7 @@ function SubTabs<T extends string>({label, value, options, onChange}: {label: st
   return <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
     <div ref={list} role="tablist" aria-label={label} className="relative flex min-w-0 gap-0.5 overflow-x-auto pb-1 sm:gap-1">
       {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} onClick={() => onChange(key)}
-        className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-agent" : "text-muted hover:text-ink"}`}>{text}</button>)}
+        className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primary" : "text-muted hover:text-ink"}`}>{text}</button>)}
       {bar && <span aria-hidden="true" className="pa-tabbar absolute bottom-1 top-0 rounded-lg border border-edge bg-paper shadow-[0_3px_0_var(--color-slab)]" style={{left: bar.left, width: bar.width}}/>}
     </div>
     {current?.[2] && (
@@ -432,7 +432,7 @@ function SubTabs<T extends string>({label, value, options, onChange}: {label: st
 function ViewToggle({value, busy=false, onChange}: {value: "analyst" | "leadership", busy?: boolean, onChange: (v: "analyst" | "leadership") => void}) {
   return <div role="tablist" aria-label="View" aria-busy={busy} className="inline-flex gap-0.5 rounded-lg border border-edge p-0.5">
     {(["analyst", "leadership"] as const).map(v => <button key={v} type="button" role="tab" aria-selected={value === v} disabled={busy || value === v} onClick={() => onChange(v)}
-      className={`rounded-[10px] px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-agent font-semibold text-onaccent" : "text-muted hover:text-ink"}`}>
+      className={`rounded-[10px] px-3 py-1.5 text-xs font-medium transition-colors ${value === v ? "bg-primary font-semibold text-onprimary" : "text-muted hover:text-ink"}`}>
       {v === "analyst" ? "Analyst view" : "Leadership preview"}</button>)}
   </div>
 }
@@ -510,9 +510,9 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
     {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
     {selected ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={()=>setSelected(null)}><Icon name="back"/>All forecast questions</button>
+        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={()=>setSelected(null)}><Icon name="back"/>All forecast questions</button>
       </div>
-      {selected.parent_run_id && <button type="button" disabled={busy} onClick={()=>void open(selected.parent_run_id!)} className="text-xs text-agentdeep hover:underline">Follow-up rerun · back to the original report</button>}
+      {selected.parent_run_id && <button type="button" disabled={busy} onClick={()=>void open(selected.parent_run_id!)} className="text-xs text-primary hover:underline">Follow-up rerun · back to the original report</button>}
       {selected.kind === "question" ? <ForecastQuestionReport run={selected} onFollowup={analyst ? followup : undefined} onOpen={id=>void open(id)} onPin={analyst && selected.view === "analyst" ? pin : undefined}/> : <ForecastReport run={selected}/>}
       {analyst && selected.view === "analyst" && selected.kind === "question" && selected.job_status === "done" && !selected.report.out_of_scope && <div className="flex flex-wrap items-center justify-end gap-3"><span className="text-xs text-muted">{(selected.pins?.length ?? 0) + 1} item{(selected.pins?.length ?? 0) ? "s" : ""} pinned for the report</span><button type="button" disabled={busy} onClick={()=>void toReport()} className={BTN2}>{selected.report_id ? "Open report" : "Create report"}</button></div>}
       <AnswerFeedback lane="forecast" refId={selected.forecast_run_id} view={selected.view} agent={!!selected.report.investigator_mode && !/scripted/i.test(selected.report.investigator_mode)}/>
@@ -530,7 +530,7 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
       <p className="text-sm text-muted">Ask about forecast versus actual TRx for {context?.brand ?? "BXA Cardiovela"}: how big a miss is, where it sits, what drove it, and what to check.</p>
       <form onSubmit={onAsk} className={`${PANEL} space-y-4 p-6`}>
         <label className={LABEL}>Your question<textarea value={question} onChange={e=>{ setQuestion(e.target.value); setScope(null) }} disabled={busy} rows={2} maxLength={400} placeholder="e.g. Why did we miss forecast in the week of 2026-08-24?" className={`${FIELD} mt-0.5`}/></label>
-        <div className="flex flex-wrap gap-2">{FORECAST_EXAMPLES.map(q=><button key={q} type="button" disabled={busy} onClick={()=>{ setQuestion(q); void readScope(q) }} className="rounded-full border border-rule px-3 py-1 text-xs text-muted transition-colors hover:border-agent hover:text-ink disabled:opacity-60">{q}</button>)}</div>
+        <div className="flex flex-wrap gap-2">{FORECAST_EXAMPLES.map(q=><button key={q} type="button" disabled={busy} onClick={()=>{ setQuestion(q); void readScope(q) }} className="rounded-full border border-rule px-3 py-1 text-xs text-muted transition-colors hover:border-primary hover:text-ink disabled:opacity-60">{q}</button>)}</div>
         {!scope && <div className="flex justify-end border-t border-rule pt-4"><button type="submit" disabled={busy || question.trim().length < 3} className={BTN}>{busy ? "Reading…" : "Read my question"}</button></div>}
       </form>
       {scope && <section className={`${PANEL} space-y-4 p-6 pa-rise`}>
@@ -554,7 +554,7 @@ function ForecastWorkspace({me, section, onSection}: {me: Me, section: ForecastS
       </section>}
     </>}
     {!analyst && section === "workbench" && <p className="text-sm text-muted">Forecast reports waiting for your review are under the Reports tab.</p>}
-    <section><h3 className="text-sm font-semibold">{analyst ? "Your forecast questions" : "Waiting for your review"}</h3>{loading ? <div className="mt-2"><ListSkeleton/></div> : runs.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{runs.map(run=><li key={run.forecast_run_id}><button disabled={busy} onClick={()=>void open(run.forecast_run_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{run.question ?? run.headline}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{run.job_status === "running" ? "Investigating…" : run.job_status === "failed" ? "Failed" : <>{labelTerritory(run.territory_id)} · miss {formatNumber(run.variance_trx)} TRx · {forecastReviewLabel(run.review_status)}</>}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-agent"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{analyst ? "No forecast questions yet. Ask one above, or start from an example." : "Nothing is waiting for your review."}</p>}</section></>}
+    <section><h3 className="text-sm font-semibold">{analyst ? "Your forecast questions" : "Waiting for your review"}</h3>{loading ? <div className="mt-2"><ListSkeleton/></div> : runs.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{runs.map(run=><li key={run.forecast_run_id}><button disabled={busy} onClick={()=>void open(run.forecast_run_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{run.question ?? run.headline}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{run.job_status === "running" ? "Investigating…" : run.job_status === "failed" ? "Failed" : <>{labelTerritory(run.territory_id)} · miss {formatNumber(run.variance_trx)} TRx · {forecastReviewLabel(run.review_status)}</>}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{analyst ? "No forecast questions yet. Ask one above, or start from an example." : "Nothing is waiting for your review."}</p>}</section></>}
     </>}
   </div>
 }
@@ -566,10 +566,10 @@ const OPEN_KEY = "pa_sidebar_open"
 const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
 
 function SideNav({me, expanded, forecast, telemetry, onBriefing, onForecast, onTelemetry, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onAnyClick?: () => void}) {
-  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-agentbg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
+  const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-primarybg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   const item = (icon: IconName, text: string, active: boolean, go: () => void) =>
-    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-agent" : "group-hover:text-agent"}`}/>{label(text)}</button>
+    <button aria-current={active ? "page" : undefined} title={expanded ? undefined : text} className={row(active)} onClick={()=>{go();onAnyClick?.()}}><Icon name={icon} className={`h-5 w-5 shrink-0 transition-colors ${active ? "text-primary" : "group-hover:text-primary"}`}/>{label(text)}</button>
   return <div className="flex h-full flex-col">
     <div className="flex h-16 items-center gap-3 px-[14px]">
       <BrandMark/>
@@ -687,8 +687,8 @@ function JobProgress({kind, status, note}: {kind: "triage" | "brief", status: "q
     <div className="flex items-baseline justify-between gap-3"><h3 className="text-sm font-semibold">{kind === "triage" ? "Preparing the plan" : "Writing the briefing"}</h3><span className="text-xs tabular-nums text-muted">{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</span></div>
     <ol className="mt-4 space-y-3">{steps.map(([id, text], i) => <li key={id} className={`flex items-center gap-3 text-sm transition-colors duration-300 ${i < at ? "text-muted" : i === at ? "text-ink" : "text-muted/60"}`}>
       <span aria-hidden="true" className="grid h-5 w-5 shrink-0 place-items-center">
-        {i < at ? <svg viewBox="0 0 24 24" className="pa-draw h-4 w-4 text-agent" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-          : i === at ? <span className="h-2 w-2 rounded-full bg-agent pa-pulse"/> : <span className="h-1.5 w-1.5 rounded-full bg-rule"/>}
+        {i < at ? <svg viewBox="0 0 24 24" className="pa-draw h-4 w-4 text-primary" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          : i === at ? <span className="h-2 w-2 rounded-full bg-primary pa-pulse"/> : <span className="h-1.5 w-1.5 rounded-full bg-rule"/>}
       </span>{text}</li>)}</ol>
     {note && <p className="mt-4 text-xs text-muted">{note}</p>}
   </section>
@@ -707,7 +707,7 @@ function PublishedList({onOpen}: {onOpen: (id: string) => void}) {
   if (!items.length) return <p className="text-sm text-muted">No approved briefings yet. A briefing appears here once the Commercial Analyst approves it.</p>
   return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={()=>onOpen(b.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
     <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
-    <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-agent"/></button></li>)}</ul>
+    <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary"/></button></li>)}</ul>
 }
 
 function ReviewPanel({result, onChange}: {result: BriefingResult, onChange: (r: BriefingResult) => void}) {
@@ -758,7 +758,7 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
       <h2 className="mt-3 text-lg font-semibold">What should this brief investigate?</h2>
       <p className="mt-1 text-sm text-muted">Code screened every territory and proposes the stories below, ranked by impact. Keep, drop or reorder them; investigation runs only on what you approve, in your order.</p>
       <details className="mt-4 rounded-xl bg-paper p-4 text-sm"><summary className="cursor-pointer font-medium">What stages 1 to 3 found (data health, restatements, KPIs)</summary><pre className="mt-3 whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-ink">{plan.context}</pre></details>
-      {plan.engine==="agent" && plan.state==="TRIAGE_REVIEW" && <div className={`mt-4 rounded-xl p-4 text-sm ${plan.flagged?"bg-amberbg text-amber":"bg-agentbg text-agentdeep"}`}>
+      {plan.engine==="agent" && plan.state==="TRIAGE_REVIEW" && <div className={`mt-4 rounded-xl p-4 text-sm ${plan.flagged?"bg-amberbg text-amber":"bg-primarybg text-primary"}`}>
         <p className="font-medium">{plan.flagged ? "The manager's plan is flagged for your review" : "The manager kept code's plan"}<span className="font-normal"> · agent ({plan.model})</span></p>
         {plan.flags?.map((f,i)=><p key={i} className="mt-1">{f}</p>)}
         {plan.corrections?.map((f,i)=><p key={`c${i}`} className="mt-1 text-ink"><span className="font-medium">Rule applied by code:</span> {f}</p>)}
@@ -777,7 +777,7 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
         </div>
       </div>
       <p className="mt-3 text-sm leading-relaxed">{c.what_moved}</p>
-      {c.manager && <p className="mt-2 rounded-lg bg-agentbg px-3 py-2 text-[13px] text-agentdeep"><span className="font-medium">Manager (agent):</span> {c.manager.keep ? `keeps it as story ${c.manager.position}` : `drops it${c.manager.why ? `: ${c.manager.why}` : ""}`}{c.manager.hypotheses.length ? ` · tests in this order: ${c.manager.hypotheses.join(", ")}` : ""}</p>}
+      {c.manager && <p className="mt-2 rounded-lg bg-primarybg px-3 py-2 text-[13px] text-primary"><span className="font-medium">Manager (agent):</span> {c.manager.keep ? `keeps it as story ${c.manager.position}` : `drops it${c.manager.why ? `: ${c.manager.why}` : ""}`}{c.manager.hypotheses.length ? ` · tests in this order: ${c.manager.hypotheses.join(", ")}` : ""}</p>}
       <dl className="mt-3 grid gap-x-4 gap-y-2 text-[13px] sm:grid-cols-[110px_1fr]">{QUESTIONS.map(([k,label])=><div key={k} className="contents"><dt className="font-medium text-muted">{label}</dt><dd className="leading-relaxed">{c[k]}</dd></div>)}</dl>
     </li>})}</ol>}
     {(over.length>0 || plan.dropped.length>0) && <div className="rounded-xl bg-sheet/70 px-6 py-5 text-sm border border-rule">
@@ -792,7 +792,7 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
 }
 
 // brief-002 US7: who did each of the seven stages (Briefing Architecture §6 states, §9 modes).
-const ACTOR = {code:["Code","bg-paper text-ink border border-rule"], agent:["Agent","bg-agentbg text-agentdeep"], llm:["LLM step","bg-amberbg text-amber"], human:["Person","bg-humanbg text-human"]} as const
+const ACTOR = {code:["Code","bg-paper text-ink border border-rule"], agent:["Agent","bg-primarybg text-primary"], llm:["LLM step","bg-amberbg text-amber"], human:["Person","bg-humanbg text-human"]} as const
 
 function FlowPanel({flow, triage}: {flow: Stage[], triage?: TriageRecord | null}) {
   return <details className="pa-panel rounded-xl bg-sheet px-6 py-5 border border-rule">
@@ -819,7 +819,7 @@ function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceI
     if (!claim || sp.start < pos || result.answer.slice(sp.start, sp.end) !== claim.value) return
     parts.push(result.answer.slice(pos, sp.start))
     parts.push(<button key={i} type="button" onClick={()=>onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
-      className="rounded-sm font-medium underline decoration-agent/40 decoration-dotted underline-offset-4 hover:bg-agentbg focus:bg-agentbg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-agentdeep">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="rounded-sm font-medium underline decoration-primary/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg focus:outline-none">{claim.value}<sup className="ml-px font-mono text-[9px] font-normal text-primary">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(result.answer.slice(pos))
@@ -850,7 +850,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
       <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
         <p className="mt-4 text-[11px] text-muted">Each underlined number is a claim: click it, or its source number, to open the query and record behind it.</p></div>
       <section className="flex flex-wrap items-center justify-between gap-2 border-t border-rule bg-paper/60 px-6 py-3">
-        {result.evidence.length>0 ? <button className="flex items-center gap-2 text-xs font-medium text-agentdeep underline-offset-4 hover:underline" onClick={()=>setEvidenceId(result.evidence[0].id)}><Icon name="evidence"/>All {result.evidence.length} sources ({result.claims.length} numbers)</button> : <span className="text-xs text-muted">No numeric claims in this brief.</span>}
+        {result.evidence.length>0 ? <button className="flex items-center gap-2 text-xs font-medium text-primary underline-offset-4 hover:underline" onClick={()=>setEvidenceId(result.evidence[0].id)}><Icon name="evidence"/>All {result.evidence.length} sources ({result.claims.length} numbers)</button> : <span className="text-xs text-muted">No numeric claims in this brief.</span>}
         <span className="rounded bg-sheet px-2 py-1 font-mono text-[11px] text-muted border border-rule" title="Pinned data version">{result.data_version??"Version unavailable"}</span>
       </section>
       <ReviewPanel result={result} onChange={onChange}/>
@@ -1033,7 +1033,7 @@ function AnalystApp({me}: {me: Me}) {
     </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button className="flex items-center gap-1.5 text-sm text-agentdeep hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
+        <button className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
         {requestScope && <span className="text-xs text-muted">{requestScope.brand} · {labelTerritory(requestScope.territory)} · {requestScope.promotion ? "release-wide Promotion review" : requestScope.weekEnd > requestScope.week ? `weeks ${labelWeek(requestScope.week)} to ${labelWeek(requestScope.weekEnd)}` : `week of ${labelWeek(requestScope.week)}`}</span>}
       </div>
       {pending && (jobState
@@ -1061,7 +1061,7 @@ function LeaderApp({me}: {me: Me}) {
   return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}}>
     <div className="workspace-content space-y-6 py-8 sm:py-10">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
-        <button className="flex items-center gap-2 text-sm text-agentdeep hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
+        <button className="flex items-center gap-2 text-sm text-primary hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
         {brief && <><SummaryCard brief={brief}/><InsightButton briefId={brief.brief_id} view="leadership"/></>}
@@ -1084,7 +1084,7 @@ export default function App() {
     return <Centered>
       <h1 className="mt-5 text-lg font-semibold">No access</h1>
       <p className="mt-2 text-sm text-muted">Your account has no authorized workspace. Ask the project owner to assign a workspace role and brand access.</p>
-      <a className="mt-5 inline-block text-sm font-medium text-agentdeep hover:underline" href="/auth/logout">Sign out</a>
+      <a className="mt-5 inline-block text-sm font-medium text-primary hover:underline" href="/auth/logout">Sign out</a>
     </Centered>
   }
   return briefing.actions.includes("run") ? <AnalystApp me={me}/> : <LeaderApp me={me}/>

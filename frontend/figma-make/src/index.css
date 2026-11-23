@@ -28,17 +28,15 @@
   --color-warn: #c9ccd8;
   --color-warnbg: #23253a;
   /* Primary action: solid lime, near-black text. Names kept (navy) so Overview, Evaluation and Feedback follow */
-  --color-navy: #b9ff66;
-  --color-navyhover: #cdff91;
-  --color-limedeep: #66962a;   /* the hard shadow under a lime button */
-  --color-onaccent: #14151c;
+  --color-primary: #b9ff66;
+  --color-primaryhover: #cdff91;
+  --color-primarydeep: #66962a;   /* the hard shadow under a lime button */
+  --color-onprimary: #14151c;
   /* Leaders, human review */
   --color-human: #c4b5fd;
   --color-humanbg: #26213f;
   /* Accent on dark: current selection, links, icons that carry state: lime */
-  --color-agent: #b9ff66;
-  --color-agentdeep: #b9ff66;
-  --color-agentbg: #1f2714;
+  --color-primarybg: #1f2714;
   /* Verified and successful states: soft blue, always with a word or a check mark */
   --color-ok: #8ab4f8;
   --color-okbg: #14233f;
@@ -47,12 +45,20 @@
   --color-amberbg: #2d2209;
   --color-amberline: #5c4513;
   --color-neg: #f87171;
+  /* Deprecated names, kept so other branches' code still resolves. Use the primary* names in new code. */
+  --color-navy: var(--color-primary);
+  --color-navyhover: var(--color-primaryhover);
+  --color-limedeep: var(--color-primarydeep);
+  --color-onaccent: var(--color-onprimary);
+  --color-agent: var(--color-primary);
+  --color-agentdeep: var(--color-primary);
+  --color-agentbg: var(--color-primarybg);
 }
 
 :root {
   color-scheme: dark;                   /* native selects, scrollbars and pickers render dark */
-  accent-color: var(--color-agent);     /* radios and checkboxes */
-  caret-color: var(--color-agent);
+  accent-color: var(--color-primary);     /* radios and checkboxes */
+  caret-color: var(--color-primary);
   scrollbar-color: var(--color-rule) transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -72,8 +78,8 @@
     text-wrap: balance;
   }
   p { text-wrap: pretty; }
-  ::selection { background: var(--color-agent); color: var(--color-onaccent); }
-  :focus-visible { outline: 2px solid var(--color-agent); outline-offset: 2px; }
+  ::selection { background: var(--color-primary); color: var(--color-onprimary); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
   a { text-underline-offset: 0.2em; }
 }
 
@@ -127,7 +133,7 @@
   /* Hard offset shadow, no blur: a flat slab under a panel. */
   .pa-panel { box-shadow: 0 5px 0 var(--color-slab); }
   /* The Positivus highlight: a lime block behind a section heading, dark text. */
-  .pa-mark { background: var(--color-agent); color: var(--color-onaccent); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .pa-mark { background: var(--color-primary); color: var(--color-onprimary); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .pa-rise { animation: pa-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-slide { animation: pa-slide 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-pulse { animation: pa-pulse 1.2s ease-in-out infinite; }
@@ -171,7 +177,7 @@
     color-scheme: light;
     --color-paper: #ffffff; --color-sheet: #ffffff; --color-ink: #151a18; --color-muted: #4b5652;
     --color-rule: #c8cfcc; --color-warn: #444444; --color-warnbg: #f3f4f4;
-    --color-agent: #1f6055; --color-agentdeep: #1f6055; --color-edge: #6b7280; --color-slab: #c8cfcc; --color-agentbg: #edf4f2;
+    --color-primary: #1f6055; --color-edge: #6b7280; --color-slab: #c8cfcc; --color-primarybg: #edf4f2;
     --color-ok: #1d4f9a; --color-okbg: #e8f0fb; --color-amber: #85540a; --color-amberbg: #fbf2de;
     --color-amberline: #d9b36a; --color-neg: #b02323; --color-human: #5a3fb0; --color-humanbg: #efeafa;
   }

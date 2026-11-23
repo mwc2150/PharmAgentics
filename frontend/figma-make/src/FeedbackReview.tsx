@@ -27,11 +27,11 @@ function Card({p, onDecided}: {p: Proposal, onDecided: (p: Proposal) => void}) {
     {p.kind === "case" && <p className="mt-2 text-xs text-muted">Draft case from {p.source}. Approving adds it to the drafts to label; it never counts until it has facts and a reference answer.</p>}
     {p.reasons.length > 0 && <ul className="mt-2 list-disc pl-5 text-xs text-amber">{p.reasons.map(r => <li key={r}>{r}</li>)}</ul>}
     {p.reviewer_reason && <p className="mt-2 text-xs text-muted">Agent reviewer: {p.reviewer_reason}</p>}
-    {p.after && <details className="mt-2 text-xs"><summary className="cursor-pointer text-agentdeep">The rerun with this lesson</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-paper p-3 font-sans text-[12px] text-ink">{p.after}</pre></details>}
+    {p.after && <details className="mt-2 text-xs"><summary className="cursor-pointer text-primary">The rerun with this lesson</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded bg-paper p-3 font-sans text-[12px] text-ink">{p.after}</pre></details>}
     {open ? <div className="mt-3 flex flex-wrap items-center gap-2">
       <label className="sr-only" htmlFor={`note-${p.id}`}>Note</label>
       <input id={`note-${p.id}`} value={note} onChange={e => setNote(e.target.value)} maxLength={500} placeholder="Note (optional)" className="min-w-0 flex-1 rounded-lg border border-rule bg-paper px-3 py-1.5 text-xs text-ink"/>
-      <button type="button" disabled={busy} onClick={() => void decide("approve")} className="rounded-lg bg-navy px-3 py-1.5 text-xs font-medium text-onaccent hover:bg-navyhover disabled:opacity-40">Approve</button>
+      <button type="button" disabled={busy} onClick={() => void decide("approve")} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-onprimary hover:bg-primaryhover disabled:opacity-40">Approve</button>
       <button type="button" disabled={busy} onClick={() => void decide("reject")} className="rounded-lg border border-rule px-3 py-1.5 text-xs text-ink hover:bg-paper disabled:opacity-40">Reject</button>
     </div> : <p className="mt-3 text-xs text-muted">{p.status} by {p.decided_by ?? "?"}{p.note ? `: ${p.note}` : ""}</p>}
     {error && <p role="alert" className="mt-2 text-xs text-amber">{error}</p>}
