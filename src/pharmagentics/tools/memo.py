@@ -54,7 +54,7 @@ class StoryBlock:
     lines: list[str]  # head line, checks, closing confidence; no "Next:" (it lives in §5)
     prose: str = ""  # one sentence by the writer; empty for the scripted engine
     chart: dict | None = None  # tools/charts.story or charts.competitor (slice 2)
-    card: dict | None = None  # brief-008: {headline, confidence, drivers_checked}, plus core-011 {territory, direction, drivers_supported, drivers_ruled_out}; tokens allowed in the headline
+    card: dict | None = None  # brief-008: {headline, confidence, drivers_checked}, plus core-011 {territory, direction, drivers_supported, drivers_ruled_out, cut (None: the whole territory)}; tokens allowed in the headline
     detail: list[str] = field(default_factory=list)  # folded under "Show detail" (analysts only), after the story
 
 
@@ -604,14 +604,14 @@ def story_card(name: str, facts: dict, confidence: str, drivers: list[str], *, t
     supported, ruled_out = driver_calls(checks)
     return {"headline": f"{name} {_verb(facts['word'], facts['pct'])} on the comparison weeks, while the other territories were {peers}.",
             "confidence": confidence, "drivers_checked": [DRIVER_NAMES.get(d, d) for d in drivers],
-            "territory": territory, "direction": facts["word"], "drivers_supported": supported, "drivers_ruled_out": ruled_out}
+            "territory": territory, "direction": facts["word"], "drivers_supported": supported, "drivers_ruled_out": ruled_out, "cut": None}
 
 
 def competitor_card(p, facts: dict) -> dict:
     """The competitor story is about the basket, not one territory: no territory, so a scorer skips it."""
     return {"headline": f"Metacora holds {facts['bxe']} of the four-brand basket, and {p.brand_id} holds {facts['bxa']}.",
             "confidence": "Medium", "drivers_checked": [],
-            "territory": None, "direction": None, "drivers_supported": [], "drivers_ruled_out": []}
+            "territory": None, "direction": None, "drivers_supported": [], "drivers_ruled_out": [], "cut": None}
 
 
 def story_detail(reg: Registry, p, territory: str) -> list[str]:

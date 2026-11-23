@@ -7,15 +7,19 @@ from datetime import date, timedelta
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from pharmagentics.tools.queries import TERRITORY_NAMES
 from pharmagentics.tools.window import Comparison, parse
 
 from .numbers import as_numbers, extract, same
 from .paths import GOLDEN_DIR
+from .truth import exact_value
 
 Lane = Literal["briefing", "forecast"]
+# core-011 FR-018: the capability a system must have to state a fact or reach a finding.
+Needs = Literal["plan_cut", "segment_pct", "restatement", "national_card"]
+CUT_KINDS = ("plan", "channel", "segment")  # core-011 FR-017: a cut below the territory, "<kind>:<name>"
 
 
 class Fact(BaseModel):
@@ -27,6 +31,7 @@ class Fact(BaseModel):
     role: Literal["must", "context"] = "context"  # core-011: must-state facts feed key_fact_recall
     tolerance: float | None = None  # relative, for values the source states roughly; None = stated precision
     reviewed: bool = True  # agent drafts write false until a person reviews them
+    needs: Needs | None = None  # core-011 FR-018: a capability a system may lack; None = any system can state it
 
 
 Driver = Literal["access", "promotion", "supply", "competitor", "data", "holiday", "none"]
@@ -42,6 +47,18 @@ class Finding(BaseModel):
     drivers_ruled_out: list[Driver] = []
     withheld: bool = False  # the cut must be withheld, with no story for it
     reviewed: bool = True
+    cut: str | None = None  # core-011 FR-017: "plan:<id>", "channel:<name>" or "segment:<name>"; None = the whole territory
+    needs: Needs | None = None  # core-011 FR-018
+
+    @field_validator("cut")
+    @classmethod
+    def _cut_form(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        kind, _, name = value.partition(":")
+        if kind not in CUT_KINDS or not name.strip():
+            raise ValueError(f"cut must be one of {', '.join(k + ':<name>' for k in CUT_KINDS)}, not {value!r}")
+        return value
 
 
 class MustSay(BaseModel):
@@ -172,9 +189,14 @@ class Case(BaseModel):
             "lane": self.lane,
             "must_not_say": self.must_not_say.phrases + later,
             "golden_numbers": [f.value for f in self.facts if isinstance(f.value, (int, float))],
-            "key_facts": [{"id": f.id, "value": f.value, "tolerance": f.tolerance,
-                           "percent": fact_percent(f.id, f.value, self.reference_answer), "reviewed": f.reviewed} for f in self.facts
+            "key_facts": [{"id": f.id, "value": f.value, "exact": exact_value(f.sql), "tolerance": f.tolerance,
+                           "percent": fact_percent(f.id, f.value, self.reference_answer), "reviewed": f.reviewed,
+                           "needs": f.needs} for f in self.facts
                           if f.role == "must" and isinstance(f.value, (int, float))],
+            # core-011 FR-016: the exact value behind each numeric fact, so a number is scored against the data,
+            # not against a figure the golden file already rounded.
+            "fact_exact": [{"value": f.value, "exact": exact_value(f.sql)} for f in self.facts
+                           if isinstance(f.value, (int, float)) and not isinstance(f.value, bool)],
             "findings": [f.model_dump() for f in self.findings],
             "must_say": self.must_say.phrases if self.must_say else [],
             "scope": self.expected_scope().model_dump(),

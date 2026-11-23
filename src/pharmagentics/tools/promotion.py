@@ -188,7 +188,7 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
              f"Digital impressions averaged {digital} against a release median of {median}."]
     card = {"headline": f"{name}: aggregated calls fell from {before} to {during} a week.", "confidence": "Low",
             "drivers_checked": ["promotion"], "territory": t, "direction": "down",  # calls fell: the lapse itself
-            "drivers_supported": [], "drivers_ruled_out": []}  # no TRx comparison: promotion is inconclusive
+            "drivers_supported": [], "drivers_ruled_out": [], "cut": None}  # no TRx comparison: promotion is inconclusive
     detail: list[str] = []
     ok = _reportable(reg, B + W)
     peers = [other for other in ok if other != t]
