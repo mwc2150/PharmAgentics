@@ -353,14 +353,14 @@ def _feed_figures(reg: Registry, p, proj: Projection) -> list[str]:
     return lines
 
 
-def appendix(reg: Registry, brand_id: str = "BXA", *, p=None, proj: Projection | None = None) -> list[str]:
+def appendix(reg: Registry, brand_id: str = "BXA", *, p=None, proj: Projection | None = None, restated: bool = False) -> list[str]:
     """§6 text: the data version and the Assumptions block. The method and the glossary are folded (compose)."""
     brand_id = briefing_brand(p.brand_id if p is not None else brand_id)
     lines = [f"Data version {reg.data_version}. Product: {brand_id} ({PRODUCTS[brand_id]}), synthetic data."]
-    return lines + (assumptions(p, proj) if p is not None else [])
+    return lines + (assumptions(p, proj, restated) if p is not None else [])
 
 
-def assumptions(p, proj: Projection | None) -> list[str]:
+def assumptions(p, proj: Projection | None, restated: bool = False) -> list[str]:
     """The Assumptions block (brief-007 FR-012; the Week 6 assumption book): each assumption with its source, in
     at most five items (brief-008 FR-004)."""
     source = "the brief's default rule, the four weeks before the period" if p.comparison is None else p.baseline_source
@@ -369,7 +369,10 @@ def assumptions(p, proj: Projection | None) -> list[str]:
     lines = ["Assumptions:", f"- Comparison weeks: {comparison_text(p)}. Source: {source}.{fewer}"]
     lines.append("- Like for like: changes use only territories whose feed passed the gate in every week compared. "
                  "Withheld cuts are left out of every change and story, and never read as zero demand."
-                 + (" Calendar weeks are left out of the stories." if p.calendar_note else "") + " Source: the feed gate.")
+                 + (" Calendar weeks are left out of the stories." if p.calendar_note else "")
+                 + (" A restatement is reported when the restated week is inside the period or the restatement was published inside it."
+                    if restated else "")
+                 + (" Source: the feed gate and the vendor's restatement record." if restated else " Source: the feed gate."))
     marked = [r.territory for r in proj.rows if r.basis != "observed"] if proj else []
     if marked:
         lines.append(f"- Not observed: {', '.join(q.name(t) for t in marked)} "
@@ -597,3 +600,22 @@ def competitor_card(p, facts: dict) -> dict:
 def story_detail(reg: Registry, p, territory: str) -> list[str]:
     """The splits, readable and rounded, for the story's folded detail."""
     return splits.readable_lines(reg, p, territory)
+
+
+def restatement_block(restated: list[dict]) -> StoryBlock | None:
+    """brief-010 FR-005: one card for the restated territory-week with the largest change (at most one a brief).
+    `restated` is `stages.restatements(..., facts)`: each item holds claim tokens. The card is about the data, not a
+    business move: drivers supported ["data"], direction the restatement's (up when the restated TRx is higher),
+    cut None (the whole territory). A scorer matches it by territory like any card."""
+    if not restated:
+        return None
+    r = max(restated, key=lambda x: x["size"])
+    name = q.name(r["territory"])
+    moved = {"up": f"up {r['pct']}", "down": f"down {r['pct']}"}.get(r["direction"], "unchanged")
+    card = {"headline": f"{name} TRx for the week of {r['week']} was restated from {r['old']} to {r['new']} ({moved}).",
+            "confidence": "High", "drivers_checked": [DRIVER_NAMES["data"]],
+            "territory": r["territory"], "direction": r["direction"], "drivers_supported": ["data"],
+            "drivers_ruled_out": [], "cut": None}
+    line = (f"Data story: {name} restated its week of {r['week']} on {r['restated_on']}, from {r['old']} to {r['new']} TRx "
+            f"({moved}). Confidence: High. Leading driver: data.")
+    return StoryBlock(f"restatement:{r['territory']}:{r['week']}", f"{name} restatement", [line], card=card)

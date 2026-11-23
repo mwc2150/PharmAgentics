@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import statistics
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
 from . import queries as q
 from .brands import briefing_brand
@@ -128,13 +129,14 @@ def data_health(reg: Registry, p: Period) -> str:
     lines = [head + " Withheld cuts are left out of every like-for-like figure and story, and never read as zero demand."]
     for w, t, reasons in flagged[:5]:
         names = ", ".join(q.REASONS.get(r, r.lower()) for r in reasons.split(";") if r)
-        detail = []
+        detail, tie_out = [], None
         if "DUPLICATE_RX_KEYS" in reasons or "MISSING_RX_KEYS" in reasons or "ROW_COUNT_MISMATCH" in reasons:
             obs = reg.claim("validate_feed", q.feed(w, t, "observed_rows"), "int", week=w, territory=t)
             exp = reg.claim("validate_feed", q.feed(w, t, "expected_key_count"), "int", week=w, territory=t)
             detail.append(f"{obs} rows against {exp} expected")
         if "DUPLICATE_RX_KEYS" in reasons:
             detail.append(f"{reg.claim('validate_feed', q.feed(w, t, 'duplicate_key_count'), 'int', week=w, territory=t)} duplicate keys")
+            tie_out = duplicate_tie_out(reg, p, w, t)
         if "MISSING_RX_KEYS" in reasons:
             detail.append(f"{reg.claim('validate_feed', q.feed(w, t, 'missing_key_count'), 'int', week=w, territory=t)} missing keys")
         if "LOW_OR_INVALID_COVERAGE" in reasons:
@@ -145,25 +147,62 @@ def data_health(reg: Registry, p: Period) -> str:
             target = reg.claim("validate_feed", q.feed(w, t, "expected_lag_days"), "int", week=w, territory=t, scope="delivery target")
             detail.append(f"{reg.claim('validate_feed', q.feed(w, t, 'actual_lag_days'), 'dec2', week=w, territory=t)} days after week end "
                           f"against a target of {target} days")
-        lines.append(f"- {q.name(t)}, week of {w}: not reportable ({names})" + (f"; {', '.join(detail)}." if detail else "."))
+        lines.append(f"- {q.name(t)}, week of {w}: not reportable ({names})" + (f"; {', '.join(detail)}." if detail else ".")
+                     + (f" {tie_out}" if tie_out else ""))
     if len(flagged) > 5:
         lines.append("- More withheld cuts exist; see the evidence list.")
     return "\n".join(lines)
 
 
-def restatements(reg: Registry, p: Period) -> list[str]:
-    W = p.requested
-    rows = reg.rows(
-        "select week_start::varchar, territory_id, min(revised_at)::varchar, any_value(revision_reason) from raw.restatement_log "
-        f"where product_id = '{p.brand_id}' and (week_start in {q._dates(W)} or revised_at between DATE '{W[0]}' and DATE '{q.shift(W[-1], 1)}') "
-        "group by 1, 2 order by 1, 2")
+def duplicate_tie_out(reg: Registry, p: Period, week: str, terr: str) -> str | None:
+    """brief-010 FR-004: what a naive sum of a duplicated feed overstates. The raw sum and the deduplicated figure
+    are data-quality tie-outs, labelled as such, never metrics (the gate withholds the cut, so no metric is read)."""
+    base = (f"from reporting.v_rx_duplicate_tieout where week_start = DATE '{week}' and territory_id = '{terr}' "
+            f"and product_id = '{p.brand_id}'")
+    if not reg.scalar(f"select count(*) {base}"):
+        return None
+    where = {"week": week, "territory": terr}
+    raw = reg.claim("validate_feed", f"select naive_trx {base}", "int", scope="raw, before deduplication (data-quality tie-out)", **where)
+    once = reg.claim("validate_feed", f"select deduplicated_trx {base}", "int", scope="each duplicated key counted once (data-quality tie-out)", **where)
+    over = reg.claim("validate_feed", f"select naive_trx - deduplicated_trx {base}", "int", scope="overstatement of the raw sum (data-quality tie-out)", **where)
+    pct = reg.claim("validate_feed", f"select 100.0 * (naive_trx - deduplicated_trx) / deduplicated_trx {base}", "pct1",
+                    scope="overstatement of the raw sum (data-quality tie-out)", **where)
+    return (f"Raw, before deduplication, {q.name(terr)} {p.brand_id} TRx sums to {raw}; with each duplicated key counted once it is {once}, "
+            f"so the raw sum overstates it by {over} TRx ({pct}). Do not quote the raw sum.")
+
+
+def restated_window(p: Period) -> tuple[str, str]:
+    """The brief's period as dates: its first week's Monday to its last week's Sunday."""
+    return p.requested[0], q.iso(date.fromisoformat(p.requested[-1]) + timedelta(days=6))
+
+
+def restatements(reg: Registry, p: Period, facts: list | None = None) -> list[str]:
+    """brief-010 FR-005. A brief reports a restatement when the restated week is inside its period OR the
+    restatement was published (its restated date) inside its period. Each is stated with the signed-off and
+    restated TRx and the change, largest change first, three at most. `facts`, when given, receives each one's claims
+    (territory, week, tokens, direction) for the restatement card; the numbers stay claim tokens."""
+    first, last = restated_window(p)
+    base = (f"from reporting.v_restatements where product_id = '{p.brand_id}' and (week_start in {q._dates(p.requested)} "
+            f"or restated_at between DATE '{first}' and DATE '{last}')")
+    rows = reg.rows(f"select week_start::varchar, territory_id, restated_at::varchar, reason {base} "
+                    "order by abs(trx_restated - trx_signed_off) desc, week_start, territory_id, restated_at")
     out = []
     for w, t, when, reason in rows[:3]:
-        base = f"from raw.restatement_log where product_id = '{p.brand_id}' and week_start = DATE '{w}' and territory_id = '{t}'"
-        old = reg.claim("get_restatement", f"select sum(trx_prior) {base}", "int", week=w, territory=t)
-        new = reg.claim("get_restatement", f"select sum(trx_revised) {base}", "int", week=w, territory=t)
-        out.append(f"Restated: {q.name(t)} {p.brand_id} TRx for the week of {w} was {old} when first reported and is now {new} "
-                   f"(restated {when}; reason: {reason.lower().replace('_', ' ')}). Quote the new value with this note.")
+        one = f"{base} and week_start = DATE '{w}' and territory_id = '{t}' and restated_at = DATE '{when}'"
+        sel = lambda expr: f"select {expr} {one}"  # noqa: E731
+        scope = {"week": w, "territory": t}
+        old = reg.claim("get_restatement", sel("trx_signed_off"), "int", **scope)
+        new = reg.claim("get_restatement", sel("trx_restated"), "int", **scope)
+        delta = reg.claim("get_restatement", sel("abs(trx_restated - trx_signed_off)"), "int", **scope)
+        pct = reg.claim("get_restatement", sel("100.0 * abs(trx_restated - trx_signed_off) / trx_signed_off"), "pct1", **scope)
+        diff = reg.scalar(sel("trx_restated - trx_signed_off")) or 0
+        direction = "up" if diff > 0 else "down" if diff < 0 else "flat"
+        out.append(f"Restated: {q.name(t)} {p.brand_id} TRx for the week of {w} was {old} when first reported and is now {new}, "
+                   f"{direction} {delta} TRx ({pct}). It was restated {when}; reason: {reason.lower().replace('_', ' ')}. "
+                   "Quote the new value with this note.")
+        if facts is not None:
+            facts.append({"territory": t, "week": w, "restated_on": when, "old": old, "new": new, "change": delta, "pct": pct,
+                          "direction": direction, "size": abs(diff)})
     return out
 
 

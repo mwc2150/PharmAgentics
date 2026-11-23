@@ -29,9 +29,9 @@ Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeli
 - [ ] S3 Tests; scripted run and gate; P4-Q2 rises.
 
 ## Packet R: restatement detail (FR-004, FR-005)
-- [ ] R1 Duplicate overstatement (naive, deduplicated, overstatement) in §4 when the gate withholds a territory.
-- [ ] R2 Signed-off and restated figures and the change, from a governed view over `raw.restatement_log`; a restatement card with data supported.
-- [ ] R3 Tests; scripted run and gate; P1-Q1, P2-Q5, P3-Q6 rise.
+- [x] R1 Duplicate overstatement (naive, deduplicated, overstatement) in §4 when the gate withholds a territory.
+- [x] R2 Signed-off and restated figures and the change, from a governed view over `raw.restatement_log`; a restatement card with data supported.
+- [x] R3 Tests (`tests/test_restatement.py`). The scripted run, gate and the P1-Q1, P2-Q5, P3-Q6 rise are the integrator's to confirm (I1).
 
 ## Packet N: national card (FR-006)
 - [ ] N1 `competitor_card` becomes a national card: territory NATIONAL, direction from the share change (house flat band), competitor supported from the check.

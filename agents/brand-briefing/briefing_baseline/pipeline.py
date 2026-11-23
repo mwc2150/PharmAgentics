@@ -46,6 +46,7 @@ class Front:
     kpis: list[str] = field(default_factory=list)
     proj: projection.Projection | None = None
     facts: dict = field(default_factory=dict)  # stage 3's claims by name, for the memo's blocks (brief-008)
+    restated_facts: list[dict] = field(default_factory=list)  # the restatements' claims, for the restatement card (brief-010)
 
 
 def answer(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
@@ -149,7 +150,8 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
 
     with span("2_validation_gate") as sp:
         health = stages.data_health(reg, p)
-        restated = stages.restatements(reg, p)  # EV-1.2
+        restated_facts: list[dict] = []
+        restated = stages.restatements(reg, p, restated_facts)  # EV-1.2
         out += [health] + restated
         finish(sp, {"like_for_like_territories": p.ok})
     _note(events, "Check the data", tool="feed_health", text="\n".join([health] + restated))
@@ -168,7 +170,7 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
     _note(events, "Screen territories", tool="screen_territories", summary=(
         "Calendar weeks: no territory story is opened." if p.calendar else
         f"{len(found)} territor{'y' if len(found) == 1 else 'ies'} moved beyond the normal range; {len(quiet)} stayed within it."))
-    return Front(p, out, found, quiet, health, restated, kpis, proj, facts)
+    return Front(p, out, found, quiet, health, restated, kpis, proj, facts, restated_facts)
 
 
 def _brief(reg: Registry, question: str, order: list[str] | None = None, left_out: list[str] = (),
@@ -226,6 +228,7 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
         finish(sp, {"abstained": abstained})
 
     with span("5_narrative") as sp:
+        blocks.extend(b for b in [memo.restatement_block(f.restated_facts)] if b)  # brief-010 FR-005
         blocks.extend(promotion.story_blocks(reg, p))
         top: dict = {}
         bottom = memo.bottom_line(reg, p, f.proj, told, restated=bool(f.restated), facts=top)
@@ -235,7 +238,7 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             title=memo.title_lines(p),
             bottom_line=bottom, numbers=nums["lines"], limits=lim["lines"],
             next_checks=memo.next_checks(p, told, competitor),
-            appendix=memo.appendix(reg, p=p, proj=f.proj) + memo.driver_timing(told),
+            appendix=memo.appendix(reg, p=p, proj=f.proj, restated=bool(f.restated)) + memo.driver_timing(told),
             stories=blocks, story_notes=notes,
             charts={"2": charts.trend(reg, p), "4": charts.coverage(reg, p)},  # brief-003 FR-024
             kpis=memo.kpis(p, f.proj, top), territory_table=nums["territory_table"],
