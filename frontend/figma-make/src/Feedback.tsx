@@ -234,7 +234,7 @@ function SuggestModal({ onClose, onSurvey, surveyDone }: { onClose: () => void; 
         {error && <p role="alert" className="text-xs text-neg">{error}</p>}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-6 py-3">
-        <button type="button" onClick={onSurvey} className="text-xs text-primaryink underline underline-offset-4 hover:no-underline">{surveyDone ? "Update your questionnaire answers" : "Or take the five-minute questionnaire"}</button>
+        <button type="button" onClick={onSurvey} className="text-xs text-primaryink underline underline-offset-4 hover:no-underline">{surveyDone ? "Update your questionnaire answers" : "Or take the one-minute questionnaire"}</button>
         <button type="button" disabled={busy || !text.trim()} onClick={() => void send()} className={BTN}>{busy ? "Sending…" : "Send"}</button>
       </div>
     </div>
