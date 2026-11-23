@@ -16,7 +16,7 @@ function TurnView({turn, briefId, mine, onCite, onOpenEvidence, onOfferScope}: {
     <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-agentbg px-4 py-2 text-sm text-ink">
       {turn.section && <span className="mr-2 rounded bg-sheet px-1.5 py-0.5 font-mono text-[11px] text-agentdeep">§{turn.section}</span>}{turn.question}</p>
     <div className="max-w-[92%] rounded-2xl rounded-bl-sm border border-rule bg-sheet px-4 py-3 text-sm">
-      <p className="whitespace-pre-wrap break-words font-serif text-[15px] leading-relaxed text-ink">{turn.answer}</p>
+      <p className="whitespace-pre-wrap break-words font-sans text-[15px] leading-relaxed text-ink">{turn.answer}</p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
         {turn.cited.map(n => <button key={n} type="button" onClick={() => onCite(n)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-agentdeep hover:underline" title={`Go to §${n}`}>§{n}</button>)}
         {turn.claims.map((c, i) => <button key={i} type="button" onClick={() => onOpenEvidence(c.evidence_id)} className="rounded bg-paper px-1.5 py-0.5 font-mono text-muted hover:text-ink" title={`Open the query behind ${c.value}`}>{c.value}</button>)}

@@ -164,7 +164,7 @@ function DataBehind({section, claims, evidence, briefId}: {section: MemoSection,
     columns: ["value", "evidence_id", "tool", "query"],
     rows: used.map(c => [c.value, c.evidence_id, byId.get(c.evidence_id)?.tool ?? "", byId.get(c.evidence_id)?.query ?? ""]),
   } : null
-  return <details className="pa-fold mt-3 rounded-xl bg-paper/60 px-4 py-3 text-sm">
+  return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3 text-sm">
     <summary className="cursor-pointer text-xs font-medium text-agentdeep">Data behind this section ({used.length} number{used.length === 1 ? "" : "s"}{tables.length ? `, ${tables.length} chart table${tables.length > 1 ? "s" : ""}` : ""})</summary>
     <div className="mt-3 space-y-3">
       {claimTable && <TableView table={claimTable} name={`brief-${briefId}-section-${section.number}-claims.csv`}/>}
@@ -198,7 +198,7 @@ function within(spans: Span[] | undefined, start: number, end: number): Span[] {
   return (spans ?? []).filter(sp => sp.start >= start && sp.end <= end).map(sp => ({...sp, start: sp.start - start, end: sp.end - start}))
 }
 
-const PROSE = "pa-prose max-w-[68ch] break-words font-serif text-[16px] leading-[1.7] text-ink"
+const PROSE = "pa-prose max-w-[68ch] break-words font-sans text-[16px] leading-[1.65] text-ink"
 
 function Paragraphs({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   return <>{chunks(text).map((c, i) => {
@@ -226,9 +226,9 @@ function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], on
   return <dl aria-label="Key figures" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
     {kpis.map((k, i) => {
       const dir = k.direction ? DIRECTION[k.direction] : null
-      return <div key={i} className="break-inside-avoid rounded-xl border border-rule bg-sheet/60 px-3.5 py-3">
+      return <div key={i} className="break-inside-avoid rounded-lg border border-rule bg-sheet/60 px-3.5 py-3">
         <dt className="font-sans text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</dt>
-        <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-sans text-[26px] font-semibold leading-none tabular-nums text-ink">
+        <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-display text-[28px] font-bold leading-none tabular-nums text-ink">
           <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
           {dir && <><svg viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 ${dir.color}`} fill="currentColor" aria-hidden="true"><path d={dir.d}/></svg><span className="sr-only">, {dir.word}</span></>}
         </dd>
@@ -287,7 +287,7 @@ function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[
 
 function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   const [open, setOpen] = useState(false)
-  return <details className="pa-fold mt-3 rounded-xl bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
+  return <details className="pa-fold mt-3 rounded-lg bg-paper/60 px-4 py-3" onToggle={e => setOpen(e.currentTarget.open)}>
     <summary className="cursor-pointer font-sans text-xs font-medium text-agentdeep">{open ? "Hide detail" : "Show detail"}</summary>
     <div className="mt-2"><Paragraphs text={text} spans={spans} claims={claims} onOpen={onOpen}/></div>
   </details>
@@ -303,9 +303,9 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
   const analyst = !!claims
   const text = (s: MemoSection) => !s.text ? null : modern
     ? <Paragraphs text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/>
-    : <div className="mt-2 max-w-[68ch] whitespace-pre-wrap break-words font-serif text-[16px] leading-[1.7] text-ink"><Cited text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/></div>
+    : <div className="mt-2 max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink"><Cited text={s.text} spans={s.text_citations} claims={claims} onOpen={onOpen}/></div>
   const rest = (s: MemoSection) => <>
-    {s.prose && <p className="mt-2 max-w-[68ch] font-serif text-[16px] italic leading-[1.7] text-ink"><Cited text={s.prose} spans={s.prose_citations} claims={claims} onOpen={onOpen}/></p>}
+    {s.prose && <p className="mt-2 max-w-[68ch] font-sans text-[16px] italic leading-[1.65] text-ink"><Cited text={s.prose} spans={s.prose_citations} claims={claims} onOpen={onOpen}/></p>}
     {s.chart && <ChartBlock chart={s.chart} claims={claims} onOpen={onOpen} explanationSpans={s.chart.explanation_citations} bare={!!s.card}/>}
     {analyst && s.detail && <Detail text={s.detail} spans={s.detail_citations} claims={claims} onOpen={onOpen}/>}
     {claims && evidence && <DataBehind section={s} claims={claims} evidence={evidence} briefId={briefId}/>}
@@ -324,8 +324,8 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk}: {sect
         {rest(s)}
       </>
   const heading = (s: MemoSection, sub: boolean) => <div className="flex items-baseline justify-between gap-3">
-    <h3 id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-lg font-semibold"}`}>
-      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{s.title}</h3>
+    <h3 id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
+      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</h3>
     {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} className="pa-noprint shrink-0 text-xs text-agentdeep hover:underline">Ask about this</button>}
   </div>
   return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>

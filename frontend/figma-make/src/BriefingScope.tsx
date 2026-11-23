@@ -6,9 +6,9 @@ import { readBriefingScope, type BriefingScope, type Comparison, type ReleaseCon
 // "Read my question" asks the API for a proposed scope (a configured model proposes, code validates, the rules read
 // it otherwise) and fills the form. Nothing runs on a proposal: the analyst checks the form and builds as usual.
 
-const FIELD = "w-full min-w-0 rounded-lg border border-rule bg-paper px-3 py-2.5 text-sm text-ink disabled:opacity-60"
+const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
-const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-rule px-4 py-2 text-sm font-medium text-ink transition-[background-color,transform] duration-150 hover:bg-paper active:scale-[0.98] disabled:cursor-not-allowed disabled:text-muted"
+const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)] disabled:cursor-not-allowed disabled:text-muted disabled:shadow-none"
 
 /** An error for the chosen period, or null. The weeks are the release's Mondays. */
 export function periodError(first: string, last: string, weeks: string[]): string | null {

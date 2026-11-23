@@ -16,7 +16,7 @@ type Props = {
   labelWeek: (week: string) => string
 }
 
-const field = "block w-full rounded-lg border border-rule bg-sheet px-3 py-2 text-sm text-ink disabled:opacity-50"
+const field = "block w-full rounded-lg border border-edge bg-sheet px-3 py-2 text-sm text-ink disabled:opacity-50"
 
 function shiftWeek(week: string, count: number): string {
   const date = new Date(`${week}T00:00:00Z`)
