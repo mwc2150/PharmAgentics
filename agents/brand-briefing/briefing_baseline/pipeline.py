@@ -257,7 +257,8 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             elif f.quiet:
                 dropped.append(stages.dropped_line(reg, p, f.quiet))
         if p.has("national"):  # packet NC: every brief carries one national card, with the competitor story's when there is one
-            reading = stages.national_reading(reg, p, checks_by.values(), comp_facts or None, f.facts.get("avg"))
+            reading = stages.national_reading(reg, p, checks_by.values(), comp_facts or None, f.facts.get("avg"),
+                                              data_artifact=bool(f.facts.get("data_artifact")))
             comp_block = next((b for b in blocks if b.id == COMPETITOR), None)
             if comp_block is not None:
                 comp_block.card = memo.competitor_card(p, reading or comp_facts)

@@ -272,7 +272,8 @@ class RunSession:
         national_story = None  # packet NC: every brief has one national card; the competitor story's, else a block of its own
         if p.has("national"):
             comp = self.competitor_facts if competitor and self.competitor_facts else None
-            reading = stages.national_reading(reg, p, [self.checks.get(s["territory"], {}) for s in told], comp, self.facts.get("avg"))
+            reading = stages.national_reading(reg, p, [self.checks.get(s["territory"], {}) for s in told], comp, self.facts.get("avg"),
+                                              data_artifact=bool(self.facts.get("data_artifact")))
             if comp:
                 cards["competitor"] = memo.competitor_card(p, reading or comp)
             elif reading:

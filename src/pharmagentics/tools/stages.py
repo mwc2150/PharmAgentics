@@ -716,13 +716,15 @@ def national_trx_direction(reg: Registry, p: Period) -> str | None:
     return word(reg.scalar(q.pct_change(cur, base)) or 0)
 
 
-def national_reading(reg: Registry, p: Period, story_checks, comp: dict | None = None, kpi: dict | None = None) -> dict | None:
+def national_reading(reg: Registry, p: Period, story_checks, comp: dict | None = None, kpi: dict | None = None,
+                     *, data_artifact: bool = False) -> dict | None:
     """The national card's facts, every brief (brief-010 FR-006, packet NC): national TRx direction, the competitor
     reading when Metacora has one (`comp` is `competitor_status`'s facts), the holiday driver and the drivers ruled
     out nationally from the checks of the territories that have a story (`story_checks`). None when the brief has no
     national direction to state. `kpi` is the KPI strip's own national facts: its percent token is reused, so the card
-    adds no claim."""
-    trx = national_trx_direction(reg, p)
+    adds no claim. `data_artifact`: the brief carries the national data-artifact card (FR-011), which then owns the
+    national TRx direction, so this card states none (it would pin a data artifact on the competitor)."""
+    trx = None if data_artifact else national_trx_direction(reg, p)
     reading = dict(comp or {})
     if comp:
         reading.update(_competitor_reading(reg, p))
