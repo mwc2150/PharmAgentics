@@ -250,6 +250,9 @@ async def review(brief_id: str, decision: ReviewRequest, response: Response, who
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="No such briefing.") from exc
     store.record_event("reviewed", **_who(p, role), brief_id=brief_id, decision=decision.decision, reason=decision.reason)
+    # core-007 FR-025 (2026-11-23): the analyst's approve or reject is the moment they have what they need, so it
+    # records the insight time; the separate "I have what I need" button is gone from the app.
+    store.record_event("insight", **_who(p, role), brief_id=brief_id, view="analyst")
     return views.analyst(record)
 
 
