@@ -27,7 +27,7 @@
   --color-slab: #3a3e58;       /* the hard offset shadow under panels and secondary buttons */
   --color-warn: #c9ccd8;
   --color-warnbg: #23253a;
-  /* Primary action: solid lime, near-black text. Names kept (navy) so Overview, Evaluation and Feedback follow */
+  /* Primary: solid lime with near-black text. One accent for the primary action, selection, focus and links */
   --color-primary: #b9ff66;
   --color-primaryhover: #cdff91;
   --color-primarydeep: #66962a;   /* the hard shadow under a lime button */
