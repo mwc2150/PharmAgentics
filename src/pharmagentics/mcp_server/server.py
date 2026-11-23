@@ -22,7 +22,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from pharmagentics.tools import DEFAULT_DB, Registry
 from pharmagentics.tools import queries as q
-from pharmagentics.tools import charts, memo, projection, promotion, splits, stages
+from pharmagentics.tools import charts, continuing, memo, projection, promotion, splits, stages
 from pharmagentics.tools.checks import (DRIVERS, OWNER, Check, check_competitor, check_data,
                                         confidence, context_baseline)
 from pharmagentics.tools.lag_checks import check_access, check_promotion, check_supply
@@ -246,10 +246,11 @@ class RunSession:
                 "restatement_stories": [asdict(b) for b in [memo.restatement_block(restated_facts)] if b],  # brief-010 FR-005
                 "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 
-    def memo_close(self, competitor: bool, cuts: list[str] | None = None) -> dict:
+    def memo_close(self, competitor: bool, cuts: list[str] | None = None, running: list[str] | None = None) -> dict:
         """§1 and §5 once the stories are closed (contracts/mcp-admin-tools.md): the bottom line in FR-021 order
         with the number least sure of, and the next checks. `cuts` are the plan ids of the plan cut cards the brief
-        keeps (brief-010 FR-007): code builds each from the plan's own figures and its territory's checks."""
+        keeps (brief-010 FR-007): code builds each from the plan's own figures and its territory's checks. `running` are
+        the territories of the continuing cards the brief keeps (FR-012): events that began before the comparison weeks."""
         reg, p = self._reg(), self.p
         if self.proj is None:
             raise ToolError("brief_sections must run before memo_close")
@@ -263,6 +264,16 @@ class RunSession:
             plan = (access.detail or {}).get("plan") if access else None
             drivers = s["drivers"] if s["confidence"] != "Low" else []
             story_charts[s["territory"]] = charts.story(reg, p, s["territory"], drivers, plan)
+        running_stories, running_details, running_cards = [], {}, {}
+        if running:  # brief-010 FR-012: a continuing card joins §1 and §5 like a territory story
+            covered = {s["territory"] for s in told} | {splits.plan_territory(reg, plan) for plan in (cuts or [])}
+            for event in continuing.screen(reg, p, covered, set(cuts or [])):
+                if event["territory"] in running:
+                    block, info = continuing.block(reg, p, event)
+                    running_cards[block.id], running_details[block.id] = block.card, block.detail
+                    running_stories.append({"id": block.id, "territory": event["territory"], "title": block.title,
+                                            "section": "\n".join(block.lines)})
+                    told.append(info)
         top: dict = {}
         bottom = memo.bottom_line(reg, p, self.proj, told, self.restated, facts=top)
         cards = {s["territory"]: memo.story_card(q.name(s["territory"]), self.story_facts[s["territory"]], s["confidence"],
@@ -287,8 +298,9 @@ class RunSession:
             cards[block.id], cut_details[block.id] = block.card, block.detail
             cut_stories.append({"id": block.id, "territory": t, "title": block.title, "section": "\n".join(block.lines)})
         return {"bottom_line": bottom, "kpis": memo.kpis(p, self.proj, top), "details": {"1": memo.bottom_detail(top)},
-                "story_cards": cards, "story_details": {**{s["territory"]: self.story_detail.get(s["territory"], []) for s in told}, **cut_details},
-                "cut_stories": cut_stories, "national_story": national_story,
+                "story_cards": {**cards, **running_cards},
+                "story_details": {**{s["territory"]: self.story_detail.get(s["territory"], []) for s in told}, **cut_details, **running_details},
+                "cut_stories": cut_stories, "continuing_stories": running_stories, "national_story": national_story,
                 "next_checks": memo.next_checks(p, told, competitor),
                 "driver_timing": memo.driver_timing(told),
                 "charts": {**({"2": charts.trend(reg, p)} if p.has("national") else {}), "4": charts.coverage(reg, p), "stories": story_charts,
@@ -433,10 +445,10 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
         return json.dumps(promotion.render_review(reg, s.p), default=str)
 
     @server.tool(**text)
-    async def memo_close(competitor: bool, cuts: list[str] | None = None) -> str:
+    async def memo_close(competitor: bool, cuts: list[str] | None = None, running: list[str] | None = None) -> str:
         """Admin: the memo's bottom line and next checks as JSON, after the stories close, with the plan cut cards
-        (by plan id) the brief keeps. Callers only."""
-        return json.dumps(s.memo_close(competitor, cuts))
+        (by plan id) and the continuing cards (by territory) the brief keeps. Callers only."""
+        return json.dumps(s.memo_close(competitor, cuts, running))
 
     @server.tool(**text)
     async def story_section(territory: str, n: int) -> str:

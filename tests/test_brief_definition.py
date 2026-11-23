@@ -188,7 +188,7 @@ def test_every_claim_records_the_definition_it_was_made_under():
 def test_claim_labels_name_the_value_of_each_field_the_claim_used():
     env = brief(q(EVENTFUL), definition=Definition(comparison=[PREVIOUS4, PRE_LAUNCH], relative_to=["other_territories", "national"]))
     kinds = {c["labels"]["comparison_kind"] for c in env["claims"]}
-    assert kinds == {"previous", "pre_launch"}
+    assert kinds == {"previous", "pre_launch", "before_event"}  # before_event: the Southeast continuing card (brief-010 FR-012)
     pre = [c for c in env["claims"] if c["labels"]["comparison_kind"] == "pre_launch"]
     assert pre and all(c["labels"]["comparison"] == "2026-02-02 to 2026-02-23" for c in pre)
     assert all(c["labels"]["comparison"] != "2026-02-02 to 2026-02-23" for c in env["claims"] if c["labels"]["comparison_kind"] == "previous")

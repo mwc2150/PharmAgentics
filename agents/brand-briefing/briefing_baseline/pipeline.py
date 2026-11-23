@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from pharmagentics.tools import DEFAULT_DB, Registry
-from pharmagentics.tools import charts, memo, projection, promotion, splits, stages
+from pharmagentics.tools import charts, continuing, memo, projection, promotion, splits, stages
 from pharmagentics.tools.checks import confidence
 from pharmagentics.tools.events import EventLog
 from pharmagentics.tools.lag_checks import run_checks
@@ -49,6 +49,7 @@ class Front:
     facts: dict = field(default_factory=dict)  # stage 3's claims by name, for the memo's blocks (brief-008)
     restated_facts: list[dict] = field(default_factory=list)  # the restatements' claims, for the restatement card (brief-010)
     cuts: list[dict] = field(default_factory=list)  # plans worth a cut card in the story territories (brief-010 FR-001); no claims yet
+    continuing: list[dict] = field(default_factory=list)  # promotion lapses and access restrictions still running (brief-010 FR-012); no claims yet
 
 
 def answer(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
@@ -125,8 +126,9 @@ def cut_id(cut: dict) -> str:
     return f"cut:{cut['plan']}"
 
 
-def default_order(found: list[dict], cuts: list[dict] = ()) -> list[str]:
-    return [story_id(s) for s in found[:MAX_STORIES]] + [cut_id(c) for c in cuts] + [COMPETITOR]
+def default_order(found: list[dict], cuts: list[dict] = (), running: list[dict] = ()) -> list[str]:
+    return ([story_id(s) for s in found[:MAX_STORIES]] + [cut_id(c) for c in cuts]
+            + [continuing.continuing_id(e) for e in running] + [COMPETITOR])
 
 
 def _note(events: EventLog | None, step: str, *, tool: str | None = None, args: dict | None = None, verdict: str | None = None,
@@ -178,12 +180,14 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
         proj = projection.build(reg, p)  # a level for the memo; never a story (ADR 0001)
         found, quiet = ([], []) if p.calendar else stages.screen(reg, p)
         cuts = splits.screen_cuts(reg, p, [s["territory"] for s in found[:MAX_STORIES]])  # brief-010 FR-001
+        running = ([] if p.calendar else continuing.screen(  # brief-010 FR-012: events that began before the comparison weeks
+            reg, p, {s["territory"] for s in found[:MAX_STORIES]}, {c["plan"] for c in cuts}))
         finish(sp, {"calendar_mode": bool(p.calendar), "candidates": [f["territory"] for f in found],
                     "projected": proj.territories("projected"), "estimated": proj.territories("estimated")})
     _note(events, "Screen territories", tool="screen_territories", summary=(
         "Calendar weeks: no territory story is opened." if p.calendar else
         f"{len(found)} territor{'y' if len(found) == 1 else 'ies'} moved beyond the normal range; {len(quiet)} stayed within it."))
-    return Front(p, out, found, quiet, health, restated, kpis, proj, facts, restated_facts, cuts)
+    return Front(p, out, found, quiet, health, restated, kpis, proj, facts, restated_facts, cuts, running)
 
 
 def _brief(reg: Registry, question: str, order: list[str] | None = None, left_out: list[str] = (),
@@ -214,8 +218,9 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
         else:
             by_id = {story_id(s): s for s in f.found}
             by_cut = {cut_id(c): c for c in f.cuts}
-            for sid in (default_order(f.found, f.cuts) if order is None else order):
-                if sid in by_cut:  # built after the territory stories, once their checks are known
+            by_running = {continuing.continuing_id(e): e for e in f.continuing}
+            for sid in (default_order(f.found, f.cuts, f.continuing) if order is None else order):
+                if sid in by_cut or sid in by_running:  # built after the territory stories, once their checks are known
                     continue
                 if sid == COMPETITOR:
                     if not p.has("national"):  # the competitor card is a national story
@@ -241,7 +246,16 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
                 abstained |= info["confidence"] == "Low"
             if events is not None:
                 events.story = None
-            for sid in (default_order(f.found, f.cuts) if order is None else order):  # brief-010: each territory story, then its cut cards
+            for sid in (default_order(f.found, f.cuts, f.continuing) if order is None else order):  # brief-010: each territory story, then its cut cards
+                if sid in by_running:  # then the continuing cards, after the regular territory cards (FR-012)
+                    if events is not None:
+                        events.story = sid
+                    block, info = continuing.block(reg, p, by_running[sid])
+                    continuing.place(blocks, block)
+                    told.append(info)
+                    abstained |= info["confidence"] == "Low"
+                    if events is not None:
+                        events.story = None
                 if sid in by_cut:
                     cut = by_cut[sid]
                     block = memo.cut_block(reg, p, cut, checks_by.get(cut["territory"]))
