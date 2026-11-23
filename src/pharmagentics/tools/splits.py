@@ -194,3 +194,77 @@ def cut_figures(reg: Registry, p: Period, territory: str, plan: str) -> dict:
     t_pct = reg.claim("get_metric", q.pct_change(tx, tb), "pct1", territory=territory, scope="the territory, " + measure_label(p.col))
     return {"measures": measures, "territory_word": word(t_change), "territory_pct": t_pct}
 
+
+
+# Segment and channel percent (brief-010 FR-003): the movers a story names ----------------------------------------------
+
+MOST_MOVERS = 2  # channel and specialty movers named a story, largest absolute percent change first
+_GRAINS = (("channel", ""), ("specialty", ""))
+
+
+def _cell_mean(p: Period, territory: str, by: str, cut: str, weeks: list[str]) -> str:
+    return (f"select coalesce(sum({p.col}), 0) * 1.0 / {len(weeks)} from {q.RX} where product_id = '{p.brand_id}' "
+            f"and territory_id = '{territory}' and {SPLITS[by]} = '{cut}' and week_start in {q._dates(weeks)}")
+
+
+def _cells(reg: Registry, p: Period, territory: str, by: str) -> list[dict]:
+    """Per channel or specialty of a territory: the primary measure's weekly mean on the period and on the comparison
+    weeks, its percent change, and the cell's size (TRx a week, the smaller side, whatever the measure). No claims."""
+    W, B, col = p.weeks, p.baseline, p.col
+    rows = reg.rows(f"""
+        select {SPLITS[by]}, coalesce(sum({col}) filter (where week_start in {q._dates(W)}), 0) / {len(W)}.0,
+            coalesce(sum({col}) filter (where week_start in {q._dates(B)}), 0) / {len(B)}.0,
+            coalesce(sum(trx) filter (where week_start in {q._dates(W)}), 0) / {len(W)}.0,
+            coalesce(sum(trx) filter (where week_start in {q._dates(B)}), 0) / {len(B)}.0
+        from {q.RX} where product_id = '{p.brand_id}' and territory_id = '{territory}'
+            and week_start in {q._dates(sorted(set(W) | set(B)))} and {SPLITS[by]} is not null
+        group by 1""")
+    cells = []
+    for cut, now, then, now_trx, then_trx in rows:
+        if not then:
+            continue
+        change = 100 * (now / then - 1)
+        if word(change) != "flat":
+            cells.append({"cut": cut, "change": change, "small": min(now_trx, then_trx) < SMALL_CELL})
+    return sorted(cells, key=lambda c: (-abs(c["change"]), c["cut"]))
+
+
+def _name(cut: str) -> str:
+    text = readable(cut)
+    return text[:1].upper() + text[1:]
+
+
+def mover_text(reg: Registry, p: Period, territory: str, by: str, *, quote_small: bool = False) -> str:
+    """The largest movers of one grain in a territory, in percent: "Commercial down 14.4%, Medicaid down 8.0%".
+    At most MOST_MOVERS, largest absolute change first, each a claim labelled grain `by` and cut `<by>:<name>`. A cell
+    below SMALL_CELL is never given a number: it is named as too small to quote when it would have ranked among the
+    movers. `quote_small` (the Promotion review, whose golden asks for cash) ranks every cell and quotes a small one
+    with its flag, "(small cell: noisy)". Empty when nothing moved or the cuts are not part of the brief."""
+    if not (p.has(by) and p.weeks and p.baseline and territory in p.ok):
+        return ""
+    cells = _cells(reg, p, territory, by)
+    named = [c for c in cells if quote_small or not c["small"]][:MOST_MOVERS]
+    parts = []
+    for c in named:
+        token = reg.claim("get_segment_metric", q.pct_change(_cell_mean(p, territory, by, c["cut"], p.weeks),
+                                                           _cell_mean(p, territory, by, c["cut"], p.baseline)),
+                          "pct1", territory=territory, by=by, cut=c["cut"], measure=measure_label(p.col),
+                          small_cell=c["small"])
+        parts.append(f"{_name(c['cut'])} {word(c['change'])} {token}" + (" (small cell: noisy)" if c["small"] else ""))
+    if not quote_small:
+        floor = abs(named[-1]["change"]) if len(named) == MOST_MOVERS else 0.0
+        small = [_name(c["cut"]) for c in cells if c["small"] and abs(c["change"]) > floor][:MOST_MOVERS]
+        if small:
+            parts.append(f"{', '.join(small)} too small to quote")
+    return ", ".join(parts)
+
+
+def segment_line(reg: Registry, p: Period, territory: str, *, quote_small: bool = False, lead: str = "") -> str:
+    """One sentence: the channel and specialty movers of a territory, "By channel: Commercial down 14.4%, Medicaid down
+    8.0%; by specialty: ...". `lead` opens it ("Over the lapse, by channel: ..."). Empty when the brief's grain leaves
+    them out or nothing moved."""
+    said = [f"by {by}: {text}" for by, _ in _GRAINS if (text := mover_text(reg, p, territory, by, quote_small=quote_small))]
+    if not said:
+        return ""
+    sentence = "; ".join(said)
+    return (f"{lead}, {sentence}" if lead else sentence[:1].upper() + sentence[1:]) + "."
