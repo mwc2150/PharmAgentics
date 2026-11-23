@@ -130,7 +130,7 @@ def figures(reg: Registry, p, event: dict) -> list[dict]:
             args = {"territory": t, "scope": f"since the event began, {measure_label(m)}", **({"plan": plan} if plan else {})}
             out.append({"measure": m, "label": measure_label(m), "word": word(change),
                         "before": reg.claim(tool, b, fmt, **args), "after": reg.claim(tool, x, fmt, **args),
-                        "pct": reg.claim(tool, q.pct_change(x, b), "pct1", **args)})
+                        "pct": reg.claim(tool, q.pct_change(x, b), "pct", **args)})
     return out
 
 
@@ -149,17 +149,17 @@ def _event_check_text(reg: Registry, p, event: dict) -> Check:
         b = reg.claim("lookup_promo", q.context_mean("promo_activity", "rep_calls_aggregated", B, t, product=p.brand_id), "int", territory=t)
         pct = reg.claim("lookup_promo", q.pct_change(q.context_mean("promo_activity", "rep_calls_aggregated", weeks, t, product=p.brand_id),
                                                       q.context_mean("promo_activity", "rep_calls_aggregated", B, t, product=p.brand_id)),
-                        "pct1", territory=t)
+                        "pct", territory=t)
         return Check("promotion", "supported",
                      f"Promotion: supported, as an association. Rep coverage lapsed on {event['start']}: aggregated rep calls averaged "
                      f"{a} a week from then, against {b} in the four weeks before ({pct} lower).")
     plan = event["plan"]
     x, b = q.mean_weekly(p.weeks, plan=plan, product=p.brand_id), q.mean_weekly(B, plan=plan, product=p.brand_id)
-    pct = reg.claim("get_plan_metric", q.pct_change(x, b), "pct1", plan=plan, territory=t)
+    pct = reg.claim("get_plan_metric", q.pct_change(x, b), "pct", plan=plan, territory=t)
     lives = reg.claim(
         "lookup_access_events",
         f"select 100.0 * (select max(covered_lives_weight) from raw.dim_plan where plan_id = '{plan}') / "
-        f"(select sum(covered_lives_weight) from raw.dim_plan where territory_id = '{t}')", "pct1", plan=plan)
+        f"(select sum(covered_lives_weight) from raw.dim_plan where territory_id = '{t}')", "pct", plan=plan)
     return Check("access", "supported",
                  f"Access: supported. The {readable(plan)} ({lives} of the territory's covered lives) added restrictions effective "
                  f"{event['month']}, still in force in these weeks. {p.brand_id} volume on that plan fell {pct} against the four weeks before.",
