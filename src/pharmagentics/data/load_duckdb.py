@@ -1,10 +1,16 @@
-"""Load the fourteen agent-visible CSVs without cleaning feed artifacts."""
+"""Load the fourteen agent-visible CSVs without cleaning feed artifacts.
+
+The governed reporting views (`sql/001_reporting_views.sql`) are then stored as tables under the same `reporting.*`
+names, in file order, so each read costs a table scan (about 1 ms) instead of recomputing the feed gate (about 50 to
+100 ms). The data is static between loads, so the tables hold exactly what the views return; a reload rebuilds them.
+"""
 
 from __future__ import annotations
 
 import argparse
 import csv
 import hashlib
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -15,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DATA_DIR = ROOT / "data" / "agent_visible"
 DEFAULT_DB_PATH = ROOT / "local" / "pharmagentics.duckdb"
 REPORTING_SQL = ROOT / "sql" / "001_reporting_views.sql"
+VIEW_NAME = re.compile(r"CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+reporting\.(\w+)", re.IGNORECASE)
 
 # Explicit types prevent inference changes between releases (including all-null
 # columns). Dates are typed except launch_date, which also has BEFORE_* sentinels.
@@ -123,15 +130,42 @@ def file_sha256(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def reporting_names(sql: str) -> list[str]:
+    """The reporting views the SQL defines, in file order (a later view may read an earlier one)."""
+    names = VIEW_NAME.findall(sql)
+    return [n for i, n in enumerate(names) if n not in names[:i]]
+
+
+def drop_reporting(connection: duckdb.DuckDBPyConnection) -> None:
+    """Remove every reporting relation, view or stored table, so the views SQL can recreate them."""
+    rows = connection.execute(
+        "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'reporting'"
+    ).fetchall()
+    for name, kind in rows:
+        connection.execute(f'DROP {"VIEW" if kind == "VIEW" else "TABLE"} IF EXISTS reporting."{name}"')
+
+
+def store_views(connection: duckdb.DuckDBPyConnection, names: list[str]) -> None:
+    """Replace each view with a table of its rows under the same name. In file order, so a view that reads an earlier
+    one reads the stored table, which holds the same rows."""
+    for name in names:
+        connection.execute(f'CREATE TABLE reporting."{name}__stored" AS SELECT * FROM reporting."{name}"')
+        connection.execute(f'DROP VIEW reporting."{name}"')
+        connection.execute(f'ALTER TABLE reporting."{name}__stored" RENAME TO "{name}"')
+
+
 def load_database(
     data_dir: Path | str = DEFAULT_DATA_DIR,
     db_path: Path | str = DEFAULT_DB_PATH,
+    *,
+    materialize: bool = True,
 ) -> dict[str, int]:
     """Atomically replace source tables and views; retain successful import history.
 
     Only the fixed allowlist is read, never an arbitrary directory glob. Missing
     files, schema errors, or failed SQL leave the previous database load intact.
     Duplicate rows and NULLs are retained; restatements are not applied.
+    `materialize=False` keeps the reporting relations as views, for tests that change raw rows and read the gate.
     """
     data_dir = Path(data_dir).expanduser().resolve()
     db_path = Path(db_path).expanduser().resolve()
@@ -191,7 +225,10 @@ def load_database(
                     "INSERT INTO metadata.import_manifest VALUES (?, ?, ?, ?, ?, ?)",
                     [load_id, table, source.name, fingerprint, source.stat().st_size, count],
                 )
+            drop_reporting(connection)
             connection.execute(sql)
+            if materialize:
+                store_views(connection, reporting_names(sql))
             connection.execute(
                 "UPDATE metadata.import_runs SET completed_at = ? WHERE load_id = ?",
                 [datetime.now(timezone.utc), load_id],
