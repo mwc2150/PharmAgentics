@@ -2,6 +2,27 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
+_2026-11-22 (night), UI refresh ready for review: Positivus dark theme, element-tile logo, accessibility pass (Claude Opus, Sonnet and Haiku packets)._
+- Branch `feature/ui-refresh` (frontend and docs only; no Python changed):
+  - Michael compared three live directions and picked "Positivus dark": lime #b9ff66 on near-black, Space Grotesk headings, chunky controls with hard offset shadows.
+  - The logo is a lime "Pa" element tile with "v1" in the corner; the tab icon is a plain "Pa" tile.
+  - Colour tokens renamed to `primary*`; the old names stay as aliases for core-011 and brief-010.
+  - DESIGN.md rewritten for the new theme.
+  - Accessibility pass: APG tabs, focus traps, a visible focus ring everywhere, reduced motion, forced colours, black-on-white print.
+  - The unchecked screens were restyled: triage, review, leadership view, evidence drawer, feedback, Forecast charts, Overview.
+- Checks:
+  - `tsc` and the Vite build pass; `test_frontend_scope` and `test_classification` pass (12).
+  - axe: 0 violations before and after. The keyboard walk went from 38 stops without a visible indicator to 0.
+  - Bombadil 5m: exit 0, no violations.
+  - `/code-review medium`: 4 important and 5 nits, all fixed; the fixes were checked on the running app with Playwright.
+- Local UI: `PHARMAGENTICS_UI_PORT=<port> npx vite --config vite.config.standalone.ts` against `PHARMAGENTICS_AUTH=dev uvicorn` on :8000 (see the handoff).
+- Open:
+  - No Spec Kit spec covers the theme (DESIGN.md does).
+  - The Evaluation page restyle waits for core-011.
+  - The dev sign-in page is still the old light page.
+  - Drop the token aliases once the other branches merge.
+- Not pushed. Handoff: `conversations/2026-11-22-ui-refresh.md`.
+
 _2026-11-22 (evening), brief-008 readable memo ready for review (Claude Opus, Sonnet and Haiku packets)._
 - Branch `feature/brief-008-readable-memo`: packets M (memo blocks, paragraphs, leader cut), F (first and last week, "previous N weeks", Haiku scope reader, account menu), R (KPI strip, territory table, story cards, print), G (Promotion review in blocks, the dollar question, P4-Q5 routing) and W (Writer paragraphs), plus integration fixes: multi-week period in the leader and published views, a re-read next check, readable plan names, print fit, and seven `/code-review` fixes (the form sends no comparison unless the analyst picks one, so app briefs match what the eval scores).
 - Scripted run `12cb72c894dc4bfaba08d3e604448b53` gated against `c65d888fe3e444adab380e509f497a88`: exit 0, all seven gated checks at 1.000, no run errors. Golden-number recall (report-only) 0.668 -> 0.703; "How confident is the estimate" 0 -> 0.67; P4-Q6 stays 0 because its golden says "about 120 to 200" (core-011 makes that figure context). One case lost a single-week change that a 13-week brief no longer quotes (by design, FR-011).
