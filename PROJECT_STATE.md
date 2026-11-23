@@ -2,7 +2,12 @@
 
 A short summary of where the project stands, newest entry first. Detailed history is in `conversations/`. What each feature does and why is in `specs/`; the rules are in `.specify/memory/`.
 
-_2026-11-23 (evening), demo polish round 3 (Michael, Claude Opus)._
+_2026-11-23 (night), sign-out and caching fixes (Michael, Claude Opus)._
+- PR #29 merged and deployed (a4c41eb). Fresh scores pushed (`deploy/gcp.py telemetry`, both stores); Keycloak redeployed with the renamed accounts. The deploy failed once: `put_secret` destroyed the realm secret version the running revision mounted; fixed by hand (pinned to version 10, revision 00008). A script fix is on the local branch `fix/keycloak-secret-pin` in the main checkout, not pushed.
+- Branch `fix/signout-and-cache` (core-007 FR-015a): sign-out without `id_token_hint` (Keycloak logs showed `LOGOUT_ERROR invalid_token` after every Keycloak restart), a new `/auth/signed-out` page, a callback that recovers from `MismatchingStateError` instead of a 500, and `Cache-Control: no-cache` on UI pages (`immutable` on `/assets`). Tests: `tests/test_auth_flow.py` 5 passed; rbac, brand access, feedback, deploy, telemetry, frontend scope, classification 176 passed.
+- Hosted data: the approved briefs there predate the memo (Nov 12), so they open as plain text; a brief generated now opens as the memo.
+
+ (Michael, Claude Opus)._
 - PR #28 (demo polish) merged to `main` (d86e7c2) and deployed by CI. Branch `feature/ui-demo-polish-2` (frontend and specs only):
   - Answer feedback is one card on top of the question bar, one question at a time: "Was this answer right?" (thumbs, then an optional note), then, for an agent answer when the session has no rating, the session rating (then an optional note). It closes when done or dismissed. Pages with no bar (the Brand Director's list, Forecast) float it at the bottom of the window. The repeated mistakes notice is gone from the card; the page footer keeps it (core-008 clarification 2026-11-23, FR-003 and FR-017 amended).
   - `ok` is seafoam (was soft blue): Approved, verified and "Good" share the accent. "Fine" is ochre, "Bad" red (DESIGN.md).
