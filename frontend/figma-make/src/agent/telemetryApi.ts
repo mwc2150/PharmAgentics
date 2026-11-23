@@ -11,6 +11,8 @@ export type CaseRow = {
   case: string; story: string; persona: string
   scores: Record<string, number | null>; stuck: string[]
   fallen: { scorer: string; previous: number; latest: number }[]
+  // core-011 FR-018: set when a recall score is under its target; counts only, split by the capability the golden file tags
+  below?: { scorer: string; score: number; target: number; needs: Record<string, number>; missed: number }[]
 }
 export type CaseTable = {
   system: string; lane: string; control: boolean; run_id: string; started: string; golden_version: string | null
@@ -20,7 +22,7 @@ export type CaseTable = {
 }
 export type Telemetry = {
   exported: string | null; note: string; latest: TelemetryRun[]; runs: TelemetryRun[]
-  cases?: { generated: string | null; systems: CaseTable[] }
+  cases?: { generated: string | null; targets?: Record<string, number>; systems: CaseTable[] }
 }
 
 export type Spread = { n: number; p50: number | null; p95: number | null } | null

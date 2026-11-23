@@ -18,7 +18,7 @@ from mlflow.tracking import MlflowClient
 
 from .insights import DEFAULT_STORE, build
 from .paths import EXPERIMENT, tracking_uri
-from .scorers import kind_of, unit_of
+from .scorers import TARGETS, kind_of, unit_of
 
 OUT = Path(__file__).resolve().parents[2] / "src" / "pharmagentics" / "api" / "telemetry.json"
 JUDGE_HINTS = ("judge", "ragas", "faithfulness", "relevan")  # LLM judges are report-only (Evaluation Pack item 2)
@@ -55,6 +55,11 @@ def cases_block(insights: dict, labels: dict[str, dict]) -> dict:
         stuck[(e["system"], e["case"])].add(e["scorer"])
     for e in insights.get("fallen", []):
         fallen[(e["system"], e["case"])][e["scorer"]] = {"previous": e["previous"], "latest": e["latest"]}
+    below = defaultdict(list)  # core-011 FR-018: counts only (no fact or finding IDs), split by the capability needed
+    for e in insights.get("below_target", []):
+        below[(e["system"], e["case"])].append({"scorer": e["scorer"], "score": e["score"], "target": e["target"],
+                                                "needs": {k: len(v) for k, v in sorted(e["needs"].items())},
+                                                "missed": len(e["missed"])})
     lost = defaultdict(dict)
     for e in insights.get("numbers_lost", []):
         lost[e["system"]][e["case"]] = e["lost"]
@@ -75,6 +80,7 @@ def cases_block(insights: dict, labels: dict[str, dict]) -> dict:
                           | ({"numbers_lost": lost[system].get(case_id)} if agent_system and meta["lane"] == "briefing" else {}),
                 "stuck": sorted(stuck[(system, case_id)]),
                 "fallen": [{"scorer": k, **v} for k, v in sorted(fallen[(system, case_id)].items())],
+                **({"below": below[(system, case_id)]} if below.get((system, case_id)) else {}),
             })
         for lane, rows in sorted(by_lane.items()):
             used = [k for k in scorers if any(r["scores"][k] is not None for r in rows)]
@@ -86,7 +92,7 @@ def cases_block(insights: dict, labels: dict[str, dict]) -> dict:
                 "scorers": used, "kinds": {k: kind_of(k) for k in used}, "units": {k: unit_of(k) for k in used},
                 "report_only": [k for k in used if any(h in k.lower() for h in JUDGE_HINTS)],
                 "rows": [{**r, "scores": {k: r["scores"][k] for k in used}} for r in rows]})
-    return {"generated": insights.get("generated"), "systems": entries}
+    return {"generated": insights.get("generated"), "targets": dict(TARGETS), "systems": entries}
 
 
 def _labels() -> dict[str, dict]:

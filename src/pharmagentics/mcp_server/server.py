@@ -215,7 +215,9 @@ class RunSession:
                 t, check_promotion(self.reg, t, self.p.weeks, self.p.baseline, source_baseline=B)))
         if fn is check_competitor and self.p.comparison is not None:
             return self._remember(name, t, self._record(
-                t, check_competitor(self.reg, t, self.p.weeks, B, exact_comparison=True)))
+                t, check_competitor(self.reg, t, self.p.weeks, B, exact_comparison=True, pct_format="pct")))
+        if fn is check_competitor:  # the shared check; the brief's percentages print the Briefing way (FR-016)
+            return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B, pct_format="pct")))
         return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B)))
 
     # Admin: the brief's code-built sections (build 3, brief-002 FR-026) --------------------------
@@ -231,6 +233,7 @@ class RunSession:
         nums, lim = memo.numbers(self.proj, facts, restated, p), memo.limits(p, self.proj, health, reg)
         return {"title": memo.title_lines(p), "numbers": nums["lines"], "limits": lim["lines"],
                 "appendix": memo.appendix(reg, p=p, proj=self.proj), "calendar": bool(p.calendar),
+                "comparison_phrase": memo.comparison_phrase(p), "comparison_weeks": list(p.baseline or []),
                 "territory_table": nums["territory_table"], "details": {"2": nums["detail"], "4": lim["detail"]},
                 "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 
