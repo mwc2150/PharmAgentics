@@ -10,6 +10,16 @@ question: 'Week of 2026-05-04: Is this week''s data complete, and which cuts can
 review_note: null
 period: week of 2026-05-04
 anchor: New England incomplete feed, 2026-05-04
+definition:
+  first_week: '2026-05-04'
+  last_week: '2026-05-04'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want feed problems found before drafting, so that I never write commentary on numbers that are wrong.
 given: New England fails the feed gate for 2026-05-04.
 when: the brief runs.
@@ -38,6 +48,7 @@ facts:
   role: must
   value: 0.656
   sql: select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: true
 - id: ne_days_late
   role: context
   value: 10.29
@@ -50,6 +61,7 @@ facts:
   role: must
   value: 267
   sql: select sum(trx) from raw.rx_weekly where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND' and product_id = 'BXA'
+  reviewed: true
 - id: ne_prior_4wk_min
   role: context
   value: 397
@@ -62,10 +74,12 @@ facts:
   role: must
   value: 407
   sql: select (select sum(trx) from raw.rx_weekly where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND' and product_id = 'BXA') / (select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND')
+  reviewed: true
 - id: national_projected_trx
   role: must
   value: 4491
   sql: select (select sum(trx) from reporting.v_reportable_rx where week_start = DATE '2026-05-04' and product_id = 'BXA') + (select sum(trx) from raw.rx_weekly where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND' and product_id = 'BXA') / (select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND')
+  reviewed: true
 - id: ne_expected_lag_days
   value: 7
   sql: 'select expected_lag_days from reporting.v_feed_health where week_start = DATE ''2026-05-04'' and territory_id = ''NEW_ENGLAND'''
@@ -82,5 +96,5 @@ findings:
   drivers_supported: [data]
   drivers_ruled_out: []
   withheld: true
-  reviewed: false
+  reviewed: true
 source: docs/planning/user-stories.md#P1-Q2

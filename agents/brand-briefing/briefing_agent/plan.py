@@ -90,8 +90,9 @@ def apply(code_plan: dict, reply: str, question: str = "") -> dict:
         if c["proposed"] != "investigate":
             c["manager"] = {"keep": False, "position": None, "why": "over the story cap (code)", "hypotheses": []}
             continue
-        h = [d for d in (hyps.get(c["id"]) or []) if d in DRIVERS] if c["kind"] != "competitor" else []
-        if c["kind"] != "competitor":
+        coded = c["kind"] in ("competitor", "cut", "continuing")  # code builds these; there are no drivers for the manager to order
+        h = [d for d in (hyps.get(c["id"]) or []) if d in DRIVERS] if not coded else []
+        if not coded:
             h = list(dict.fromkeys(h + [d for d in DEFAULT_HYPOTHESES if d not in h]))  # every driver keeps a verdict
         c["manager"] = {"keep": c["id"] in order, "position": order.index(c["id"]) + 1 if c["id"] in order else None,
                         "why": drop.get(c["id"]), "hypotheses": h}

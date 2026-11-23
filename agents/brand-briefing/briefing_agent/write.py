@@ -80,7 +80,7 @@ def tokens(text: str) -> set[str]:
 # raw IDs, no number spelled out by the model, no cause for a story that is not High, nothing from the folded detail.
 MAX_WORDS = 25
 BULLET = re.compile(r"(?m)^\s*(?:[-*•]|\d+[.)])\s+|\*\*|^\s*#{1,6}\s")
-RAW_ID = re.compile(r"\b(?:(?:territory|competitor):\w+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z]{5,}|[a-z]+(?:_[a-z0-9]+)+)\b")
+RAW_ID = re.compile(r"\b(?:(?:territory|competitor|cut|continuing):\w+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z]{5,}|[a-z]+(?:_[a-z0-9]+)+)\b")
 NUMBER_WORDS = re.compile(r"\b(?:two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|"
                           r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?|millions?|billions?|"
                           r"percent|per cent|double[sd]?|triple[sd]?|twice|half)\b", re.I)
@@ -281,6 +281,8 @@ def chart_targets(close: dict, stories: list[dict]) -> dict[str, dict]:
     charts = close.get("charts") or {}
     out = {k: charts[k] for k in ("2", "4") if charts.get(k)}
     for s in stories:
+        if s["id"].startswith(("cut:", "continuing:")):  # a plan cut or continuing card has no chart of its own
+            continue
         chart = charts.get("competitor") if s["id"].startswith("competitor:") else (charts.get("stories") or {}).get(s.get("territory") or "")
         if chart:
             out[s["id"]] = chart
@@ -318,6 +320,26 @@ def _story_title(sid: str) -> str:
     return "Competitor Metacora" if kind == "competitor" else name(key)
 
 
+def place_cuts(stories: list[dict], cuts: list[dict]) -> list[dict]:
+    """Each plan cut card after its territory's story (and after the cut cards already placed there), else at the end
+    of the stories: the §3 order of brief-010 (the territory story, then its cut cards)."""
+    out = list(stories)
+    for cut in cuts:
+        after = [i for i, s in enumerate(out) if s.get("territory") == cut["territory"]]
+        out.insert(after[-1] + 1 if after else len(out), cut)
+    return out
+
+
+def place_continuing(stories: list[dict], running: list[dict]) -> list[dict]:
+    """The continuing cards after the regular territory and cut cards, before the competitor card (brief-010 FR-012)."""
+    out = list(stories)
+    for card in running:
+        at = [i for i, s in enumerate(out) if not s["id"].startswith("competitor:")]
+        rival = next((i for i, s in enumerate(out) if s["id"].startswith("competitor:")), len(out))
+        out.insert(at[-1] + 1 if at else rival, card)
+    return out
+
+
 def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sentences: dict[str, str],
              left_out: list[str], dropped_line: str, chart_lines: dict[str, str] | None = None) -> tuple[str, list[dict]]:
     """The memo (brief-003): code sections from the MCP session, the writer's answer as §1 prose and its story
@@ -327,8 +349,9 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
     targets = {k: dict(c, explanation=(chart_lines or {}).get(k) or c["explanation"])
                for k, c in chart_targets(close, stories).items()}
     cards, folded = close.get("story_cards") or {}, close.get("story_details") or {}
-    key = lambda s: "competitor" if s["id"].startswith("competitor:") else (s.get("territory") or "")  # noqa: E731
-    blocks = [memo.StoryBlock(s["id"], _story_title(s["id"]), memo.without_next(s["section"]).split("\n"),
+    key = lambda s: (s["id"] if s["id"].startswith(("cut:", "continuing:")) else "competitor" if s["id"].startswith("competitor:")  # noqa: E731
+                     else (s.get("territory") or ""))
+    blocks = [memo.StoryBlock(s["id"], s.get("title") or _story_title(s["id"]),memo.without_next(s["section"]).split("\n"),
                               sentences.get(s["id"], ""), chart=targets.get(s["id"]), card=cards.get(key(s)),
                               detail=folded.get(key(s), [])) for s in stories]
     notes: list[str] = []
@@ -342,6 +365,10 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
             notes.append("Routine week. No material change was found, and territory swings stayed in their normal range.")
         elif dropped_line:
             dropped.append(dropped_line)
+    blocks.extend(memo.StoryBlock(**story) for story in sections.get("data_artifact_stories", []))  # brief-010 FR-011
+    if close.get("national_story"):  # packet NC: the national TRx card, when no competitor story carries it
+        blocks.append(memo.StoryBlock(**close["national_story"]))
+    blocks.extend(memo.StoryBlock(**story) for story in sections.get("restatement_stories", []))  # brief-010 FR-005
     blocks.extend(memo.StoryBlock(**story) for story in sections.get("promotion_stories", []))
     parts = memo.MemoParts(title=sections["title"], bottom_line=close["bottom_line"], numbers=sections["numbers"],
                            limits=sections["limits"], next_checks=close["next_checks"],
@@ -354,12 +381,14 @@ def assemble(sections: dict, close: dict, stories: list[dict], answer: str, sent
     return memo.compose(parts)
 
 
-def render(template: str, claims: list[dict]) -> tuple[str, list[dict], list[dict], dict[int, int]]:
+def render(template: str, claims: list[dict], also: str = "") -> tuple[str, list[dict], list[dict], dict[int, int]]:
     """Fill tokens from the run's claims; return the text, the claims it uses (in order of use), where each sits
-    in the text (inline citations, indexed into the used claims) and the token-number-to-used-index map."""
+    in the text (inline citations, indexed into the used claims) and the token-number-to-used-index map. `also` is
+    other memo text whose tokens the brief shows outside the answer text (card headlines, such as the national card
+    reusing a KPI token, brief-010 NC): its claims join the used list after the answer's, so every shown token is cited."""
     from pharmagentics.tools.registry import cite
 
-    used = list(dict.fromkeys(int(m.group(1)) for m in TOKEN.finditer(template) if 0 < int(m.group(1)) <= len(claims)))
+    used = list(dict.fromkeys(int(m.group(1)) for m in TOKEN.finditer(template + "\n" + also) if 0 < int(m.group(1)) <= len(claims)))
     index = {n: i for i, n in enumerate(used)}
     text, spans = cite(template, claims, index=index)
     return text, [claims[n - 1] for n in used], spans, index

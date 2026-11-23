@@ -1,0 +1,60 @@
+# Tasks: brief-010 The Analyses the Targets Need
+
+Base: `main` plus `feature/core-011-exact-values` plus `feature/brief-009-timeline`. Packets D-B, D-U and G first, side by side; then N and R side by side; then P, then S. Built by Sonnet in their own worktrees; Opus integrates.
+
+## Packet D-B: the brief definition, backend (FR-000a, FR-000c)
+- [x] DB1 `tools/definition.py`: the `Definition` model, its pre-selected values, validation, and words for the Assumptions block.
+- [x] DB2 Both engines take `definition` (None means the pre-selected values) and honour every field; claims record the fields plus grain and cut.
+- [x] DB3 API: brief and job requests carry `definition`; the stored brief keeps it; the scope reader proposes it; the Assumptions block prints it.
+- [x] DB4 Tests: pre-selected definition gives today's brief unchanged (answer, claims, evidence); each field changes what it should.
+
+## Packet D-U: the brief definition, form (FR-000b)
+- [x] DU1 Six selectors at the start of the Briefing form, pre-selected, editable; the scope reader's proposal fills them; the request sends `definition`.
+- [x] DU2 The Assumptions block shows the definition in both views; tsc, build, frontend-scope test.
+
+## Packet G: golden definitions and the review (FR-000d; grill 2026-11-22)
+- [x] G1 `Case.definition` (explicit, all fields) replaces `comparison` (the loader maps old files); the harness passes it to systems; findings take an optional `measure`.
+- [x] G2 Every Briefing case states its definition; P2-Q3, P2-Q4 and P1-Q5 changes restated like-for-like from SQL with the reference prose; plan cuts on P1-Q4, P2-Q2, P2-Q4, P4-Q4; `needs` tags; must facts and findings `reviewed: true`; CHANGELOG.
+- [x] G3 `eval check` passes; eval tests.
+
+## Packet P: plan cuts (FR-001, FR-002, FR-007, FR-008)
+- [x] P1 Cut screen in `splits.py`: per plan in a story territory, TRx (or NBRx) a week before and after on the comparison weeks and the percent change, as claim tokens; flags a plan against its territory or holding the supported access driver.
+- [x] P2 `memo.cut_card` and the §3 order (territory card, then its cut cards); at most two cut cards a brief; the budget shrink of territory cards (FR-008).
+- [x] P3 Triage passes cut cards as candidate stories; the agent's Manager prompt lists them (`briefing_agent/plan.py`).
+- [ ] P4 Tests (`tests/test_plan_cuts.py`: done); scripted run and gate; targets P1-Q4, P2-Q2, P2-Q4, P4-Q4 rise; Haiku run and gate (the integrator's).
+
+## Packet S: segment and channel percent (FR-003)
+- [x] S1 Percent movers by channel and specialty (at most two a story, small cells named, not quoted).
+- [x] S2 The Promotion review states them for each lapsed territory.
+- [x] S3 Tests (`tests/test_segment_percent.py`); P4-Q2 states both facts. The scripted run and gate are the integrator's (I1).
+
+## Packet R: restatement detail (FR-004, FR-005)
+- [x] R1 Duplicate overstatement (naive, deduplicated, overstatement) in §4 when the gate withholds a territory.
+- [x] R2 Signed-off and restated figures and the change, from a governed view over `raw.restatement_log`; a restatement card with data supported.
+- [x] R3 Tests (`tests/test_restatement.py`). The scripted run, gate and the P1-Q1, P2-Q5, P3-Q6 rise are the integrator's to confirm (I1).
+
+## Packet N: national card (FR-006)
+- [x] N1 `competitor_card` becomes a national card: territory NATIONAL, direction from the share change (house flat band), competitor supported from the check.
+- [x] N2 Scorer reads the card direction for the finding's `measure` (`directions`) and compares only cards that cover it; the national card carries no `trx` and lists territory-wide ruled-out drivers, with tests. (The scripted run and gate are the integration packet's.)
+
+## Packet X: data notes (FR-010, FR-011; grill 2026-11-23)
+- [x] X1 Restatement card carries `directions: {"restated_figure": ...}`; the eval's `Finding.measure` accepts `restated_figure`; P2-Q5 and P3-Q6 findings name it; P2-Q1's definition compares with the previous 1 week (`eval/golden/CHANGELOG.md`).
+- [x] X2 `memo.data_artifact_block`: the national data-artifact card, built in `stages._national_block` (`facts["data_artifact"]`) on the house gap `MATERIAL_GAP`; wired into the scripted pipeline and the agent session (`data_artifact_stories`, `write.assemble`).
+- [x] X3 Tests (`tests/test_data_notes.py`). The scripted run, gate and the P2-Q1 rise are the integrator's.
+
+## Packet NC: national TRx card (FR-006a to FR-006c)
+- [x] NC1 `stages.national_reading`: national TRx direction (house flat band), the holiday driver (`holiday_effect`), and the ruled-out list from the story territories' own checks (`lag_checks.national_ruled_out` now takes those checks).
+- [x] NC2 `memo.competitor_card` adds `trx` to `directions` and the holiday driver; `memo.national_block` is the card of a brief with no competitor reading; the scripted pipeline, `memo_close` and `write.assemble` carry it.
+- [x] NC3 Tests (`tests/test_national_trx.py`, `tests/test_memo.py`, `tests/test_brief_definition.py`); targets P3-Q2, WIN-1 and P3-Q1 reach full points. The full suite, gate and Haiku run are the integrator's.
+
+## Packet C: continuing cards (FR-012)
+- [x] C1 `tools/continuing.py`: the running-event screen (lapses from `promotion.lapses`, restrictions from `checks.access_events`), figures and checks against the four weeks before the event, the card (`continuing`, `since`), the block and its place in §3.
+- [x] C2 Pipeline: `Front.continuing`, the order and the block (after the cut cards, before the national card), §1 and §5 entry; triage proposes `continuing:<territory>` as a candidate story.
+- [x] C3 Agent engine: Manager cards and prompt (no drivers to order), `investigate` skips it, `memo_close(running=...)`, `write.place_continuing`, writer prompt and raw-ID guard.
+- [x] C4 Tests (`tests/test_continuing_card.py`); scripted subset run (P1-Q6 scores in full, no other case drops); fixtures regenerated by the engine where a brief gained a card.
+
+## Integration (Opus)
+- [ ] I1 After the last packet: full suite, scripted gate, SC-001 (targets met, `over_word_budget` 0).
+- [ ] I2 Haiku agent run and gate (SC-002).
+- [ ] I3 Real-app look at a cut card and the national card in both views; print fits two A4 pages.
+- [ ] I4 `/code-review`, PR, `PROJECT_STATE.md`, handoff.

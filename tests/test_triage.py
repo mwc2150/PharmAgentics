@@ -28,7 +28,12 @@ def q(week: str, territory: str | None = None) -> str:
 def comparable(envelope: dict) -> dict:
     """The envelope's answer, claims, evidence and flag, with this machine's data version replaced by a
     placeholder: the version is a hash of the data files, so the frozen fixture must not depend on it."""
-    text = json.dumps({k: envelope[k] for k in ("answer", "claims", "evidence", "abstained")}, default=str)
+    body = {k: envelope[k] for k in ("answer", "claims", "evidence", "abstained")}
+    # brief-010: the frozen fixture predates the claim `labels` (the definition each claim was made under) and the one
+    # Assumptions sentence "Holiday weeks are left out."; neither changes a number, a claim value or an evidence item.
+    body["claims"] = [{k: v for k, v in c.items() if k != "labels"} for c in body["claims"]]
+    body["answer"] = body["answer"].replace(" Holiday weeks are left out.", "")
+    text = json.dumps(body, default=str)
     return json.loads(_mask_version(text))
 
 
@@ -93,7 +98,8 @@ def test_dropping_and_reordering_stories():
     dropped = run_with_plan(plan["question"], {"plan_id": plan["plan_id"], "stories": ["territory:PACIFIC", "competitor:BXE"]})
     text = dropped["envelope"]["answer"]
     assert "Story two: Mid-Atlantic" not in text and "Story two: competitor Metacora" in text
-    assert "Left out of this brief by the analyst: Mid-Atlantic." in text
+    # brief-010: Mid-Atlantic's Medicare Part D plan two rose against the territory, so its cut card is a candidate story too
+    assert "Left out of this brief by the analyst: Mid-Atlantic, Medicare Part D plan two in Mid-Atlantic." in text
     call = next(c for c in dropped["triage"]["calls"] if c["story"] == "territory:MID_ATLANTIC")
     assert (call["outcome"], call["layer"]) == ("dropped", "human")
 

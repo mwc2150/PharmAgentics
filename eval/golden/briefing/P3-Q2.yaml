@@ -10,6 +10,16 @@ question: 'Weeks of 2025-12-22 and 2025-12-29: Does this matter for the brand, o
 review_note: null
 period: weeks of 2025-12-22 and 2025-12-29
 anchor: Holiday weeks, Dec 2025
+definition:
+  first_week: '2025-12-22'
+  last_week: '2025-12-29'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Diana, I want expected seasonal dips labelled, so that I am not pulled into false alarms.
 given: two holiday weeks with lower business days.
 when: the brief runs.
@@ -37,7 +47,7 @@ facts:
 - id: holiday_weeks_vs_4wk_avg_pct
   role: must
   value: -17.3
-  reviewed: false
+  reviewed: true
   sql: select 100.0 * ((select avg(s) from (select sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-12-22' and DATE '2025-12-29' group by week_start)) / (select avg(s) from (select sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2025-11-24' and DATE '2025-12-15' group by week_start)) - 1)
 - id: national_bxa_trx_new_year
   role: context
@@ -87,5 +97,5 @@ findings:
   drivers_supported: [holiday]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: docs/planning/user-stories.md#P3-Q2

@@ -316,11 +316,16 @@ def test_blocks_follow_the_schema_for_a_one_week_brief():
     assert all(len(r["cells"]) == len(table["columns"]) == len(r["cell_citations"]) for r in table["rows"])
     assert table["rows"][0]["cell_citations"][0] == [] and len(table["rows"][0]["cell_citations"][1]) == 1
     assert "four weeks before" in table["note"]
-    story = by_number(env)["3.1"]
-    assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"] == []  # the competitor story
+    southeast = by_number(env)["3.1"]["card"]  # brief-010 FR-012: the Southeast lapse, still running on 2026-08-24, comes first
+    assert (southeast["territory"], southeast["continuing"], southeast["drivers_supported"]) == ("SOUTHEAST", True, ["promotion"])
+    story = next(s for n, s in by_number(env).items() if n.startswith("3.") and (s.get("card") or {}).get("territory") == "NATIONAL")
+    assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"][0] == "competitor"  # the competitor story
     assert "Metacora holds 16%" in story["card"]["headline"] and story["card"]["headline_citations"]
-    card = story["card"]  # core-011: not one territory, so a scorer skips it
-    assert (card["territory"], card["direction"], card["drivers_supported"], card["drivers_ruled_out"]) == (None, None, [], [])
+    card = story["card"]  # brief-010 FR-006: the national card
+    assert (card["territory"], card["cut"], card["drivers_supported"]) == ("NATIONAL", None, ["competitor"])
+    assert set(card["drivers_ruled_out"]) <= {"access", "promotion", "supply"}  # only drivers every territory rules out (packet N)
+    assert card["drivers_checked"] == ["competitor"] + card["drivers_ruled_out"]
+    assert card["direction"] == card["directions"]["bxa_share"] in ("up", "down", "flat")
     assert "detail" in by_number(env)["6"] and "Glossary" in by_number(env)["6"]["detail"]
 
 
@@ -394,4 +399,54 @@ def test_card_driver_lists_use_the_evals_ids_and_leave_inconclusive_checks_out()
     assert card["drivers_supported"] == ["access"] and card["drivers_ruled_out"] == ["data", "supply"]
     assert not re.search(r"\d", repr({k: card[k] for k in ("territory", "direction", "drivers_supported", "drivers_ruled_out")}))
     bare = competitor_card(type("P", (), {"brand_id": "BXA"})(), {"bxe": "{c3}", "bxa": "{c4}"})
-    assert bare["territory"] is None and bare["drivers_supported"] == [] and bare["drivers_ruled_out"] == []
+    assert bare["territory"] == "NATIONAL" and bare["drivers_supported"] == [] and bare["drivers_ruled_out"] == []
+
+
+NATIONAL_ANCHORS = {  # the dev anchors: (question, BXA share, Metacora share, drivers ruled out in every story territory)
+    "P3-Q1": ("Week of 2026-04-27: What changed this week that I need to know about?", "flat", "up", ["access", "promotion", "supply"]),
+    "P3-Q4": ("Week of 2026-09-28: Is this new or the same issue as last week, and is it getting better or worse?", "up", "flat", ["access", "supply"]),
+    "P1-Q5": ("Week of 2026-06-08: Am I confident nothing material was left out?", "down", "up", ["access", "promotion"]),
+}
+
+
+def _national_cards(env: dict) -> list[dict]:
+    return [s["card"] for s in env["sections"] if s["number"].startswith("3.") and s.get("card") and s["card"].get("territory") == "NATIONAL"]
+
+
+@needs_db
+@pytest.mark.parametrize("anchor", sorted(NATIONAL_ANCHORS))
+def test_the_competitor_story_is_one_national_card_with_a_direction_for_each_measure(anchor):
+    from briefing_baseline import answer
+
+    question, bxa, bxe, ruled_out = NATIONAL_ANCHORS[anchor]
+    env = answer(question)
+    (card,) = _national_cards(env)  # at most one a brief
+    assert card["cut"] is None and card["drivers_supported"] == ["competitor"]
+    assert card["drivers_ruled_out"] == ruled_out  # from the territory checks, by code (P1-Q5: supply is live in Pacific)
+    assert card["drivers_checked"] == ["competitor"] + [{"promotion": "promotion"}.get(d, d) for d in ruled_out]
+    assert {k: v for k, v in card["directions"].items() if k != "trx"} == {"bxa_share": bxa, "competitor_share": bxe}
+    assert card["directions"]["trx"] in ("up", "down", "flat") and card["direction"] == bxa  # share story first; national TRx beside it (packet NC)
+    assert not re.search(r"\{c\d+\}", card["headline"]) and card["headline_citations"]  # filled, and every number cited
+    assert re.search(r"Metacora holds \d+(?:\.\d)?% of the four-brand basket, and BXA holds \d+(?:\.\d)?%\.", card["headline"])  # whole from 10%, one decimal below (brief-008 FR-016)
+
+
+@needs_db
+def test_the_national_card_reaches_a_leader_as_its_headline_and_verdicts_only():
+    from briefing_baseline import answer
+    from pharmagentics.api.views import leadership_sections
+
+    env = answer(NATIONAL_ANCHORS["P3-Q4"][0])
+    seen = [s["card"] for s in leadership_sections(env["sections"]) if s.get("card") and s["card"]["territory"] == "NATIONAL"]
+    assert len(seen) == 1 and "directions" not in seen[0] and seen[0]["headline"] and seen[0]["confidence"] == "Medium"
+    assert seen[0]["drivers_supported"] == ["competitor"]
+
+
+def test_the_national_card_states_a_ruled_out_competitor_and_keeps_its_headline():
+    from pharmagentics.tools.checks import Check
+    from pharmagentics.tools.memo import competitor_card
+
+    p = type("P", (), {"brand_id": "BXA"})()
+    out = competitor_card(p, {"bxe": "{c1}", "bxa": "{c2}", "check": Check("competitor", "ruled_out", ""),
+                              "directions": {"bxa_share": "flat", "competitor_share": "flat"}})
+    assert out["drivers_supported"] == [] and out["drivers_ruled_out"] == ["competitor"] and out["direction"] == "flat"
+    assert out["headline"] == "Metacora holds {c1} of the four-brand basket, and BXA holds {c2}."

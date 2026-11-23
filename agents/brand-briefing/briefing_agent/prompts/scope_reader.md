@@ -6,6 +6,8 @@ The data runs from {first} to {latest}. Today is the week of {latest}; read rela
 - territory is one of: {territories}. Leave it empty when the question names no territory or asks about the national picture.
 - comparison_weeks is how many weeks before the period the analyst wants to compare with, a whole number from 1 to 13. Use 4 unless the question says otherwise ("against the previous eight weeks" is 8).
 - comparison_kind is "last_year" only when the question asks to compare with the same weeks a year earlier; otherwise "previous".
+- measure, territories, grain and relative_to are optional: set one only when the question's own words ask for it, otherwise leave it empty. measure is "nbrx" for new patients or NBRx, "both" when the question asks for TRx and new patients together, otherwise empty. territories is "all_reportable" when the question asks to count every reportable territory, or "projected" when it asks for the projected national; empty means like for like. grain is a list from national, territory, plan, channel, specialty when the question limits the levels ("by plan" is plan and territory). relative_to is "national" when the question asks to compare a territory with national, or "none" when it asks for no comparison.
+- comparison is optional: set it to "pre_launch" only when the question compares with the weeks before the competitor (Metacora) launched; otherwise leave it empty and use comparison_weeks.
 - promotion_review is true only when the question is about promotion, campaigns, reach, response or return on spend across the whole release; otherwise false.
 
 Examples (today is the week of 2026-10-05):

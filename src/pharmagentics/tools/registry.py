@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import threading
+from contextlib import contextmanager
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -23,6 +24,7 @@ DEFAULT_DB = Path(__file__).resolve().parents[3] / "local" / "pharmagentics.duck
 ALLOWED = {
     "reporting.v_reportable_rx", "reporting.v_weekly_rx_kpis", "reporting.v_feed_health",
     "reporting.v_rx_projection",  # projected national (brief-003 FR-022): levels only, never drivers
+    "reporting.v_restatements", "reporting.v_rx_duplicate_tieout",  # brief-010: restatement record; duplicate-key tie-out (never a metric)
     "raw.calendar", "raw.dim_plan", "raw.dim_product", "raw.dim_territory", "raw.dim_specialty",
     "raw.access_status_monthly", "raw.inventory_weekly", "raw.promo_activity", "raw.market_basket",
     "raw.market_share_weekly", "raw.restatement_log", "raw.forecast_vs_actual_weekly",
@@ -45,6 +47,7 @@ FORMATS = {
     "int": lambda v: _half_up(v, 0),
     "pct1": lambda v: _half_up(v, 1, percent=True),  # Forecast's format, unchanged
     "pct": _pct,  # Briefing's
+    "dec1": lambda v: _half_up(v, 1),
     "dec2": lambda v: _half_up(v, 2),
     "dec3": lambda v: _half_up(v, 3),
 }
@@ -116,6 +119,25 @@ def data_version(con) -> str:
     return hashlib.sha256(repr(rows).encode()).hexdigest()[:12]
 
 
+SPLIT_GRAINS = ("plan", "specialty", "channel")
+
+
+def claim_labels(base: dict, params: dict) -> dict:
+    """The labels one claim carries: the run's definition fields, plus the claim's own grain (national, territory, plan,
+    channel or specialty) and, when it is one cut of a split or one plan, that cut (`plan:<id>`, `channel:<name>`)."""
+    by, cut = params.get("by"), params.get("cut")
+    out = dict(base)
+    if by in SPLIT_GRAINS and cut is not None:
+        out.update(grain=by, cut=f"{by}:{cut}")
+    elif params.get("plan"):
+        out.update(grain="plan", cut=f"plan:{params['plan']}")
+    elif params.get("territory") and params["territory"] != "NATIONAL":
+        out["grain"] = "territory"
+    else:
+        out["grain"] = "national"
+    return out
+
+
 class Registry:
     """One per run: pins the data version and collects evidence items and claims."""
 
@@ -127,9 +149,27 @@ class Registry:
         self.evidence: list[dict] = []
         self.claims: list[dict] = []
         self._by_query: dict[tuple, str] = {}
+        self.labels: dict = {}  # the brief definition every claim is made under (brief-010 FR-000c); set by stages.resolve
 
     def close(self) -> None:
         self.con.close()
+
+    def scratch(self) -> "Registry":
+        """A registry on the same read-only connection with its own empty evidence and claims, for reads whose
+        numbers the brief does not state (brief-010 FR-006): nothing it records reaches this run's claims."""
+        other = object.__new__(Registry)
+        other.con, other.data_version, other.evidence, other.claims, other._by_query = self.con, self.data_version, [], [], {}
+        other.labels = dict(getattr(self, "labels", {}) or {})
+        return other
+
+    @contextmanager
+    def under(self, **labels):
+        """Claims made inside the block record these definition values instead of the primary ones (an extra value's figure)."""
+        old, self.labels = self.labels, {**self.labels, **labels}
+        try:
+            yield
+        finally:
+            self.labels = old
 
     def rows(self, sql: str) -> list[tuple]:
         """Internal screening query: governed, not recorded as evidence."""
@@ -158,7 +198,7 @@ class Registry:
             if value is None:
                 value = 0
             eid = self._evidence(tool, sql, float(value), params)
-            self.claims.append({"value": FORMATS[fmt](float(value)), "evidence_id": eid})
+            self.claims.append({"value": FORMATS[fmt](float(value)), "evidence_id": eid, "labels": claim_labels(self.labels, params)})
             finish(sp, {"value": self.claims[-1]["value"], "evidence_id": eid})
         return "{c%d}" % len(self.claims)
 

@@ -9,16 +9,23 @@ status: draft
 question: 'Week of 2026-06-08: Am I confident nothing material was left out?'
 review_note: null
 period: week of 2026-06-08
-comparison:
-  kind: custom
-  start: '2026-05-04'
-  end: '2026-05-25'
 anchor: Pacific supply plus Metacora, 2026-06-08
+definition:
+  first_week: '2026-06-08'
+  last_week: '2026-06-08'
+  comparison:
+    kind: custom
+    start: '2026-05-04'
+    end: '2026-05-25'
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Ace, I want every material change surfaced and ranked, so that the brief is not judged on what it missed.
 given: a week with a regional supply shortfall on top of an ongoing competitor launch.
 when: the brief runs.
 then: both stories appear, ranked by business impact, and the "considered and dropped" list shows what else was checked.
-reference_answer: National BXA TRx was 3,860, 467 below its average for the four May weeks (−10.8%). Two stories were live. First, Pacific BXA TRx fell to 464 against 709 a week in May, while BXA inventory fill there dropped to 0.687 with 22.5% of orders backordered (normal is 0.97 to 1.0); Pacific alone is about half of the national gap. Second, competitor Metacora (BXE), launched 2026-03-02, held 12.5% of the basket and was still climbing.
+reference_answer: National BXA TRx was 3,860. Like for like, on the 7 of 8 territories that report in every week compared (New England's May feed is withheld), it was 3,484, which is 556 below its average for the four May weeks (−13.8%). Two stories were live. First, Pacific BXA TRx fell to 464 against 709 a week in May, while BXA inventory fill there dropped to 0.687 with 22.5% of orders backordered (normal is 0.97 to 1.0); Pacific alone is a little under half of the national gap. Second, competitor Metacora (BXE), launched 2026-03-02, held 12.5% of the basket and was still climbing.
 must_not_say:
   text: '"BXA fell 12% nationally" with no regional split.'
   phrases: []
@@ -35,24 +42,32 @@ facts:
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08'
 - id: national_vs_4wk_avg_pct
   role: must
-  value: -10.8
-  reviewed: false
-  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start between DATE '2026-05-04' and DATE '2026-05-25' group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  value: -13.8
+  reviewed: true
+  sql: 'with ok as (select territory_id from reporting.v_feed_health where (week_start = DATE ''2026-06-08'' or week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'') group by 1 having count(*) = 5 and count(*) filter (where health_status = ''PASS'') = 5) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2026-06-08'' and territory_id in (select territory_id from ok)) / 1.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'' and territory_id in (select territory_id from ok)) / 4.0) - 1)'
 - id: pacific_bxa_trx
   role: must
   value: 464
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and week_start = DATE '2026-06-08' and territory_id = 'PACIFIC'
+  reviewed: true
 - id: pacific_fill_rate
   role: must
   value: 0.687
   sql: select inventory_fill_rate from raw.inventory_weekly where week_start = DATE '2026-06-08' and territory_id = 'PACIFIC' and product_id = 'BXA'
+  reviewed: true
 - id: pacific_backorder_pct
   role: must
   value: 22.5
   sql: select 100 * distribution_backorder_rate from raw.inventory_weekly where week_start = DATE '2026-06-08' and territory_id = 'PACIFIC' and product_id = 'BXA'
+  reviewed: true
 - id: national_gap_vs_4wk_avg
-  value: 467
-  sql: 'select (select avg(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'' group by 1)) - (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2026-06-08'')'
+  value: 556
+  sql: 'with ok as (select territory_id from reporting.v_feed_health where (week_start = DATE ''2026-06-08'' or week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'') group by 1 having count(*) = 5 and count(*) filter (where health_status = ''PASS'') = 5) select (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'' and territory_id in (select territory_id from ok)) / 4.0 - (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2026-06-08'' and territory_id in (select territory_id from ok)) / 1.0'
+  role: context
+  reviewed: false
+- id: national_like_for_like_bxa_trx
+  value: 3484
+  sql: 'with ok as (select territory_id from reporting.v_feed_health where (week_start = DATE ''2026-06-08'' or week_start between DATE ''2026-05-04'' and DATE ''2026-05-25'') group by 1 having count(*) = 5 and count(*) filter (where health_status = ''PASS'') = 5) select (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and week_start = DATE ''2026-06-08'' and territory_id in (select territory_id from ok)) / 1.0'
   role: context
   reviewed: false
 - id: pacific_bxa_trx_may_avg
@@ -72,12 +87,14 @@ findings:
   drivers_supported: [supply]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 - id: national_metacora_competitor
   territory: NATIONAL
   direction: null
   drivers_supported: [competitor]
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
+  needs: national_card
+  measure: competitor_share
 source: docs/planning/user-stories.md#P1-Q5

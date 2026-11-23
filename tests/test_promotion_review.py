@@ -113,7 +113,7 @@ def test_the_review_is_blocks_and_paragraphs(monkeypatch):
         assert card["drivers_supported"] == ["promotion"] and card["drivers_ruled_out"] == []
     assert "Medicare Part D plan one: down 25 TRx a week" in stories[0]["detail"]
     assert "Primary care: down 53 TRx a week" in stories[0]["detail"] and "Cash: down 14" in stories[0]["detail"]
-    assert all(len(s["text"].splitlines()) <= 3 for s in stories)
+    assert all(len(s["text"].splitlines()) <= 4 for s in stories)  # brief-010 S: the movers are the fourth line
 
 
 def test_the_assumptions_state_the_scope_and_the_lapse_comparison(monkeypatch):

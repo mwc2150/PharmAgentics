@@ -10,6 +10,16 @@ question: Did the campaign reach the people it was meant to reach?
 review_note: The story states no period; add the weeks to the question before freezing.
 period: null
 anchor: Impressions without reach data
+definition:
+  first_week: null
+  last_week: null
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
 story_text: As Magdalena, I want reach shown next to results, so that high impressions cannot hide low engagement.
 given: promotion data at territory level only.
 when: the brief shows a promotion story.
@@ -28,12 +38,12 @@ facts:
   value: 870
   sql: 'select (select sum(digital_impressions) * 1.0 / count(distinct week_start) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'')'
   role: must
-  reviewed: false
+  reviewed: true
 - id: se_digital_impressions_median
   value: 1773.5
   sql: 'select median(digital_impressions) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''SOUTHEAST'''
   role: must
-  reviewed: false
+  reviewed: true
 findings:
 - id: southeast_coverage_gap
   territory: SOUTHEAST
@@ -41,5 +51,5 @@ findings:
   drivers_supported: []
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: docs/planning/user-stories.md#P4-Q3

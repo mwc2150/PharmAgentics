@@ -22,10 +22,11 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from pharmagentics.tools import DEFAULT_DB, Registry
 from pharmagentics.tools import queries as q
-from pharmagentics.tools import charts, memo, projection, promotion, splits, stages
+from pharmagentics.tools import charts, continuing, memo, projection, promotion, splits, stages
 from pharmagentics.tools.checks import (DRIVERS, OWNER, Check, check_competitor, check_data,
                                         confidence, context_baseline)
 from pharmagentics.tools.lag_checks import check_access, check_promotion, check_supply
+from pharmagentics.tools.definition import Definition, words as definition_words
 from pharmagentics.tools.window import Comparison
 
 ADMIN_TOOLS = ("open_run", "export_run", "brief_sections", "story_section", "competitor_section", "dropped_line",
@@ -69,10 +70,11 @@ class RunSession:
         self.competitor_facts: dict = {}
 
     # admin -------------------------------------------------------------------------------------
-    def open_run(self, question: str, comparison: Comparison | None = None) -> str:
+    def open_run(self, question: str, comparison: Comparison | None = None, definition: Definition | None = None) -> str:
+        """Pin the period under the brief definition (brief-010): every tool of the run computes under it."""
         self.close()
         self.reg = Registry(self.db)
-        self.p = stages.resolve(self.reg, question, comparison=comparison)
+        self.p = stages.resolve(self.reg, question, comparison=comparison, definition=definition)
         self.checks, self.stories, self.calls, self.seen = {}, {}, [], {}
         self.story_facts, self.story_detail, self.competitor_facts = {}, {}, {}
         if not self.p.requested:
@@ -81,6 +83,8 @@ class RunSession:
                  f"Data version {self.reg.data_version}. Product: BXA (Cardiovela)."]
         if self.p.note:
             lines.append(self.p.note)
+        if not self.p.definition.is_pre_selected:
+            lines.append("Brief definition: " + " ".join(definition_words(self.p.definition)))
         if self.p.focus:
             lines.append(f"The question names {q.name(self.p.focus)} ({self.p.focus}).")
         return "\n".join(lines)
@@ -181,6 +185,8 @@ class RunSession:
         p = self.p
         if p.calendar:
             return "Calendar mode: most of these weeks are holiday or plan-year-reset weeks, so no territory story is opened."
+        if not p.has("territory"):
+            return "This brief's levels leave out territories, so no territory story is opened."
         found, quiet = stages.screen(self.reg, p)
         if not found:
             return "No territory moved beyond its normal range against its peers. Routine week: no story to investigate."
@@ -226,20 +232,25 @@ class RunSession:
         come from this run's Registry, through the same builders as the scripted brief (tools/memo.py)."""
         reg, p = self._reg(), self.p
         health = stages.data_health(reg, p)
-        restated = stages.restatements(reg, p)
+        restated_facts: list[dict] = []
+        restated = stages.restatements(reg, p, restated_facts)
         facts: dict = {}
         stages.kpis(reg, p, facts)
         self.proj, self.restated, self.facts = projection.build(reg, p), bool(restated), facts
         nums, lim = memo.numbers(self.proj, facts, restated, p), memo.limits(p, self.proj, health, reg)
         return {"title": memo.title_lines(p), "numbers": nums["lines"], "limits": lim["lines"],
-                "appendix": memo.appendix(reg, p=p, proj=self.proj), "calendar": bool(p.calendar),
+                "appendix": memo.appendix(reg, p=p, proj=self.proj, restated=bool(restated)), "calendar": bool(p.calendar),
                 "comparison_phrase": memo.comparison_phrase(p), "comparison_weeks": list(p.baseline or []),
                 "territory_table": nums["territory_table"], "details": {"2": nums["detail"], "4": lim["detail"]},
+                "data_artifact_stories": [asdict(b) for b in [memo.data_artifact_block(facts)] if b],  # brief-010 FR-011
+                "restatement_stories": [asdict(b) for b in [memo.restatement_block(restated_facts)] if b],  # brief-010 FR-005
                 "promotion_stories": [asdict(story) for story in promotion.story_blocks(reg, p)]}
 
-    def memo_close(self, competitor: bool) -> dict:
+    def memo_close(self, competitor: bool, cuts: list[str] | None = None, running: list[str] | None = None) -> dict:
         """§1 and §5 once the stories are closed (contracts/mcp-admin-tools.md): the bottom line in FR-021 order
-        with the number least sure of, and the next checks."""
+        with the number least sure of, and the next checks. `cuts` are the plan ids of the plan cut cards the brief
+        keeps (brief-010 FR-007): code builds each from the plan's own figures and its territory's checks. `running` are
+        the territories of the continuing cards the brief keeps (FR-012): events that began before the comparison weeks."""
         reg, p = self._reg(), self.p
         if self.proj is None:
             raise ToolError("brief_sections must run before memo_close")
@@ -253,19 +264,46 @@ class RunSession:
             plan = (access.detail or {}).get("plan") if access else None
             drivers = s["drivers"] if s["confidence"] != "Low" else []
             story_charts[s["territory"]] = charts.story(reg, p, s["territory"], drivers, plan)
+        running_stories, running_details, running_cards = [], {}, {}
+        if running:  # brief-010 FR-012: a continuing card joins §1 and §5 like a territory story
+            covered = {s["territory"] for s in told} | {splits.plan_territory(reg, plan) for plan in (cuts or [])}
+            for event in continuing.screen(reg, p, covered, set(cuts or [])):
+                if event["territory"] in running:
+                    block, info = continuing.block(reg, p, event)
+                    running_cards[block.id], running_details[block.id] = block.card, block.detail
+                    running_stories.append({"id": block.id, "territory": event["territory"], "title": block.title,
+                                            "section": "\n".join(block.lines)})
+                    told.append(info)
         top: dict = {}
         bottom = memo.bottom_line(reg, p, self.proj, told, self.restated, facts=top)
         cards = {s["territory"]: memo.story_card(q.name(s["territory"]), self.story_facts[s["territory"]], s["confidence"],
                                                  list(self.checks.get(s["territory"], {})), territory=s["territory"],
-                                                 checks=list(self.checks.get(s["territory"], {}).values()))
+                                                 checks=list(self.checks.get(s["territory"], {}).values()), measure=p.col)
                  for s in told if s["territory"] in self.story_facts}
-        if competitor and self.competitor_facts:
-            cards["competitor"] = memo.competitor_card(p, self.competitor_facts)
+        national_story = None  # packet NC: every brief has one national card; the competitor story's, else a block of its own
+        if p.has("national"):
+            comp = self.competitor_facts if competitor and self.competitor_facts else None
+            reading = stages.national_reading(reg, p, [self.checks.get(s["territory"], {}) for s in told], comp, self.facts.get("avg"),
+                                              data_artifact=bool(self.facts.get("data_artifact")))
+            if comp:
+                cards["competitor"] = memo.competitor_card(p, reading or comp)
+            elif reading:
+                national_story = asdict(memo.national_block(p, reading))
+        cut_stories, cut_details = [], {}
+        for plan in dict.fromkeys(cuts or []):
+            t = splits.plan_territory(reg, plan)
+            if t is None or t not in p.ok or not p.has("plan") or p.brand_id != "BXA":
+                continue
+            block = memo.cut_block(reg, p, {"territory": t, "plan": plan}, list(self.checks.get(t, {}).values()) or None)
+            cards[block.id], cut_details[block.id] = block.card, block.detail
+            cut_stories.append({"id": block.id, "territory": t, "title": block.title, "section": "\n".join(block.lines)})
         return {"bottom_line": bottom, "kpis": memo.kpis(p, self.proj, top), "details": {"1": memo.bottom_detail(top)},
-                "story_cards": cards, "story_details": {s["territory"]: self.story_detail.get(s["territory"], []) for s in told},
+                "story_cards": {**cards, **running_cards},
+                "story_details": {**{s["territory"]: self.story_detail.get(s["territory"], []) for s in told}, **cut_details, **running_details},
+                "cut_stories": cut_stories, "continuing_stories": running_stories, "national_story": national_story,
                 "next_checks": memo.next_checks(p, told, competitor),
                 "driver_timing": memo.driver_timing(told),
-                "charts": {"2": charts.trend(reg, p), "4": charts.coverage(reg, p), "stories": story_charts,
+                "charts": {**({"2": charts.trend(reg, p)} if p.has("national") else {}), "4": charts.coverage(reg, p), "stories": story_charts,
                            "competitor": charts.competitor(reg, p) if competitor else None}}
 
     def story_section(self, territory: str, n: int) -> str:
@@ -279,12 +317,16 @@ class RunSession:
         head = f"Story {_ORD.get(n, str(n))}: {stages.territory_change(self._reg(), self.p, t, facts)}"
         self.story_facts[t] = facts
         done = list(self.checks.get(t, {}).values())
-        lines = [head] + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
+        movers = splits.segment_line(self._reg(), self.p, t)  # brief-010 FR-003
+        lines = [head] + ([movers] if movers else []) + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
         lines.append(memo.without_next(self._status(t, closing=True)))  # its next check goes to §5
         self.story_detail[t] = memo.story_detail(self._reg(), self.p, t)  # folded, not in the story's text
         return "\n".join(lines)
 
     def competitor_section(self, lead: str) -> str:
+        self._reg()
+        if not self.p.has("national"):  # the competitor story is a national story
+            return ""
         facts: dict = {}
         text = stages.competitor_status(self._reg(), self.p, lead=lead, facts=facts) or ""
         self.competitor_facts = facts
@@ -330,6 +372,8 @@ class RunSession:
 
     def competitor_status(self) -> str:
         self._log("competitor_status")
+        if not self.p.has("national"):
+            return "This brief's levels leave out national figures, so the competitor story is not part of it."
         text = stages.competitor_status(self.reg, self.p)
         return self._out(text) if text else "Metacora is not a story in these weeks: not launched yet, or still a small share of the basket."
 
@@ -378,9 +422,9 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
     text = dict(structured_output=False)
 
     @server.tool(**text)
-    async def open_run(question: str, comparison: Comparison | None = None) -> str:
-        """Admin: start a run for one question. Pins the period and the data version. Callers only, not agents."""
-        return s.open_run(question, comparison)
+    async def open_run(question: str, comparison: Comparison | None = None, definition: Definition | None = None) -> str:
+        """Admin: start a run for one question under a brief definition. Pins the period and the data version. Callers only, not agents."""
+        return s.open_run(question, comparison, definition)
 
     @server.tool(**text)
     async def export_run() -> str:
@@ -401,9 +445,10 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
         return json.dumps(promotion.render_review(reg, s.p), default=str)
 
     @server.tool(**text)
-    async def memo_close(competitor: bool) -> str:
-        """Admin: the memo's bottom line and next checks as JSON, after the stories close. Callers only."""
-        return json.dumps(s.memo_close(competitor))
+    async def memo_close(competitor: bool, cuts: list[str] | None = None, running: list[str] | None = None) -> str:
+        """Admin: the memo's bottom line and next checks as JSON, after the stories close, with the plan cut cards
+        (by plan id) and the continuing cards (by territory) the brief keeps. Callers only."""
+        return json.dumps(s.memo_close(competitor, cuts, running))
 
     @server.tool(**text)
     async def story_section(territory: str, n: int) -> str:
