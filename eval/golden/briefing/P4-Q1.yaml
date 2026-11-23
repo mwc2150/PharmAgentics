@@ -14,7 +14,7 @@ story_text: As Magdalena, I want promotion tested with a verdict either way, so 
 given: a territory where promotion lapses and then returns.
 when: the brief tests promotion.
 then: promotion gets a "supported" verdict for the Great Lakes drop, with the size stated as an association and the method named.
-reference_answer: 'The release has no sustained BXA campaign push: rep calls and digital impressions never exceed 1.5 times their territory median, and sample spikes last a single week. The clearest read on promotion is its absence. In Great Lakes, aggregated rep calls fell from about 48 a week to about 20, and digital impressions averaged 915 against a median of 1,652. In the four weeks before Metacora launched, Great Lakes BXA TRx fell 16.5% while other territories rose 1.1%, about 120 TRx a week below trend. When calls returned on 2026-04-13, Great Lakes TRx jumped from 503 to 730 in one week.'
+reference_answer: 'The release has no sustained BXA campaign push: rep calls and digital impressions never exceed 1.5 times their territory median, and sample spikes last a single week. The clearest read on promotion is its absence. In Great Lakes, aggregated rep calls fell from 48.5 a week to 20.6, and digital impressions averaged 915 against a median of 1,652. Across the ten weeks of the period (2026-02-02 to 2026-04-06), Great Lakes BXA TRx averaged 17.9% below the four weeks before (2026-01-05 to 2026-01-26) while other territories fell 3.0%, 100.8 TRx a week below trend. When calls returned on 2026-04-13, Great Lakes TRx jumped from 503 to 730 in one week.'
 must_not_say:
   text: '"promotion caused a 120 TRx lift," or credit promotion in any week where its activity did not change.'
   phrases:
@@ -24,5 +24,58 @@ action: Magdalena uses the lapse as evidence that field and digital presence hol
 eval_items:
 - EV-4.5
 - EV-4.1
-facts: []
+facts:
+- id: gl_change_pct
+  value: -17.9
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: must
+  reviewed: false
+- id: gl_trx_week_2026_04_06
+  value: 503
+  sql: 'select (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start = DATE ''2026-04-06'')'
+  role: must
+  reviewed: false
+- id: gl_trx_week_2026_04_13
+  value: 730
+  sql: 'select (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start = DATE ''2026-04-13'')'
+  role: must
+  reviewed: false
+- id: other_territories_change_pct
+  value: -3.0
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1))'
+  role: context
+  reviewed: false
+- id: gl_rep_calls_before_per_week
+  value: 48.5
+  sql: 'select (select sum(rep_calls_aggregated) * 1.0 / count(distinct week_start) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'')'
+  role: context
+  reviewed: false
+- id: gl_rep_calls_after_per_week
+  value: 20.6
+  sql: 'select (select sum(rep_calls_aggregated) * 1.0 / count(distinct week_start) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'')'
+  role: context
+  reviewed: false
+- id: gl_digital_median
+  value: 1652
+  sql: 'select median(digital_impressions) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'''
+  role: context
+  reviewed: false
+- id: gl_digital_avg_gap
+  value: 915.0
+  sql: 'select (select sum(digital_impressions) * 1.0 / count(distinct week_start) from raw.promo_activity where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'')'
+  role: context
+  reviewed: false
+- id: gl_trend_loss_per_week
+  value: 100.8
+  sql: 'select -((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'') - (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') * (1 + (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-02-02'' and DATE ''2026-04-06'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''GREAT_LAKES'' and week_start between DATE ''2026-01-05'' and DATE ''2026-01-26'') - 1)) / 100.0))'
+  role: context
+  reviewed: false
+findings:
+- id: great_lakes_promotion_lapse
+  territory: GREAT_LAKES
+  direction: down
+  drivers_supported: [promotion]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P4-Q1

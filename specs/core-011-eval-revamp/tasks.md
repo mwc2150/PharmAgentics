@@ -1,0 +1,56 @@
+# Tasks: core-011 Eval Revamp
+
+Packets and file ownership are in `plan.md`.
+
+### Packet A: schema and scorers (FR-001 to FR-006)
+- [x] A1 `Fact` gains `role`, `tolerance`, `reviewed`; new `Finding`; `Case.findings`; `expectations()` gains `key_facts` and `findings`. Existing YAML loads unchanged.
+- [x] A2 `key_fact_recall` with tolerance; not scored without must facts; pooled run metric.
+- [x] A3 `finding_recall` and `false_drivers` over `sections[*].card`; not scored without cards or findings.
+- [x] A4 `brief_words`.
+- [x] A5 Not-scored cases stay out of the run mean (check MLflow's aggregation; log the mean over scored cases if needed).
+- [x] A6 Tests for each scorer, including the US1 and US2 acceptance cases; `golden_number_recall` unchanged.
+
+### Packet B: insights (FR-008)
+- [x] B1 `eval/harness/insights.py`: read-only stores, parent and child runs, per-case matrix by scorer.
+- [x] B2 Stuck, fallen, engine comparison, rerun spread, golden-version breaks; Markdown and JSON.
+- [x] B3 `python -m eval insights` subcommand; tests on a small SQLite fixture built in the test.
+
+### Packet C: Evaluation page (FR-009), after brief-008 merges
+- [x] C1 `cases` block in the telemetry export; API passes it to analysts and the tester only.
+- [x] C2 Per-case table on the Evaluation page; `tsc`, `vite build`, `tests/test_frontend_scope.py`.
+
+### Packet D: golden facts and findings (FR-007), after A's schema commit
+- [x] D1 For every Briefing case whose reference answer states numbers: a fact with SQL for each number it can recompute from the agent-visible data; `role` must for the numbers the story hinges on, context for the rest; `reviewed: false`.
+- [x] D2 Where the reference answer says "about X" or a rounded range and the SQL gives the exact value, write the exact value in the answer.
+- [x] D3 `findings` for each Briefing case from its own given, then and reference answer; `reviewed: false`.
+- [x] D4 CHANGELOG entry; `eval check` and `eval/tests/test_golden_integrity.py` pass.
+- [ ] D5 Michael reviews and flips `reviewed` (person task).
+
+### Packet E: story card fields, after brief-008 merges
+- [x] E1 Cards gain `territory`, `direction`, `drivers_supported`, `drivers_ruled_out` from tool verdicts, on both engines; answer text unchanged.
+
+### Packet F: two scorecards and honest matching (FR-011 to FR-014)
+- [x] F1 `KIND` for every scorer; insights and the Evaluation page group by kind.
+- [x] F2 `scope_match` with derived expected scope; not scored without `scope_proposal`.
+- [x] F3 "numbers lost by the agent" in insights, the export and the page.
+- [x] F4 Unit-aware matching; repeated golden numbers once; key-fact units from the reference or `_pct`.
+
+### Packet G: golden definitions (FR-015)
+- [x] G1 Windows the case text names go into `comparison` (C-005, C-009, C-010, C-022); house restatements from SQL (C-008, C-013, C-014, C-019); CHANGELOG; `reviewed: false`.
+- [ ] G2 Michael reviews the G edits with D5.
+
+### Packet H: targets, cuts and capability tags (FR-016 to FR-021; 2026-11-22 night grill)
+- [x] H0 Exact-value scoring (FR-016), `7a893e7`.
+- [x] H1 Schema: optional `cut` on `Finding`; optional `needs` on `Fact` and `Finding`; `eval check` validates both.
+- [x] H2 `finding_recall` and `false_drivers` honour `cut` (FR-017); story cards accept `cut` in both engines' card builders (field only, no new cards).
+- [x] H3 `TARGETS`, pooled metrics and target flags logged per run (FR-019).
+- [x] H4 `WORD_BUDGET` measured from the anchor briefs; `brief_words` reports both views; `over_word_budget` (FR-020, FR-021 wired but off until FR-006).
+- [x] H5 `eval insights` and the Evaluation page: below-target cases, misses split by `needs` (FR-018).
+- [x] H6 Tests for each; `eval check`; eval and frontend-scope tests; tsc and build.
+
+- Integration (Opus, 2026-11-22): word budget set to the measured maxima (836 analyst, 705 leader; `3a63f92`). Scripted run `ebb2952a8faf491cbffc5513c279d322` gated against `a5a4968270cb47af890796f2c2979c45`: exit 0, all seven 1.000. key_fact_recall_pooled 0.682, finding_recall_pooled 0.529, over_word_budget 2 (C-001, C-016). Full suite 948 passed (10 subtests).
+
+## Integration (Opus)
+- [x] I1 Merge A, B, D; full suite; one scripted run; gate (unchanged gated checks); `eval insights` over the brief-008 runs.
+- [x] I2 After brief-008 merges: C and E; one scripted and one Haiku run; two report-only runs, then propose `GATED` changes to Michael (FR-006). Runs a5a49682 and 727bc006; the GATED proposal waits for the golden review (D5, G2).
+- [x] I3 `/code-review`; pull request; `specs/README.md`, `eval/README.md` and `PROJECT_STATE.md` updated.

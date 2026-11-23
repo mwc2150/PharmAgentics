@@ -58,12 +58,27 @@ def _key(rid: str) -> str:
     return f"forecast_reports/{rid}.json"
 
 
+LOST_DRAFT = "Drafting stopped before it finished (the server restarted). Draft it again."
+
+
+def _live_key(rid: str) -> str:
+    return f"report/{rid}"
+
+
 def get(rid: str) -> dict | None:
+    """A report, with a draft lost to a restart marked as failed (and saved so), so the report is editable again."""
     try:
         text = backend().read(_key(rid))
     except KeyError:
         return None
-    return json.loads(text) if text else None
+    r = json.loads(text) if text else None
+    if r and r["job"].get("status") == "drafting" and forecast_store.lost(_live_key(rid), r["job"].get("started_at")):
+        with _LOCK:
+            r = json.loads(backend().read(_key(rid)) or "null") or r
+            if r["job"].get("status") == "drafting":
+                r["job"] = {"status": "failed", "message": LOST_DRAFT}
+                put(r)
+    return r
 
 
 def put(record: dict) -> dict:
@@ -180,6 +195,11 @@ def _version(r: dict, template: str, author: str, by: str, instruction: str | No
 
 def _draft_job(rid: str, instruction: str | None, model: str | None, by: str) -> None:
     """Runs in a background thread: a new version from the model (checked), or the code draft."""
+    with forecast_store.held(_live_key(rid)):
+        _draft(rid, instruction, model, by)
+
+
+def _draft(rid: str, instruction: str | None, model: str | None, by: str) -> None:
     engine = _engine()
     try:
         with _LOCK:
@@ -231,6 +251,7 @@ def _start_draft(r: dict, instruction: str | None, by: str) -> None:
     r["job"] = {"status": "drafting", "message": None, "started_at": now(),
                 "step": "The model is writing the prose for each section" if model else "Code is assembling the report"}
     put(r)
+    forecast_store.hold(_live_key(r["id"]))
     threading.Thread(target=_draft_job, args=(r["id"], instruction, model, by), daemon=True,
                      name=f"forecast-report-{r['id']}").start()
 

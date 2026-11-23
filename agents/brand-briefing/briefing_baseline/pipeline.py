@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pharmagentics.tools import DEFAULT_DB, Registry
 from pharmagentics.tools import charts, memo, projection, promotion, stages
 from pharmagentics.tools.checks import confidence
+from pharmagentics.tools.events import EventLog
 from pharmagentics.tools.lag_checks import run_checks
 from pharmagentics.tools.queries import name
 from pharmagentics.tools.registry import digits_outside_tokens
@@ -47,10 +48,12 @@ class Front:
     facts: dict = field(default_factory=dict)  # stage 3's claims by name, for the memo's blocks (brief-008)
 
 
-def answer(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> dict:
+def answer(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
+           events: EventLog | None = None) -> dict:
+    """The brief. `events` (brief-009), when given, records the run's steps as actor Code; it changes nothing else."""
     reg = Registry(db)
     try:
-        return _brief(reg, question, brand_id=brand_id, comparison=comparison)
+        return _brief(reg, question, brand_id=brand_id, comparison=comparison, events=events)
     finally:
         reg.close()
 
@@ -80,7 +83,8 @@ def triage(question: str, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: C
         reg.close()
 
 
-def run_with_plan(question: str, decision: dict, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> dict:
+def run_with_plan(question: str, decision: dict, db=DEFAULT_DB, brand_id: str = "BXA", *, comparison: Comparison | None = None,
+                  events: EventLog | None = None) -> dict:
     """Stages 4 to 6 on P1's decision: {plan_id, stories: [ids in order]}. Returns the envelope, the
     triage record (who made each call) and the stage flow."""
     from .triage import stage_flow, triage_record
@@ -97,7 +101,7 @@ def run_with_plan(question: str, decision: dict, db=DEFAULT_DB, brand_id: str = 
     left_out = [titles[s] for s in allowed if s not in order]
     reg = Registry(db)
     try:
-        envelope = _brief(reg, question, order=order, left_out=left_out, brand_id=brand_id, comparison=comparison)
+        envelope = _brief(reg, question, order=order, left_out=left_out, brand_id=brand_id, comparison=comparison, events=events)
     finally:
         reg.close()
     record = triage_record(plan, order)
@@ -112,11 +116,24 @@ def default_order(found: list[dict]) -> list[str]:
     return [story_id(s) for s in found[:MAX_STORIES]] + [COMPETITOR]
 
 
-def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None) -> Front | None:
+def _note(events: EventLog | None, step: str, *, tool: str | None = None, args: dict | None = None, verdict: str | None = None,
+          summary: str = "", text: str = "") -> None:
+    """One step of the scripted run for the event log (brief-009 FR-003): actor Code. A no-op without a log."""
+    if events is not None:
+        events.emit("Code", "code", step, tool=tool, args=args, verdict=verdict, summary=summary or text.split("\n")[0], text=text)
+
+
+_VERDICT = {"supported": "supported", "ruled_out": "ruled out", "insufficient": "inconclusive"}
+
+
+def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None,
+           events: EventLog | None = None) -> Front | None:
     p = stages.resolve(reg, question, brand_id, comparison=comparison)
     if not p.requested:
         return None
     out: list[str] = []
+    if events is not None:
+        events.claims = reg.claims  # the live list: a summary's tokens are filled from this run's own claims
 
     with span("1_load_and_pin", inputs={"question": question}, data_version=reg.data_version) as sp:
         out.append(f"Brief for {stages.describe(p)}. "
@@ -125,6 +142,8 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
             out.append(p.note)
         finish(sp, {"weeks": p.requested, "baseline_weeks": p.baseline, "baseline_source": p.baseline_source,
                     "territory": p.focus, "data_version": reg.data_version})
+    _note(events, "Pin the data and period", tool="open_run",
+          summary=f"Pinned data version {reg.data_version} and the {stages.describe(p)}.")
     if p.promotion_review:
         return Front(p, out, [], [])
 
@@ -133,6 +152,7 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
         restated = stages.restatements(reg, p)  # EV-1.2
         out += [health] + restated
         finish(sp, {"like_for_like_territories": p.ok})
+    _note(events, "Check the data", tool="feed_health", text="\n".join([health] + restated))
 
     with span("3a_competitive_intelligence") as sp:
         if p.calendar_note:
@@ -140,16 +160,20 @@ def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: C
         facts: dict = {}
         kpis = stages.kpis(reg, p, facts)
         out += kpis
+        _note(events, "Read the national figures", tool="national_kpis", text="\n".join(kpis))
         proj = projection.build(reg, p)  # a level for the memo; never a story (ADR 0001)
         found, quiet = ([], []) if p.calendar else stages.screen(reg, p)
         finish(sp, {"calendar_mode": bool(p.calendar), "candidates": [f["territory"] for f in found],
                     "projected": proj.territories("projected"), "estimated": proj.territories("estimated")})
+    _note(events, "Screen territories", tool="screen_territories", summary=(
+        "Calendar weeks: no territory story is opened." if p.calendar else
+        f"{len(found)} territor{'y' if len(found) == 1 else 'ies'} moved beyond the normal range; {len(quiet)} stayed within it."))
     return Front(p, out, found, quiet, health, restated, kpis, proj, facts)
 
 
 def _brief(reg: Registry, question: str, order: list[str] | None = None, left_out: list[str] = (),
-           brand_id: str = "BXA", *, comparison: Comparison | None = None) -> dict:
-    f = _front(reg, question, brand_id, comparison=comparison)
+           brand_id: str = "BXA", *, comparison: Comparison | None = None, events: EventLog | None = None) -> dict:
+    f = _front(reg, question, brand_id, comparison=comparison, events=events)
     if f is None:
         return _envelope(reg, stages.outside_release(stages.resolve(reg, question, brand_id=brand_id)), False, brand_id)
     p = f.p
@@ -161,6 +185,10 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
     notes: list[str] = []
     dropped: list[str] = []  # folded under §3's detail
 
+    if events is not None and order is not None:  # a run on the analyst's decision
+        events.emit("Person", "person", "Review the plan", story=None, summary=(
+            f"The analyst reviewed the plan and approved {len(order)} stor{'y' if len(order) == 1 else 'ies'}"
+            + (f", leaving out {len(left_out)}." if left_out else ".")))
     with span("4a_investigation") as sp:
         if p.calendar:
             notes.append("No story is opened for a calendar week. Expect a rebound in the next regular week.")
@@ -170,18 +198,25 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
                 if sid == COMPETITOR:
                     comp_facts: dict = {}
                     comp = stages.competitor_status(reg, p, lead=f"Story {_ord(len(blocks) + 1)}: competitor Metacora", facts=comp_facts)
+                    if comp and events is not None:
+                        events.story = sid
+                        _note(events, "Check the competitor", tool="competitor_status", text=comp)
                     if comp:
                         blocks.append(memo.StoryBlock(COMPETITOR, "Competitor Metacora", [memo.without_next(comp)],
                                                       chart=charts.competitor(reg, p), card=memo.competitor_card(p, comp_facts)))
                         competitor = True
                     continue
                 s = by_id[sid]
+                if events is not None:
+                    events.story = sid
                 with span(f"story_{len(blocks) + 1}_{s['territory']}", inputs={"territory": s["territory"], "kind": s["kind"]}) as story_sp:
-                    block, info = _story(reg, len(blocks) + 1, s, p)
+                    block, info = _story(reg, len(blocks) + 1, s, p, events)
                     finish(story_sp, {"abstained": info["confidence"] == "Low"})
                 blocks.append(block)
                 told.append(info)
                 abstained |= info["confidence"] == "Low"
+            if events is not None:
+                events.story = None
             if left_out:
                 notes.append(f"Left out of this brief by the analyst: {', '.join(left_out)}.")
             if not blocks and not left_out:
@@ -207,6 +242,7 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
             details={"1": memo.bottom_detail(top), "2": nums["detail"], "3": dropped, "4": lim["detail"]})
         template, sections = memo.compose(parts)
         finish(sp, {"template_chars": len(template), "claims": len(reg.claims), "sections": [s["number"] for s in sections]})
+    _note(events, "Write the brief", summary="Code wrote every section from claim tokens; no model was used.", text=template)
 
     with span("6_verification") as sp:
         bad = digits_outside_tokens(template)
@@ -214,15 +250,19 @@ def _brief(reg: Registry, question: str, order: list[str] | None = None, left_ou
         if bad:
             raise AssertionError(f"digit outside a claim token: {bad[:3]}")
     text, spans = reg.render_cited(template)
+    _note(events, "Verify the numbers", verdict="done", summary="Every number in the brief is a claim token filled from the data.")
     return dict(_envelope(reg, text, abstained, p.brand_id), citations=spans,  # citations: where each claim sits (UI only)
                 sections=memo.render_sections(sections, reg.claims))
 
 
-def _story(reg, n, s, p) -> tuple[memo.StoryBlock, dict]:
+def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBlock, dict]:
     """One story: head, the checks in order, the closing confidence. Its next check goes to §5."""
     t = s["territory"]
     checks = run_checks(reg, t, p.weeks, p.baseline, brand_id=p.brand_id, use_selected_baseline=p.comparison is not None)
     level, lead = confidence(checks)
+    for c in checks:  # brief-009: one event per check, in the order run
+        _note(events, "Check the data" if c.driver == "data" else "Test a driver", tool=f"check_{c.driver}", args={"territory": t},
+              verdict=_VERDICT.get(c.verdict), summary=c.text, text=c.text)
     facts: dict = {}
     head = f"Story {_ord(n)}: {stages.territory_change(reg, p, t, facts)}"
     lines = [head, "Checked, in this order:"] + [f"- {c.text}" for c in checks]
@@ -233,11 +273,12 @@ def _story(reg, n, s, p) -> tuple[memo.StoryBlock, dict]:
     else:
         verb = "Leading driver" if level == "High" else "Candidate drivers"
         lines.append(f"Confidence: {level}. {verb}: {lead}.")
+    _note(events, "Close the story", tool="story_confidence", args={"territory": t}, verdict="done", summary=lines[-1])
     plan = next((c.detail["plan"] for c in checks if c.driver == "access" and c.detail), None)
     chart = charts.story(reg, p, t, supported if level != "Low" else [], plan)
     detail = memo.story_detail(reg, p, t)
     block = memo.StoryBlock(story_id(s), name(t), lines, chart=chart, detail=detail,
-                            card=memo.story_card(name(t), facts, level, [c.driver for c in checks]))
+                            card=memo.story_card(name(t), facts, level, [c.driver for c in checks], territory=t, checks=checks))
     return block, {
         "territory": t, "confidence": level, "drivers": supported, "lags": lags}
 

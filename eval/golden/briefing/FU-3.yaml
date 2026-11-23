@@ -27,4 +27,10 @@ facts: []
 follow_up:
   question: What about BXE in South Central?
   then: the answer says the brief covers BXA, New England, week of 2026-05-04, leaves the brief unchanged, and offers a brief for BXE in South Central.
+must_say:
+  phrases:
+  - 'stays as it is|leaves the brief unchanged'
+  - BXE in South Central
+  - New England
+  reviewed: false
 source: specs/brief-006-follow-ups/spec.md#FR-013

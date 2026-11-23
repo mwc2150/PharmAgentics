@@ -114,6 +114,10 @@ class BriefingResult(BaseModel):
     citations: list[dict[str, int]] | None = None  # where each claim value sits in `answer`: {start, end, claim}
     # brief-003: the memo's sections with charts and the data behind them; leaders get views.leadership_sections
     sections: list[dict[str, Any]] | None = None
+    # brief-009, analyst view only: the run's event log (pharmagentics.tools.events) and, for each claim, the seq of the
+    # event that produced it. Leaders get views.process_summary instead.
+    events: list[dict[str, Any]] | None = None
+    claim_events: list[int | None] | None = None
 
 
 class ReleaseContext(BaseModel):
@@ -172,6 +176,13 @@ class WorkerPoll(BaseModel):
 
     model: str | None = Field(default=None, max_length=120)
     worker: str = Field(default="worker", min_length=1, max_length=60, pattern=r"^[\w.@-]+$")  # which teammate's machine
+
+
+class WorkerProgress(BaseModel):
+    """New run events of a running job (brief-009). Cleaned against the event schema before they are stored."""
+    model_config = ConfigDict(extra="forbid")
+
+    events: list[dict[str, Any]] = Field(default_factory=list, max_length=200)
 
 
 class WorkerResult(BaseModel):

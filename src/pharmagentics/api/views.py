@@ -60,7 +60,7 @@ LEADERSHIP_FIELDS = ("brief_id", "engine", "system", "brand_id", "territory_id",
                      "data_version", "abstained", "review_status", "reviewed_at")
 LEADERSHIP_SECTIONS = ("1", "2", "3", "4", "5", "6")  # §4 in short, §6 as the Assumptions; story subsections follow §3
 SECTION_FIELDS = ("number", "title", "text", "prose")  # allow-list: no claims, citations or evidence
-KPI_FIELDS, ROW_FIELDS, CARD_FIELDS = ("label", "value", "detail", "direction"), ("cells", "basis"), ("headline", "confidence", "drivers_checked")
+KPI_FIELDS, ROW_FIELDS, CARD_FIELDS = ("label", "value", "detail", "direction"), ("cells", "basis"), ("headline", "confidence", "drivers_checked", "territory", "direction", "drivers_supported", "drivers_ruled_out")
 TABLE_FIELDS = ("columns", "note")  # blocks (brief-008): values and labels only, never their citations or the detail
 CHART_FIELDS = ("kind", "weeks", "caption", "explanation", "series", "band", "rows")  # no table, query or panel table
 
@@ -137,12 +137,32 @@ def leadership_sections(sections: list[dict] | None) -> list[dict] | None:
     return out
 
 
+def process_summary(record: dict) -> str | None:
+    """One line on how the brief was made, built by code for leaders (brief-009 FR-005): the engine, how many stories
+    and checks, and whether the analyst reviewed it (no date: a UTC date reads a day late in the evening). It carries no step, tool, argument or prompt."""
+    result = record["result"]
+    who = "the agent team" if result.get("engine") == "agent" else "the scripted engine"
+    events = result.get("events") or []
+    if not events and not result.get("engine"):
+        return None
+    parts = []
+    if events:
+        stories = len({e["story"] for e in events if e.get("story")})
+        checks = sum(e.get("step") in ("Check the data", "Test a driver") and (e.get("tool") or "").startswith("check_") for e in events)
+        parts = [f"{stories} stor{'y' if stories == 1 else 'ies'}", f"{checks} check{'' if checks == 1 else 's'}"]
+    line = f"Built by {who}" + (": " + ", ".join(parts) if parts else "")
+    if record.get("review_status") == "approved" and record.get("reviewed_at"):
+        line += "; reviewed by the analyst"  # the date is the viewer's own: the UI adds "on <date>" from reviewed_at, in local time
+    return line + "."
+
+
 def leadership(record: dict) -> dict:
     """Build the leadership response from a stored brief. Allow-list, so a new field on the
     analyst result never reaches a leader by accident."""
     result = record["result"]
     out = {k: (record.get(k) if k in record else result.get(k)) for k in LEADERSHIP_FIELDS}
     out["view"] = "leadership"
+    out["process_summary"] = process_summary(record)
     out["summary"] = executive_summary(result["answer"], result.get("sections"))
     out["sections"] = leadership_sections(result.get("sections"))
     return out

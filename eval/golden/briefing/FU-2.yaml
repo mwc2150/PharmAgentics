@@ -27,4 +27,10 @@ facts: []
 follow_up:
   question: Split §3.1 by plan.
   then: the scripted engine says the split is not in the brief and offers the agent; the agent runs a governed query, and every new number is a claim with its evidence.
+must_say:
+  phrases:
+  - not in the brief
+  - new governed query
+  - claim with its evidence
+  reviewed: false
 source: specs/brief-006-follow-ups/spec.md#FR-013

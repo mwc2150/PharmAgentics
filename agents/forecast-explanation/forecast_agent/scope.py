@@ -126,7 +126,7 @@ def parse_scope(question: str, first: str, latest: str, territory: str | None = 
     if territory is None:
         territory = next((tid for tid, label in TERRITORY_NAMES.items()
                           if re.search(rf"\b{re.escape(label)}\b", question, re.I)), None)
-    scope = Scope(question=question, weeks=sorted(weeks), territory=territory or "NATIONAL", intent=intent, notes=notes)
+    scope = Scope(question=question, weeks=sorted(set(weeks)), territory=territory or "NATIONAL", intent=intent, notes=notes)
     if _OTHER_PRODUCT.search(question):
         scope.out_of_scope = ("Only Cardiovela (BXA) has a locked forecast in this release. Competitor products appear "
                               "here only as possible drivers of the Cardiovela miss.")

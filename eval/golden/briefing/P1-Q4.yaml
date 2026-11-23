@@ -24,5 +24,38 @@ eval_items:
 - EV-6.1
 - EV-6.2
 - EV-6.3
-facts: []
+facts:
+- id: plan_nbrx_change_pct
+  value: -37
+  sql: 'select (100.0 * ((select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'') / (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'') - 1))'
+  role: must
+  reviewed: false
+- id: plan_nbrx_before_per_week
+  value: 23.8
+  sql: 'select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-06-02'' and DATE ''2025-08-01'')'
+  role: must
+  reviewed: false
+- id: plan_nbrx_after_per_week
+  value: 15.0
+  sql: 'select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = ''BXA'' and plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and week_start between DATE ''2025-08-04'' and DATE ''2025-10-27'')'
+  role: must
+  reviewed: false
+- id: plan_tier_before_change
+  value: 2
+  sql: 'select formulary_tier from raw.access_status_monthly where plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and product_id = ''BXA'' and month = DATE ''2025-07-01'''
+  role: context
+  reviewed: false
+- id: plan_tier_after_change
+  value: 3
+  sql: 'select formulary_tier from raw.access_status_monthly where plan_id = ''SYN_MID_ATLANTIC_MEDICARE_PART_D_1'' and product_id = ''BXA'' and month = DATE ''2025-08-01'''
+  role: context
+  reviewed: false
+findings:
+- id: mid_atlantic_plan_nbrx_drop
+  territory: MID_ATLANTIC
+  direction: down
+  drivers_supported: [access]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
 source: docs/planning/user-stories.md#P1-Q4
