@@ -261,7 +261,7 @@ def duplicate_tie_out(reg: Registry, p: Period, week: str, terr: str) -> str | N
     raw = reg.claim("validate_feed", f"select naive_trx {base}", "int", scope="raw, before deduplication (data-quality tie-out)", **where)
     once = reg.claim("validate_feed", f"select deduplicated_trx {base}", "int", scope="each duplicated key counted once (data-quality tie-out)", **where)
     over = reg.claim("validate_feed", f"select naive_trx - deduplicated_trx {base}", "int", scope="overstatement of the raw sum (data-quality tie-out)", **where)
-    pct = reg.claim("validate_feed", f"select 100.0 * (naive_trx - deduplicated_trx) / deduplicated_trx {base}", "pct1",
+    pct = reg.claim("validate_feed", f"select 100.0 * (naive_trx - deduplicated_trx) / deduplicated_trx {base}", "pct",
                     scope="overstatement of the raw sum (data-quality tie-out)", **where)
     return (f"Raw, before deduplication, {q.name(terr)} {p.brand_id} TRx sums to {raw}; with each duplicated key counted once it is {once}, "
             f"so the raw sum overstates it by {over} TRx ({pct}). Do not quote the raw sum.")
@@ -290,7 +290,7 @@ def restatements(reg: Registry, p: Period, facts: list | None = None) -> list[st
         old = reg.claim("get_restatement", sel("trx_signed_off"), "int", **scope)
         new = reg.claim("get_restatement", sel("trx_restated"), "int", **scope)
         delta = reg.claim("get_restatement", sel("abs(trx_restated - trx_signed_off)"), "int", **scope)
-        pct = reg.claim("get_restatement", sel("100.0 * abs(trx_restated - trx_signed_off) / trx_signed_off"), "pct1", **scope)
+        pct = reg.claim("get_restatement", sel("100.0 * abs(trx_restated - trx_signed_off) / trx_signed_off"), "pct", **scope)
         diff = reg.scalar(sel("trx_restated - trx_signed_off")) or 0
         direction = "up" if diff > 0 else "down" if diff < 0 else "flat"
         out.append(f"Restated: {q.name(t)} {p.brand_id} TRx for the week of {w} was {old} when first reported and is now {new}, "

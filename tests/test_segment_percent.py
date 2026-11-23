@@ -80,16 +80,16 @@ def test_p4_q2_states_both_must_state_facts(review):
     assert stated == total == 2
 
 
-@pytest.mark.parametrize("fact_id, printed", [("gl_cash_change_pct", "Cash down 31.4% (small cell: noisy)"),
-                                              ("se_commercial_change_pct", "Commercial down 30.1%")])
-def test_the_printed_value_equals_the_golden_sql_at_one_decimal(review, reg, fact_id, printed):
+@pytest.mark.parametrize("fact_id, printed", [("gl_cash_change_pct", "Cash down 31% (small cell: noisy)"),
+                                              ("se_commercial_change_pct", "Commercial down 30%")])
+def test_the_printed_value_equals_the_golden_sql_at_its_precision(review, reg, fact_id, printed):
     """Great Lakes cash on 2026-02-02 to 02-23 against 2026-01-05 to 01-26, Southeast commercial on 2026-08-03 to 08-31
-    against July: what the review prints is the golden SQL's value (exact -31.4 and -30.1)."""
+    against July: what the review prints is the golden SQL's value (exact -31.4 and -30.1, printed whole)."""
     env, expected = review
     sql = next(f.sql for f in golden("P4-Q2").facts if f.id == fact_id)  # the golden query, run on the governed view
     exact = reg.scalar(sql)
     assert exact == pytest.approx(next(f["exact"] for f in expected["key_facts"] if f["id"] == fact_id))
-    assert printed.split(" down ")[1].split("%")[0] == f"{abs(exact):.1f}"
+    assert printed.split(" down ")[1].split("%")[0] == f"{abs(exact):.0f}"  # Briefing percent: whole from 10% (brief-008 FR-016)
     assert printed in env["answer"]
 
 
@@ -97,8 +97,8 @@ def test_the_review_reads_the_lapse_and_its_first_four_weeks(review):
     env, _ = review
     lines = movers_lines(env)
     assert len(lines) == 2 and all(x.startswith("Over the lapse, by channel:") and "In its first four weeks, by channel:" in x for x in lines)
-    assert "Cash down 29.7% (small cell: noisy)" in lines[0] and "Cash down 31.4% (small cell: noisy)" in lines[0]
-    assert "Commercial down 30.1%" in lines[1] and "Commercial down 29.0%" in lines[1]
+    assert "Cash down 30% (small cell: noisy)" in lines[0] and "Cash down 31% (small cell: noisy)" in lines[0]
+    assert "Commercial down 30%" in lines[1] and "Commercial down 29%" in lines[1]
 
 
 def test_the_review_never_quotes_a_small_cell_without_its_flag(review):
@@ -130,8 +130,8 @@ def test_no_digit_stands_outside_a_claim_token_in_the_movers(review):
 def test_a_story_names_at_most_two_channel_and_specialty_movers_in_percent(story):
     env, _ = story
     line = next(x for x in env["answer"].splitlines() if x.startswith("By channel:"))
-    assert line == ("By channel: Medicaid down 24.9%, Commercial down 16.2%, Cash too small to quote; "
-                    "by specialty: Internal medicine down 21.7%, Primary care down 19.7%.")
+    assert line == ("By channel: Medicaid down 25%, Commercial down 16%, Cash too small to quote; "
+                    "by specialty: Internal medicine down 22%, Primary care down 20%.")
     assert line.count("%") == 4
 
 
@@ -145,10 +145,10 @@ def test_the_story_line_comes_after_the_head_and_before_the_checks(story):
 def test_a_small_cell_is_withheld_in_a_story_and_flagged_in_the_review(reg):
     """Cash in Great Lakes is 48 TRx a week before and 33 during: a small cell, named with no number in a story."""
     p = period(reg, GL_FOUR, GL_BEFORE)
-    assert reg.render(splits.mover_text(reg, p, "GREAT_LAKES", "channel")) == "Medicaid down 24.6%, Commercial down 14.4%, Cash too small to quote"
+    assert reg.render(splits.mover_text(reg, p, "GREAT_LAKES", "channel")) == "Medicaid down 25%, Commercial down 14%, Cash too small to quote"
     assert not [c for c in reg.claims if c["labels"].get("cut") == "channel:CASH"]
     assert (reg.render(splits.mover_text(reg, p, "GREAT_LAKES", "channel", quote_small=True))
-            == "Cash down 31.4% (small cell: noisy), Medicaid down 24.6%")
+            == "Cash down 31% (small cell: noisy), Medicaid down 25%")
 
 
 def test_the_story_claims_carry_the_channel_and_specialty_labels(story):
@@ -160,7 +160,7 @@ def test_the_story_claims_carry_the_channel_and_specialty_labels(story):
 def test_the_movers_are_the_largest_absolute_changes_in_order(reg):
     p = period(reg, GL_FOUR, GL_BEFORE)
     assert [c["cut"] for c in splits._cells(reg, p, "GREAT_LAKES", "specialty")[:3]] == ["CARDIOLOGY", "INTERNAL_MEDICINE", "PRIMARY_CARE"]
-    assert reg.render(splits.mover_text(reg, p, "GREAT_LAKES", "specialty")) == "Cardiology down 20.0%, Internal medicine down 19.9%"
+    assert reg.render(splits.mover_text(reg, p, "GREAT_LAKES", "specialty")) == "Cardiology down 20%, Internal medicine down 20%"
 
 
 # a grain without channel or specialty shows none -------------------------------------------------------------------

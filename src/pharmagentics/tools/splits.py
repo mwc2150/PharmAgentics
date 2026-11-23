@@ -188,10 +188,10 @@ def cut_figures(reg: Registry, p: Period, territory: str, plan: str) -> dict:
             measures.append({"measure": m, "label": measure_label(m), "word": word(change),
                              "before": reg.claim("get_plan_metric", b, fmt, **args),
                              "after": reg.claim("get_plan_metric", x, fmt, **args),
-                             "pct": reg.claim("get_plan_metric", q.pct_change(x, b), "pct1", **args)})
+                             "pct": reg.claim("get_plan_metric", q.pct_change(x, b), "pct", **args)})
     tx, tb = q.mean_weekly(W, terrs=[territory], product=brand, col=p.col), q.mean_weekly(B, terrs=[territory], product=brand, col=p.col)
     t_change = reg.scalar(q.pct_change(tx, tb)) or 0
-    t_pct = reg.claim("get_metric", q.pct_change(tx, tb), "pct1", territory=territory, scope="the territory, " + measure_label(p.col))
+    t_pct = reg.claim("get_metric", q.pct_change(tx, tb), "pct", territory=territory, scope="the territory, " + measure_label(p.col))
     return {"measures": measures, "territory_word": word(t_change), "territory_pct": t_pct}
 
 
@@ -248,7 +248,7 @@ def mover_text(reg: Registry, p: Period, territory: str, by: str, *, quote_small
     for c in named:
         token = reg.claim("get_segment_metric", q.pct_change(_cell_mean(p, territory, by, c["cut"], p.weeks),
                                                            _cell_mean(p, territory, by, c["cut"], p.baseline)),
-                          "pct1", territory=territory, by=by, cut=c["cut"], measure=measure_label(p.col),
+                          "pct", territory=territory, by=by, cut=c["cut"], measure=measure_label(p.col),
                           small_cell=c["small"])
         parts.append(f"{_name(c['cut'])} {word(c['change'])} {token}" + (" (small cell: noisy)" if c["small"] else ""))
     if not quote_small:

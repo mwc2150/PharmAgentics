@@ -94,8 +94,8 @@ def test_the_golden_plan_facts_and_the_cut_finding_are_stated(briefs, story):
 def test_the_cut_text_states_each_measure_the_definition_holds(briefs):
     env, _ = briefs["P1-Q4"]
     text = cut_sections(env)[0]["text"]
-    assert "new patients (NBRx) averaged 15.9 a week on the comparison weeks against 23.8 before (down 33.1%)" in text
-    assert "TRx averaged 145 a week on the comparison weeks against 183 before (down 20.7%)" in text
+    assert "new patients (NBRx) averaged 15.9 a week on the comparison weeks against 23.8 before (down 33%)" in text
+    assert "TRx averaged 145 a week on the comparison weeks against 183 before (down 21%)" in text
     assert "Confidence: High. Leading driver: access." in text
     assert "Checked for this plan" in cut_sections(env)[0]["detail"] and "restrictions" in cut_sections(env)[0]["detail"]
     one, _ = briefs["P2-Q2"]
