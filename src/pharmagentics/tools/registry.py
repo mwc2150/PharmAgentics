@@ -8,7 +8,9 @@ Rules (constitution Principle I; Briefing B-III, B-IV):
 from __future__ import annotations
 
 import hashlib
+import json
 import re
+import threading
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -26,7 +28,6 @@ ALLOWED = {
     "raw.market_share_weekly", "raw.restatement_log", "raw.forecast_vs_actual_weekly",
     "metadata.import_manifest", "metadata.import_runs",
 }
-_RELATION = re.compile(r"\b(raw|reporting|metadata)\.([a-z_0-9]+)", re.I)
 
 def _half_up(value: float, decimals: int, percent: bool = False) -> str:
     """Round half up, the convention the Evaluation Pack and the harness use (Python's round() goes to even)."""
@@ -34,9 +35,16 @@ def _half_up(value: float, decimals: int, percent: bool = False) -> str:
     return f"{d:,.{decimals}f}" + ("%" if percent else "")
 
 
+def _pct(value: float) -> str:
+    """The Briefing percentage (brief-008 FR-016): a whole number from 10% up, one decimal below. The cut is made
+    on the rounded value, so 9.96 prints as 10%, not 10.0%."""
+    return _half_up(value, 0, percent=True) if abs(float(_half_up(value, 1, percent=True)[:-1])) >= 10 else _half_up(value, 1, percent=True)
+
+
 FORMATS = {
     "int": lambda v: _half_up(v, 0),
-    "pct1": lambda v: _half_up(v, 1, percent=True),
+    "pct1": lambda v: _half_up(v, 1, percent=True),  # Forecast's format, unchanged
+    "pct": _pct,  # Briefing's
     "dec2": lambda v: _half_up(v, 2),
     "dec3": lambda v: _half_up(v, 3),
 }
@@ -46,16 +54,56 @@ class Refused(Exception):
     """A query the governance rules do not allow."""
 
 
+_parser = threading.local()  # one in-memory DuckDB per thread, used only to parse queries
+
+
+def _tree(body: str) -> dict:
+    """DuckDB's own parse of a query, so quoting, spacing and comments cannot hide a relation from the check."""
+    con = getattr(_parser, "con", None)
+    if con is None:
+        con = _parser.con = duckdb.connect(":memory:", config={"enable_external_access": False})
+    return json.loads(con.execute("select json_serialize_sql(?)", [body]).fetchone()[0])
+
+
+def _references(node, tables: list[tuple[str, str]], functions: list[str], ctes: set[str]) -> None:
+    if isinstance(node, dict):
+        kind = node.get("type")
+        if kind == "BASE_TABLE":
+            tables.append(((node.get("catalog_name") or "") + "|" + (node.get("schema_name") or ""), node.get("table_name") or ""))
+        elif kind == "TABLE_FUNCTION":
+            functions.append(((node.get("function") or {}).get("function_name")) or "a table function")
+        for entry in (node.get("cte_map") or {}).get("map") or []:
+            ctes.add(str(entry.get("key", "")).lower())
+        for value in node.values():
+            _references(value, tables, functions, ctes)
+    elif isinstance(node, list):
+        for value in node:
+            _references(value, tables, functions, ctes)
+
+
 def check_sql(sql: str) -> None:
     body = sql.strip().rstrip(";").strip()
     if not re.match(r"(?is)^(select|with)\b", body) or ";" in body:
         raise Refused("only a single SELECT is allowed")
-    relations = {f"{s}.{t}".lower() for s, t in _RELATION.findall(body)}
-    if not relations:
-        raise Refused("a query must read a governed relation")
-    refused = relations - ALLOWED
+    tree = _tree(body)
+    if tree.get("error") or len(tree.get("statements") or []) != 1:
+        raise Refused("only a single SELECT is allowed" if not tree.get("error")
+                      else f"the query does not parse: {str(tree.get('error_message', ''))[:120]}")
+    tables, functions, ctes = [], [], set()
+    _references(tree, tables, functions, ctes)
+    if functions:  # read_csv, glob, duckdb_tables() and the like reach past the governed views
+        raise Refused(f"table functions are not allowed: {', '.join(sorted(set(functions)))}")
+    relations, refused = set(), set()
+    for where, table in tables:
+        catalog, schema = where.split("|")
+        if not catalog and not schema and table.lower() in ctes:
+            continue  # a name the query's own WITH clause defines
+        name = f"{schema}.{table}".lower()
+        (relations if not catalog and name in ALLOWED else refused).add(name if schema else table.lower())
     if refused:
         raise Refused(f"relation not allowed: {', '.join(sorted(refused))}")
+    if not relations:
+        raise Refused("a query must read a governed relation")
 
 
 def data_version(con) -> str:
@@ -72,6 +120,8 @@ class Registry:
     """One per run: pins the data version and collects evidence items and claims."""
 
     def __init__(self, db: Path | str = DEFAULT_DB):
+        # Plain read-only: DuckDB refuses a second connection to one file with a different config, and the eval scorers
+        # open the same file in this process. check_sql refuses table functions (read_csv and the like) instead.
         self.con = duckdb.connect(str(db), read_only=True)
         self.data_version = data_version(self.con)
         self.evidence: list[dict] = []
@@ -155,6 +205,9 @@ def digits_outside_tokens(template: str) -> list[str]:
     """Verifier rule (FR-008): a digit may appear only inside a claim token or in an ISO date."""
     stripped = re.sub(r"\{c\d+\}", " ", template)
     stripped = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", stripped)
-    # Identifiers that mix letters and digits (a data version, a plan ID) are not measurements.
-    stripped = re.sub(r"\b\w*[A-Za-z_]\w*\d\w*\b|\b\d+[A-Za-z_]\w*\b", " ", stripped)
+    # Identifiers are not measurements: a name that starts with a letter (plan SYN_X_1, BXA) and a hex hash of at
+    # least eight characters (a data version such as 06bcba77fbe1). A word that starts with a digit is a number
+    # however it ends ("12k", "3x", "300TRx", "2nd"), so it stays in and is refused.
+    stripped = re.sub(r"(?<![\w.,])[A-Za-z_]\w*", " ", stripped)
+    stripped = re.sub(r"\b(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{8,}\b", " ", stripped)
     return re.findall(r"\S*\d\S*", stripped)

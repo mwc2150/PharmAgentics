@@ -5,6 +5,7 @@ The data runs from {first} to {latest}. Today is the week of {latest}; read rela
 - period_start and period_end are calendar dates (YYYY-MM-DD) covering what the question asks about. A month, quarter, season or year means its whole span: "August 2026" is 2026-08-01 to 2026-08-31. Only a single day or "the week of" a day is one week: give that date for both. If the question names no period, give {latest} for both.
 - territory is one of: {territories}. Leave it empty when the question names no territory or asks about the national picture.
 - comparison_weeks is how many weeks before the period the analyst wants to compare with, a whole number from 1 to 13. Use 4 unless the question says otherwise ("against the previous eight weeks" is 8).
+- comparison_kind is "last_year" only when the question asks to compare with the same weeks a year earlier; otherwise "previous".
 - promotion_review is true only when the question is about promotion, campaigns, reach, response or return on spend across the whole release; otherwise false.
 
 Examples (today is the week of 2026-10-05):

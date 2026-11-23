@@ -187,7 +187,8 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
     lines = [f"From {lapse.start} to {lapse.end}, aggregated calls in {name} averaged {during} a week against {before} before. "
              f"Digital impressions averaged {digital} against a release median of {median}."]
     card = {"headline": f"{name}: aggregated calls fell from {before} to {during} a week.", "confidence": "Low",
-            "drivers_checked": ["promotion"]}
+            "drivers_checked": ["promotion"], "territory": t, "direction": "down",  # calls fell: the lapse itself
+            "drivers_supported": [], "drivers_ruled_out": [], "cut": None}  # no TRx comparison: promotion is inconclusive
     detail: list[str] = []
     ok = _reportable(reg, B + W)
     peers = [other for other in ok if other != t]
@@ -197,22 +198,28 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
         px, pb = q.mean_weekly(W, terrs=peers, product=brand), q.mean_weekly(B, terrs=peers, product=brand)
         change, peer = reg.scalar(q.pct_change(x, b)) or 0, reg.scalar(q.pct_change(px, pb)) or 0
         trx, base = reg.claim("get_metric", x, "int", **fields), reg.claim("get_metric", b, "int", **fields)
-        pct = reg.claim("get_metric", q.pct_change(x, b), "pct1", **fields)
-        peer_pct = reg.claim("get_metric", q.pct_change(px, pb), "pct1", scope="other territories", **fields)
+        pct = reg.claim("get_metric", q.pct_change(x, b), "pct", **fields)
+        peer_pct = reg.claim("get_metric", q.pct_change(px, pb), "pct", scope="other territories", **fields)
         gap_sql = f"select {q.sub(x)} - {q.sub(b)} * (1 + {q.sub(q.pct_change(px, pb))} / 100)"
-        gap_value = reg.scalar(gap_sql) or 0
+        gap_value = reg.scalar(gap_sql)  # None when the gap cannot be computed: promotion is then inconclusive
+        below = gap_value is not None and gap_value < 0
         gap = reg.claim("get_metric", f"select abs({q.sub(gap_sql)})", "int", metric="weekly TRx gap vs peer trend", **fields)
         lines.append(f"{brand} TRx averaged {trx} a week during the lapse against {base} before ({stages.word(change)} {pct}), "
                      f"while the other territories were {stages.word(peer)} {peer_pct}. TRx ran {gap} a week "
-                     f"{_direction(gap_value, 'above', 'below')} the other territories' trend. This is an association.")
-        if gap_value < 0:
+                     f"{_direction(gap_value or 0, 'above', 'below')} the other territories' trend. This is an association.")
+        if below:
             gaps.append((gap, abs(gap_value)))
         verb = {"up": "rose", "down": "fell"}.get(stages.word(change), "held flat at")
         card.update(headline=f"{name}: aggregated calls fell from {before} to {during} a week, and {brand} TRx {verb} {pct}.",
-                    confidence="Medium")
+                    confidence="Medium", direction=stages.word(change),  # the territory's own TRx move
+                    # TRx below the other territories' trend is the association the brief tells (the gap it carries to the
+                    # bottom line); TRx that kept pace with them rules the lapse out as the cause of a TRx move.
+                    drivers_supported=["promotion"] if below else [],
+                    drivers_ruled_out=["promotion"] if gap_value is not None and gap_value >= 0 else [])
         detail = splits.readable_lines(reg, period, t)
     else:
         lines.append("The feed gate leaves too little like-for-like TRx for this lapse.")
+        card["direction"] = None  # no TRx claim was made, so the card names no direction
     if lapse.resumed:
         weeks = [lapse.end, lapse.resumed]
         ok = _reportable(reg, weeks)
@@ -222,7 +229,7 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
             peers = [other for other in ok if other != t]
             if peers:
                 change_sql = q.pct_change(q.trx_sum([weeks[1]], terrs=peers), q.trx_sum([weeks[0]], terrs=peers))
-                move = reg.claim("get_metric", change_sql, "pct1", scope="other territories", weeks=weeks)
+                move = reg.claim("get_metric", change_sql, "pct", scope="other territories", weeks=weeks)
                 line += f", while the other territories were {stages.word(reg.scalar(change_sql))} {move}"
             lines.append(line + ".")
     return memo.StoryBlock(f"promotion:{t}:{lapse.start}", f"{name} promotion lapse", lines, card=card, detail=detail)

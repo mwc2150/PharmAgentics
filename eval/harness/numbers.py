@@ -21,7 +21,7 @@ _TOKEN = re.compile(r"[-−–]?\d[\d,]*(?:\.\d+)?%?|[a-z]+(?:[-'][a-z]+)*")
 class Number:
     value: float
     decimals: int
-    percent: bool
+    percent: bool | None  # None: the source cannot say (a bare fact value), so unit is not compared
     text: str
 
 
@@ -59,12 +59,35 @@ def same(a: Number, b: Number) -> bool:
     return _rounded(y, a.decimals) == _rounded(x, a.decimals) or _rounded(x, b.decimals) == _rounded(y, b.decimals)
 
 
+def states(n: Number, exact: float) -> bool:
+    """`n` is the exact value printed at n's own precision, rounded half up: the rule the brief's formatter
+    follows (core-011 FR-016), so "22%" states 22.45 and "22.4%" does not. Sign ignored, as in `same`."""
+    return _rounded(abs(exact), n.decimals) == _rounded(abs(n.value), n.decimals)
+
+
+def matches(a: Number, b: Number) -> bool:
+    """`same`, and a percent matches only a percent, a plain number only a plain number (core-011 packet F:
+    a golden 22.5% is not stated by "23 TRx"). A number whose unit is unknown (percent None) matches either."""
+    return (a.percent is None or b.percent is None or a.percent == b.percent) and same(a, b)
+
+
+def unique(numbers: list[Number]) -> list[Number]:
+    """Numbers with repeats of the same value and unit dropped (sign ignored, as `same` does)."""
+    seen, out = set(), []
+    for n in numbers:
+        key = (abs(n.value), n.decimals, n.percent)
+        if key not in seen:
+            seen.add(key)
+            out.append(n)
+    return out
+
+
 def as_numbers(values) -> list[Number]:
     out = []
     for v in values:
         if isinstance(v, (int, float)) and not isinstance(v, bool):
             text = repr(v)
-            out.append(Number(float(v), len(text.split(".")[1]) if "." in text else 0, False, text))
+            out.append(Number(float(v), len(text.split(".")[1]) if "." in text else 0, None, text))
     return out
 
 

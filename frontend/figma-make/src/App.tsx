@@ -5,6 +5,8 @@ import { TelemetryWorkspace } from "./Telemetry"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
 import { Memo } from "./Memo"
+import { Timeline, producers, KIND_NAME } from "./Timeline"
+import { HowItWorks } from "./HowItWorks"
 import { ComparisonPicker, comparisonError } from "./ComparisonPicker"
 import { PeriodPicker, QuestionReader, periodError, periodWeeks } from "./BriefingScope"
 import { FeedbackReview } from "./FeedbackReview"
@@ -19,7 +21,7 @@ import {
   getContext, getBriefing, getMe, getTriage, listPublished, markInsight, openBrief, reviewBrief, NotSignedIn,
   getAgentStatus, submitAgentJob, waitAgentJob, agentPlan, agentBrief, getClassification, setViewAs,
   type AgentStatus, type AgentJob, type Classification,
-  type BriefingResult, type Claim, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext,
+  type BriefingResult, type Claim, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext, type RunEvent,
   type Stage, type TriageDecision, type TriagePlan, type TriageRecord,
 } from "./agent/briefingApi"
 import {
@@ -43,6 +45,13 @@ function periodLabel(start: string, end?: string | null): string {
 function labelTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—"
 }
+// The server's one-line process summary ends "; reviewed by the analyst." with no date (a UTC date reads a day late in
+// the evening); the date is added here from reviewed_at, in the viewer's own time zone.
+function processLine(line: string, reviewedAt: string | null): string {
+  const d = reviewedAt ? new Date(reviewedAt) : null
+  if (!d || Number.isNaN(d.getTime())) return line
+  return line.replace(/; reviewed by the analyst\.$/, `; reviewed by the analyst on ${d.toLocaleDateString("en-CA")}.`)
+}
 function dataText(input: unknown): string {
   return input === null || input === undefined ? "—" : typeof input === "string" ? input : JSON.stringify(input, null, 2)
 }
@@ -62,6 +71,7 @@ const REVIEW_CHIP = {
 } as const
 
 function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, selectedId: string, onClose: () => void}) {
+  const made = (id: string) => producers(result.events, result.claims, id)
   const [id, setId] = useState(selectedId)
   useEffect(() => setId(selectedId), [selectedId])
   const drawer = useRef<HTMLElement>(null)
@@ -82,7 +92,8 @@ function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, 
           </button>)}
         </div>
         {selected && <div className="space-y-4 p-5">
-          <div className="rounded-xl bg-paper p-4"><p className="text-xs text-muted">Claim values linked to this record</p><p className="mt-1 font-mono text-sm">{claims.length?claims.map(c=>c.value).join(" · "):"Context only"}</p></div>
+          <div className="rounded-xl bg-paper p-4"><p className="text-xs text-muted">Claim values linked to this record</p><p className="mt-1 font-mono text-sm">{claims.length?claims.map(c=>c.value).join(" · "):"Context only"}</p>
+            {made(id).map(e=><p key={e.seq} className="mt-2 text-xs text-muted">Produced by <span className="font-medium text-ink">{e.actor}</span> ({KIND_NAME[e.kind]}) · {e.step}{e.tool ? ` · ${e.tool}` : ""}</p>)}</div>
           <div className="space-y-3 text-sm">
             <dl className="grid grid-cols-[90px_1fr] gap-3"><dt className="text-muted">Tool</dt><dd className="break-all font-mono text-xs">{selected.tool}</dd>
             <dt className="text-muted">Version</dt><dd className="break-all font-mono text-xs">{selected.data_version ?? "Not supplied"}</dd>
@@ -687,6 +698,7 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
         {brief.review_status==="approved" ? <span className={`${TAG} border-ok text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Approved by the Commercial Analyst · {labelTime(brief.reviewed_at)}</span> : <span className={`${TAG} border-edge text-ink`}>{REVIEW_CHIP[brief.review_status][1]}</span>}
         {brief.abstained && <span className={`${TAG} border-amberline text-amber`}>Unresolved findings</span>}
       </div>
+      {brief.process_summary && <p className="mt-3 text-xs text-muted">{processLine(brief.process_summary, brief.reviewed_at)}</p>}
     </div>
     <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink">{brief.summary}</pre>}</div>
     <div className="border-t border-rule px-6 py-4 text-xs text-muted">Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst.</div>
@@ -858,6 +870,9 @@ function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceI
   return <>{parts}</>
 }
 
+// brief-009: story id to its card title, from the triage record, so the timeline names a story the way the memo does.
+const storyTitles = (r: BriefingResult): Record<string, string> => Object.fromEntries((r.triage?.calls ?? []).map(c=>[c.story, c.title]))
+
 function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null}) {
   const [evidenceId,setEvidenceId] = useState<string | null>(null)
   useEffect(()=>{ if(openEvidence) setEvidenceId(openEvidence.id) },[openEvidence])
@@ -888,7 +903,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence}: {result: Briefing
       <ReviewPanel result={result} onChange={onChange}/>
     </article>}
     {mode==="analyst" && <AnswerFeedback lane="briefing" refId={result.brief_id} view="analyst" agent={result.engine==="agent"}/>}
-    {mode==="analyst" && result.flow && <FlowPanel flow={result.flow} triage={result.triage}/>}
+    {mode==="analyst" && (result.events?.length ? <Timeline events={result.events} claims={result.claims} titles={storyTitles(result)} onOpenSource={setEvidenceId}/> : result.flow && <FlowPanel flow={result.flow} triage={result.triage}/>)}
     <InsightButton briefId={result.brief_id} view={mode}/>
     {evidenceId && <EvidenceDrawer result={result} selectedId={evidenceId} onClose={()=>setEvidenceId(null)}/>}
   </>
@@ -905,7 +920,7 @@ function AnalystApp({me}: {me: Me}) {
   const [pending,setPending] = useState(false)
   const [result,setResult] = useState<BriefingResult | null>(null)
   const [runError,setRunError] = useState<string | null>(null)
-  const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved">("overview")
+  const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved" | "how">("overview")
   const [requestScope,setRequestScope] = useState<{brand:string,territory:string,week:string,weekEnd:string,promotion:boolean,question:string,
     comparison:Comparison | null} | null>(null)
   const [promotion,setPromotion] = useState(false)
@@ -922,6 +937,7 @@ function AnalystApp({me}: {me: Me}) {
   const [agent,setAgent] = useState<AgentStatus | null>(null)
   const [triageJob,setTriageJob] = useState<string | null>(null)
   const [jobNote,setJobNote] = useState<string | null>(null)
+  const [liveEvents,setLiveEvents] = useState<RunEvent[]>([])  // brief-009: the running job's progress, shown as the live timeline
   const [chip,setChip] = useState<Chip | null>(null)  // brief-006: the message bar
   const [barEvidence,setBarEvidence] = useState<{id: string} | null>(null)
   const [autoAsk,setAutoAsk] = useState(false)
@@ -935,7 +951,7 @@ function AnalystApp({me}: {me: Me}) {
     const supported = context.brands.find(b=>b.id===id)?.engines ?? []
     setEngine(e=>supported.includes(e) ? e : "scripted")
     setPlan(null); setResult(null); setRunError(null); setRequestScope(null)
-    setTriageJob(null); setJobNote(null); setJobState(null); setPending(false)
+    setTriageJob(null); setJobNote(null); setJobState(null); setLiveEvents([]); setPending(false)
     setChip(null); setBarEvidence(null); setAsk(""); setAutoAsk(false); setPromotion(false); setComparison(null)
     setView(v=>v==="triage" || v==="result" ? "home" : v)
   }
@@ -949,6 +965,7 @@ function AnalystApp({me}: {me: Me}) {
   // The job's real state, from the server: queued, then running, then done (shown by JobProgress).
   const [jobState,setJobState] = useState<{kind: "triage" | "brief", status: "queued" | "running"} | null>(null)
   const describeJob = (job: AgentJob) => {
+    if (job.progress) setLiveEvents(job.progress)
     if (job.status === "queued" || job.status === "running") {
       setJobState({kind: job.kind === "triage" ? "triage" : "brief", status: job.status})
       setJobNote(job.status === "queued" && !agent?.online && !(agent?.cloud?.enabled && agent.cloud.seconds_left > 0)
@@ -985,7 +1002,7 @@ function AnalystApp({me}: {me: Me}) {
     // Plan review is always on in UAT (brief-002 FR-019): stages 1 to 3 and the code triage first.
     const token=++generation.current
     const active=()=>token===generation.current
-    setPending(true);setRunError(null);setResult(null);setPlan(null);setRequestScope(selected);setView("triage");setJobNote(null)
+    setPending(true);setRunError(null);setResult(null);setPlan(null);setRequestScope(selected);setView("triage");setJobNote(null);setLiveEvents([])
     try {
       if (engine==="agent") {
         const job = await submitAgentJob({kind:"triage", query: query(selected)})
@@ -1000,14 +1017,14 @@ function AnalystApp({me}: {me: Me}) {
         if (active()) setPlan(next)
       }
     } catch(e) {if(active()) setRunError(message(e))}
-    finally {if(active()){setPending(false);setJobNote(null);setJobState(null)}}
+    finally {if(active()){setPending(false);setJobNote(null);setJobState(null);setLiveEvents([])}}
   }
   const query = (s: NonNullable<typeof requestScope>) => ({intent:s.promotion ? "promotion_review" as const : "weekly_brief" as const,
     brand_id:s.brand,territory_id:s.territory,week_start:s.week,week_end:s.weekEnd > s.week ? s.weekEnd : null,question:s.question,comparison:s.comparison})
   const approvePlan = async (decision: TriageDecision) => {
     if(!requestScope) return
     const token=++generation.current, active=()=>token===generation.current
-    setPending(true);setRunError(null);setResult(null);setView("result");setJobNote(null)
+    setPending(true);setRunError(null);setResult(null);setView("result");setJobNote(null);setLiveEvents([])
     try {
       if (plan?.engine==="agent" && triageJob) {
         const job = await submitAgentJob({kind:"brief", query: query(requestScope), triage_job: triageJob, decision})
@@ -1021,7 +1038,7 @@ function AnalystApp({me}: {me: Me}) {
         if (active()) setResult(response)
       }
     } catch(e) {if(active()) setRunError(message(e))}
-    finally {if(active()){setPending(false);setJobNote(null);setJobState(null)}}
+    finally {if(active()){setPending(false);setJobNote(null);setJobState(null);setLiveEvents([])}}
   }
   const openApproved = async (id: string) => {
     const token=++generation.current, active=()=>token===generation.current
@@ -1033,7 +1050,7 @@ function AnalystApp({me}: {me: Me}) {
     } catch(e) {if(active()) setRunError(message(e))} finally {if(active()) setPending(false)}
   }
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
-  const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : "new"
+  const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : view==="how" ? "how" : "new"
   // When the scope form gives way to the plan or the brief, the button that was pressed is gone: put focus on the
   // first control of the new view, so a keyboard user does not start again from the top of the page.
   const scopeBack = useRef<HTMLButtonElement>(null)
@@ -1042,7 +1059,7 @@ function AnalystApp({me}: {me: Me}) {
     <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-8 sm:pt-10`}>{(view==="home" || view==="approved" || view==="overview") && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<div className="pa-noprint flex justify-end py-3"><label className="flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>setView(t==="approved" ? "approved" : t==="overview" ? "overview" : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
+      </select></label></div><SubTabs label="Weekly briefing" panelId="briefing-panel" value={tab} onChange={t=>setView(t==="approved" || t==="overview" || t==="how" ? t : "home")} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/></div>
     {contextError && <div role="alert" className="workspace-content py-4 text-sm text-amber">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <p className="text-sm text-muted">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</p>
@@ -1068,7 +1085,7 @@ function AnalystApp({me}: {me: Me}) {
           <button type="submit" disabled={!selectable || !!invalidComparison || !!invalidPeriod} className={BTN}>Generate briefing</button>
         </div>
       </form>
-    </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
+    </div> : view==="how" ? <div key="how" className="workspace-content pa-fade py-8"><HowItWorks/></div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8"><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primary hover:underline" onClick={()=>setView("home")}><Icon name="back"/>Change scope</button>
@@ -1078,11 +1095,12 @@ function AnalystApp({me}: {me: Me}) {
         ? <JobProgress kind={jobState.kind} status={jobState.status} note={jobNote}/>
         : <div role="status" className="space-y-3"><span className="sr-only">{view === "triage" ? "Preparing the triage plan…" : "Preparing the briefing…"}</span>
             <div className="pa-skeleton h-5 w-2/5"/><div className={`${PANEL} space-y-3 p-6`}><div className="pa-skeleton h-6 w-3/5"/><div className="pa-skeleton h-3 w-full"/><div className="pa-skeleton h-3 w-11/12"/><div className="pa-skeleton h-3 w-4/5"/></div></div>)}
+      {pending && engine==="agent" && jobState && <Timeline events={liveEvents} live/>}
       {runError && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber"><strong>{view==="triage" ? "The triage plan could not be built." : "Briefing could not be generated."}</strong><p className="mt-2">{runError}</p><p className="mt-2">No mock result was substituted.</p>{view==="result" && plan && <button className="mt-2 underline" onClick={()=>{setRunError(null);setView("triage")}}>Back to the triage plan</button>}</div>}
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
       {view==="result" && result && <AnalystBrief result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </div>}</div>
-    {brand && view!=="approved" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
+    {brand && view!=="approved" && view!=="how" && (agentSupported || (view==="result" && !!result)) && <div className="workspace-content"><MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : null} pending={pending} chip={chip} onClearChip={()=>setChip(null)}
       canGenerate={view==="home" && agentSupported && agent?.configured===true} onGenerate={q=>{setEngine("agent");setAsk(q);setAutoAsk(true)}}
       onOfferScope={o=>{ if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparison(o.comparison ?? null); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})} agentAvailable={agentSupported && !!agent?.builtin}/></div>}
   </Shell>
@@ -1092,18 +1110,19 @@ function LeaderApp({me}: {me: Me}) {
   const [brief,setBrief] = useState<LeadershipBrief | null>(null)
   const [error,setError] = useState<string | null>(null)
   const [loading,setLoading] = useState(false)
+  const [tab,setTab] = useState<"list" | "how">("list")
   const open = async (id: string) => {
     setLoading(true); setError(null)
     try { setBrief(await openBrief(id, "leadership")) } catch(e) { setError(message(e)) } finally { setLoading(false) }
   }
-  return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}}>
+  return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null);setTab("list")}}>
     <div className="workspace-content space-y-6 py-8 sm:py-10">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-primary hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <div role="alert" className="rounded-xl bg-amberbg px-5 py-4 text-sm text-amber">{error}</div>}
         {brief && <><SummaryCard brief={brief}/><InsightButton briefId={brief.brief_id} view="leadership"/></>}
-      </> : <><Greeting detail="Executive summaries the Commercial Analyst has reviewed and approved."/><div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule pb-3"><h2 className="text-xl">Approved briefings</h2><ClassLabel tab="briefing.approved"/></div><PublishedList onOpen={id=>void open(id)}/></>}
+      </> : <><Greeting detail="Executive summaries the Commercial Analyst has reviewed and approved."/><SubTabs label="Weekly briefing" value={tab} onChange={setTab} options={[["list","Approved briefings","briefing.approved"],["how","How it works","briefing.how"]] as const}/>{tab==="how" ? <HowItWorks/> : <PublishedList onOpen={id=>void open(id)}/>}</>}
     </div>
   </Shell>
 }

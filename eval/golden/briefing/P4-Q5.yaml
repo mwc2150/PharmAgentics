@@ -14,7 +14,7 @@ story_text: As Magdalena, I want confidence and timing stated plainly, so that e
 given: two coverage gaps in different territories and months.
 when: the brief reports confidence.
 then: it says Medium, names both cases, and states when the next read is due.
-reference_answer: Medium. The Great Lakes estimate rests on one territory and aggregated activity, and is an association. Two things raise it. The second half of that gap overlaps Metacora's launch, but Metacora reached 8.8% to 10.0% of the basket in every territory, so the other territories remain a fair comparison. And the Southeast gap six months later shows the same pattern, about 31 points below other territories. In this data the effect shows in the first week activity changes and fades within one to two weeks after it returns, so a re-read four weeks after any change is enough.
+reference_answer: Medium. The Great Lakes estimate rests on one territory and aggregated activity, and is an association. Two things raise it. The second half of that gap overlaps Metacora's launch, but Metacora reached 8.8% to 10.0% of the basket in every territory, so the other territories remain a fair comparison. And the Southeast gap six months later shows the same pattern, 31.3 points below other territories. In this data the effect shows in the first week activity changes and fades within one to two weeks after it returns, so a re-read four weeks after any change is enough.
 must_not_say:
   text: '"High confidence" from one territory.'
   phrases: []
@@ -25,5 +25,36 @@ eval_items:
 - EV-5.1
 - EV-4.4
 - EV-7.2
-facts: []
+facts:
+- id: gap_points_southeast_vs_others
+  value: 31.3
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id <> ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1)) - (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+- id: southeast_change_pct
+  value: -24.8
+  sql: 'select (100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-08-03'' and DATE ''2026-08-31'') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_weekly_rx_kpis where product_id = ''BXA'' and territory_id = ''SOUTHEAST'' and week_start between DATE ''2026-07-06'' and DATE ''2026-07-27'') - 1))'
+  role: context
+  reviewed: false
+findings:
+- id: great_lakes_promotion_lapse
+  territory: GREAT_LAKES
+  direction: down
+  drivers_supported: [promotion]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+- id: southeast_promotion_lapse
+  territory: SOUTHEAST
+  direction: down
+  drivers_supported: [promotion]
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+must_say:
+  phrases:
+  - Medium
+  - 'four weeks after any change|re-read four weeks|re-read in four weeks'
+  - association
+  reviewed: false
 source: docs/planning/user-stories.md#P4-Q5

@@ -42,7 +42,7 @@ def _card(reg, f: Front, s: dict | None, rank: int, proposed: str) -> dict:
     p = f.p
     if s is None:  # the continuing competitor story
         launched = launch_date(reg)
-        share = reg.claim("compare_competitors", qy.share(p.weeks, "BXE"), "pct1", product="BXE")
+        share = reg.claim("compare_competitors", qy.share(p.weeks, "BXE"), "pct", product="BXE")
         return {
             "id": COMPETITOR, "kind": "competitor", "territory": None, "title": "Competitor Metacora (continuing)", "rank": rank,
             "proposed": proposed,
@@ -59,7 +59,7 @@ def _card(reg, f: Front, s: dict | None, rank: int, proposed: str) -> dict:
         change = reg.scalar(qy.pct_change(x, b)) or 0
         moved = (f"Plan {s['plan']} in {qy.name(t)}: {p.brand_id} TRx averaged {reg.claim('get_metric', x, 'int', plan=s['plan'])} a week "
                  f"against {reg.claim('get_metric', b, 'int', plan=s['plan'])} before "
-                 f"({stages.word(change)} {reg.claim('get_metric', qy.pct_change(x, b), 'pct1', plan=s['plan'])}).")
+                 f"({stages.word(change)} {reg.claim('get_metric', qy.pct_change(x, b), 'pct', plan=s['plan'])}).")
         why = f"A payer access change on this plan, and its {p.brand_id} TRx moved past the plan-level threshold (code screen)."
         grain = f"Plan {s['plan']}, in {qy.name(t)}."
     else:

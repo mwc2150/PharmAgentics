@@ -23,8 +23,8 @@ uv run --with fastapi --with uvicorn uvicorn pharmagentics.api.app:app --app-dir
 Copy `.env.example` to `.env`, set `VITE_PHARMAGENTICS_API_BASE_URL`, then:
 
 ```sh
-npm install
-npm run dev
+pnpm install --frozen-lockfile  # the lockfile is pnpm-lock.yaml; npm ci does not work here
+pnpm run dev
 ```
 
 The original Figma Make `vite.config.ts` defaults to port 8443. Preview the URL printed by Vite.

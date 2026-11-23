@@ -159,8 +159,13 @@ def drill_mode() -> str:
 def _weeks(ask: ForecastAsk) -> list[str] | None:
     if not ask.week_from:
         return None
-    start = ask.week_from - timedelta(days=ask.week_from.weekday())
-    end = ask.week_to or ask.week_from
+    return _week_list(ask.week_from, ask.week_to)
+
+
+def _week_list(first: date, last: date | None) -> list[str]:
+    """Every Monday week from the week holding `first` to the week holding `last` (default: just the first)."""
+    start = first - timedelta(days=first.weekday())
+    end = last or first
     end = end - timedelta(days=end.weekday())
     if end < start:
         raise HTTPException(status_code=422, detail="The last week comes before the first.")
@@ -220,13 +225,14 @@ def _investigate(rid: str, ask: ForecastAsk, weeks: list[str] | None, model: str
         steps.append({k: step[k] for k in ("tool", "args")} | {"result": step["result"][:240]})
         forecast_store.update(rid, progress=list(steps))
 
-    try:
-        out = agent.answer(ask.question, model=model, db=service.DB, territory=ask.territory_id, weeks=weeks, on_step=on_step,
-                           intent=ask.intent, investigator=investigator_mode(), drill=drill_mode())
-        forecast_store.update(rid, result=_result(rid, out, model), job_status="done", progress=list(steps))
-    except Exception as exc:  # noqa: BLE001 - the run records the failure; the request has already returned
-        log.exception("forecast question failed")
-        forecast_store.update(rid, job_status="failed", job_error=f"{type(exc).__name__}: {str(exc)[:200]}")
+    with forecast_store.held(rid):
+        try:
+            out = agent.answer(ask.question, model=model, db=service.DB, territory=ask.territory_id, weeks=weeks,
+                               on_step=on_step, intent=ask.intent, investigator=investigator_mode(), drill=drill_mode())
+            forecast_store.update(rid, result=_result(rid, out, model), job_status="done", progress=list(steps))
+        except Exception as exc:  # noqa: BLE001 - the run records the failure; the request has already returned
+            log.exception("forecast question failed")
+            forecast_store.update(rid, job_status="failed", job_error=f"{type(exc).__name__}: {str(exc)[:200]}")
 
 
 @router.post("/ask")
@@ -250,12 +256,14 @@ def ask(payload: ForecastAsk, response: Response, who=Forecast) -> dict:
         reg.close()
     rid = forecast_store.question_id(payload.question + f"|{payload.intent}", payload.territory_id, weeks,
                                      f"{model or 'rules'}|{investigator_mode()}", version)
-    existing = forecast_store.get(rid)
-    if existing and existing.get("job_status") in ("running", "done"):
-        return views.forecast_record(existing, view)
-    request = {"question": payload.question, "territory_id": payload.territory_id, "weeks": weeks and [weeks[0], weeks[-1]]}
-    record = forecast_store.start_question(rid, request, rbac.pseudonym(p.sub),
-                                           "rules" if investigator_mode() == "rules" else f"agent ({model})")
+    with forecast_store.LOCK:  # two quick clicks start one investigation, not two
+        existing = forecast_store.get(rid)  # a run lost to a restart reads as failed here, so it starts again
+        if existing and existing.get("job_status") in ("running", "done"):
+            return views.forecast_record(existing, view)
+        request = {"question": payload.question, "territory_id": payload.territory_id, "weeks": weeks and [weeks[0], weeks[-1]]}
+        record = forecast_store.start_question(rid, request, rbac.pseudonym(p.sub),
+                                               "rules" if investigator_mode() == "rules" else f"agent ({model})")
+        forecast_store.hold(rid)
     threading.Thread(target=_investigate, args=(rid, payload, weeks, model), daemon=True, name=f"forecast-{rid}").start()
     store.record_event("forecast_ask", **_who(p, role), forecast_run_id=rid, view=view, engine=model or "rules")
     return views.forecast_record(record, view)
@@ -276,23 +284,68 @@ def drivers(response: Response, who=Forecast) -> dict:
     return json.loads(DRIVERS_SNAPSHOT.read_text(encoding="utf-8"))
 
 
-_FOLLOWUP_LOCK = threading.Lock()  # follow-ups on one run append to the same JSON document
+_FOLLOWUP_LOCK = forecast_store.LOCK  # follow-ups and pins change the run's document: one lock for every change
 TERRITORY_IDS = {"NEW_ENGLAND", "MID_ATLANTIC", "GREAT_LAKES", "SOUTHEAST", "SOUTH_CENTRAL", "MOUNTAIN", "PACIFIC", "NORTHWEST"}
 
 
 def _set_followup(rid: str, fid: str, **fields) -> None:
-    with _FOLLOWUP_LOCK:
-        record = forecast_store.get(rid)
-        if record is None:
-            return
+    def change(record: dict) -> None:
         for f in record.get("followups", []):
             if f["id"] == fid:
                 f.update(fields)
-        forecast_store.update(rid, followups=record["followups"])
+
+    forecast_store.mutate(rid, change)
+
+
+def _cut_id(value) -> str | None:
+    """A territory id or NATIONAL from what a model or the rules picked (an id or a name); None if it is neither."""
+    from pharmagentics.tools.queries import TERRITORY_NAMES
+
+    text = str(value or "").strip()
+    key = text.upper().replace(" ", "_").replace("-", "_")
+    if key in TERRITORY_NAMES:
+        return key
+    return next((tid for tid, label in TERRITORY_NAMES.items() if label.lower() == text.lower()), None)
+
+
+class _NoRerun(Exception):
+    """A rerun scope that cannot be used; the message is the follow-up's answer."""
+
+
+def _rerun_scope(plan: dict, report: dict, first: str, latest: str) -> tuple[str, list[str] | None, list[str]]:
+    """Check a rerun's territory, weeks and dropped controls before anything runs. They may come from a model, and
+    the engine puts them into SQL, so only known territories and Monday weeks inside the release get through."""
+    scope = report.get("scope") or {}
+    territory = report["territory_id"]
+    if plan.get("territory"):
+        territory = _cut_id(plan["territory"])
+        if territory is None:
+            raise _NoRerun(f"I don't know the territory {str(plan['territory'])[:40]!r}. Name one of: "
+                           + ", ".join(sorted(TERRITORY_IDS)) + ", or national.")
+    weeks = scope.get("weeks")
+    if plan.get("weeks"):
+        try:
+            asked = [date.fromisoformat(str(w)) for w in plan["weeks"] if w]
+        except ValueError:
+            raise _NoRerun("Give the weeks as dates, for example 2026-08-24.") from None
+        if not asked:
+            raise _NoRerun("Give the weeks as dates, for example 2026-08-24.")
+        if asked[-1] < asked[0]:
+            raise _NoRerun("The last week comes before the first.")
+        weeks = [w for w in _week_list(asked[0], asked[-1]) if first <= w <= latest]
+        if not weeks:
+            raise _NoRerun(f"That period is outside the release, which runs from {first} to {latest}.")
+    drop = sorted({t for t in (_cut_id(x) for x in plan.get("drop_controls") or []) if t in TERRITORY_IDS})
+    return territory, weeks, drop
 
 
 def _run_followup(rid: str, fid: str, question: str, model: str | None, by: str) -> None:
     """Runs in a background thread: route the follow-up to one operation and run it in code."""
+    with forecast_store.held(f"{rid}/{fid}"):
+        _follow_up(rid, fid, question, model, by)
+
+
+def _follow_up(rid: str, fid: str, question: str, model: str | None, by: str) -> None:
     agent = _agent()
     from forecast_agent import followup
 
@@ -304,13 +357,11 @@ def _run_followup(rid: str, fid: str, question: str, model: str | None, by: str)
             followup.route(question, report, first, latest)
         op = plan["op"]
         if op == "rerun":
-            scope = report.get("scope") or {}
-            territory = plan.get("territory") or report["territory_id"]
-            weeks = plan.get("weeks") or scope.get("weeks")
-            if weeks and len(weeks) == 2 and weeks[0] != weeks[-1] and (plan.get("weeks") is not None):
-                weeks = _weeks(ForecastAsk(question=question, week_from=date.fromisoformat(weeks[0]),
-                                           week_to=date.fromisoformat(weeks[-1])))
-            drop = sorted(set(plan.get("drop_controls") or []))
+            try:
+                territory, weeks, drop = _rerun_scope(plan, report, first, latest)
+            except _NoRerun as why:
+                _set_followup(rid, fid, status="done", op="help", answer=str(why))
+                return
             out = agent.answer(report["question"], model=model, db=service.DB, territory=territory, weeks=weeks,
                                drop_controls=drop, intent=report.get("intent"), investigator=investigator_mode(), drill=drill_mode())
             child_q = report["question"] + f" [follow-up: {question}]"
@@ -322,7 +373,7 @@ def _run_followup(rid: str, fid: str, question: str, model: str | None, by: str)
             text = child.get("summary") or child.get("headline") or out["answer"].split("\n")[0]
             _set_followup(rid, fid, status="done", op="rerun", answer=text, child_run_id=cid)
         elif op == "drill":
-            terr = plan.get("territory")
+            terr = _cut_id(plan.get("territory"))
             out = followup.drill(report, terr if terr in TERRITORY_IDS else None,
                                  model if drill_mode() == "model" else None, db=service.DB)
             _set_followup(rid, fid, status="done", op="drill", answer=out["answer"], chart=out.get("chart"),
@@ -398,8 +449,9 @@ def ask_followup(run_id: str, payload: ForecastFollowup, response: Response, who
             raise HTTPException(status_code=409, detail="This run already has twenty follow-ups; ask a new question.")
         fid = f"q{len(followups) + 1}"
         followups.append({"id": fid, "question": " ".join(payload.question.split()), "status": "running", "op": None,
-                          "answer": None, "child_run_id": None})
+                          "answer": None, "child_run_id": None, "started_at": forecast_store.now()})
         record = forecast_store.update(run_id, followups=followups)
+        forecast_store.hold(f"{run_id}/{fid}")
     threading.Thread(target=_run_followup, args=(run_id, fid, payload.question, model, rbac.pseudonym(p.sub)),
                      daemon=True, name=f"forecast-followup-{run_id}-{fid}").start()
     store.record_event("forecast_followup", **_who(p, role), forecast_run_id=run_id, engine=model or "rules")

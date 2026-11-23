@@ -1,62 +1,82 @@
 {
- "exported": "2026-11-20T02:31+00:00",
+ "exported": "2026-11-22T21:05+00:00",
  "source": "golden set (MLflow)",
  "note": "Run-level scores only. Judge scores are report-only until judge agreement clears the bar.",
  "latest": [
   {
-   "run_id": "d5920215",
-   "started": "2026-11-19T22:52+00:00",
-   "minutes": 15.9,
+   "run_id": "727bc006",
+   "started": "2026-11-22T20:54+00:00",
+   "minutes": 10.9,
    "system": "briefing_agent",
    "model": "anthropic:claude-haiku-5-5",
    "lane": "briefing",
    "control": false,
-   "cases": 24,
+   "cases": 32,
    "reruns": 1,
    "judge": "off",
-   "code_version": "b17f051+dirt",
+   "code_version": "4213d0b",
    "data_version": "47bcfd650564",
    "metrics": {
+    "brief_words": 774.0938,
     "claims_reconcile": 1.0,
-    "golden_number_recall": 0.3876,
+    "false_drivers": 0.1111,
+    "finding_recall": 0.75,
+    "golden_number_recall": 0.6773,
     "governed_terms": 1.0,
     "hit_cap": 0.0,
+    "key_fact_recall": 0.71,
+    "latency_brief_p50": 81.6767,
+    "latency_brief_p95": 117.7688,
+    "latency_turn_p50": 3.9985,
+    "latency_turn_p95": 8.9759,
     "links_resolve": 1.0,
-    "llm_calls": 10.375,
+    "llm_calls": 10.5938,
     "must_not_say": 1.0,
-    "needed_revision": 0.0,
+    "must_say_recall": 0.4286,
+    "needed_revision": 0.625,
     "no_individual_rep": 1.0,
-    "numbers_match_golden": 0.1584,
+    "numbers_match_golden": 0.0963,
     "numbers_traced": 1.0,
     "run_errors": 0.0,
-    "seconds": 31.1125,
-    "tool_calls": 3.9167
+    "seconds": 47.3969,
+    "sections_exist": 1.0,
+    "tool_calls": 3.7812
    },
    "judge_metrics": {}
   },
   {
-   "run_id": "ba764209",
-   "started": "2026-11-12T00:57+00:00",
-   "minutes": 1.6,
+   "run_id": "a5a49682",
+   "started": "2026-11-22T20:43+00:00",
+   "minutes": 10.0,
    "system": "briefing_scripted",
    "model": null,
    "lane": "briefing",
    "control": false,
-   "cases": 24,
+   "cases": 32,
    "reruns": 1,
    "judge": "off",
-   "code_version": "26ef998+dirt",
-   "data_version": "06bcba77fbe1",
+   "code_version": "4213d0b",
+   "data_version": "47bcfd650564",
    "metrics": {
+    "brief_words": 656.1562,
     "claims_reconcile": 1.0,
-    "golden_number_recall": 0.3876,
+    "false_drivers": 0.1111,
+    "finding_recall": 0.75,
+    "golden_number_recall": 0.6773,
     "governed_terms": 1.0,
+    "key_fact_recall": 0.71,
+    "latency_brief_p50": 17.6584,
+    "latency_brief_p95": 25.9316,
+    "latency_turn_p50": 0.2032,
+    "latency_turn_p95": 0.2429,
     "links_resolve": 1.0,
     "must_not_say": 1.0,
+    "must_say_recall": 0.4286,
     "no_individual_rep": 1.0,
-    "numbers_match_golden": 0.1573,
+    "numbers_match_golden": 0.0896,
     "numbers_traced": 1.0,
-    "run_errors": 0.0
+    "run_errors": 0.0,
+    "sections_exist": 1.0
    },
    "judge_metrics": {}
   },
@@ -169,6 +189,806 @@
   }
  ],
  "runs": [
+  {
+   "run_id": "727bc006",
+   "started": "2026-11-22T20:54+00:00",
+   "minutes": 10.9,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "4213d0b",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "brief_words": 774.0938,
+    "claims_reconcile": 1.0,
+    "false_drivers": 0.1111,
+    "finding_recall": 0.75,
+    "golden_number_recall": 0.6773,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "key_fact_recall": 0.71,
+    "latency_brief_p50": 81.6767,
+    "latency_brief_p95": 117.7688,
+    "latency_turn_p50": 3.9985,
+    "latency_turn_p95": 8.9759,
+    "links_resolve": 1.0,
+    "llm_calls": 10.5938,
+    "must_not_say": 1.0,
+    "must_say_recall": 0.4286,
+    "needed_revision": 0.625,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0963,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 47.3969,
+    "sections_exist": 1.0,
+    "tool_calls": 3.7812
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "a5a49682",
+   "started": "2026-11-22T20:43+00:00",
+   "minutes": 10.0,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "4213d0b",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "brief_words": 656.1562,
+    "claims_reconcile": 1.0,
+    "false_drivers": 0.1111,
+    "finding_recall": 0.75,
+    "golden_number_recall": 0.6773,
+    "governed_terms": 1.0,
+    "key_fact_recall": 0.71,
+    "latency_brief_p50": 17.6584,
+    "latency_brief_p95": 25.9316,
+    "latency_turn_p50": 0.2032,
+    "latency_turn_p95": 0.2429,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "must_say_recall": 0.4286,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0896,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "48565a28",
+   "started": "2026-11-22T17:34+00:00",
+   "minutes": 37.1,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "758b4d0",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.7032,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "latency_brief_p50": 65.911,
+    "latency_brief_p95": 110.3001,
+    "latency_turn_p50": 2.676,
+    "latency_turn_p95": 11.0555,
+    "links_resolve": 1.0,
+    "llm_calls": 10.6875,
+    "must_not_say": 1.0,
+    "needed_revision": 0.5625,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0971,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 47.7531,
+    "sections_exist": 1.0,
+    "tool_calls": 3.6875
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "986836db",
+   "started": "2026-11-22T12:16+00:00",
+   "minutes": 9.6,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "eaa97ce",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.7032,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 16.8164,
+    "latency_brief_p95": 24.4859,
+    "latency_turn_p50": 0.1524,
+    "latency_turn_p95": 0.1887,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.088,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "12cb72c8",
+   "started": "2026-11-22T11:13+00:00",
+   "minutes": 9.7,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "8bd326b",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.7032,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 16.9173,
+    "latency_brief_p95": 27.0947,
+    "latency_turn_p50": 0.1566,
+    "latency_turn_p95": 0.191,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.088,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "2089f359",
+   "started": "2026-11-22T10:50+00:00",
+   "minutes": 10.0,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "89f4852",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.7032,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 17.3125,
+    "latency_brief_p95": 27.5738,
+    "latency_turn_p50": 0.1861,
+    "latency_turn_p95": 0.1919,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.088,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "695fe76e",
+   "started": "2026-11-22T08:09+00:00",
+   "minutes": 9.5,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "c0bc982",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.6823,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 15.7663,
+    "latency_brief_p95": 28.0011,
+    "latency_turn_p50": 0.1956,
+    "latency_turn_p95": 0.2333,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0863,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "c65d888f",
+   "started": "2026-11-22T06:39+00:00",
+   "minutes": 10.9,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 32,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "8ddd84e",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.6679,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 18.4582,
+    "latency_brief_p95": 28.2238,
+    "latency_turn_p50": 0.2008,
+    "latency_turn_p95": 0.2234,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0839,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "ae4c68b6",
+   "started": "2026-11-20T18:03+00:00",
+   "minutes": 7.1,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 30,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "9e5aeb4+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.5247,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "latency_brief_p50": 53.4958,
+    "latency_brief_p95": 115.068,
+    "latency_turn_p50": 2.81,
+    "latency_turn_p95": 5.8214,
+    "links_resolve": 1.0,
+    "llm_calls": 10.9,
+    "must_not_say": 1.0,
+    "needed_revision": 0.0333,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1047,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 38.15,
+    "sections_exist": 1.0,
+    "tool_calls": 3.8667
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "a4df1c30",
+   "started": "2026-11-20T17:59+00:00",
+   "minutes": 3.7,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 30,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "9e5aeb4",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.5247,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 6.9289,
+    "latency_brief_p95": 10.073,
+    "latency_turn_p50": 0.1358,
+    "latency_turn_p95": 0.1496,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0976,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "b6da0b4d",
+   "started": "2026-11-20T17:26+00:00",
+   "minutes": 7.1,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 30,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "3399444",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.5247,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "latency_brief_p50": 53.4614,
+    "latency_brief_p95": 123.1683,
+    "latency_turn_p50": 2.389,
+    "latency_turn_p95": 5.8308,
+    "links_resolve": 1.0,
+    "llm_calls": 10.9,
+    "must_not_say": 1.0,
+    "needed_revision": 0.1,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1034,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 37.11,
+    "sections_exist": 1.0,
+    "tool_calls": 3.9
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "e2599995",
+   "started": "2026-11-20T17:21+00:00",
+   "minutes": 5.1,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 30,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "3399444",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.5247,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 9.9437,
+    "latency_brief_p95": 13.166,
+    "latency_turn_p50": 0.1506,
+    "latency_turn_p95": 0.1873,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0976,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "66920e2b",
+   "started": "2026-11-20T09:39+00:00",
+   "minutes": 6.6,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 30,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "a4b618d+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.5247,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "latency_brief_p50": 55.9427,
+    "latency_brief_p95": 105.6404,
+    "latency_turn_p50": 2.4699,
+    "latency_turn_p95": 19.6631,
+    "links_resolve": 1.0,
+    "llm_calls": 10.9,
+    "must_not_say": 1.0,
+    "needed_revision": 0.1333,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1039,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 37.2133,
+    "sections_exist": 1.0,
+    "tool_calls": 4.0667
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "88e13b75",
+   "started": "2026-11-20T09:34+00:00",
+   "minutes": 4.2,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 30,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "a4b618d+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.5247,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 7.8847,
+    "latency_brief_p95": 11.1474,
+    "latency_turn_p50": 0.1487,
+    "latency_turn_p95": 0.178,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0976,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "c81e342a",
+   "started": "2026-11-20T09:13+00:00",
+   "minutes": 1.5,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 2,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "a4b618d+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 1.0,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "latency_brief_p50": 69.3589,
+    "latency_brief_p95": 73.6446,
+    "latency_turn_p50": 7.0363,
+    "latency_turn_p95": 8.6233,
+    "links_resolve": 1.0,
+    "llm_calls": 16.0,
+    "must_not_say": 1.0,
+    "needed_revision": 0.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0667,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 52.8,
+    "sections_exist": 1.0,
+    "tool_calls": 6.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "29aa4034",
+   "started": "2026-11-20T09:10+00:00",
+   "minutes": 1.4,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 2,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "a4b618d+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 1.0,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "latency_brief_p50": 64.9211,
+    "latency_brief_p95": 68.5856,
+    "latency_turn_p50": 7.3317,
+    "latency_turn_p95": 7.6465,
+    "links_resolve": 1.0,
+    "llm_calls": 16.0,
+    "must_not_say": 1.0,
+    "needed_revision": 0.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0833,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 49.25,
+    "sections_exist": 1.0,
+    "tool_calls": 6.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "fe6a3e9c",
+   "started": "2026-11-20T09:07+00:00",
+   "minutes": 1.0,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 6,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "a4b618d+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 1.0,
+    "governed_terms": 1.0,
+    "latency_brief_p50": 8.3998,
+    "latency_brief_p95": 10.8787,
+    "latency_turn_p50": 0.1562,
+    "latency_turn_p95": 0.2174,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.0559,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "sections_exist": 1.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "43c24bc0",
+   "started": "2026-11-20T08:54+00:00",
+   "minutes": 5.9,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "dcf616d+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.4059,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "links_resolve": 1.0,
+    "llm_calls": 10.25,
+    "must_not_say": 1.0,
+    "needed_revision": 0.0833,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1154,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 36.225,
+    "tool_calls": 3.7917
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "060132b3",
+   "started": "2026-11-20T08:50+00:00",
+   "minutes": 4.3,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "dcf616d+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.4059,
+    "governed_terms": 1.0,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.108,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "83e4bb6a",
+   "started": "2026-11-20T07:58+00:00",
+   "minutes": 16.0,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "877ce0a+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.3965,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "links_resolve": 1.0,
+    "llm_calls": 10.3333,
+    "must_not_say": 1.0,
+    "needed_revision": 0.0417,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1156,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 32.1,
+    "tool_calls": 3.9167
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "ca90ac39",
+   "started": "2026-11-20T07:56+00:00",
+   "minutes": 2.2,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "877ce0a+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.3965,
+    "governed_terms": 1.0,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1065,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "1d9b819b",
+   "started": "2026-11-20T07:23+00:00",
+   "minutes": 15.8,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "877ce0a+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.3948,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "links_resolve": 1.0,
+    "llm_calls": 10.75,
+    "must_not_say": 1.0,
+    "needed_revision": 0.1667,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1094,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 32.675,
+    "tool_calls": 4.0833
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "6f48cbab",
+   "started": "2026-11-20T07:19+00:00",
+   "minutes": 2.1,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "877ce0a+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.3948,
+    "governed_terms": 1.0,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1065,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "be655807",
+   "started": "2026-11-20T04:09+00:00",
+   "minutes": 16.0,
+   "system": "briefing_agent",
+   "model": "anthropic:claude-haiku-5-5",
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "c15ccde+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.3876,
+    "governed_terms": 1.0,
+    "hit_cap": 0.0,
+    "links_resolve": 1.0,
+    "llm_calls": 10.2083,
+    "must_not_say": 1.0,
+    "needed_revision": 0.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1553,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0,
+    "seconds": 29.7167,
+    "tool_calls": 3.625
+   },
+   "judge_metrics": {}
+  },
+  {
+   "run_id": "71e565e2",
+   "started": "2026-11-20T04:07+00:00",
+   "minutes": 2.0,
+   "system": "briefing_scripted",
+   "model": null,
+   "lane": "briefing",
+   "control": false,
+   "cases": 24,
+   "reruns": 1,
+   "judge": "off",
+   "code_version": "c15ccde+dirt",
+   "data_version": "47bcfd650564",
+   "metrics": {
+    "claims_reconcile": 1.0,
+    "golden_number_recall": 0.3876,
+    "governed_terms": 1.0,
+    "links_resolve": 1.0,
+    "must_not_say": 1.0,
+    "no_individual_rep": 1.0,
+    "numbers_match_golden": 0.1573,
+    "numbers_traced": 1.0,
+    "run_errors": 0.0
+   },
+   "judge_metrics": {}
+  },
   {
    "run_id": "d5920215",
    "started": "2026-11-19T22:52+00:00",
@@ -866,5 +1686,4486 @@
    },
    "judge_metrics": {}
   }
- ]
+ ],
+ "cases": {
+  "generated": "2026-11-22T21:05:47+00:00",
+  "systems": [
+   {
+    "system": "reference",
+    "lane": "briefing",
+    "control": true,
+    "run_id": "f5bcd46e",
+    "started": "2026-10-29T23:40+00:00",
+    "golden_version": "7c2de43bf536",
+    "scorers": [
+     "golden_number_recall",
+     "governed_terms",
+     "judge_factual_correctness",
+     "must_not_say",
+     "no_individual_rep",
+     "numbers_match_golden"
+    ],
+    "kinds": {
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "judge_factual_correctness": "agent",
+     "must_not_say": "safety",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code"
+    },
+    "units": {
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "judge_factual_correctness": "share",
+     "must_not_say": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share"
+    },
+    "report_only": [
+     "judge_factual_correctness"
+    ],
+    "rows": [
+     {
+      "case": "C-001",
+      "story": "P1-Q1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-002",
+      "story": "P1-Q2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-003",
+      "story": "P1-Q3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-004",
+      "story": "P1-Q4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-005",
+      "story": "P1-Q5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-006",
+      "story": "P1-Q6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-007",
+      "story": "P2-Q1",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-008",
+      "story": "P2-Q2",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-009",
+      "story": "P2-Q3",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-010",
+      "story": "P2-Q4",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-011",
+      "story": "P2-Q5",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-012",
+      "story": "P2-Q6",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-013",
+      "story": "P3-Q1",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-014",
+      "story": "P3-Q2",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-015",
+      "story": "P3-Q3",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-016",
+      "story": "P3-Q4",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-017",
+      "story": "P3-Q5",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-018",
+      "story": "P3-Q6",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-019",
+      "story": "P4-Q1",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-020",
+      "story": "P4-Q2",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-021",
+      "story": "P4-Q3",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-022",
+      "story": "P4-Q4",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-023",
+      "story": "P4-Q5",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-024",
+      "story": "P4-Q6",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "reference",
+    "lane": "forecast",
+    "control": true,
+    "run_id": "f5bcd46e",
+    "started": "2026-10-29T23:40+00:00",
+    "golden_version": "7c2de43bf536",
+    "scorers": [
+     "golden_number_recall",
+     "governed_terms",
+     "judge_factual_correctness",
+     "must_not_say",
+     "no_individual_rep",
+     "numbers_match_golden"
+    ],
+    "kinds": {
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "judge_factual_correctness": "agent",
+     "must_not_say": "safety",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code"
+    },
+    "units": {
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "judge_factual_correctness": "share",
+     "must_not_say": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share"
+    },
+    "report_only": [
+     "judge_factual_correctness"
+    ],
+    "rows": [
+     {
+      "case": "F-001",
+      "story": "CA-Q1",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-002",
+      "story": "CA-Q2",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-003",
+      "story": "CA-Q3",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-004",
+      "story": "CA-Q4",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-005",
+      "story": "CA-Q5",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-006",
+      "story": "CA-Q6",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-007",
+      "story": "BM-Q1",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-008",
+      "story": "BM-Q2",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-009",
+      "story": "BM-Q3",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-010",
+      "story": "BM-Q4",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-011",
+      "story": "BM-Q5",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-012",
+      "story": "BM-Q6",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-013",
+      "story": "FM-Q1",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-014",
+      "story": "FM-Q2",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-015",
+      "story": "FM-Q3",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-016",
+      "story": "FM-Q4",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-017",
+      "story": "FM-Q5",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-018",
+      "story": "FM-Q6",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "naive_llm:gemma3:4b",
+    "lane": "briefing",
+    "control": true,
+    "run_id": "6d10bfa0",
+    "started": "2026-10-29T23:43+00:00",
+    "golden_version": "7c2de43bf536",
+    "scorers": [
+     "golden_number_recall",
+     "governed_terms",
+     "judge_factual_correctness",
+     "must_not_say",
+     "no_individual_rep",
+     "numbers_match_golden"
+    ],
+    "kinds": {
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "judge_factual_correctness": "agent",
+     "must_not_say": "safety",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code"
+    },
+    "units": {
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "judge_factual_correctness": "share",
+     "must_not_say": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share"
+    },
+    "report_only": [
+     "judge_factual_correctness"
+    ],
+    "rows": [
+     {
+      "case": "C-001",
+      "story": "P1-Q1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-002",
+      "story": "P1-Q2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 0.37,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 1.0
+      },
+      "stuck": [
+       "golden_number_recall"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-003",
+      "story": "P1-Q3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-004",
+      "story": "P1-Q4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-005",
+      "story": "P1-Q5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-006",
+      "story": "P1-Q6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-007",
+      "story": "P2-Q1",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 0.32,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 1.0
+      },
+      "stuck": [
+       "golden_number_recall"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-008",
+      "story": "P2-Q2",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-009",
+      "story": "P2-Q3",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-010",
+      "story": "P2-Q4",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-011",
+      "story": "P2-Q5",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-012",
+      "story": "P2-Q6",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-013",
+      "story": "P3-Q1",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-014",
+      "story": "P3-Q2",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-015",
+      "story": "P3-Q3",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-016",
+      "story": "P3-Q4",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-017",
+      "story": "P3-Q5",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-018",
+      "story": "P3-Q6",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-019",
+      "story": "P4-Q1",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-020",
+      "story": "P4-Q2",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-021",
+      "story": "P4-Q3",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-022",
+      "story": "P4-Q4",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-023",
+      "story": "P4-Q5",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-024",
+      "story": "P4-Q6",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "naive_llm:gemma3:4b",
+    "lane": "forecast",
+    "control": true,
+    "run_id": "6d10bfa0",
+    "started": "2026-10-29T23:43+00:00",
+    "golden_version": "7c2de43bf536",
+    "scorers": [
+     "golden_number_recall",
+     "governed_terms",
+     "judge_factual_correctness",
+     "must_not_say",
+     "no_individual_rep",
+     "numbers_match_golden"
+    ],
+    "kinds": {
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "judge_factual_correctness": "agent",
+     "must_not_say": "safety",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code"
+    },
+    "units": {
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "judge_factual_correctness": "share",
+     "must_not_say": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share"
+    },
+    "report_only": [
+     "judge_factual_correctness"
+    ],
+    "rows": [
+     {
+      "case": "F-001",
+      "story": "CA-Q1",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": 0.0909,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 0.2,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-002",
+      "story": "CA-Q2",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-003",
+      "story": "CA-Q3",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-004",
+      "story": "CA-Q4",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-005",
+      "story": "CA-Q5",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-006",
+      "story": "CA-Q6",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-007",
+      "story": "BM-Q1",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-008",
+      "story": "BM-Q2",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-009",
+      "story": "BM-Q3",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-010",
+      "story": "BM-Q4",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-011",
+      "story": "BM-Q5",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-012",
+      "story": "BM-Q6",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-013",
+      "story": "FM-Q1",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-014",
+      "story": "FM-Q2",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-015",
+      "story": "FM-Q3",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-016",
+      "story": "FM-Q4",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-017",
+      "story": "FM-Q5",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-018",
+      "story": "FM-Q6",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "briefing_scripted",
+    "lane": "briefing",
+    "control": false,
+    "run_id": "a5a49682",
+    "started": "2026-11-22T20:43+00:00",
+    "golden_version": "2a0e14c01002",
+    "scorers": [
+     "brief_words",
+     "claims_reconcile",
+     "false_drivers",
+     "finding_recall",
+     "golden_number_recall",
+     "governed_terms",
+     "key_fact_recall",
+     "links_resolve",
+     "must_not_say",
+     "must_say_recall",
+     "no_individual_rep",
+     "numbers_match_golden",
+     "numbers_traced",
+     "sections_exist"
+    ],
+    "kinds": {
+     "brief_words": "agent",
+     "claims_reconcile": "code",
+     "false_drivers": "agent",
+     "finding_recall": "agent",
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "key_fact_recall": "code",
+     "links_resolve": "code",
+     "must_not_say": "safety",
+     "must_say_recall": "agent",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code",
+     "numbers_traced": "code",
+     "sections_exist": "code"
+    },
+    "units": {
+     "brief_words": "count",
+     "claims_reconcile": "share",
+     "false_drivers": "count",
+     "finding_recall": "share",
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "key_fact_recall": "share",
+     "links_resolve": "share",
+     "must_not_say": "share",
+     "must_say_recall": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share",
+     "numbers_traced": "share",
+     "sections_exist": "share"
+    },
+    "report_only": [],
+    "rows": [
+     {
+      "case": "C-001",
+      "story": "P1-Q1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 915.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.3333,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.075,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-002",
+      "story": "P1-Q2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 622.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2885,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-003",
+      "story": "P1-Q3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 394.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.8889,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.3243,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-004",
+      "story": "P1-Q4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 582.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 0.25,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0208,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-005",
+      "story": "P1-Q5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 703.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.5,
+       "golden_number_recall": 0.7,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.75,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1714,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-006",
+      "story": "P1-Q6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 498.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-007",
+      "story": "P2-Q1",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 700.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.8333,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1458,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-008",
+      "story": "P2-Q2",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 584.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 0.25,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0588,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-009",
+      "story": "P2-Q3",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 703.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.1111,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0185,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-010",
+      "story": "P2-Q4",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 765.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.375,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0417,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-011",
+      "story": "P2-Q5",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 717.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.2857,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.6667,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0392,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-012",
+      "story": "P2-Q6",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 486.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0465,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-013",
+      "story": "P3-Q1",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 498.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.75,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.15,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-014",
+      "story": "P3-Q2",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 412.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.375,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.24,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-015",
+      "story": "P3-Q3",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 688.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0952,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-016",
+      "story": "P3-Q4",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 930.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0521,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-017",
+      "story": "P3-Q5",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 688.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.6667,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2097,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-018",
+      "story": "P3-Q6",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 778.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1081,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-019",
+      "story": "P4-Q1",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 836.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.7,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1628,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-020",
+      "story": "P4-Q2",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 637.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.1538,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.039,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-021",
+      "story": "P4-Q3",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 637.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 1.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.026,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-022",
+      "story": "P4-Q4",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 780.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0649,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-023",
+      "story": "P4-Q5",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 513.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.6667,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.6667,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0465,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-024",
+      "story": "P4-Q6",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 682.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.6667,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-025",
+      "story": "FU-1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 717.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.093,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-026",
+      "story": "FU-2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 717.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-027",
+      "story": "FU-3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 641.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.6667,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-028",
+      "story": "FU-4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 717.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0465,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-029",
+      "story": "FU-5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 641.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0727,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-030",
+      "story": "FU-6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 717.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-031",
+      "story": "WIN-1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 394.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.08,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-032",
+      "story": "WIN-2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 705.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 1.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1507,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "forecast_scripted",
+    "lane": "forecast",
+    "control": false,
+    "run_id": "e8efe624",
+    "started": "2026-10-30T00:17+00:00",
+    "golden_version": "f27b09890069",
+    "scorers": [
+     "claims_reconcile",
+     "golden_number_recall",
+     "governed_terms",
+     "links_resolve",
+     "must_not_say",
+     "no_individual_rep",
+     "numbers_match_golden",
+     "numbers_traced"
+    ],
+    "kinds": {
+     "claims_reconcile": "code",
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "links_resolve": "code",
+     "must_not_say": "safety",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code",
+     "numbers_traced": "code"
+    },
+    "units": {
+     "claims_reconcile": "share",
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "links_resolve": "share",
+     "must_not_say": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share",
+     "numbers_traced": "share"
+    },
+    "report_only": [],
+    "rows": [
+     {
+      "case": "F-001",
+      "story": "CA-Q1",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.3636,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 1.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-002",
+      "story": "CA-Q2",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.4,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-003",
+      "story": "CA-Q3",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-004",
+      "story": "CA-Q4",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.4,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-005",
+      "story": "CA-Q5",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2222,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-006",
+      "story": "CA-Q6",
+      "persona": "CA Commercial Analytics Analyst",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-007",
+      "story": "BM-Q1",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.2857,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.5,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-008",
+      "story": "BM-Q2",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-009",
+      "story": "BM-Q3",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.4,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.25,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-010",
+      "story": "BM-Q4",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-011",
+      "story": "BM-Q5",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-012",
+      "story": "BM-Q6",
+      "persona": "BM Brand Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.05,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-013",
+      "story": "FM-Q1",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.25,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-014",
+      "story": "FM-Q2",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-015",
+      "story": "FM-Q3",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.4,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2222,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "F-016",
+      "story": "FM-Q4",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-017",
+      "story": "FM-Q5",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "F-018",
+      "story": "FM-Q6",
+      "persona": "FM Forecasting Manager",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.1667,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1,
+       "numbers_traced": 1.0
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "briefing_lowcode:ollama:qwen3:4b-instruct-2507-q4_K_M",
+    "lane": "briefing",
+    "control": false,
+    "run_id": "9f24a4ec",
+    "started": "2026-11-05T05:40+00:00",
+    "golden_version": "dd7bbab7e69b",
+    "scorers": [
+     "claims_reconcile",
+     "golden_number_recall",
+     "governed_terms",
+     "judge_factual_correctness",
+     "links_resolve",
+     "must_not_say",
+     "no_individual_rep",
+     "numbers_match_golden",
+     "numbers_traced",
+     "numbers_lost"
+    ],
+    "kinds": {
+     "claims_reconcile": "code",
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "judge_factual_correctness": "agent",
+     "links_resolve": "code",
+     "must_not_say": "safety",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code",
+     "numbers_traced": "code",
+     "numbers_lost": "agent"
+    },
+    "units": {
+     "claims_reconcile": "share",
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "judge_factual_correctness": "share",
+     "links_resolve": "share",
+     "must_not_say": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share",
+     "numbers_traced": "share",
+     "numbers_lost": "share"
+    },
+    "report_only": [
+     "judge_factual_correctness"
+    ],
+    "rows": [
+     {
+      "case": "C-001",
+      "story": "P1-Q1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-002",
+      "story": "P1-Q2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-003",
+      "story": "P1-Q3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-004",
+      "story": "P1-Q4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-005",
+      "story": "P1-Q5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.6,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 0.3,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.4615,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": [
+       {
+        "scorer": "judge_factual_correctness",
+        "previous": 0.46,
+        "latest": 0.3
+       }
+      ]
+     },
+     {
+      "case": "C-006",
+      "story": "P1-Q6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-007",
+      "story": "P2-Q1",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "judge_factual_correctness": 0.33,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": [
+       {
+        "scorer": "golden_number_recall",
+        "previous": 0.5714,
+        "latest": 0.0
+       },
+       {
+        "scorer": "judge_factual_correctness",
+        "previous": 0.44,
+        "latest": 0.33
+       },
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.6667,
+        "latest": 0.0
+       }
+      ]
+     },
+     {
+      "case": "C-008",
+      "story": "P2-Q2",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-009",
+      "story": "P2-Q3",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-010",
+      "story": "P2-Q4",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-011",
+      "story": "P2-Q5",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-012",
+      "story": "P2-Q6",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-013",
+      "story": "P3-Q1",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-014",
+      "story": "P3-Q2",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-015",
+      "story": "P3-Q3",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-016",
+      "story": "P3-Q4",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-017",
+      "story": "P3-Q5",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-018",
+      "story": "P3-Q6",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-019",
+      "story": "P4-Q1",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-020",
+      "story": "P4-Q2",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-021",
+      "story": "P4-Q3",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-022",
+      "story": "P4-Q4",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-023",
+      "story": "P4-Q5",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-024",
+      "story": "P4-Q6",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": null,
+       "golden_number_recall": null,
+       "governed_terms": null,
+       "judge_factual_correctness": null,
+       "links_resolve": null,
+       "must_not_say": null,
+       "no_individual_rep": null,
+       "numbers_match_golden": null,
+       "numbers_traced": null,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "briefing_agent:ollama:qwen3:4b-instruct-2507-q4_K_M",
+    "lane": "briefing",
+    "control": false,
+    "run_id": "4cf9edfc",
+    "started": "2026-11-12T03:26+00:00",
+    "golden_version": "dd7bbab7e69b",
+    "scorers": [
+     "claims_reconcile",
+     "golden_number_recall",
+     "governed_terms",
+     "links_resolve",
+     "must_not_say",
+     "no_individual_rep",
+     "numbers_match_golden",
+     "numbers_traced",
+     "numbers_lost"
+    ],
+    "kinds": {
+     "claims_reconcile": "code",
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "links_resolve": "code",
+     "must_not_say": "safety",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code",
+     "numbers_traced": "code",
+     "numbers_lost": "agent"
+    },
+    "units": {
+     "claims_reconcile": "share",
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "links_resolve": "share",
+     "must_not_say": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share",
+     "numbers_traced": "share",
+     "numbers_lost": "share"
+    },
+    "report_only": [],
+    "rows": [
+     {
+      "case": "C-001",
+      "story": "P1-Q1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2222,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-002",
+      "story": "P1-Q2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.5556,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.3125,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-003",
+      "story": "P1-Q3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.2222,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.6,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-004",
+      "story": "P1-Q4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-005",
+      "story": "P1-Q5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.6,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.24,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": [
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.4167,
+        "latest": 0.24
+       }
+      ]
+     },
+     {
+      "case": "C-006",
+      "story": "P1-Q6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-007",
+      "story": "P2-Q1",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.8571,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.4667,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": [
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.5,
+        "latest": 0.4667
+       }
+      ]
+     },
+     {
+      "case": "C-008",
+      "story": "P2-Q2",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.4286,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2727,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-009",
+      "story": "P2-Q3",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.125,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-010",
+      "story": "P2-Q4",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.125,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0588,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-011",
+      "story": "P2-Q5",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.2857,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.25,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-012",
+      "story": "P2-Q6",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0714,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": [
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.0909,
+        "latest": 0.0714
+       }
+      ]
+     },
+     {
+      "case": "C-013",
+      "story": "P3-Q1",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1818,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-014",
+      "story": "P3-Q2",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-015",
+      "story": "P3-Q3",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1667,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": [
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.2105,
+        "latest": 0.1667
+       }
+      ]
+     },
+     {
+      "case": "C-016",
+      "story": "P3-Q4",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.4,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1622,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-017",
+      "story": "P3-Q5",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.125,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-018",
+      "story": "P3-Q6",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0667,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": [
+       {
+        "scorer": "numbers_match_golden",
+        "previous": 0.087,
+        "latest": 0.0667
+       }
+      ]
+     },
+     {
+      "case": "C-019",
+      "story": "P4-Q1",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.1,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0909,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-020",
+      "story": "P4-Q2",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0625,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0909,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-021",
+      "story": "P4-Q3",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-022",
+      "story": "P4-Q4",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.1667,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0909,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-023",
+      "story": "P4-Q5",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1111,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-024",
+      "story": "P4-Q6",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "claims_reconcile": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     }
+    ]
+   },
+   {
+    "system": "briefing_agent:anthropic:claude-haiku-5-5",
+    "lane": "briefing",
+    "control": false,
+    "run_id": "727bc006",
+    "started": "2026-11-22T20:54+00:00",
+    "golden_version": "2a0e14c01002",
+    "scorers": [
+     "brief_words",
+     "claims_reconcile",
+     "false_drivers",
+     "finding_recall",
+     "golden_number_recall",
+     "governed_terms",
+     "key_fact_recall",
+     "links_resolve",
+     "must_not_say",
+     "must_say_recall",
+     "no_individual_rep",
+     "numbers_match_golden",
+     "numbers_traced",
+     "sections_exist",
+     "numbers_lost"
+    ],
+    "kinds": {
+     "brief_words": "agent",
+     "claims_reconcile": "code",
+     "false_drivers": "agent",
+     "finding_recall": "agent",
+     "golden_number_recall": "code",
+     "governed_terms": "safety",
+     "key_fact_recall": "code",
+     "links_resolve": "code",
+     "must_not_say": "safety",
+     "must_say_recall": "agent",
+     "no_individual_rep": "safety",
+     "numbers_match_golden": "code",
+     "numbers_traced": "code",
+     "sections_exist": "code",
+     "numbers_lost": "agent"
+    },
+    "units": {
+     "brief_words": "count",
+     "claims_reconcile": "share",
+     "false_drivers": "count",
+     "finding_recall": "share",
+     "golden_number_recall": "share",
+     "governed_terms": "share",
+     "key_fact_recall": "share",
+     "links_resolve": "share",
+     "must_not_say": "share",
+     "must_say_recall": "share",
+     "no_individual_rep": "share",
+     "numbers_match_golden": "share",
+     "numbers_traced": "share",
+     "sections_exist": "share",
+     "numbers_lost": "share"
+    },
+    "report_only": [],
+    "rows": [
+     {
+      "case": "C-001",
+      "story": "P1-Q1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 1076.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.3333,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0659,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-002",
+      "story": "P1-Q2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 727.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2857,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-003",
+      "story": "P1-Q3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 463.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.8889,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.3,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-004",
+      "story": "P1-Q4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 657.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 0.25,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0196,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-005",
+      "story": "P1-Q5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 873.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.5,
+       "golden_number_recall": 0.7,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.75,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2222,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-006",
+      "story": "P1-Q6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 565.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-007",
+      "story": "P2-Q1",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 826.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.8333,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1296,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-008",
+      "story": "P2-Q2",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 718.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 0.25,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0545,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-009",
+      "story": "P2-Q3",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 885.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.1111,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0156,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-010",
+      "story": "P2-Q4",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 934.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.375,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0476,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-011",
+      "story": "P2-Q5",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 838.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.2857,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.6667,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0536,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-012",
+      "story": "P2-Q6",
+      "persona": "P2 Insights Manager (Marcus)",
+      "scores": {
+       "brief_words": 602.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.5,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0612,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-013",
+      "story": "P3-Q1",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 599.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.75,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2093,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-014",
+      "story": "P3-Q2",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 412.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.375,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.24,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-015",
+      "story": "P3-Q3",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 880.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1053,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-016",
+      "story": "P3-Q4",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 1090.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0521,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-017",
+      "story": "P3-Q5",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 807.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.6667,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.2329,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-018",
+      "story": "P3-Q6",
+      "persona": "P3 Brand Director (Diana)",
+      "scores": {
+       "brief_words": 939.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 0.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1205,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-019",
+      "story": "P4-Q1",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 897.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.7,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1739,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-020",
+      "story": "P4-Q2",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 637.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.1538,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.039,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-021",
+      "story": "P4-Q3",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 637.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 1.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.026,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-022",
+      "story": "P4-Q4",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 972.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.3333,
+       "governed_terms": 1.0,
+       "key_fact_recall": 0.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0649,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-023",
+      "story": "P4-Q5",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 650.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 0.6667,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.6667,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.06,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-024",
+      "story": "P4-Q6",
+      "persona": "P4 Marketer (Magdalena)",
+      "scores": {
+       "brief_words": 682.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 0.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.6667,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "golden_number_recall",
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-025",
+      "story": "FU-1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 948.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1111,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-026",
+      "story": "FU-2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 901.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-027",
+      "story": "FU-3",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 757.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 0.6667,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-028",
+      "story": "FU-4",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 870.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 0.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.069,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-029",
+      "story": "FU-5",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 759.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.069,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-030",
+      "story": "FU-6",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 885.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": null,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": 1.0,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.0,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": null
+      },
+      "stuck": [
+       "numbers_match_golden"
+      ],
+      "fallen": []
+     },
+     {
+      "case": "C-031",
+      "story": "WIN-1",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 394.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": null,
+       "finding_recall": null,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.08,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     },
+     {
+      "case": "C-032",
+      "story": "WIN-2",
+      "persona": "P1 Commercial Analyst (Ace)",
+      "scores": {
+       "brief_words": 891.0,
+       "claims_reconcile": 1.0,
+       "false_drivers": 1.0,
+       "finding_recall": 1.0,
+       "golden_number_recall": 1.0,
+       "governed_terms": 1.0,
+       "key_fact_recall": 1.0,
+       "links_resolve": 1.0,
+       "must_not_say": 1.0,
+       "must_say_recall": null,
+       "no_individual_rep": 1.0,
+       "numbers_match_golden": 0.1744,
+       "numbers_traced": 1.0,
+       "sections_exist": 1.0,
+       "numbers_lost": 0.0
+      },
+      "stuck": [],
+      "fallen": []
+     }
+    ]
+   }
+  ]
+ }
 }
