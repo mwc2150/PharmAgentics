@@ -317,7 +317,7 @@ def test_blocks_follow_the_schema_for_a_one_week_brief():
     assert table["rows"][0]["cell_citations"][0] == [] and len(table["rows"][0]["cell_citations"][1]) == 1
     assert "four weeks before" in table["note"]
     story = by_number(env)["3.1"]
-    assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"] == ["competitor"]  # the competitor story
+    assert story["card"]["confidence"] == "Medium" and story["card"]["drivers_checked"][0] == "competitor"  # the national competitor story (brief-010 FR-006)
     assert "Metacora holds 15.9%" in story["card"]["headline"] and story["card"]["headline_citations"]
     card = story["card"]  # brief-010 FR-006: the national card
     assert (card["territory"], card["cut"], card["drivers_supported"], card["drivers_ruled_out"]) == ("NATIONAL", None, ["competitor"], [])

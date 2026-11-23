@@ -109,7 +109,7 @@ def test_the_definition_goes_to_a_system_only_when_it_takes_one():
     assert definition_option(new, None) == {}
 
 
-def test_findings_may_name_a_measure_and_finding_recall_ignores_it_for_now():
+def test_findings_may_name_a_measure_and_a_card_must_cover_it():
     with pytest.raises(ValidationError):
         Finding(id="x", territory="NATIONAL", measure="revenue")
     assert Finding(id="x", territory="NATIONAL").measure is None  # None means BXA TRx
@@ -120,11 +120,13 @@ def test_findings_may_name_a_measure_and_finding_recall_ignores_it_for_now():
                    ("P1-Q5", "national_metacora_competitor"): "competitor_share"}
     expect = by["P3-Q4"].expectations()
     assert expect["findings"][0]["measure"] == "competitor_share"
-    card = {"headline": "Story", "territory": "NATIONAL", "direction": "flat", "drivers_supported": ["competitor"],
-            "drivers_ruled_out": []}
+    card = {"headline": "Story", "territory": "NATIONAL", "direction": "down", "drivers_supported": ["competitor"],
+            "drivers_ruled_out": [], "directions": {"bxa_share": "down", "competitor_share": "flat"}}
     sections = [{"number": "3.1", "title": "Story", "text": "", "card": card}]
     fb = finding_recall(outputs={"system": "test", "answer": "", "sections": sections}, expectations=expect)
-    assert fb.value == 1.0  # the new field does not crash the scorer or change its points
+    assert fb.value == 1.0  # the finding's measure (competitor share) is read from the card's directions
+    no_share = [{"number": "3.1", "title": "Story", "text": "", "card": {k: v for k, v in card.items() if k != "directions"}}]
+    assert finding_recall(outputs={"system": "test", "answer": "", "sections": no_share}, expectations=expect).value == 0.0
 
 
 def test_review_decisions_are_applied():

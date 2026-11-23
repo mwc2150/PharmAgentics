@@ -336,9 +336,12 @@ def leader_words(sections: list[dict]) -> int:
 # Word budget per view (core-011 FR-020): the largest `brief_words` among the anchor briefs that printed on two A4
 # pages (brief-008 I2; the five anchors of brief-008 SC-002), as measured: a brief no longer than the longest one that fits. MEASURED_ANCHORS holds the counts
 # (analyst, leader) from the scripted engine on data day1-v1 at 2026-11-22; `test_word_budget.py` recomputes them.
+# Re-measured after brief-010 merged (2026-11-22): every anchor +5 for "Holiday weeks are left out."; P4-Q1 +72 because its
+# period now reports the Mid-Atlantic restatement of 2026-04-06 (brief-010 FR-005). The budget stays at the print-verified
+# counts until a print check says otherwise; P4-Q1 is over it until brief-010 FR-008 shrinks its territory card.
 MEASURED_ANCHORS: dict[str, tuple[int, int]] = {
-    "P1-Q2": (622, 584), "P1-Q3": (394, 361), "P1-Q6": (498, 464), "P3-Q5": (688, 559), "P4-Q1": (836, 705)}
-WORD_BUDGET: dict[str, int] = {"analyst": 836, "leader": 705}  # the largest anchor counts (P4-Q1, both views)
+    "P1-Q2": (627, 589), "P1-Q3": (399, 366), "P1-Q6": (503, 469), "P3-Q5": (693, 564), "P4-Q1": (908, 777)}
+WORD_BUDGET: dict[str, int] = {"analyst": 836, "leader": 705}  # print-verified longest anchor (P4-Q1 in brief-008 I2)
 
 
 @scorer(name="brief_words",

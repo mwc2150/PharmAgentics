@@ -47,7 +47,9 @@ def section(env: dict, number: str) -> dict:
 
 
 def cards(env: dict) -> list[dict]:
-    return [s["card"] for s in env["sections"] if s["number"].startswith("3.") and s.get("card") and s["card"]["territory"]]
+    """Territory story cards (the national competitor card, brief-010 FR-006, is not a territory story)."""
+    return [s["card"] for s in env["sections"] if s["number"].startswith("3.") and s.get("card")
+            and s["card"]["territory"] not in (None, "NATIONAL")]
 
 
 # -- DB1: the model -----------------------------------------------------------------------------------
