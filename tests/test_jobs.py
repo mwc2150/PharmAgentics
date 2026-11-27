@@ -118,7 +118,7 @@ def test_triage_then_brief_round_trip_and_traceability_check():
     assert worker().post(f"/api/worker/jobs/{job2['id']}", json={"ok": True, "result": good}, headers=W).json()["status"] == "done"
     brief = analyst.get(f"/api/agent/jobs/{job2['id']}").json()["result"]
     assert brief["engine"] == "agent" and brief["system"] == "briefing_agent:ollama:test" and brief["flow"]
-    assert brief["review_status"] == "pending"
+    assert brief["review_status"] == "draft"
 
 
 def test_untraced_numbers_ignore_dates_versions_and_plan_ids():

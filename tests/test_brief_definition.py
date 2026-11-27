@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "agents" / "brand-briefing"))
 
 from pharmagentics.tools import DEFAULT_DB  # noqa: E402
+from signoff_helpers import approve  # noqa: E402
 from pharmagentics.tools import definition as defs  # noqa: E402
 from pharmagentics.tools.definition import Definition  # noqa: E402
 from pharmagentics.tools.registry import digits_outside_tokens  # noqa: E402
@@ -475,7 +476,7 @@ def test_a_brief_is_stored_and_returned_with_its_definition_and_leaders_see_it_i
     stored = analyst.get(f"/api/briefing/{brief_['brief_id']}").json()
     assert stored["definition"] == d
     # the leader sees it in words in the Assumptions block, and never the claims, args or SQL
-    assert analyst.post(f"/api/briefing/{brief_['brief_id']}/review", json={"decision": "approved"}).status_code == 200
+    assert approve(analyst, brief_["brief_id"])["review_status"] == "signed_off"
     leader = _client(tmp_path, monkeypatch, "dev-director")
     seen = leader.get(f"/api/briefing/{brief_['brief_id']}").json()
     assert seen["view"] == "leadership" and seen["definition"] == d

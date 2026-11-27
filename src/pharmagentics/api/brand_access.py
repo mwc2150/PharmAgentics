@@ -48,11 +48,11 @@ def context(release: ReleaseContext, p: Principal) -> ReleaseContext:
 
 
 def brief_for(p: Principal, role: Role, brief_id: str) -> dict:
-    from . import store
+    from . import signoff, store
 
     record = store.get_brief(brief_id)
     if (record is None or record["result"].get("brand_id", "BXA") not in allowed_brands(p)
-            or ("review" not in role.actions and record["review_status"] != "approved")):
+            or signoff.state_of(record) not in role.states):  # a role reads only the review states roles.json gives it
         raise HTTPException(status_code=404, detail="No such briefing.")
     return record
 

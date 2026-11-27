@@ -27,6 +27,12 @@ def environment(monkeypatch, tmp_path):
     monkeypatch.delenv("K_SERVICE", raising=False)
     monkeypatch.setattr(threads, "_purged", True)
     monkeypatch.setitem(auth.DEV_USERS, "dev-bxc-only", ("BXC only", ["tester", "brand-bxc"]))
+    # Every Briefing login holds both brands (Session 2026-11-27), so "same persona, fewer grants" (core-010 US2) is made here
+    # from fabricated principals: the stand-ins a person would be if the realm gave them BXA only.
+    monkeypatch.setitem(auth.DEV_USERS, "dev-bxa-analyst", ("Ace", ["briefing-analyst", "brand-bxa"]))
+    monkeypatch.setitem(auth.DEV_USERS, "dev-bxa-insights", ("Marcus", ["briefing-insights", "brand-bxa"]))
+    monkeypatch.setitem(auth.DEV_USERS, "dev-bxa-director", ("Diana", ["briefing-director", "brand-bxa"]))
+    monkeypatch.setitem(auth.DEV_USERS, "dev-bxa-marketer", ("Magdalena", ["briefing-marketer", "brand-bxa"]))
     jobs.reset()
     yield
     jobs.reset()
@@ -51,7 +57,7 @@ def bxc(results):
 
 @needs_db
 def test_same_role_different_account_grants_and_empty_access():
-    a, b = signed_in("dev-analyst-multibrand"), signed_in("dev-analyst")
+    a, b = signed_in("dev-analyst"), signed_in("dev-bxa-analyst")
     assert a.get("/api/me").json()["lanes"] == b.get("/api/me").json()["lanes"]
     ca, cb = a.get("/api/briefing/context").json(), b.get("/api/briefing/context").json()
     assert ca["product_ids"] == ["BXA", "BXC"] and cb["product_ids"] == ["BXA"]
@@ -63,7 +69,7 @@ def test_same_role_different_account_grants_and_empty_access():
 
 @pytest.mark.parametrize("path", ["/api/briefing/triage", "/api/briefing/query", "/api/agent/jobs"])
 def test_ungranted_requests_fail_before_any_engine(path):
-    b = signed_in("dev-analyst")
+    b = signed_in("dev-bxa-analyst")
     payload = {"kind": "triage", "query": Q} if path.endswith("jobs") else Q
     with patch.object(service, "run_triage") as triage, patch.object(service, "run_briefing") as run, \
             patch.object(service, "_check_scope") as scope:
@@ -102,7 +108,7 @@ def test_real_brands_have_distinct_ids_and_replayable_primary_claims_and_charts(
 
 @needs_db
 def test_overview_uses_selected_brand_and_permitted_competitor_policy():
-    a, b = signed_in("dev-analyst-multibrand"), signed_in("dev-analyst")
+    a, b = signed_in("dev-analyst"), signed_in("dev-bxa-analyst")
     for brand, expected in (("BXA", (464, 96, 49)), ("BXC", (626, 140, 83))):
         data = a.get(f"/api/briefing/overview?week=2026-06-08&brand_id={brand}").json()
         pacific = next(t for t in data["territories"] if t["id"] == "PACIFIC")
@@ -117,7 +123,7 @@ def test_overview_uses_selected_brand_and_permitted_competitor_policy():
 
 @needs_db
 def test_cross_brand_plan_is_rejected():
-    a = signed_in("dev-analyst-multibrand")
+    a = signed_in("dev-analyst")
     plans = {b: a.post("/api/briefing/triage", json={**Q, "brand_id": b}).json() for b in ("BXA", "BXC")}
     assert plans["BXA"]["plan_id"] != plans["BXC"]["plan_id"]
     wrong = {"plan_id": plans["BXA"]["plan_id"], "stories": []}
@@ -130,10 +136,17 @@ def test_cross_brand_plan_is_rejected():
 
 @needs_db
 def test_approval_and_leadership_access_are_also_brand_checked(bxc):
-    a, da, db = signed_in("dev-analyst-multibrand"), signed_in("dev-director-multibrand"), signed_in("dev-director")
+    a, da, db = signed_in("dev-analyst"), signed_in("dev-director"), signed_in("dev-bxa-director")
     assert da.get(f"/api/briefing/{bxc}").status_code == 404
-    assert a.post(f"/api/briefing/{bxc}/review", json={"decision": "approved"}).status_code == 200
+    assert a.post(f"/api/briefing/{bxc}/review", json={"decision": "sent"}).status_code == 200
+    assert da.get(f"/api/briefing/{bxc}").status_code == 404  # sent is not signed off
+    bi = signed_in("dev-bxa-insights")  # a Insights Manager without the brand cannot see it, let alone sign it off
+    assert bi.get(f"/api/briefing/{bxc}").status_code == 404 and bi.post(f"/api/briefing/{bxc}/signoff", json={"decision": "signed_off"}).status_code == 404
+    assert bi.get("/api/briefing/queue").json() == []
+    assert signed_in("dev-insights").post(f"/api/briefing/{bxc}/signoff", json={"decision": "signed_off"}).status_code == 200
     summary = da.get(f"/api/briefing/{bxc}").json()
+    assert signed_in("dev-marketer").get(f"/api/briefing/{bxc}").json() == summary  # P4 reads what P3 reads, for now
+    assert signed_in("dev-bxa-marketer").get(f"/api/briefing/{bxc}").status_code == 404
     assert summary["brand_id"] == "BXC" and summary["view"] == "leadership" and "626" in summary["summary"]
     assert not {"answer", "claims", "evidence", "triage", "flow"} & summary.keys()
     assert "\"query\"" not in json.dumps(summary) and "\"text_citations\"" not in json.dumps(summary)
@@ -144,15 +157,15 @@ def test_approval_and_leadership_access_are_also_brand_checked(bxc):
 
 @needs_db
 def test_saved_brief_reviews_threads_links_and_votes_do_not_leak(bxc):
-    a, b = signed_in("dev-analyst-multibrand"), signed_in("dev-analyst")
+    a, b = signed_in("dev-analyst"), signed_in("dev-bxa-analyst")
     assert a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Restate Lipidara's bottom line"}).status_code == 200
     saved = a.post(f"/api/briefing/{bxc}/thread/save").json()
     for path in (f"/api/briefing/{bxc}", f"/api/briefing/{bxc}/thread", saved["share_path"]):
         denied = b.get(path)
         assert denied.status_code == 404 and "626" not in denied.text
     for path, payload in (
-        (f"/api/briefing/{bxc}/review", {"decision": "approved"}),
-        (f"/api/briefing/{bxc}/review", {"decision": "rejected"}),
+        (f"/api/briefing/{bxc}/review", {"decision": "sent"}),
+        (f"/api/briefing/{bxc}/review", {"decision": "rejected", "reason": "no"}),
         (f"/api/briefing/{bxc}/thread/ask", {"question": "Restate the bottom line"}),
         (f"/api/briefing/{bxc}/thread/save", {}),
         (f"/api/briefing/{bxc}/thread/continue/{saved['owner']}", {}),
@@ -162,7 +175,7 @@ def test_saved_brief_reviews_threads_links_and_votes_do_not_leak(bxc):
     ):
         assert b.post(path, json=payload).status_code == 404
     assert b.get(f"/api/feedback/vote?lane=briefing&ref={bxc}&view=analyst").status_code == 404
-    assert store.get_brief(bxc)["review_status"] == "pending" and not store.backend().keys("feedback/response/")
+    assert store.get_brief(bxc)["review_status"] == "pending" and "review_trail" not in store.get_brief(bxc) and not store.backend().keys("feedback/response/")
 
 
 @needs_db
@@ -171,7 +184,7 @@ def test_saved_brief_reviews_threads_links_and_votes_do_not_leak(bxc):
     ("GREAT_LAKES", "2026-07-06", "duplicate keys", "estimated"),
 ])
 def test_flagged_cuts_are_withheld_for_bxc(territory, week, reason, basis):
-    a = signed_in("dev-analyst-multibrand")
+    a = signed_in("dev-analyst")
     plan = a.post("/api/briefing/triage", json={**Q, "territory_id": territory, "week_start": week}).json()
     assert territory in plan["withheld"] and reason in plan["context"]
     assert not any(s["territory"] == territory for s in plan["stories"])
@@ -185,7 +198,7 @@ def test_flagged_cuts_are_withheld_for_bxc(territory, week, reason, basis):
 
 
 def test_bxc_agent_submission_is_rejected_even_with_a_grant():
-    a = signed_in("dev-analyst-multibrand")
+    a = signed_in("dev-analyst")
     with patch.object(service, "_check_scope") as scope:
         response = a.post("/api/agent/jobs", json={"kind": "triage", "query": Q})
         assert response.status_code == 400 and "does not support" in response.text
@@ -209,7 +222,7 @@ def test_agent_worker_and_result_admission_refuse_a_different_brand():
 
 @needs_db
 def test_bxc_agent_followup_cannot_call_the_bxa_agent(bxc):
-    a = signed_in("dev-analyst-multibrand")
+    a = signed_in("dev-analyst")
     with patch("pharmagentics.api.agent_host.model") as model:
         assert a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Explain the change", "engine": "agent"}).status_code == 400
         model.assert_not_called()
@@ -218,7 +231,7 @@ def test_bxc_agent_followup_cannot_call_the_bxa_agent(bxc):
 @needs_db
 def test_mismatched_engine_brand_is_never_saved():
     with patch("briefing_baseline.pipeline.answer", return_value={"brand_id": "BXA"}), patch.object(store, "save_brief") as save:
-        assert signed_in("dev-analyst-multibrand").post("/api/briefing/query", json=Q).status_code == 500
+        assert signed_in("dev-analyst").post("/api/briefing/query", json=Q).status_code == 500
         save.assert_not_called()
 
 
@@ -233,18 +246,18 @@ def test_tester_switch_retains_actual_grants_and_forecast_requires_bxa():
 
 
 def test_jobs_require_requester_grants_and_matching_triage_scope():
-    a, b, other = signed_in("dev-analyst-multibrand"), signed_in("dev-analyst"), signed_in("dev-bxc-only")
+    a, b, other = signed_in("dev-analyst"), signed_in("dev-bxa-analyst"), signed_in("dev-bxc-only")
     payload = {"query": Q, "question": "test"}
-    j = jobs.submit("triage", payload, by=rbac.pseudonym("dev-analyst-multibrand"))
+    j = jobs.submit("triage", payload, by=rbac.pseudonym("dev-analyst"))
     assert a.get(f"/api/agent/jobs/{j['id']}").status_code == 200
     assert b.get(f"/api/agent/jobs/{j['id']}").status_code == 404  # same persona, no BXC grant
     assert other.get(f"/api/agent/jobs/{j['id']}").status_code == 404  # same grant, different requester
 
 
 def test_agent_triage_cannot_be_reused_by_another_scope_or_requester():
-    a, b = signed_in("dev-analyst-multibrand"), signed_in("dev-analyst")
+    a, b = signed_in("dev-analyst"), signed_in("dev-bxa-analyst")
     q = {**Q, "brand_id": "BXA"}
-    j = jobs.submit("triage", {"query": q}, by=rbac.pseudonym("dev-analyst"))
+    j = jobs.submit("triage", {"query": q}, by=rbac.pseudonym("dev-bxa-analyst"))
     assert jobs.next_job(None)["id"] == j["id"]
     plan = {"plan_id": "t-000000000000", "stories": [], "brand_id": "BXA"}
     jobs.complete(j["id"], True, plan, None)
@@ -255,11 +268,11 @@ def test_agent_triage_cannot_be_reused_by_another_scope_or_requester():
 
 
 def test_grant_changes_take_effect_on_next_sign_in(monkeypatch):
-    c = signed_in("dev-analyst-multibrand")
-    monkeypatch.setitem(auth.DEV_USERS, "dev-analyst-multibrand", ("Same analyst", ["briefing-analyst", "brand-bxa"]))
+    c = signed_in("dev-analyst")
+    monkeypatch.setitem(auth.DEV_USERS, "dev-analyst", ("Same analyst", ["briefing-analyst", "brand-bxa"]))
     assert c.get("/api/me").json()["brand_ids"] == ["BXA", "BXC"]
     c.get("/auth/logout", follow_redirects=False)
-    c.post("/auth/dev-login", data={"username": "dev-analyst-multibrand"}, follow_redirects=False)
+    c.post("/auth/dev-login", data={"username": "dev-analyst"}, follow_redirects=False)
     assert c.get("/api/me").json()["brand_ids"] == ["BXA"]
 
 
@@ -299,7 +312,7 @@ def test_feedback_review_filters_proposals_and_checks_decisions(bxc):
 def test_bxc_feedback_keeps_its_brand_and_never_reruns_the_bxa_agent(bxc, tmp_path):
     from eval.harness import improve
 
-    a = signed_in("dev-analyst-multibrand")
+    a = signed_in("dev-analyst")
     assert a.post("/api/feedback/vote", json={"lane": "briefing", "ref": bxc, "view": "analyst",
                   "vote": "down", "comment": "Please make the data caveat clearer."}).status_code == 200
     a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Restate the bottom line"})

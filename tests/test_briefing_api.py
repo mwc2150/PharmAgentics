@@ -61,7 +61,7 @@ def test_success_contract_and_no_store():
     assert response.json()["claims"][0]["evidence_id"] == response.json()["evidence"][0]["id"]
     runner.assert_called_once()
     assert runner.call_args.args[0].territory_id == "PACIFIC"
-    assert response.json()["view"] == "analyst" and response.json()["review_status"] == "pending"
+    assert response.json()["view"] == "analyst" and response.json()["review_status"] == "draft"
 
 
 @pytest.mark.parametrize("changes", [
@@ -129,7 +129,7 @@ def test_multibrand_scripted_request_passes_its_brand_and_window():
         result = service.run_briefing(request)
         assert result.brand_id == "BXC" and result.comparison == request.comparison
         analyst = TestClient(app)
-        analyst.post("/auth/dev-login", data={"username": "dev-analyst-multibrand"}, follow_redirects=False)
+        analyst.post("/auth/dev-login", data={"username": "dev-analyst"}, follow_redirects=False)
         response = analyst.post("/api/briefing/query",
                                 json={**VALID, "brand_id": "BXC", "intent": "promotion_review"})
         assert response.status_code == 400

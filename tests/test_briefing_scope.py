@@ -162,7 +162,7 @@ def test_rules_note_uses_the_right_singular_and_plural():
 
 
 def test_rules_flag_a_promotion_question_only_for_bxa():
-    sign_in("dev-analyst-multibrand")
+    sign_in("dev-analyst")
     body = post_scope("Did the campaign reach the people it was meant to?", "BXA").json()
     assert body["promotion_review"] is True and body["week_start"] == body["week_end"] == LATEST.isoformat()
     assert post_scope("Did the campaign reach the people it was meant to?", "BXC").json()["promotion_review"] is False
@@ -235,7 +235,7 @@ def test_an_invalid_proposal_falls_back_to_the_rules(monkeypatch, name):
 
 def test_a_model_failure_or_a_proposal_for_the_wrong_brand_falls_back(monkeypatch):
     use_model(monkeypatch, error=TimeoutError("slow"))
-    sign_in("dev-analyst-multibrand")
+    sign_in("dev-analyst")
     assert post_scope().json()["read_by"] == "rules"
     use_model(monkeypatch, {**GOOD, "promotion_review": True})
     assert post_scope(brand="BXC").json()["read_by"] == "rules"
@@ -253,8 +253,11 @@ def test_leaders_and_other_roles_cannot_read_a_scope():
     assert post_scope().status_code == 403
 
 
-def test_the_route_checks_brand_access_and_the_request_shape():
-    sign_in("dev-analyst")
+def test_the_route_checks_brand_access_and_the_request_shape(monkeypatch):
+    from pharmagentics.api import auth
+
+    monkeypatch.setitem(auth.DEV_USERS, "dev-bxa-analyst", ("Ace", ["briefing-analyst", "brand-bxa"]))  # same persona, fewer grants (core-010 US2)
+    sign_in("dev-bxa-analyst")
     assert post_scope(brand="BXC").status_code == 403
     assert CLIENT.post("/api/briefing/scope", json={"question": "hi"}).status_code == 422
     assert CLIENT.post("/api/briefing/scope", json={"question": "How did we do?", "extra": 1}).status_code == 422

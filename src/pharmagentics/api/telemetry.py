@@ -114,18 +114,23 @@ def _spread(values: list[float]) -> dict | None:
     return {"n": len(values), "p50": _percentile(values, 0.5), "p95": _percentile(values, 0.95)} if values else None
 
 
+APPROVING, REJECTING = ("signed_off", "approved"), ("rejected", "returned")  # "approved" is the decision from before sign-off
+
+
 def review_outcomes(events: list[dict]) -> dict:
-    """The analyst's decisions counted per brief, not per click: the latest decision of each brief stands, so an
-    approval that was later changed, or a brief decided twice, counts once. `approved_pct` is None, and `label`
-    says "too few to rate", until MIN_BRIEFS_TO_RATE briefs are decided. Events with no brief id cannot be matched
-    to a brief and are left out."""
+    """Decisions counted per brief, not per click: the latest decision of each brief stands, so a brief decided twice, or
+    returned and then signed off, counts once. A brief signed off (or approved before sign-off existed) counts as approved;
+    one the analyst rejected or the Insights Manager returned counts as rejected; one whose latest decision is "sent for
+    sign-off" is still waiting and is not counted. `approved_pct` is None, and `label` says "too few to rate", until
+    MIN_BRIEFS_TO_RATE briefs are decided. Events with no brief id cannot be matched to a brief and are left out."""
     latest: dict[str, tuple[str, str]] = {}
     for e in events:
-        if e.get("kind") == "reviewed" and e.get("brief_id") and e.get("decision") in ("approved", "rejected"):
+        if e.get("kind") == "reviewed" and e.get("brief_id") and e.get("decision") in (*APPROVING, *REJECTING, "sent"):
             if e["brief_id"] not in latest or e["ts"] >= latest[e["brief_id"]][0]:
                 latest[e["brief_id"]] = (e["ts"], e["decision"])
-    approved = sum(d == "approved" for _, d in latest.values())
-    briefs, enough = len(latest), len(latest) >= MIN_BRIEFS_TO_RATE
+    decided = [d for _, d in latest.values() if d != "sent"]
+    approved = sum(d in APPROVING for d in decided)
+    briefs, enough = len(decided), len(decided) >= MIN_BRIEFS_TO_RATE
     return {"briefs": briefs, "approved": approved, "rejected": briefs - approved, "min_briefs": MIN_BRIEFS_TO_RATE,
             "enough": enough, "approved_pct": round(100 * approved / briefs) if enough else None,
             "label": None if enough else TOO_FEW}
@@ -203,8 +208,12 @@ def _live_usage() -> dict:
 
 
 def _signed_in(p: rbac.Principal) -> set[str]:
+    """The lanes the Evaluation page may show this user. Analysts (P1, CA), the Insights Manager (P2) and the test
+    login only; the Director, the Marketer and the Forecast Brand Manager are refused here, whatever the page shows."""
     if not p.lanes:
         raise HTTPException(status_code=403, detail="Your account has no PharmAgentics role.")
+    if not rbac.can_evaluate(p):
+        raise HTTPException(status_code=403, detail="The Evaluation page is for analysts and the Insights Manager.")
     return {r.lane for r in p.lanes}
 
 

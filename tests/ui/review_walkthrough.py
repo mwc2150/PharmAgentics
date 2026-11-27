@@ -28,8 +28,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # role -> (dev sign-in user, accessible name of its button on /auth/login). Names follow roles.json and auth.DEV_USERS.
 PERSONAS = {
-    "analyst": ("dev-analyst", "Ace briefing-analyst, brand-bxa"),
-    "director": ("dev-director", "Diana briefing-director, brand-bxa"),
+    "analyst": ("dev-analyst", "Ace briefing-analyst, brand-bxa, brand-bxc"),
+    "director": ("dev-director", "Diana briefing-director, brand-bxa, brand-bxc"),
     "forecast-analyst": ("dev-forecast-analyst", "Ace forecast-analyst, brand-bxa"),
     "forecast-manager": ("dev-forecast-manager", "Miranda forecast-manager, brand-bxa"),
     "tester": ("dev-tester", "Tester tester, brand-bxa, brand-bxc"),
@@ -195,7 +195,7 @@ class Review:
             self.flag("vendor-name-visible", "a model or tool vendor name is visible", m, screen)
         if MOJIBAKE.search(text):
             self.flag("mojibake", "garbled characters", MOJIBAKE.search(text).group(0), screen)
-        if "approved analyst brief" in text and re.search(r"Draft|Awaiting analyst review|Awaiting Brand Manager", text):
+        if "signed-off brief" in text and re.search(r"Draft|Awaiting analyst review|Awaiting Brand Manager|Waiting for the Insights Manager", text):
             self.flag("approved-footer-over-draft", "footer says the content is approved while the status says draft", "", screen)
         for t in d["tabs"]:
             if t["selected"] and t["disabled"]:
@@ -305,6 +305,20 @@ class Review:
 # ============================================================================================================
 # Walkthroughs
 # ============================================================================================================
+def sign_off_queue(base: str) -> None:
+    """Sign in as the dev Insights Manager over HTTP and sign off every brief sent for sign-off (brief-005)."""
+    import http.cookiejar
+    import urllib.parse
+    import urllib.request
+
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    opener.open(urllib.request.Request(f"{base}/auth/dev-login", data=urllib.parse.urlencode({"username": "dev-insights"}).encode(), method="POST"))
+    for row in json.load(opener.open(f"{base}/api/briefing/queue")):
+        if row["review_status"] == "sent":
+            opener.open(urllib.request.Request(f"{base}/api/briefing/{row['brief_id']}/signoff", data=json.dumps({"decision": "signed_off"}).encode(),
+                                               headers={"Content-Type": "application/json"}, method="POST")).read()
+
+
 def analyst_desktop(r: Review, page: Page) -> None:
     r.step("overview", lambda: r.shot(page, "overview", full=True))
 
@@ -387,9 +401,12 @@ def analyst_desktop(r: Review, page: Page) -> None:
         cancel = page.get_by_role("button", name=re.compile(r"^Cancel"))
         if cancel.count():
             cancel.first.click()
-        page.get_by_role("button", name="Approve for the Brand Director").click()
+        page.get_by_role("button", name="Send for sign-off").click()
         page.wait_for_timeout(2000)
-        r.shot(page, "brief-approved")
+        r.shot(page, "brief-sent")
+        sign_off_queue(r.base)  # the Insights Manager (P2) signs it off, so the Director and the Marketer can open it
+        page.reload()
+        page.wait_for_timeout(1000)
         page.get_by_role("tab", name="Approved briefings").click()
         page.wait_for_timeout(1200)
         r.shot(page, "approved-list")
