@@ -86,7 +86,7 @@ def run(page: Page, base: str) -> None:
           f"The Overview's 'Brief this week' on Pacific opens the form with its brand, week and territory {got}")
 
     page.get_by_role("tab", name="Your briefings").click()
-    page.wait_for_timeout(1000)
+    page.locator("#briefing-panel h3", has_text="With the reviewer").wait_for(timeout=10000)  # the lists load
     heads = [h.strip() for h in page.locator("#briefing-panel h3").all_inner_texts()]
     check(heads[:3] == ["Approved", "Needs you", "With the reviewer"], f"Your briefings: Approved, then Needs you, then With the reviewer {heads}")
     check(toggle().count() == 0, "Your briefings: no brand toggle (the lists show every brand)")

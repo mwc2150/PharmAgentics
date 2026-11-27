@@ -621,7 +621,7 @@ function ForecastWorkspace({me, section, onSection, onBusy, ask}: {me: Me, secti
   }
   const submit = async () => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await submitForecast(selected.forecast_run_id)); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const decide = async (decision: "approved" | "rejected" | "returned") => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await reviewForecast(selected.forecast_run_id, decision, note)); setNote(""); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
-  return <div className={`${section === "reports" && editing ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
+  return <div className={`${section === "reports" && editing ? "workspace-wide" : "workspace-content"} space-y-6 pb-8 pt-5 sm:pb-10 sm:pt-6 pa-rise`}>
     <SubTabs label="Forecast explanation" value={section} onChange={s=>pageChange(()=>onSection(s))} dots={{reports: news.has("forecast") && section !== "reports"}} options={(analyst
       ? [["workbench", "New explanation", "forecast.new"], ["reports", "Your reports", "forecast.reports"]]
       : [["reports", "Reports", "forecast.review"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
@@ -697,7 +697,7 @@ function OverviewWorkspace({me, onBrief, onForecast}: {me: Me, onBrief?: (brand:
   },[openable])
   const canBrief = !!me.lanes.briefing?.actions.includes("run") && !!onBrief
   const canExplain = !!me.lanes.forecast?.actions.includes("run") && !!onForecast
-  return <div className="workspace-wide space-y-5 pb-10 pt-6 sm:pt-8 pa-rise">
+  return <div className="workspace-wide space-y-5 pb-10 pt-5 sm:pt-6 pa-rise">
     <div className="flex flex-wrap items-start justify-between gap-3"><Greeting/>{openable && <ClassLabel tab="briefing.overview"/>}</div>
     {!openable ? <Notice tone="warn" title="Viewing access needed">The Overview is open to the Commercial Analyst and the Insights Manager. Ask one of them for viewing access.</Notice>
       : error ? <Notice tone="error" role="alert">{error}</Notice>
@@ -1515,7 +1515,7 @@ function LeaderApp({me}: {me: Me}) {
     try { setBrief(await openBrief(id, "leadership")) } catch(e) { setError(message(e)) } finally { setLoading(false) }
   }
   return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}}>
-    <div className="workspace-content space-y-6 py-8 sm:py-10">
+    <div className="workspace-content space-y-6 pb-8 pt-5 sm:pb-10 sm:pt-6">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All signed-off briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
@@ -1544,7 +1544,7 @@ function InsightsApp({me}: {me: Me}) {
   const [chip,setChip] = useState<Chip | null>(null)
   const [barEvidence,setBarEvidence] = useState<{id: string} | null>(null)
   return <Shell me={me} onBriefingHome={close}><FeedbackDock slot={dock}>
-    <div className="workspace-content space-y-6 py-8 sm:py-10">
+    <div className="workspace-content space-y-6 pb-8 pt-5 sm:pb-10 sm:pt-6">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : opened || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={close}><Icon name="back"/>All briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}

@@ -255,7 +255,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
   const total = parts.reduce((a, x) => a + x.n, 0)
   const usability = total ? {n: total, mean: Math.round(parts.reduce((a, x) => a + x.n * x.mean, 0) / total * 10) / 10} : null
   const goldenBrief = t?.latest.find(r => !r.control && r.system === "briefing_scripted")?.metrics.latency_brief_p50
-  return <div className="workspace-wide pa-stagger space-y-6 pb-12 pt-8 sm:pt-10">
+  return <div className="workspace-wide pa-stagger space-y-6 pb-12 pt-5 sm:pt-6">
     <header className="flex items-baseline justify-between gap-4"><h2 className="sr-only">Evaluation</h2>
       <p className="text-sm text-muted">How PharmAgentics is used, and how each version scored on the golden questions.</p>{label}</header>
     {err.map(e => <Notice key={e} tone="error" role="alert">{e}</Notice>)}
