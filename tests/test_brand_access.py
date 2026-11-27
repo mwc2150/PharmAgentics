@@ -145,7 +145,9 @@ def test_approval_and_leadership_access_are_also_brand_checked(bxc):
     assert bi.get("/api/briefing/queue").json() == []
     assert signed_in("dev-insights").post(f"/api/briefing/{bxc}/signoff", json={"decision": "signed_off"}).status_code == 200
     summary = da.get(f"/api/briefing/{bxc}").json()
-    assert signed_in("dev-marketer").get(f"/api/briefing/{bxc}").json() == summary  # P4 reads what P3 reads, for now
+    marketer = signed_in("dev-marketer").get(f"/api/briefing/{bxc}").json()
+    marketer["sections"] = [{k: v for k, v in s.items() if k != "promotion"} for s in marketer["sections"]]
+    assert {k: v for k, v in marketer.items() if k != "budget_note"} == summary  # P4 reads what P3 reads, plus the budget note and the promotion reads
     assert signed_in("dev-bxa-marketer").get(f"/api/briefing/{bxc}").status_code == 404
     assert summary["brand_id"] == "BXC" and summary["view"] == "leadership" and "626" in summary["summary"]
     assert not {"answer", "claims", "evidence", "triage", "flow"} & summary.keys()

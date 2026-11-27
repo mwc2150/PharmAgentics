@@ -217,7 +217,7 @@ def test_send_flag_return_rerun_resend_sign_off_and_the_leaders_read_it():
             assert [b["brief_id"] for b in listed] == [bid] and listed[0]["reviewed_at"]
             body = leader.get(f"/api/briefing/{bid}").json()
             assert body["view"] == "leadership" and body["review_status"] == "signed_off" and leaks(body) == []
-        assert p3.get(f"/api/briefing/{bid}").json() == p4.get(f"/api/briefing/{bid}").json()  # for now P4 reads what P3 reads
+        assert {k: v for k, v in p4.get(f"/api/briefing/{bid}").json().items() if k != "budget_note"} == p3.get(f"/api/briefing/{bid}").json()  # P4 reads what P3 reads, plus the budget note
         assert p1.post(f"/api/briefing/{bid}/review", json={"decision": "rejected", "reason": "too late"}).status_code == 409
         assert p2.post(back, json={"decision": "returned", "comment": "too late"}).status_code == 409
         assert [r["review_status"] for r in p2.get("/api/briefing/queue").json()] == ["signed_off"]
@@ -308,8 +308,9 @@ def test_leader_payload_is_one_function_per_persona_and_never_carries_evidence()
     for persona in ("P1", "P2", "P3", "P4"):
         payload = views.leader_payload(record, persona)
         assert payload["view"] == "leadership" and leaks(payload) == []
-        assert set(payload) == set(views.LEADERSHIP_FIELDS) | {"view", "summary", "sections", "process_summary"}
-    assert views.leader_payload(record, "P3") == views.leader_payload(record, "P4")  # the seam: no marketer content yet
+        assert set(payload) == set(views.LEADERSHIP_FIELDS) | {"view", "summary", "sections", "process_summary"} | ({"budget_note"} if persona == "P4" else set())
+    assert views.leader_payload(record, "P3") == views.leadership(record)  # the Director's response is the leadership cut, unchanged
+    assert {k: v for k, v in views.leader_payload(record, "P4").items() if k != "budget_note"} == views.leader_payload(record, "P3")  # the Marketer adds the budget note (and promotion reads on stories that have one)
 
 
 # --- the test login --------------------------------------------------------------------------------------------

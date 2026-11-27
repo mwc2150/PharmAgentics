@@ -778,7 +778,7 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
       </div>
       {brief.process_summary && <p className="mt-3 text-xs text-muted">{processLine(brief.process_summary, brief.reviewed_at)}</p>}
     </div>
-    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink">{longDates(brief.summary)}</pre>}</div>
+    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek} budgetNote={brief.budget_note}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink">{longDates(brief.summary)}</pre>}</div>
     <div className="border-t border-rule px-6 py-4 text-xs text-muted">{approved
       ? "Every figure comes from the signed-off brief. Evidence and source queries stay with the analytics team."
       : "This brief has not been signed off by the Insights Manager yet. Its figures can change before it is. Evidence and source queries stay with the analytics team."}</div>
@@ -1389,7 +1389,7 @@ function LeaderApp({me}: {me: Me}) {
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <Notice tone="error" role="alert">{error}</Notice>}
         {brief && <SummaryCard brief={brief}/>}
-      </> : <><Greeting/><IntroWithHow>Executive summaries the Commercial Analyst has reviewed and the Insights Manager has signed off.</IntroWithHow><PublishedList onOpen={id=>void open(id)}/></>}
+      </> : <><Greeting/><IntroWithHow>{me.lanes.briefing?.persona === "P4" ? "Signed-off briefings, with how promotion moved new patients and TRx in each story territory." : "Executive summaries the Commercial Analyst has reviewed and the Insights Manager has signed off."}</IntroWithHow><PublishedList onOpen={id=>void open(id)}/></>}
     </div>
   </Shell>
 }

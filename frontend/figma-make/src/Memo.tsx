@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
 import { longDates } from "./agent/primitives"
+import { BudgetNote, PromotionPanel } from "./Promotion"
 import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
 const COLORS = ["var(--color-primary)", "var(--color-human)"]
@@ -303,7 +304,7 @@ function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], cl
 // leaders get the server's cut (no claims, tables or queries) through the same component.
 // brief-010 FR-000b: `definition` is what the brief was built under; it is stated in words in the Assumptions block (§6),
 // in both views. A brief made before brief-010 has none, and nothing extra shows.
-export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, definition, labelWeek}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void, definition?: BriefDefinition | null, labelWeek?: (iso: string) => string}) {
+export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, definition, labelWeek, budgetNote}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void, definition?: BriefDefinition | null, labelWeek?: (iso: string) => string, budgetNote?: string}) {
   // A brief stored before brief-008 has none of the new fields and renders as it always did: each section's text
   // as one pre-wrapped block. A brief with any of them reads as paragraphs throughout. Only analysts (who get the
   // claims) can unfold `detail`; the leader cut never carries it.
@@ -324,6 +325,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
     ? <div className="pa-card mt-2 break-inside-avoid-page rounded-xl border border-rule bg-sheet/40 p-4 sm:p-5">
         <CardHead card={s.card} claims={claims} onOpen={onOpen}/>
         {text(s)}{rest(s)}
+        {s.promotion && <PromotionPanel promotion={s.promotion} id={`memo-${briefId}-${s.number}-promotion`}/>}
       </div>
     : <>
         {s.kpis && s.kpis.length > 0 && <KpiStrip kpis={s.kpis} claims={claims} onOpen={onOpen}/>}
@@ -348,6 +350,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
         {children.length > 0 && <div className="mt-4 space-y-6">{children.map(c =>
           <section key={c.number} aria-labelledby={`memo-${briefId}-${c.number}`} className={c.card ? "" : "border-l-2 border-rule pl-4"}>{heading(c, true)}{body(c)}</section>)}</div>}
         <div className={children.length ? "mt-4" : ""}>{body(s)}</div>
+        {budgetNote && s.number === "3" && <BudgetNote text={budgetNote}/>}
         {definition && s.number === assumptionsAt && <DefinitionWords definition={definition} labelWeek={labelWeek}/>}
       </section>
     })}

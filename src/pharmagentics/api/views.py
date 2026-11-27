@@ -5,9 +5,12 @@ The numbers with its territory table, What changed and why with each story's car
 driver-check detail, the first paragraph of What the data can't tell us, Next checks and the Assumptions
 (brief-003 FR-026, brief-008 FR-005), so each number it shows is already a claim of the same run. Caveats survive: the Bottom line leads
 with any withheld cut and The numbers carries restatements. It carries no claims, evidence, query
-text or trace.
+text or trace. The Marketer (P4) gets this cut plus, on each territory story, the promotion read and, once, the
+budget note (`marketer`).
 """
 from __future__ import annotations
+
+from pharmagentics.tools import lag_checks
 
 from . import signoff
 
@@ -176,12 +179,49 @@ def leadership(record: dict) -> dict:
     return out
 
 
+BUDGET_NOTE = ("Where the next dollar should go is outside this brief: it has no spend data and no prescriber-level reach, so it cannot rank "
+               "channels by return. Spend by channel and territory would answer it, and a planned pulse or holdout in a few territories would make "
+               "a channel that never varies measurable.")
+# The Marketer's promotion read (Michael, 2026-11-27, Q15): an explicit allow-list, so a new field of the check never reaches a leader.
+PROMOTION_MEASURE_FIELDS = ("measure", "before", "after", "change", "direction")
+PROMOTION_CHANNEL_FIELDS = ("channel", "before", "after", "change", "direction", "moved")
+PROMOTION_EFFECT_FIELDS = ("low", "high", "word", "territories")  # never held_level, threshold or method
+
+
+def marketer_promotion(promotion: dict) -> dict:
+    """One story's promotion read for the Marketer: the verdict, the lag, new patients then TRx, the four channels, the range
+    against territories without a promotion change (supported only) and the re-check date. Figures arrive filled by code."""
+    out = {"verdict": promotion.get("verdict"), "lag_label": promotion.get("lag_label"),
+           "new_patients": {k: (promotion.get("new_patients") or {}).get(k) for k in PROMOTION_MEASURE_FIELDS},
+           "trx": {k: (promotion.get("trx") or {}).get(k) for k in PROMOTION_MEASURE_FIELDS},
+           "channels": [{k: c.get(k) for k in PROMOTION_CHANNEL_FIELDS} for c in promotion.get("channels") or []]}
+    effect = promotion.get("effect")
+    if effect:
+        out["effect"] = {k: effect.get(k) for k in PROMOTION_EFFECT_FIELDS}
+        out["effect"]["phrase"] = lag_checks.effect_words(effect)  # said once, by code: a range, never a return
+    if promotion.get("separable_from"):
+        out["separable_from"] = list(promotion["separable_from"])
+    out["recheck"] = promotion.get("recheck")
+    return out
+
+
+def marketer(record: dict) -> dict:
+    """The Marketer's response (P4): the leadership cut, plus on each territory story the promotion read and, once, the
+    budget note. No evidence, query text, claim token or trace: the promotion object is built field by field."""
+    out = leadership(record)
+    promotions = {s["number"]: (s.get("card") or {}).get("promotion") for s in record["result"].get("sections") or []}
+    for s in out["sections"] or []:
+        if s["number"].startswith("3.") and promotions.get(s["number"]):
+            s["promotion"] = marketer_promotion(promotions[s["number"]])
+    out["budget_note"] = BUDGET_NOTE
+    return out
+
+
 def leader_payload(record: dict, persona: str) -> dict:
-    """The response for a reader of the leadership view, built in this one place per persona. P3 (Brand Director) and
-    P4 (Marketer) read the same cut for now; P1 and P2 get it as a preview. A later packet gives the Marketer its own
-    content here (the Director's budget question becomes the Marketer's "did my promotion move the brand"). No persona
-    gets evidence, query text or a trace: `leadership` is an allow-list."""
-    return leadership(record)
+    """The response for a reader of the leadership view, built in this one place per persona. P3 (Brand Director) reads
+    the leadership cut; P4 (Marketer) reads it plus the promotion read of each story and the budget note; P1 and P2 get
+    the leadership cut as a preview. No persona gets evidence, query text or a trace: `leadership` is an allow-list."""
+    return marketer(record) if persona == "P4" else leadership(record)
 
 
 REVIEW_STATE = {signoff.DRAFT: "IN_REVIEW", signoff.SENT: "IN_REVIEW", signoff.SIGNED_OFF: "PUBLISHED", signoff.RETURNED: "RETURNED",
