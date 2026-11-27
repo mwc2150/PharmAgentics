@@ -126,8 +126,9 @@ def require_forecast(request: Request) -> tuple[Principal, Role]:
 
 
 def can_evaluate(p: Principal) -> bool:
-    """The Evaluation page: P1, P2, the test login and the Forecast lane (CA, BM, unchanged). Not P3 or P4."""
-    return p.is_tester or any("evaluation" in r.actions for r in p.lanes)
+    """The Evaluation page: P1, P2 (the `evaluation` action), the test login, and every Forecast role as before v2 (CA,
+    BM: their roles and actions are Alvin and Sienna's and stay unchanged). Not P3 or P4."""
+    return p.is_tester or any(r.lane == "forecast" or "evaluation" in r.actions for r in p.lanes)
 
 
 def allow(role: Role, action: str) -> None:
