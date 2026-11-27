@@ -399,7 +399,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
 // sees) on top, then what needs you, then what is with the other side of the review; rejected items fold away. Both
 // things the Brand Manager reviews are here, as they were before: reports, and question runs (each row says which).
 // The analyst's "needs you" is what came back and drafts; the Brand Manager's is what waits for their review.
-function ForecastReports({me, onOpenRun, onEditing}: {me: Me, onOpenRun: (runId: string) => void, onEditing?: (open: boolean) => void}) {
+function ForecastReports({me, onOpenRun, onEditing, onShowing}: {me: Me, onOpenRun: (runId: string) => void, onEditing?: (open: boolean) => void, onShowing?: (key: string | null) => void}) {
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
@@ -413,8 +413,8 @@ function ForecastReports({me, onOpenRun, onEditing}: {me: Me, onOpenRun: (runId:
     listForecasts().then(xs=>{ if (live) setRuns(xs.filter(x=>x.job_status !== "failed")) }).catch(()=>{ if (live) setRuns([]) })
     return ()=>{ live = false }
   }, [open, all.items])
-  useEffect(()=>{ onEditing?.(!!open) }, [open])  // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(()=>()=>onEditing?.(false), [])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ onEditing?.(!!open); onShowing?.(open ? `r${open}` : null) }, [open])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>()=>{ onEditing?.(false); onShowing?.(null) }, [])  // eslint-disable-line react-hooks/exhaustive-deps
   if (open) return <ReportEditor id={open} analyst={analyst} canPreview={canPreview} onBack={()=>pageChange(()=>setOpen(null))} onOpenRun={onOpenRun}/>
   const rows = all.items
   type Entry = {key: string, title: string, line: ReactNode, open: () => void}
@@ -569,7 +569,10 @@ const FORECAST_EXAMPLES = [
 ]
 
 type ForecastSection = "workbench" | "approved" | "reports"
-function ForecastWorkspace({me, section, onSection, onBusy, ask}: {me: Me, section: ForecastSection, onSection: (s: ForecastSection) => void, onBusy?: (busy: boolean) => void, ask?: {question: string, n: number} | null}) {
+// A request from the sidebar's Recents: open this run or report, or show the whole list ("list").
+type ForecastOpen = {kind: "run" | "report" | "list", id: string, n: number}
+function ForecastWorkspace({me, section, onSection, onBusy, ask, openItem, onShowing}: {me: Me, section: ForecastSection, onSection: (s: ForecastSection) => void, onBusy?: (busy: boolean) => void, ask?: {question: string, n: number} | null,
+  openItem?: ForecastOpen | null, onShowing?: (key: string | null) => void}) {
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
@@ -613,6 +616,15 @@ function ForecastWorkspace({me, section, onSection, onBusy, ask}: {me: Me, secti
   useEffect(()=>{ if (pendingRun && section === "workbench") { const id = pendingRun; pendingRun = null; void open(id) } }, [section])
   // A question from the Overview's "Explain the forecast miss": read into the scope card for the analyst to check, as if typed.
   useEffect(()=>{ if (!ask || !analyst) return; setSelected(null); setQuestion(ask.question); void readScope(ask.question) }, [ask?.n])  // eslint-disable-line react-hooks/exhaustive-deps
+  // From Recents: a run opens here; a report (or the whole list) remounts the reports list, which reads pendingReport.
+  const [reportsKey,setReportsKey] = useState(0)
+  const [reportShowing,setReportShowing] = useState<string | null>(null)
+  useEffect(()=>{
+    if (!openItem) return
+    if (openItem.kind === "run") void open(openItem.id)
+    else { pendingReport = openItem.kind === "report" ? openItem.id : null; setReportsKey(k=>k+1) }
+  }, [openItem?.n])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>{ onShowing?.(section === "workbench" ? (selected ? `q${selected.forecast_run_id}` : null) : reportShowing) }, [section, selected?.forecast_run_id, reportShowing])  // eslint-disable-line react-hooks/exhaustive-deps
   const followup = async (q: string) => { if (!selected) return; setError(null); try { setSelected(await askFollowup(selected.forecast_run_id, q)) } catch(e) { setError(message(e)) } }
   const followupsRunning = !!selected?.followups?.some(f=>f.status === "running")
   const working = selected?.job_status === "running" || followupsRunning || bgRunning
@@ -631,7 +643,7 @@ function ForecastWorkspace({me, section, onSection, onBusy, ask}: {me: Me, secti
     <SubTabs label="Forecast explanation" value={section} onChange={s=>pageChange(()=>onSection(s))} dots={{reports: news.has("forecast") && section !== "reports"}} options={(analyst
       ? [["workbench", "New explanation", "forecast.new"], ["reports", "Your reports", "forecast.reports"]]
       : [["reports", "Reports", "forecast.review"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
-    {section !== "workbench" ? <ForecastReports key={section} me={me} onEditing={setEditing} onOpenRun={id=>{ pendingRun = id; pageChange(()=>onSection("workbench")) }}/> : <>
+    {section !== "workbench" ? <ForecastReports key={`${section}-${reportsKey}`} me={me} onEditing={setEditing} onShowing={setReportShowing} onOpenRun={id=>{ pendingRun = id; pageChange(()=>onSection("workbench")) }}/> : <>
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {selected ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -723,7 +735,70 @@ const forecastQuestion = (territory: string, week: string) => `Week of ${week}, 
 const OPEN_KEY = "pa_sidebar_open"
 const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
 
-function SideNav({me, expanded, overview, forecast, telemetry, settings, briefingBusy, forecastBusy, onOverview, onBriefing, onForecast, onTelemetry, onSettings, onAnyClick}: {me: Me, expanded: boolean, overview: boolean, forecast: boolean, telemetry: boolean, settings: boolean, briefingBusy: boolean, forecastBusy: boolean, onOverview?: () => void, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onSettings: () => void, onAnyClick?: () => void}) {
+// Recents in the open sidebar (Michael, 2026-11-27, as in Claude's web app): the last few things this role works on,
+// newest change first, from the lists it can already open (no new endpoint, no change to who sees what). The analyst:
+// their own briefs; the Insights Manager: briefs sent for sign-off; the Director and the Marketer: signed-off briefs;
+// the Forecast analyst: their questions and reports; the Brand Manager: what waits for review. A dot marks what waits
+// on this person; the status is in the hover text. Each opens in its workspace; View all opens the whole list.
+const RECENTS = 6
+type RecentKind = "brief" | "run" | "report"
+type RecentRow = {key: string, kind: RecentKind, id: string, title: string, tip: string, at: string, dot: boolean}
+const shortWeek = (iso: string) => labelWeek(iso).replace(/, \d{4}$/, "")
+const briefTitle = (r: {brand_id: string, territory_id: string, week_start: string, week_end?: string | null}, promotion = false) =>
+  `${r.brand_id} · ${labelTerritory(r.territory_id)}, ${promotion ? "Promotion review" : r.week_end && r.week_end > r.week_start ? `${shortWeek(r.week_start)} to ${shortWeek(r.week_end)}` : shortWeek(r.week_start)}`
+const newest = (...xs: (string | null | undefined)[]) => xs.filter((x): x is string => !!x).sort().pop() ?? ""
+async function loadRecents(me: Me): Promise<RecentRow[]> {
+  const b = me.lanes.briefing, f = me.lanes.forecast
+  const jobs: Promise<RecentRow[]>[] = []
+  if (b?.actions.includes("run")) jobs.push(listMine().then(rows => rows.map(r => ({key: `b${r.brief_id}`, kind: "brief" as const, id: r.brief_id,
+    title: asked(r.question) ? r.question : briefTitle(r, r.promotion_review), tip: `${mineScope(r)} · ${mineLine(r)}`,
+    at: newest(r.created_at, r.sent_at, r.signed_off_at, r.returned_at, r.rejected_at), dot: r.review_status === "returned"}))))
+  else if (b?.actions.includes("signoff")) jobs.push(listQueue().then(rows => rows.map(r => ({key: `b${r.brief_id}`, kind: "brief" as const, id: r.brief_id,
+    title: briefTitle(r), tip: r.review_status === "sent" ? `Waiting for your sign-off, sent ${labelTime(r.sent_at)}` : r.review_status === "returned" ? `Returned to the analyst ${labelTime(r.returned_at)}` : `Signed off ${labelTime(r.signed_off_at)}`,
+    at: newest(r.sent_at, r.returned_at, r.signed_off_at), dot: r.review_status === "sent"}))))
+  else if (b) jobs.push(listPublished().then(rows => rows.map(r => ({key: `b${r.brief_id}`, kind: "brief" as const, id: r.brief_id,
+    title: briefTitle(r), tip: `Signed off ${labelTime(r.reviewed_at)}`, at: r.reviewed_at ?? "", dot: false}))))
+  if (f?.available) {
+    const analyst = f.actions.includes("run")
+    jobs.push(Promise.all([listForecasts(), listReports()]).then(([runs, reports]) => [
+      ...runs.filter(x => x.job_status !== "failed").map(x => ({key: `q${x.forecast_run_id}`, kind: "run" as const, id: x.forecast_run_id, title: x.question ?? x.headline,
+        tip: `Question · ${labelTerritory(x.territory_id)} · ${x.job_status === "running" ? "investigating" : forecastReviewLabel(x.review_status)}`,
+        at: newest(x.created_at, x.reviewed_at), dot: analyst ? x.review_status === "returned" : x.review_status === "pending_review"})),
+      ...reports.map(x => ({key: `r${x.id}`, kind: "report" as const, id: x.id, title: x.title, tip: `Report · ${forecastReviewLabel(x.review_status)}`,
+        at: newest(x.created_at, x.reviewed_at), dot: analyst ? x.review_status === "returned" : x.review_status === "pending_review"}))]))
+  }
+  const all = (await Promise.allSettled(jobs)).flatMap(r => r.status === "fulfilled" ? r.value : [])
+  return all.sort((x, y) => y.at.localeCompare(x.at)).slice(0, RECENTS)
+}
+type RecentsProps = {rows: RecentRow[], active: string | null, onOpen: (r: RecentRow) => void, viewAll: {label: string, go: () => void}[]}
+// It sits at the foot of the sidebar, above Share feedback and Settings, and folds (Michael, 2026-11-27); this browser
+// keeps the choice. All briefings and All reports sit under the fold, always shown, as muted sidebar rows.
+const RECENTS_OPEN_KEY = "pa-recents-open"
+const readRecentsOpen = () => { try { return window.localStorage.getItem(RECENTS_OPEN_KEY) !== "0" } catch { return true } }
+function Recents({rows, active, onOpen, viewAll, onAnyClick}: RecentsProps & {onAnyClick?: () => void}) {
+  const list = useId()
+  const [open,setOpen] = useState(readRecentsOpen)
+  const toggle = () => setOpen(o => { try { window.localStorage.setItem(RECENTS_OPEN_KEY, o ? "0" : "1") } catch { /* a convenience only */ } return !o })
+  const quiet = "flex w-full items-center gap-2 rounded-lg px-[10px] py-1.5 text-left text-[13px] transition-colors duration-150"
+  const links = viewAll.map(v => <button key={v.label} type="button" onClick={() => { v.go(); onAnyClick?.() }} className={`${quiet} text-muted hover:bg-paper hover:text-ink`}>
+    <span className="flex-1">{v.label}</span><Icon name="chevronRight" className="h-3.5 w-3.5 shrink-0"/></button>)
+  return <>{!!rows.length && <section aria-label="Recents" className="pa-fade">
+    <h2><button type="button" aria-expanded={open} aria-controls={list} onClick={toggle} className="flex w-full items-center justify-between gap-2 rounded-lg px-[10px] py-1.5 text-xs font-medium text-muted transition-colors duration-150 hover:bg-paper hover:text-ink">
+      Recents<Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/></button></h2>
+    <div id={list} className="pa-expand" data-open={open || undefined} inert={!open}><div>
+    <ul className="max-h-[38vh] space-y-0.5 overflow-y-auto">{rows.map(r => <li key={r.key}><button type="button" aria-current={active === r.key ? "page" : undefined} data-tip={r.tip}
+      onClick={() => { onOpen(r); onAnyClick?.() }}
+      className={`${quiet} ${active === r.key ? "bg-primarybg text-ink" : "text-muted hover:bg-paper hover:text-ink"}`}>
+      <span className="min-w-0 flex-1 truncate">{r.title}</span>
+      {r.dot && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"/>}
+      <span className="sr-only">{`. ${r.tip}${r.dot ? ". Waiting on you" : ""}`}</span>
+    </button></li>)}</ul>
+    </div></div>
+  </section>}
+  {!!links.length && <div className="pa-fade">{links}</div>}</>
+}
+
+function SideNav({me, expanded, overview, forecast, telemetry, settings, briefingBusy, forecastBusy, onOverview, onBriefing, onForecast, onTelemetry, onSettings, onAnyClick, recents}: {me: Me, expanded: boolean, overview: boolean, forecast: boolean, telemetry: boolean, settings: boolean, briefingBusy: boolean, forecastBusy: boolean, onOverview?: () => void, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onSettings: () => void, onAnyClick?: () => void, recents?: RecentsProps}) {
   const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-primarybg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   // A run still going shows a small dot (on the icon in the rail, at the row's end when open); the words are for screen readers.
@@ -746,7 +821,8 @@ function SideNav({me, expanded, overview, forecast, telemetry, settings, briefin
       {me.lanes.forecast?.available && item("trend", "Forecast explanation", !overview && forecast && !telemetry && !settings, onForecast, forecastBusy, news.has("forecast"))}
       {me.evaluation && item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
-    <div className="mt-auto space-y-2 px-3 pb-4">
+    <div className="mt-auto shrink-0 space-y-2 px-3 pb-4 pt-4">
+      {expanded && recents && <Recents {...recents} onAnyClick={onAnyClick}/>}
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
       {/* Settings sits at the bottom of the rail, below the workspaces: the same row in the narrow rail, the open sidebar and the phone drawer */}
       <div className="border-t border-rule pt-2">{item("gear", "Settings", settings, onSettings)}</div>
@@ -763,7 +839,8 @@ function MobileNav({onClose, children}: {onClose: () => void, children: ReactNod
     <div ref={drawer} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide">{children}</div></div>
 }
 
-function Shell({me, onBriefingHome, onBriefFromOverview, children, startInForecast=false, briefingBusy=false}: {me: Me, onBriefingHome?: () => void, onBriefFromOverview?: (brand: string, territory: string, week: string) => void, children: ReactNode, startInForecast?: boolean, briefingBusy?: boolean}) {
+function Shell({me, onBriefingHome, onBriefFromOverview, children, startInForecast=false, briefingBusy=false, showing=null, onOpenBrief, onBriefingList}: {me: Me, onBriefingHome?: () => void, onBriefFromOverview?: (brand: string, territory: string, week: string) => void, children: ReactNode, startInForecast?: boolean, briefingBusy?: boolean,
+  showing?: string | null, onOpenBrief?: (id: string) => void, onBriefingList?: () => void}) {
   const [mobileNav,setMobileNav] = useState(false)
   // The Overview workspace: every Briefing role has the item; a role that can open it starts there (it greets).
   const hasOverview = !!me.lanes.briefing
@@ -796,6 +873,32 @@ function Shell({me, onBriefingHome, onBriefFromOverview, children, startInForeca
   const forecastFromOverview = (territory: string, week: string) => pageChange(() => {
     setOverview(false); setForecast(true); setForecastVisited(true); setForecastSection("workbench")
     setForecastAsk(a => ({question: forecastQuestion(territory, week), n: (a?.n ?? 0) + 1})) })
+  // Recents (see loadRecents): reloaded when a run starts or ends, when what is open changes, on a move between
+  // workspaces and when the window regains focus, so a brief sent or signed off moves up the list.
+  const [recentRows,setRecentRows] = useState<RecentRow[]>([])
+  const [forecastShowing,setForecastShowing] = useState<string | null>(null)
+  const [forecastOpen,setForecastOpen] = useState<ForecastOpen | null>(null)
+  const recentsKey = `${briefingBusy}|${forecastBusy}|${showing}|${forecastShowing}|${overview}|${forecast}|${telemetry}|${settings}`
+  useEffect(()=>{
+    let live = true
+    const load = () => { void loadRecents(me).then(r=>{ if (live) setRecentRows(r) }) }
+    load()
+    window.addEventListener("focus", load)
+    return ()=>{ live = false; window.removeEventListener("focus", load) }
+  },[recentsKey])  // eslint-disable-line react-hooks/exhaustive-deps
+  const toForecast = (o: Omit<ForecastOpen, "n">, section: ForecastSection) => pageChange(() => {
+    setTelemetry(false); setSettings(false); setOverview(false); setForecast(true); setForecastVisited(true); setForecastSection(section)
+    setForecastOpen(cur => ({...o, n: (cur?.n ?? 0) + 1})) })
+  const openRecent = (r: RecentRow) => {
+    if (r.kind === "brief") { setTelemetry(false); setSettings(false); setOverview(false); setForecast(false); onOpenBrief?.(r.id) }
+    else toForecast({kind: r.kind, id: r.id}, r.kind === "run" ? "workbench" : "reports")
+  }
+  const viewAll = [
+    ...(onBriefingList && me.lanes.briefing ? [{label: "All briefings", go: () => pageChange(() => { setTelemetry(false); setSettings(false); setOverview(false); setForecast(false); onBriefingList() })}] : []),
+    ...(me.lanes.forecast?.available ? [{label: "All reports", go: () => toForecast({kind: "list", id: ""}, "reports")}] : []),
+  ]
+  const recentsActive = telemetry || settings || overview ? null : forecast ? forecastShowing : showing
+  const recents: RecentsProps = {rows: recentRows, active: recentsActive, onOpen: openRecent, viewAll}
   const goTelemetry = () => pageChange(() => { setSettings(false); setTelemetry(true) })
   const goSettings = () => pageChange(() => { setTelemetry(false); setSettings(true) })
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
@@ -807,9 +910,9 @@ function Shell({me, onBriefingHome, onBriefFromOverview, children, startInForeca
   return <ActiveWorkspace.Provider value={telemetry || settings || overview ? "evaluation" : forecast ? "forecast" : "briefing"}><SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
     <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-rail transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
-      <SideNav me={me} expanded={open} overview={overview} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onOverview={goOverview} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings}/>
+      <SideNav me={me} expanded={open} overview={overview} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onOverview={goOverview} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings} recents={recents}/>
     </aside>
-    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded overview={overview} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onOverview={goOverview} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
+    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded overview={overview} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onOverview={goOverview} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings} onAnyClick={()=>setMobileNav(false)} recents={recents}/></MobileNav>}
     <main className="relative flex min-w-0 flex-1 flex-col">
       {/* The workspace band floats over the content, frosted: the page scrolls under it and shows through, blurred (2026-11-27) */}
       <header className="pa-frost absolute inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
@@ -820,7 +923,7 @@ function Shell({me, onBriefingHome, onBriefFromOverview, children, startInForeca
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 scroll-pt-20 overflow-y-auto pt-16 print:pt-0"><div hidden={overview || forecast || telemetry || settings}>{children}</div>{overviewVisited && <div hidden={!overview || telemetry || settings}><OverviewWorkspace me={me} onBrief={briefFromOverview} onForecast={forecastFromOverview}/></div>}{settings && <SettingsWorkspace me={me}/>}{telemetry && !settings && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={overview || !forecast || telemetry || settings}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy} ask={forecastAsk}/></div>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 scroll-pt-20 overflow-y-auto pt-16 print:pt-0"><div hidden={overview || forecast || telemetry || settings}>{children}</div>{overviewVisited && <div hidden={!overview || telemetry || settings}><OverviewWorkspace me={me} onBrief={briefFromOverview} onForecast={forecastFromOverview}/></div>}{settings && <SettingsWorkspace me={me}/>}{telemetry && !settings && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={overview || !forecast || telemetry || settings}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy} ask={forecastAsk} openItem={forecastOpen} onShowing={setForecastShowing}/></div>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
     <Toaster theme={theme} position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
@@ -1489,7 +1592,9 @@ function AnalystApp({me}: {me: Me}) {
   useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
   // The Overview (its own workspace) fills the New briefing form with its brand, territory and week; nothing runs yet.
   const briefFromOverview = (b: string, t: string, w: string) => { clearQuestion(); chooseBrand(b); setTerritory(t); setWeek(w); setWeekEnd(w); setView("home") }
-  return <Shell me={me} onBriefingHome={()=>{}} onBriefFromOverview={briefFromOverview} briefingBusy={pending}><FeedbackDock slot={dock}>
+  const showingBrief = view==="approved" && opened ? `b${opened.brief_id}` : view==="result" && result ? `b${result.brief_id}` : null
+  return <Shell me={me} onBriefingHome={()=>{}} onBriefFromOverview={briefFromOverview} briefingBusy={pending} showing={showingBrief}
+    onOpenBrief={id=>void openApproved(id)} onBriefingList={()=>{ letGoOpened(); setView("approved") }}><FeedbackDock slot={dock}>
     <div className="workspace-content pt-5 sm:pt-6"><SubTabs label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>pageChange(()=>{ if (t==="approved") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") })} options={[["new","New briefing","briefing.new"],["approved","Your briefings","briefing.approved","Yours"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
@@ -1569,7 +1674,8 @@ function LeaderApp({me}: {me: Me}) {
     setLoading(true); setError(null)
     try { setBrief(await openBrief(id, "leadership")) } catch(e) { setError(message(e)) } finally { setLoading(false) }
   }
-  return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}}>
+  return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}} showing={brief ? `b${brief.brief_id}` : null}
+    onOpenBrief={id=>void open(id)} onBriefingList={()=>{setBrief(null);setError(null)}}>
     <div className="workspace-content space-y-6 pb-8 pt-5 sm:pb-10 sm:pt-6">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All signed-off briefings</button>
@@ -1598,7 +1704,7 @@ function InsightsApp({me}: {me: Me}) {
   const [dock,setDock] = useState<HTMLElement | null>(null)
   const [chip,setChip] = useState<Chip | null>(null)
   const [barEvidence,setBarEvidence] = useState<{id: string} | null>(null)
-  return <Shell me={me} onBriefingHome={close}><FeedbackDock slot={dock}>
+  return <Shell me={me} onBriefingHome={close} showing={opened ? `b${opened.brief_id}` : null} onOpenBrief={id=>void open(id)} onBriefingList={close}><FeedbackDock slot={dock}>
     <div className="workspace-content space-y-6 pb-8 pt-5 sm:pb-10 sm:pt-6">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : opened || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={close}><Icon name="back"/>All briefings</button>
