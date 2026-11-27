@@ -35,7 +35,7 @@ def test_frontend_contains_only_supported_feature_modules():
         "agent/telemetryApi.ts",
         "agent/threadApi.ts",
         "components/ui/dropdown-menu.tsx",
-        "index.css", "main.tsx", "userSettings.ts", "vite-env.d.ts"
+        "index.css", "main.tsx", "motion.ts", "userSettings.ts", "vite-env.d.ts"
     ]
 
 
