@@ -102,7 +102,8 @@ def test_prompts_fill_and_describe_the_new_memo():
     from pharmagentics.tools.definition import Definition, prompt_words
 
     writer = (here / "writer.md").read_text(encoding="utf-8").format(
-        question="q", sections="[story x]", glossary="g", comparison="c", definition=prompt_words(Definition.pre_selected()))
+        question="q", sections="[story x]", glossary="g", comparison="c", definition=prompt_words(Definition.pre_selected()),
+        brand="BXA")
     revise = (here / "revise.md").read_text(encoding="utf-8").format(problems="p", allowed="a", glossary="g", reply="{}")
     for needle in ("association", "folded", "tiles", "territory table", "card", "at most 25 words", "no line breaks"):
         assert needle in writer

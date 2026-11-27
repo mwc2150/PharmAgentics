@@ -147,7 +147,7 @@ def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: 
     d = Definition.coerce(definition, comparison)
     comparison = d.primary_comparison
     first, latest = reg.rows("select min(week_start)::varchar, max(week_start)::varchar from raw.calendar")[0]
-    ask = parse(question, first, latest, briefing=brand_id == "BXA")
+    ask = parse(question, first, latest, briefing=True)  # briefing_brand() above admits Briefing brands only
     W, explicit, note = ask["weeks"], ask.get("explicit_week", False), ask["note"]
     if d.first_week:  # the analyst chose the weeks: they win over the question's
         chosen = q.mondays(d.first_week, d.last_week or d.first_week)

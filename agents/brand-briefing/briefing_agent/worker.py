@@ -17,6 +17,7 @@ from pathlib import Path
 
 import httpx
 
+from pharmagentics.tools.brands import BRIEFING_ENGINES
 from pharmagentics.tools.definition import Definition
 from pharmagentics.tools.window import Comparison
 
@@ -39,8 +40,9 @@ def run_job(job: dict, model: str | None, progress=None) -> dict:
     import briefing_agent as agent
 
     payload = job["payload"]
-    if (payload.get("query") or {}).get("brand_id", "BXA") != "BXA":
-        raise ValueError("The agent worker supports BXA only; use scripted Briefing for BXC.")
+    brand_id = (payload.get("query") or {}).get("brand_id", "BXA")
+    if "agent" not in BRIEFING_ENGINES.get(brand_id, ()):
+        raise ValueError(f"The agent engine does not support {brand_id}; use scripted Briefing.")
     on_event = (lambda e: progress([e])) if progress else None
     if job["kind"] == "triage":
         log = agent.events_for(on_event=on_event)
@@ -49,7 +51,7 @@ def run_job(job: dict, model: str | None, progress=None) -> dict:
             options["comparison"] = Comparison.model_validate(comparison)
         if definition := (payload.get("query") or {}).get("definition"):
             options["definition"] = Definition.model_validate(definition)
-        plan = agent.triage(payload["question"], model, events=log, **options)
+        plan = agent.triage(payload["question"], model, events=log, brand_id=brand_id, **options)
         return dict(plan, events=log.public())  # the brief job continues this log
     log = agent.events_for(on_event=on_event, seed=payload["plan"].get("events"))
     log.replay()  # a live timeline starts at the triage steps

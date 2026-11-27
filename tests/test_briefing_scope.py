@@ -161,11 +161,11 @@ def test_rules_note_uses_the_right_singular_and_plural():
     assert two["comparison_weeks"] == 2 and any("Only 2 earlier weeks exist before 2024-10-28" in n for n in two["notes"])
 
 
-def test_rules_flag_a_promotion_question_only_for_bxa():
+def test_rules_flag_a_promotion_question_for_both_brands():
     sign_in("dev-analyst-multibrand")
-    body = post_scope("Did the campaign reach the people it was meant to?", "BXA").json()
-    assert body["promotion_review"] is True and body["week_start"] == body["week_end"] == LATEST.isoformat()
-    assert post_scope("Did the campaign reach the people it was meant to?", "BXC").json()["promotion_review"] is False
+    for brand in ("BXA", "BXC"):
+        body = post_scope("Did the campaign reach the people it was meant to?", brand).json()
+        assert body["promotion_review"] is True and body["week_start"] == body["week_end"] == LATEST.isoformat(), brand
 
 
 def test_a_configured_model_proposes_and_code_validates(monkeypatch):
@@ -238,7 +238,9 @@ def test_a_model_failure_or_a_proposal_for_the_wrong_brand_falls_back(monkeypatc
     sign_in("dev-analyst-multibrand")
     assert post_scope().json()["read_by"] == "rules"
     use_model(monkeypatch, {**GOOD, "promotion_review": True})
-    assert post_scope(brand="BXC").json()["read_by"] == "rules"
+    assert post_scope(brand="BXC").json()["read_by"] == "model"  # a promotion proposal is valid for Lipidara too
+    use_model(monkeypatch, {**GOOD, "promotion_review": "yes"})
+    assert post_scope(brand="BXC").json()["read_by"] == "rules"  # a flag that is not a flag is still refused
 
 
 def test_leaders_and_other_roles_cannot_read_a_scope():

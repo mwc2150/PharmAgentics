@@ -46,10 +46,10 @@ def wall_scale() -> float:
         return 1.0
 
 
-def story_task(card: dict, hypotheses: list[str], definition: dict | None = None) -> str:
+def story_task(card: dict, hypotheses: list[str], definition: dict | None = None, brand_id: str = "BXA") -> str:
     t = card["territory"]
     order = ", ".join(hypotheses)
-    return (f"Investigate one story for the weekly BXA brief.\nStory: {card['title']} (territory ID {t}).\n"
+    return (f"Investigate one story for the weekly {brand_id} brief.\nStory: {card['title']} (territory ID {t}).\n"
             f"Plan's hypothesis order: {order}.\n"
             f"Data Forensics first: check_data({t}). Then the Driver Investigator tests the other drivers in that "
             f"order with check_access, check_promotion, check_supply or check_competitor on {t}, one call each, "
@@ -57,7 +57,7 @@ def story_task(card: dict, hypotheses: list[str], definition: dict | None = None
             + (f"\nThe brief counts like this:\n{prompt_words(Definition.coerce(definition, None))}" if definition else ""))
 
 
-async def _team(cfg: dict, spec: str, mcp, task: str, log: RunLog, wall: float) -> str | None:
+async def _team(cfg: dict, spec: str, mcp, task: str, log: RunLog, wall: float, brand_id: str = "BXA") -> str | None:
     """Run one story's team; return why it stopped early, or None."""
     chat, opts = chat_client(spec), chat_options(spec)
     async with AsyncExitStack() as stack:
@@ -69,7 +69,7 @@ async def _team(cfg: dict, spec: str, mcp, task: str, log: RunLog, wall: float) 
             participants.append(Agent(client=chat, name=p["name"], description=" ".join(p["description"].split()),
                                       instructions=_read(p["instructions"]), tools=tool, default_options=opts,
                                       middleware=log.for_agent(p["name"])))
-        manager = Agent(client=chat, name="manager", instructions=_read(cfg["prompts"]["manager"]),
+        manager = Agent(client=chat, name="manager", instructions=_read(cfg["prompts"]["manager"]).replace("{brand}", brand_id),
                         default_options=opts, middleware=[log.chat("manager")])
         workflow = MagenticBuilder(participants=participants, manager_agent=manager,
                                    final_answer_prompt=_read(cfg["prompts"]["story_done"]), **cfg["caps"]).build()
@@ -87,6 +87,7 @@ async def _team(cfg: dict, spec: str, mcp, task: str, log: RunLog, wall: float) 
 async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], log: RunLog) -> tuple[list[dict], list[dict]]:
     """Each approved story in P1's (or the manager's) order. Returns the story sections and per-story notes."""
     by_id = {c["id"]: c for c in plan["stories"]}
+    brand_id = plan.get("brand_id", "BXA")
     started, stories, notes, n = time.time(), [], [], 0
     scale = wall_scale()
     for sid in order:
@@ -111,8 +112,8 @@ async def investigate(cfg: dict, spec: str, mcp, plan: dict, order: list[str], l
                 if log.events is not None:
                     log.events.defer = True  # recording adds no MCP round trip to the story's wall clock
                 try:
-                    capped = await _team(cfg, spec, mcp, story_task(card, card["manager"]["hypotheses"], plan.get("definition")), log,
-                                         min(cfg["story_wall_seconds"] * scale, left))
+                    capped = await _team(cfg, spec, mcp, story_task(card, card["manager"]["hypotheses"], plan.get("definition"), brand_id), log,
+                                         min(cfg["story_wall_seconds"] * scale, left), brand_id)
                 finally:
                     if log.events is not None:
                         log.events.defer = False

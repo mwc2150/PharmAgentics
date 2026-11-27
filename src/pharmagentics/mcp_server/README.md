@@ -30,7 +30,7 @@ async with Client(server) as mcp:
 
 ## How a run works
 
-1. **The caller (code) calls `open_run(question)`.** The server resolves the weeks, the baseline weeks and any territory the question names, and pins one data version. One server process serves one run at a time; calling `open_run` again starts a new run.
+1. **The caller (code) calls `open_run(question)`.** The server resolves the weeks, the baseline weeks and any territory the question names, and pins one data version. One server process serves one run at a time; calling `open_run` again starts a new run. `open_run` also takes `brand_id` (default `BXA`; `BXC` for Lipidara): every tool of the run reads that brand's rows.
 2. **Agents call the agent tools in any order.** Each call adds evidence items and claim tokens to the run's Registry.
 3. **The caller calls `export_run()`.** It returns the claims, evidence items, verdicts and the call log as JSON, and the caller builds its answer envelope from them. Agents never see the admin tools.
 

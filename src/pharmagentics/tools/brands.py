@@ -5,7 +5,7 @@ Release membership and per-user grants are applied separately by the API.
 """
 
 PRODUCTS = {"BXA": "Cardiovela", "BXC": "Lipidara", "BXD": "Vascriva", "BXE": "Metacora"}
-BRIEFING_ENGINES = {"BXA": ("scripted", "agent"), "BXC": ("scripted",)}
+BRIEFING_ENGINES = {"BXA": ("scripted", "agent"), "BXC": ("scripted", "agent")}
 
 
 def product_id(value: str) -> str:

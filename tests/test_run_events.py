@@ -92,7 +92,7 @@ def test_events_do_not_change_the_answer_claims_or_evidence(monkeypatch):
             await _chat(log, name, prompt, reply)
             return reply
 
-        async def fake_team(cfg, spec, mcp, task, log, wall):
+        async def fake_team(cfg, spec, mcp, task, log, wall, brand_id="BXA"):
             territory = task.split("territory ID ")[1].split(")")[0]
             await _chat(log, "manager", "Plan the story.", '{"next_speaker": {"answer": "data_forensics"}}')
             await _tool(log, "data_forensics", mcp, "check_data", territory=territory)
@@ -161,7 +161,7 @@ def test_worker_run_job_streams_events_and_the_brief_continues_the_triage_log(mo
         await _chat(log, name, prompt, reply)
         return reply
 
-    async def fake_team(cfg, spec, mcp, task, log, wall):
+    async def fake_team(cfg, spec, mcp, task, log, wall, brand_id="BXA"):
         t = task.split("territory ID ")[1].split(")")[0]
         await _tool(log, "data_forensics", mcp, "check_data", territory=t)
         await _tool(log, "driver_investigator", mcp, "story_confidence", territory=t)
