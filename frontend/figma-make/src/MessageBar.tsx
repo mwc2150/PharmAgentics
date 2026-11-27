@@ -5,14 +5,15 @@
 // agent when the app has a model (it counts toward the thread's 20) and is disabled, with the reason, when it has none.
 import { useEffect, useRef, useState } from "react"
 import { AnswerFeedback } from "./Feedback"
-import { Notice } from "./agent/primitives"
+import { Icon, Notice } from "./agent/primitives"
 import { askThread, continueShared, getThread, openShared, saveThread, shareLink, sharedFromLocation, type Thread, type Turn } from "./agent/threadApi"
 
 export type Chip = { number: string; title: string }
 
 function message(e: unknown): string { return e instanceof Error ? e.message : String(e) }
 
-function TurnView({turn, briefId, mine, onCite, onOpenEvidence, onOfferScope}: {turn: Turn, briefId: string, mine: boolean,
+// `latest`: only the newest answer asks "Was this answer right?", so the thread shows one vote prompt at a time (brief-015 I5).
+function TurnView({turn, briefId, mine, latest, onCite, onOpenEvidence, onOfferScope}: {turn: Turn, briefId: string, mine: boolean, latest: boolean,
     onCite: (n: string) => void, onOpenEvidence: (id: string) => void, onOfferScope?: (o: NonNullable<Turn["offer"]>) => void}) {
   const offer = turn.offer
   return <li className="space-y-2">
@@ -28,7 +29,7 @@ function TurnView({turn, briefId, mine, onCite, onOpenEvidence, onOfferScope}: {
       {offer && offer.week && onOfferScope && <button type="button" onClick={() => onOfferScope(offer)} className="mt-2 text-xs font-medium text-primaryink hover:underline">
         {offer.choose_comparison ? "Set up a brief with a new comparison" : <>Generate a brief for {offer.brand} · {(offer.territory ?? "").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} · week of {offer.week}</>}</button>}
     </div>
-    {mine && <AnswerFeedback inline lane="briefing" refId={`${briefId}:t${turn.n}`} view="analyst" agent={turn.n === 3}/>}
+    {mine && latest && <AnswerFeedback inline lane="briefing" refId={`${briefId}:t${turn.n}`} view="analyst" agent={turn.n === 3}/>}
   </li>
 }
 
@@ -100,11 +101,11 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
           {readOnly && <button type="button" className="font-medium text-primaryink hover:underline" onClick={() => briefId && continueShared(briefId, thread.owner).then(t => { setThread(t); window.location.hash = "" }).catch(e => setError(message(e)))}>Continue in my thread</button>}
           {!readOnly && !thread.saved && <button type="button" className="font-medium text-primaryink hover:underline" onClick={() => briefId && saveThread(briefId).then(setThread).catch(e => setError(message(e)))}>Save thread</button>}
           {!readOnly && thread.saved && <button type="button" className="font-medium text-primaryink hover:underline" onClick={() => { void navigator.clipboard?.writeText(shareLink(thread)); setCopied(true); setTimeout(() => setCopied(false), 1500) }}>{copied ? "Link copied" : "Copy share link"}</button>}
-          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-primaryink hover:underline">{open ? "Collapse" : "Show"}</button>
+          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex items-center gap-1 text-primaryink hover:underline"><Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/>{open ? "Collapse" : "Show"}</button>
         </span>
       </div>
       {open && <ol aria-live="polite" aria-relevant="additions" className="max-h-[50vh] space-y-4 overflow-y-auto px-4 py-4">
-        {thread.turns.map(t => <TurnView key={t.n} turn={t} briefId={thread.brief_id} mine={!readOnly} onCite={cite} onOpenEvidence={onOpenEvidence} onOfferScope={onOfferScope}/>)}
+        {thread.turns.map(t => <TurnView key={t.n} turn={t} briefId={thread.brief_id} mine={!readOnly} latest={t === thread.turns[thread.turns.length - 1]} onCite={cite} onOpenEvidence={onOpenEvidence} onOfferScope={onOfferScope}/>)}
       </ol>}
     </div>}
     {tips.length > 0 && !readOnly && <div className="mb-2 flex flex-wrap gap-2">

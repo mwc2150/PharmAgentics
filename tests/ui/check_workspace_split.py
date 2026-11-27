@@ -3,7 +3,7 @@
 The Overview is for exploring; New briefing does the work. Changing the Overview's brand or week never changes the
 form, the form never changes the Overview, the brand is a field of the form, the tab-row brand toggle shows on the
 Overview only, and the Overview's "Generate brief for <territory>" is the one link: it carries its brand, territory and
-week to the form. Drives the LOCAL app (dev sign-in, a built frontend) with Playwright and prints PASS/FAIL per check;
+week to the form. Every fold on an approved brief shows a chevron that turns down when open. Drives the LOCAL app (dev sign-in, a built frontend) with Playwright and prints PASS/FAIL per check;
 exit code 1 if any fails. No model and no secret are needed.
 
   uv run python tests/ui/check_workspace_split.py [--base http://127.0.0.1:8765]
@@ -17,6 +17,10 @@ import sys
 from playwright.sync_api import Page, sync_playwright
 
 RESULTS: list[tuple[bool, str]] = []
+FOLDS_JS = r"""() => [...document.querySelectorAll('summary')].filter(s => s.offsetParent).map(s => {
+  const b = getComputedStyle(s, '::before');
+  return {chevron: (b.maskImage || b.webkitMaskImage || '').startsWith('url(') && b.width !== 'auto', turned: b.transform !== 'none'}
+})"""
 
 
 def check(ok: bool, what: str) -> None:
@@ -75,6 +79,17 @@ def run(page: Page, base: str) -> None:
     page.get_by_role("tab", name="Approved").click()
     page.wait_for_timeout(400)
     check(toggle().count() == 0, "Approved briefings: no brand toggle (the lists show every brand)")
+
+    # Every fold shows that it folds (Michael, 2026-11-27): a chevron before each summary, turned down when open.
+    page.locator("main li button").first.click()
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1500)
+    folds = page.evaluate(FOLDS_JS)
+    check(bool(folds) and all(f["chevron"] for f in folds), f"An approved brief: every fold shows a chevron ({len(folds)} folds)")
+    page.locator("summary").first.click()
+    page.wait_for_timeout(400)
+    turned = page.evaluate(FOLDS_JS)[0]["turned"]
+    check(turned and not folds[0]["turned"], "Opening a fold turns its chevron down")
 
 
 def main() -> int:

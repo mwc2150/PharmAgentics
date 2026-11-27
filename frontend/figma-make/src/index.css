@@ -93,6 +93,23 @@
   ::selection { background: var(--color-primary); color: var(--color-onprimary); }
   :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
   a { text-underline-offset: 0.2em; }
+  /* Every fold shows that it folds: a chevron before its summary, pointing right when shut and down when open (the
+     chevron of the brief's "How this brief was built" toggle). It replaces the browser's triangle, which a summary
+     styled as a flex or grid row loses. A summary laid out as a grid row (the Evaluation page's runs) carries the
+     chevron in its left padding, so its columns stay under their headings. */
+  :root { --pa-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E"); }
+  summary { list-style: none; cursor: pointer; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: ""; display: inline-block; flex: none; position: relative; top: 0.15em;
+    width: 1em; height: 1em; margin-inline-end: 0.375em;
+    background: currentColor; forced-color-adjust: none;
+    -webkit-mask: var(--pa-chevron) center / contain no-repeat; mask: var(--pa-chevron) center / contain no-repeat;
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  summary.grid { position: relative; }
+  summary.grid::before { position: absolute; inset-inline-start: 1.25rem; top: 0.9375rem; font-size: 0.875rem; }
   /* A region that script focuses (the skip link's target) needs no ring; controls keep theirs. */
   section[tabindex="-1"]:focus, div[tabindex="-1"]:focus { outline: none; }
 }
@@ -222,7 +239,7 @@
   .h-dvh, main, main > section { display: block !important; height: auto !important; overflow: visible !important; }
   /* app chrome and anything you press */
   aside, header, footer, nav, form, textarea, select, dialog, [role="dialog"], [data-sonner-toaster],
-  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]) { display: none !important; }
+  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]), summary::before { display: none !important; }
   /* the memo */
   .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pa-memo > * { break-inside: auto; }

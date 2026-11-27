@@ -191,14 +191,14 @@ function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<stri
     return <span title={LOST_TITLE}>{Math.round(Math.max(0, scriptedKf - kf) * 100)} pts lost</span>
   }
   return <section className={PANEL}>
-    <div className={`hidden gap-4 border-b border-rule px-5 py-2 text-[11px] text-muted sm:grid ${COLS}`}>
+    <div className={`hidden gap-4 border-b border-rule py-2 pl-10 pr-5 text-[11px] text-muted sm:grid ${COLS}`}>
       <span>System</span><span>Run</span><span className="text-right" title={`Share of the golden key facts the run stated, all cases pooled${t("key_fact_recall")}. Agent rows show the points lost against the scripted engine instead (target 0).`}>Key facts found</span>
       <span className="text-right" title={`Share of the golden findings the run reached, all cases pooled${t("finding_recall")}`}>Findings found</span>
       <span className="text-right">Number recall</span><span className="text-right">Claims reconcile</span>
     </div>
     <ul className="divide-y divide-rule">{runs.map(r => <li key={r.run_id}>
       <details>
-        <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60 ${COLS}`}>
+        <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 py-3 pl-10 pr-5 hover:bg-paper/60 ${COLS}`}>
           <span className="min-w-0"><span className="block truncate text-sm">{name(r)}</span>{r.model && <span className="block truncate text-xs text-muted">{modelName(r.model)}</span>}</span>
           <span className="text-xs text-muted sm:text-sm">{when(r.started)}</span>
           <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{keyFactCell(r)}</span>
@@ -206,7 +206,7 @@ function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<stri
           <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Number recall </span>{cell(r.metrics.golden_number_recall)}</span>
           <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile)}</span>
         </summary>
-        <div className="px-5 pb-4">
+        <div className="pb-4 pl-10 pr-5">
           <p className="mb-2 text-xs text-muted">{r.cases} questions · {r.reruns} rerun{r.reruns > 1 ? "s" : ""}{r.minutes != null ? ` · ${r.minutes} min` : ""} · run {r.run_id} · code {r.code_version || "n/a"} · data {r.data_version || "n/a"}</p>
           <Rows rows={Object.entries(r.metrics).map(([k, v]) => [label(k), runValue(k, v)])}/>
           {!!Object.keys(r.judge_metrics).length && <p className="mt-3 text-xs text-muted">Judge scores (report only): {Object.entries(r.judge_metrics).map(([k, v]) => `${label(k)} ${pct(v)}`).join(" · ")}</p>}
