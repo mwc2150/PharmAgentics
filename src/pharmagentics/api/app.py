@@ -140,7 +140,7 @@ def me(response: Response, p: rbac.Principal = Depends(rbac.require_user)) -> di
     lanes = {r.lane: {"role": r.name, "persona": r.persona, "label": r.label, "views": list(r.views),
                       "actions": list(r.actions), "available": rbac.lane_available(r.lane)
                       and (r.lane != "forecast" or "BXA" in brand_access.allowed_brands(p))} for r in p.lanes}
-    return {"name": p.name, "auth_mode": auth.mode(), "lanes": lanes, "brand_ids": sorted(brand_access.allowed_brands(p)),
+    return {"name": p.name, "username": p.sub, "auth_mode": auth.mode(), "lanes": lanes, "brand_ids": sorted(brand_access.allowed_brands(p)),
             "tester": p.is_tester, "view_as": p.view_as if p.is_tester else None}
 
 

@@ -341,8 +341,10 @@ def leader_words(sections: list[dict]) -> int:
 # counts until a print check says otherwise; P4-Q1 is over it until brief-010 FR-008 shrinks its territory card.
 # Re-measured after brief-010 integration (2026-11-23): the national TRx line (packet NC), segment movers (S), the
 # Southeast continuing card on P1-Q6 (C). Michael, 2026-11-23: the word budget is no longer a target (report only).
+# Re-measured 2026-11-27 (v2): brief-011 states the competitor and screening windows and shortens the default Source
+# (P1-Q3 -6); a territory-scoped brief opens §1 with its territory (UAT review 3.7: P3-Q5 +19, P4-Q1 +20).
 MEASURED_ANCHORS: dict[str, tuple[int, int]] = {
-    "P1-Q2": (627, 589), "P1-Q3": (409, 376), "P1-Q6": (612, 578), "P3-Q5": (717, 588), "P4-Q1": (842, 808)}
+    "P1-Q2": (627, 589), "P1-Q3": (403, 370), "P1-Q6": (612, 578), "P3-Q5": (736, 607), "P4-Q1": (862, 828)}
 WORD_BUDGET: dict[str, int] = {"analyst": 836, "leader": 705}  # print-verified longest anchor (P4-Q1 in brief-008 I2)
 
 

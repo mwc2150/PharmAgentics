@@ -56,7 +56,7 @@ function Rows({ rows }: { rows: [string, ReactNode][] }) {
 function laneRows(lane: "briefing" | "forecast", u: LaneUsage): [string, ReactNode][] {
   const rows: [string, ReactNode][] = [
     [lane === "briefing" ? "Briefs requested" : "Forecast explanations run", u.requests],
-    ["Opened", u.opens], ["Review decisions", list(u.decisions)], ["Answer votes", `${u.votes.up} up, ${u.votes.down} down`],
+    ["Opened", u.opens], ["Review decisions (events)", list(u.decisions)], ["Answer votes", `${u.votes.up} up, ${u.votes.down} down`],
   ]
   if (lane === "briefing") rows.push(["Engines", list(u.engines)], ["Scripted response time", spread(u.scripted_ms, "s", 1000)],
     ["Agent jobs", list(u.agent_jobs)], ["Agent brief, queue to result", spread(u.agent_seconds, "s")])
@@ -217,6 +217,13 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
   const b = u?.lanes.briefing ?? u?.lanes.forecast
   const reviewed = b ? Object.values(b.decisions).reduce((x, y) => x + y, 0) : 0
   const approved = b ? (b.decisions.approved ?? b.decisions.approve ?? 0) : 0
+  const rv = b?.review  // per brief, latest decision; the Forecast lane has none and keeps the event count
+  const approvedTile: [string, string, string] = rv
+    ? (rv.enough && rv.approved_pct != null
+      ? ["Approved", `${Math.round(rv.approved_pct)}%`, `${rv.approved} of ${rv.briefs} briefs approved`]
+      : ["Approved", rv.briefs ? (rv.label ?? "too few to rate").replace(/^./, c => c.toUpperCase()) : "–",
+         rv.briefs ? `${rv.briefs} brief${rv.briefs === 1 ? "" : "s"} decided, ${rv.min_briefs} needed` : "nothing reviewed yet"])
+    : ["Approved", reviewed ? `${Math.round((approved / reviewed) * 100)}%` : "–", reviewed ? `${approved} of ${reviewed} decisions` : "nothing reviewed yet"]
   const lead = t?.latest.find(r => !r.control)
   // The SUS of the first questionnaire and the UMUX-Lite SUS-equivalent of the second, weighted by responses
   const parts = [u?.sus && {n: u.sus.n, mean: u.sus.mean}, u?.umux && {n: u.umux.n, mean: u.umux.sus_equivalent_mean}].filter(Boolean) as {n: number, mean: number}[]
@@ -230,7 +237,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
     {!t && !u && !err.length && <div className="pa-skeleton h-32 rounded-xl"/>}
     {u && b && <Figures items={[
       [u.lanes.briefing ? "Briefs requested" : "Explanations run", String(b.requests), u.since ? `since ${when(u.since)}` : "none yet"],
-      ["Approved", reviewed ? `${Math.round((approved / reviewed) * 100)}%` : "–", reviewed ? `${approved} of ${reviewed} reviewed` : "nothing reviewed yet"],
+      approvedTile,
       ["Typical response (live use)", b.scripted_ms ? `${((b.scripted_ms.p50 ?? 0) / 1000).toFixed(1)} s` : "–", b.scripted_ms ? "scripted engine, median of live requests" : "no timed requests",
         goldenBrief != null && `golden set: ${goldenBrief.toFixed(1)} s a brief`],
       ["Usability (SUS scale)", usability ? String(usability.mean) : "–", usability ? `of 100, ${usability.n} response${usability.n === 1 ? "" : "s"}` : "no responses yet"],
