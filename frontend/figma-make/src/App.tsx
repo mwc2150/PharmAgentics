@@ -1113,9 +1113,11 @@ function AnalystApp({me}: {me: Me}) {
   const [contextError,setContextError] = useState<string | null>(null)
   const [loadingContext,setLoadingContext] = useState(true)
   const [brand,setBrand] = useState("")  // the New briefing's brand: one of the brief's own choices, set on the form
-  // The Overview's brand, for inspection only (Michael, 2026-11-27): switching it never changes the next brief's brand.
-  // "Generate a briefing" from the Overview carries it to the form on purpose, with the territory and week.
+  // The Overview's own brand and week, for exploring only (Michael, 2026-11-27): changing them never touches the New
+  // briefing form, and the form never touches them. The one link is the Overview's "Generate brief for <territory>",
+  // which carries its brand, territory and week to the form on purpose.
   const [overviewBrand,setOverviewBrand] = useState("")
+  const [overviewWeek,setOverviewWeek] = useState("")
   const [territory,setTerritory] = useState("")
   const [week,setWeek] = useState("")
   const [weekEnd,setWeekEnd] = useState("")  // brief-008: the last week of the period; equal to `week` for one week
@@ -1219,6 +1221,7 @@ function AnalystApp({me}: {me: Me}) {
       setOverviewBrand(b=>c.product_ids.includes(b)?b:(c.product_ids[0] ?? ""))
       setTerritory(t=>c.territory_ids.includes(t)?t:c.territory_ids[0])
       setWeek(w=>c.available_weeks.includes(w)?w:c.latest_week)
+      setOverviewWeek(w=>c.available_weeks.includes(w)?w:c.latest_week)
       setWeekEnd(w=>c.available_weeks.includes(w)?w:c.latest_week)
     } catch(e) {setContext(null);setContextError(message(e))}
     finally {setLoadingContext(false)}
@@ -1322,7 +1325,7 @@ function AnalystApp({me}: {me: Me}) {
       </select></label> : undefined} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
-    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? overviewBrand && <><h2 className="sr-only">Overview</h2><Overview key={overviewBrand} brand={overviewBrand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();chooseBrand(overviewBrand);setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
+    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? overviewBrand && <><h2 className="sr-only">Overview</h2><Overview key={overviewBrand} brand={overviewBrand} week={overviewWeek} onWeek={setOverviewWeek} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();chooseBrand(overviewBrand);setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <IntroWithHow introId="new-briefing-intro">Generate the week's brand-performance briefing, check its evidence, and send it to the Insights Manager for sign-off. The brief states the choices below in its Assumptions, and its numbers follow them.</IntroWithHow>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
