@@ -771,19 +771,30 @@ async function loadRecents(me: Me): Promise<RecentRow[]> {
   return all.sort((x, y) => y.at.localeCompare(x.at)).slice(0, RECENTS)
 }
 type RecentsProps = {rows: RecentRow[], active: string | null, onOpen: (r: RecentRow) => void, viewAll: {label: string, go: () => void}[]}
+// It sits at the foot of the sidebar, above Share feedback and Settings, and folds (Michael, 2026-11-27); this browser
+// keeps the choice. View all reads as a sidebar row, not a link colour.
+const RECENTS_OPEN_KEY = "pa-recents-open"
+const readRecentsOpen = () => { try { return window.localStorage.getItem(RECENTS_OPEN_KEY) !== "0" } catch { return true } }
 function Recents({rows, active, onOpen, viewAll, onAnyClick}: RecentsProps & {onAnyClick?: () => void}) {
-  const head = useId()
+  const list = useId()
+  const [open,setOpen] = useState(readRecentsOpen)
+  const toggle = () => setOpen(o => { try { window.localStorage.setItem(RECENTS_OPEN_KEY, o ? "0" : "1") } catch { /* a convenience only */ } return !o })
   if (!rows.length) return null
-  return <section aria-labelledby={head} className="pa-fade mt-5 min-h-0 flex-1 overflow-y-auto px-3">
-    <h2 id={head} className="px-[10px] pb-1 text-xs font-medium text-muted">Recents</h2>
-    <ul className="space-y-0.5">{rows.map(r => <li key={r.key}><button type="button" aria-current={active === r.key ? "page" : undefined} data-tip={r.tip}
+  const quiet = "flex w-full items-center gap-2 rounded-lg px-[10px] py-1.5 text-left text-[13px] transition-colors duration-150"
+  return <section aria-label="Recents" className="pa-fade">
+    <h2><button type="button" aria-expanded={open} aria-controls={list} onClick={toggle} className="flex w-full items-center justify-between gap-2 rounded-lg px-[10px] py-1.5 text-xs font-medium text-muted transition-colors duration-150 hover:bg-paper hover:text-ink">
+      Recents<Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/></button></h2>
+    <div id={list} className="pa-expand" data-open={open || undefined} inert={!open}><div>
+    <ul className="max-h-[38vh] space-y-0.5 overflow-y-auto">{rows.map(r => <li key={r.key}><button type="button" aria-current={active === r.key ? "page" : undefined} data-tip={r.tip}
       onClick={() => { onOpen(r); onAnyClick?.() }}
-      className={`flex w-full items-center gap-2 rounded-lg px-[10px] py-1.5 text-left text-[13px] transition-colors duration-150 ${active === r.key ? "bg-primarybg text-ink" : "text-muted hover:bg-paper hover:text-ink"}`}>
+      className={`${quiet} ${active === r.key ? "bg-primarybg text-ink" : "text-muted hover:bg-paper hover:text-ink"}`}>
       <span className="min-w-0 flex-1 truncate">{r.title}</span>
       {r.dot && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"/>}
       <span className="sr-only">{`. ${r.tip}${r.dot ? ". Waiting on you" : ""}`}</span>
     </button></li>)}</ul>
-    {viewAll.map(v => <button key={v.label} type="button" onClick={() => { v.go(); onAnyClick?.() }} className="mt-1 block rounded-lg px-[10px] py-1.5 text-left text-[13px] text-primaryink hover:underline">{v.label}</button>)}
+    {viewAll.map(v => <button key={v.label} type="button" onClick={() => { v.go(); onAnyClick?.() }} className={`${quiet} text-muted hover:bg-paper hover:text-ink`}>
+      <span className="flex-1">{v.label}</span><Icon name="chevronRight" className="h-3.5 w-3.5 shrink-0"/></button>)}
+    </div></div>
   </section>
 }
 
@@ -810,8 +821,8 @@ function SideNav({me, expanded, overview, forecast, telemetry, settings, briefin
       {me.lanes.forecast?.available && item("trend", "Forecast explanation", !overview && forecast && !telemetry && !settings, onForecast, forecastBusy, news.has("forecast"))}
       {me.evaluation && item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
-    {expanded && recents && <Recents {...recents} onAnyClick={onAnyClick}/>}
-    <div className="mt-auto shrink-0 space-y-2 px-3 pb-4">
+    <div className="mt-auto shrink-0 space-y-2 px-3 pb-4 pt-4">
+      {expanded && recents && <Recents {...recents} onAnyClick={onAnyClick}/>}
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
       {/* Settings sits at the bottom of the rail, below the workspaces: the same row in the narrow rail, the open sidebar and the phone drawer */}
       <div className="border-t border-rule pt-2">{item("gear", "Settings", settings, onSettings)}</div>
