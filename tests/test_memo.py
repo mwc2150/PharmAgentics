@@ -385,7 +385,8 @@ def test_a_supply_story_card_names_the_supported_driver_and_what_was_ruled_out()
     env = answer("Weeks of 2026-06-01 to 2026-06-29, Pacific: Why did BXA prescriptions fall?")
     card = by_number(env)["3.1"]["card"]
     assert (card["territory"], card["direction"]) == ("PACIFIC", "down")
-    assert card["drivers_supported"] == ["supply"] and card["drivers_ruled_out"] == ["data", "access", "promotion", "competitor"]
+    assert card["drivers_supported"] == ["supply"] and card["drivers_ruled_out"] == ["data", "access", "competitor"]
+    assert card["promotion"]["verdict"] == "not_testable"  # Pacific held its promotion level: not ruled out, not testable
 
 
 def test_card_driver_lists_use_the_evals_ids_and_leave_inconclusive_checks_out():

@@ -221,7 +221,8 @@ class RunSession:
         B = context_baseline(self.p.weeks, self.p.baseline) if reference and self.p.comparison is None else self.p.baseline
         brand = self.p.brand_id
         if fn is check_promotion:  # the stated comparison weeks, as the scripted brief (assumptions first)
-            return self._remember(name, t, self._record(t, check_promotion(self.reg, t, self.p.weeks, self.p.baseline, brand)))
+            return self._remember(name, t, self._record(t, check_promotion(
+                self.reg, t, self.p.weeks, self.p.baseline, brand, use_selected_baseline=self.p.comparison is not None)))
         if fn is check_competitor and self.p.comparison is not None:
             return self._remember(name, t, self._record(
                 t, check_competitor(self.reg, t, self.p.weeks, B, brand, exact_comparison=True, pct_format="pct")))
@@ -326,7 +327,7 @@ class RunSession:
         movers = splits.segment_line(self._reg(), self.p, t)  # brief-010 FR-003
         lines = [head] + ([movers] if movers else []) + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
         lines.append(memo.without_next(self._status(t, closing=True)))  # its next check goes to §5
-        self.story_detail[t] = memo.story_detail(self._reg(), self.p, t)  # folded, not in the story's text
+        self.story_detail[t] = memo.story_detail(self._reg(), self.p, t, done)  # folded, not in the story's text
         return "\n".join(lines)
 
     def competitor_section(self, lead: str) -> str:
