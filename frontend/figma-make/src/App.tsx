@@ -772,16 +772,17 @@ async function loadRecents(me: Me): Promise<RecentRow[]> {
 }
 type RecentsProps = {rows: RecentRow[], active: string | null, onOpen: (r: RecentRow) => void, viewAll: {label: string, go: () => void}[]}
 // It sits at the foot of the sidebar, above Share feedback and Settings, and folds (Michael, 2026-11-27); this browser
-// keeps the choice. View all reads as a sidebar row, not a link colour.
+// keeps the choice. All briefings and All reports sit under the fold, always shown, as muted sidebar rows.
 const RECENTS_OPEN_KEY = "pa-recents-open"
 const readRecentsOpen = () => { try { return window.localStorage.getItem(RECENTS_OPEN_KEY) !== "0" } catch { return true } }
 function Recents({rows, active, onOpen, viewAll, onAnyClick}: RecentsProps & {onAnyClick?: () => void}) {
   const list = useId()
   const [open,setOpen] = useState(readRecentsOpen)
   const toggle = () => setOpen(o => { try { window.localStorage.setItem(RECENTS_OPEN_KEY, o ? "0" : "1") } catch { /* a convenience only */ } return !o })
-  if (!rows.length) return null
   const quiet = "flex w-full items-center gap-2 rounded-lg px-[10px] py-1.5 text-left text-[13px] transition-colors duration-150"
-  return <section aria-label="Recents" className="pa-fade">
+  const links = viewAll.map(v => <button key={v.label} type="button" onClick={() => { v.go(); onAnyClick?.() }} className={`${quiet} text-muted hover:bg-paper hover:text-ink`}>
+    <span className="flex-1">{v.label}</span><Icon name="chevronRight" className="h-3.5 w-3.5 shrink-0"/></button>)
+  return <>{!!rows.length && <section aria-label="Recents" className="pa-fade">
     <h2><button type="button" aria-expanded={open} aria-controls={list} onClick={toggle} className="flex w-full items-center justify-between gap-2 rounded-lg px-[10px] py-1.5 text-xs font-medium text-muted transition-colors duration-150 hover:bg-paper hover:text-ink">
       Recents<Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/></button></h2>
     <div id={list} className="pa-expand" data-open={open || undefined} inert={!open}><div>
@@ -792,10 +793,9 @@ function Recents({rows, active, onOpen, viewAll, onAnyClick}: RecentsProps & {on
       {r.dot && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary"/>}
       <span className="sr-only">{`. ${r.tip}${r.dot ? ". Waiting on you" : ""}`}</span>
     </button></li>)}</ul>
-    {viewAll.map(v => <button key={v.label} type="button" onClick={() => { v.go(); onAnyClick?.() }} className={`${quiet} text-muted hover:bg-paper hover:text-ink`}>
-      <span className="flex-1">{v.label}</span><Icon name="chevronRight" className="h-3.5 w-3.5 shrink-0"/></button>)}
     </div></div>
-  </section>
+  </section>}
+  {!!links.length && <div className="pa-fade">{links}</div>}</>
 }
 
 function SideNav({me, expanded, overview, forecast, telemetry, settings, briefingBusy, forecastBusy, onOverview, onBriefing, onForecast, onTelemetry, onSettings, onAnyClick, recents}: {me: Me, expanded: boolean, overview: boolean, forecast: boolean, telemetry: boolean, settings: boolean, briefingBusy: boolean, forecastBusy: boolean, onOverview?: () => void, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onSettings: () => void, onAnyClick?: () => void, recents?: RecentsProps}) {
@@ -893,10 +893,9 @@ function Shell({me, onBriefingHome, onBriefFromOverview, children, startInForeca
     if (r.kind === "brief") { setTelemetry(false); setSettings(false); setOverview(false); setForecast(false); onOpenBrief?.(r.id) }
     else toForecast({kind: r.kind, id: r.id}, r.kind === "run" ? "workbench" : "reports")
   }
-  const lanes = [onBriefingList && me.lanes.briefing ? "briefing" : null, me.lanes.forecast?.available ? "forecast" : null].filter(Boolean)
   const viewAll = [
-    ...(onBriefingList && me.lanes.briefing ? [{label: lanes.length > 1 ? "All briefings" : "View all", go: () => pageChange(() => { setTelemetry(false); setSettings(false); setOverview(false); setForecast(false); onBriefingList() })}] : []),
-    ...(me.lanes.forecast?.available ? [{label: lanes.length > 1 ? "All reports" : "View all", go: () => toForecast({kind: "list", id: ""}, "reports")}] : []),
+    ...(onBriefingList && me.lanes.briefing ? [{label: "All briefings", go: () => pageChange(() => { setTelemetry(false); setSettings(false); setOverview(false); setForecast(false); onBriefingList() })}] : []),
+    ...(me.lanes.forecast?.available ? [{label: "All reports", go: () => toForecast({kind: "list", id: ""}, "reports")}] : []),
   ]
   const recentsActive = telemetry || settings || overview ? null : forecast ? forecastShowing : showing
   const recents: RecentsProps = {rows: recentRows, active: recentsActive, onOpen: openRecent, viewAll}
