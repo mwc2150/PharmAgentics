@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
-import { BrandMark, Icon, Notice, modelName, plainModels, useModalFocus, type IconName } from "./agent/primitives"
+import { BrandMark, Icon, Notice, longDates, modelName, plainModels, plainValue, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
+import { getUsage } from "./agent/telemetryApi"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
 import { Memo } from "./Memo"
@@ -44,14 +45,14 @@ function periodLabel(start: string, end?: string | null): string {
   return end && end > start ? `weeks ${labelWeek(start)} to ${labelWeek(end)}` : `week of ${labelWeek(start)}`
 }
 function labelTime(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—"
+  return iso ? new Date(iso).toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZoneName:"short"}) : "—"
 }
 // The server's one-line process summary ends "; reviewed by the analyst." with no date (a UTC date reads a day late in
 // the evening); the date is added here from reviewed_at, in the viewer's own time zone.
 function processLine(line: string, reviewedAt: string | null): string {
   const d = reviewedAt ? new Date(reviewedAt) : null
   if (!d || Number.isNaN(d.getTime())) return line
-  return line.replace(/; reviewed by the analyst\.$/, `; reviewed by the analyst on ${d.toLocaleDateString("en-CA")}.`)
+  return line.replace(/; reviewed by the analyst\.$/, `; reviewed by the analyst on ${d.toLocaleDateString("en-US", {month:"short",day:"numeric",year:"numeric"})}.`)
 }
 function dataText(input: unknown): string {
   return input === null || input === undefined ? "—" : typeof input === "string" ? input : JSON.stringify(input, null, 2)
@@ -98,7 +99,7 @@ function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, 
           <div className="space-y-3 text-sm">
             <dl className="grid grid-cols-[90px_1fr] gap-3"><dt className="text-muted">Tool</dt><dd className="break-all font-mono text-xs">{selected.tool}</dd>
             <dt className="text-muted">Version</dt><dd className="break-all font-mono text-xs">{selected.data_version ?? "Not supplied"}</dd>
-            <dt className="text-muted">Value</dt><dd className="break-all font-mono text-xs">{dataText(selected.result)}</dd></dl>
+            <dt className="text-muted">Value</dt><dd className="break-all font-mono text-xs" title={typeof selected.result==="number" ? String(selected.result) : undefined}>{typeof selected.result==="number" ? plainValue(selected.result) : dataText(selected.result)}</dd></dl>
             {selected.query && <div><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Source SQL</div><pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-xl bg-paper p-3 font-mono text-xs leading-relaxed">{selected.query}</pre></div>}
             <div><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Tool arguments</div><pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-paper p-3 font-mono text-xs">{JSON.stringify(selected.params ?? {}, null, 2)}</pre></div>
           </div>
@@ -130,14 +131,18 @@ function ViewAsSwitch({me}: {me: Me}) {
 
 function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
-  const name = me.name.trim() || "Account"  // brief-008 FR-012: the name only, never a lane or role list
+  const name = me.name.trim() || "Account"  // the button shows the name only; the open menu adds the username and each lane's role
+  // Each lane's role, named by its lane so two analysts never read the same ("Briefing · Commercial Analyst"). The labels are the API's.
+  const roles = (["briefing","forecast"] as const).flatMap(l=>me.lanes[l] ? [`${l==="briefing" ? "Briefing" : "Forecast"} · ${me.lanes[l]!.label}`] : [])
   return <DropdownMenu>
     <DropdownMenuTrigger aria-label={`Account: ${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink transition hover:bg-paper">
       <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{name}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-72">
-      <DropdownMenuLabel><span className="block truncate text-sm font-medium">{name}</span><span className="block text-xs font-normal text-muted">{me.auth_mode==="dev" ? "Development sign-in" : "Signed in"}</span></DropdownMenuLabel>
+      <DropdownMenuLabel><span className="block truncate text-sm font-medium">{name}{me.username && <span className="font-normal text-muted"> · {me.username}</span>}</span>
+        {roles.map(r=><span key={r} className="block truncate text-xs font-normal text-muted">{r}</span>)}
+        <span className="block text-xs font-normal text-muted">{me.auth_mode==="dev" ? "Development sign-in" : "Signed in"}</span></DropdownMenuLabel>
       {me.tester && <ViewAsSwitch me={me}/>}
       <DropdownMenuSeparator/>
       <DropdownMenuItem onSelect={openSuggest}>Suggest an improvement</DropdownMenuItem>
@@ -160,11 +165,24 @@ function useClassification(): Classification | null {
   },[])
   return c
 }
-function ClassLabel({tab}: {tab: string}) {
+// One label per screen: a page's own label (the header row of a tab) steps aside while an artifact on the page (a brief,
+// a leadership preview, a Forecast result, the How it works panel) shows its own. Artifact labels count themselves here.
+let artifactLabels = 0
+const artifactListeners = new Set<()=>void>()
+const subscribeArtifacts = (fn: ()=>void) => { artifactListeners.add(fn); return ()=>{ artifactListeners.delete(fn) } }
+const artifactCount = () => artifactLabels
+function ClassLabel({tab, header=false}: {tab: string, header?: boolean}) {
   const c = useClassification()
+  const others = useSyncExternalStore(subscribeArtifacts, artifactCount, artifactCount)
   const id = c?.tabs[tab]
   const level = c?.levels.find(l=>l.id===id)
-  if (!level) return null
+  const shown = !!level && !header
+  useEffect(()=>{
+    if (!shown) return
+    artifactLabels++; artifactListeners.forEach(fn=>fn())
+    return ()=>{ artifactLabels--; artifactListeners.forEach(fn=>fn()) }
+  },[shown])
+  if (!level || (header && others > 0)) return null
   return <span title={`${level.label}: ${level.description}`} className={`whitespace-nowrap font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${level.id === "sensitive" ? "text-neg" : "text-muted"}`}>
     <span className="sr-only">Data classification: </span>{level.label}
   </span>
@@ -457,7 +475,7 @@ function SubTabs<T extends string>({label, value, options, onChange, panelId, as
     {(aside || current?.[2]) && (
       <div className="flex shrink-0 items-center gap-4">
         {aside}
-        {current?.[2] && <ClassLabel tab={current[2]}/>}
+        {current?.[2] && <ClassLabel tab={current[2]} header/>}
       </div>
     )}
   </div>
@@ -725,6 +743,7 @@ function IntroWithHow({introId, children}: {introId?: string, children: ReactNod
 }
 
 function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: boolean}) {
+  const approved = brief.review_status === "approved"  // the footer and the vote speak only for an approved brief
   return <><article className={`${PANEL} overflow-hidden pa-rise`}>
     <div className="border-b border-rule px-6 py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted">
@@ -736,13 +755,16 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {brief.review_status==="approved" ? <span className={`${TAG} border-ok text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Approved by the Commercial Analyst · {labelTime(brief.reviewed_at)}</span> : <span className={`${TAG} border-edge text-ink`}>{REVIEW_CHIP[brief.review_status][1]}</span>}
         {brief.abstained && <Flag>Unresolved findings</Flag>}
+        {!brief.sections?.length && <span className={`${TAG} border-edge text-muted`} title="Saved before the memo layout, so it appears as plain text.">Earlier format</span>}
       </div>
       {brief.process_summary && <p className="mt-3 text-xs text-muted">{processLine(brief.process_summary, brief.reviewed_at)}</p>}
     </div>
-    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink">{brief.summary}</pre>}</div>
-    <div className="border-t border-rule px-6 py-4 text-xs text-muted">Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst.</div>
+    <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink">{longDates(brief.summary)}</pre>}</div>
+    <div className="border-t border-rule px-6 py-4 text-xs text-muted">{approved
+      ? "Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst."
+      : "This brief is a draft and has not been approved by the Commercial Analyst yet. Its figures can change before it is approved. Evidence and source queries stay with the Commercial Analyst."}</div>
   </article>
-  <AnswerFeedback lane="briefing" refId={brief.brief_id} view="leadership" agent={brief.engine==="agent"}/></>
+  {approved && <AnswerFeedback lane="briefing" refId={brief.brief_id} view="leadership" agent={brief.engine==="agent"}/>}</>
 }
 
 // A short, warm start to each workspace, from the viewer's own clock.
@@ -864,9 +886,9 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
           <label className="ml-2 flex min-h-9 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={on} onChange={()=>toggle(id)} className="h-4 w-4"/>Investigate</label>
         </div>
       </div>
-      <p className="mt-3 text-sm leading-relaxed">{c.what_moved}</p>
+      <p className="mt-3 text-sm leading-relaxed">{longDates(c.what_moved)}</p>
       {c.manager && <p className="mt-2 rounded-lg bg-paper px-3 py-2 text-[13px] text-ink"><span className="font-medium">Manager (agent):</span> {c.manager.keep ? `keeps it as story ${c.manager.position}` : `drops it${c.manager.why ? `: ${c.manager.why}` : ""}`}{c.manager.hypotheses.length ? ` · tests in this order: ${c.manager.hypotheses.join(", ")}` : ""}</p>}
-      <dl className="mt-3 grid gap-x-4 gap-y-2 text-[13px] sm:grid-cols-[110px_1fr]">{QUESTIONS.map(([k,label])=><div key={k} className="contents"><dt className="font-medium text-muted">{label}</dt><dd className="leading-relaxed">{c[k]}</dd></div>)}</dl>
+      <dl className="mt-3 grid gap-x-4 gap-y-2 text-[13px] sm:grid-cols-[110px_1fr]">{QUESTIONS.map(([k,label])=><div key={k} className="contents"><dt className="font-medium text-muted">{label}</dt><dd className="leading-relaxed">{longDates(c[k])}</dd></div>)}</dl>
     </li>})}</ol>}
     {(over.length>0 || plan.dropped.length>0) && <div className={`${PANEL} px-6 py-5 text-sm`}>
       <h3 className="font-semibold">Dropped by code</h3><p className="mt-1 text-xs text-muted">These follow the rules; they cannot be added back to this brief.</p>
@@ -899,18 +921,18 @@ function FlowPanel({flow, triage}: {flow: Stage[], triage?: TriageRecord | null}
 // Inline citations: every number in the brief is a claim; the server says where each one sits.
 function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceId: string) => void}) {
   const spans = [...(result.citations ?? [])].sort((a,b)=>a.start-b.start)
-  if (!spans.length) return <>{result.answer}</>
+  if (!spans.length) return <>{longDates(result.answer)}</>
   const parts: ReactNode[] = []
   let pos = 0
   spans.forEach((sp, i) => {
     const claim: Claim | undefined = result.claims[sp.claim]
     if (!claim || sp.start < pos || result.answer.slice(sp.start, sp.end) !== claim.value) return
-    parts.push(result.answer.slice(pos, sp.start))
+    parts.push(longDates(result.answer.slice(pos, sp.start)))
     parts.push(<button key={i} type="button" onClick={()=>onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`} aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[9px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="ml-px select-none font-mono text-[9px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
-  parts.push(result.answer.slice(pos))
+  parts.push(longDates(result.answer.slice(pos)))
   return <>{parts}</>
 }
 
@@ -1006,6 +1028,13 @@ function AnalystApp({me}: {me: Me}) {
   const generation = useRef(0)
   const capabilities = context?.brands.find(b=>b.id===brand)
   const agentSupported = !!capabilities?.engines.includes("agent")
+  // The scripted engine's measured median, from the Evaluation telemetry (live requests, else the golden set); none: no number is claimed.
+  const [scriptedSeconds,setScriptedSeconds] = useState<number | null>(null)
+  useEffect(()=>{
+    let live = true
+    getUsage().then(u=>{ const p = u.lanes.briefing?.scripted_ms; if (live && p?.p50 != null && p.n > 0) setScriptedSeconds(p.p50/1000) }).catch(()=>{})
+    return ()=>{ live = false }
+  },[])
   const changeBrand = (id: string) => {
     if (!context?.product_ids.includes(id)) return
     generation.current += 1 // ignore every late result or job callback from the previous selection
@@ -1174,7 +1203,7 @@ function AnalystApp({me}: {me: Me}) {
         {brand === "BXA" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promotion} onChange={e=>setPromotion(e.target.checked)} /> Promotion review across the release</label>}
         <fieldset><legend className="mb-1.5 text-xs font-medium text-muted">Engine</legend>
           <div className="divide-y divide-rule rounded-lg border border-rule">
-            <label className="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-paper/50"><input type="radio" name="engine" checked={engine==="scripted"} onChange={()=>setEngine("scripted")} className="mt-1"/><span><span className={`block text-sm ${engine==="scripted" ? "text-ink" : "text-muted"}`}>Scripted</span><span className="block text-xs text-muted">Instant. Runs the standard checks in a fixed order.</span></span></label>
+            <label className="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-paper/50"><input type="radio" name="engine" checked={engine==="scripted"} onChange={()=>setEngine("scripted")} className="mt-1"/><span><span className={`block text-sm ${engine==="scripted" ? "text-ink" : "text-muted"}`}>Scripted</span><span className="block text-xs text-muted">{scriptedSeconds!=null ? `About ${Math.max(1,Math.round(scriptedSeconds))} s.` : "A few seconds."} Runs the standard checks in a fixed order.</span></span></label>
             {agentSupported && <label className={`flex items-start gap-3 px-4 py-3 transition-colors ${!agentSupported || agent?.configured===false ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:bg-paper/50"}`}><input type="radio" name="engine" checked={engine==="agent"} disabled={!agentSupported || agent?.configured===false} onChange={()=>setEngine("agent")} className="mt-1"/><span title={agent?.model ? `Model: ${modelName(agent.model)}` : undefined}><span className={`block text-sm ${engine==="agent" ? "text-ink" : "text-muted"}`}>Agent team <span className="text-xs text-muted">· experimental</span></span><span className="block text-xs text-muted">A manager and two specialist agents investigate the week. {agent?.builtin ? "Usually a minute or two." : agent?.online ? "A few minutes per step." : agent?.cloud?.enabled && agent.cloud.seconds_left>0 ? `About ${agent.cloud.eta_minutes ?? 15} minutes for a brief.` : "Waits until an agent host is available."}</span></span></label>}
           </div>
         </fieldset>
