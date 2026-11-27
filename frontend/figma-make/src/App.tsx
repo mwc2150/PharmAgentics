@@ -668,7 +668,7 @@ function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy,
     <div className="flex h-16 items-center gap-3 px-[14px]">
       <BrandMark/>
       {/* The mark is decorative; the product's name is spoken once, by the text beside it or, in the narrow rail, here */}
-      {expanded ? <span className="pa-fade flex min-w-0 flex-1 items-baseline gap-1.5 whitespace-nowrap"><span className="truncate font-display text-[18px] font-bold tracking-tight">PharmAgentics</span><span className="text-xs font-medium text-muted">v1</span></span> : <span className="sr-only">PharmAgentics v1</span>}
+      {expanded ? <span className="pa-fade flex min-w-0 flex-1 items-baseline gap-1.5 whitespace-nowrap"><span className="truncate font-display text-[18px] font-bold tracking-tight">PharmAgentics</span><span className="text-xs font-medium text-muted">v2</span></span> : <span className="sr-only">PharmAgentics v2</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
       {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy, news.has("briefing"))}
