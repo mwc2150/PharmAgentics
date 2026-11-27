@@ -3,7 +3,8 @@ import { FeedbackResponses } from "./FeedbackResponses"
 import { FeedbackReview } from "./FeedbackReview"
 import { Notice } from "./agent/primitives"
 import { ForecastDriverRecovery } from "./ForecastDrivers"
-import { modelName, when } from "./agent/primitives"
+import { RollIn, modelName, when } from "./agent/primitives"
+import { useDrawOnView } from "./motion"
 import { getTelemetry, getUsage, type CaseTable, type LaneUsage, type Spread, type Telemetry as T, type TelemetryRun, type Usage } from "./agent/telemetryApi"
 
 const PANEL = "rounded-xl border border-rule bg-sheet"
@@ -40,13 +41,13 @@ const spread = (s: Spread | undefined, unit: string, scale = 1) =>
   s ? `${((s.p50 ?? 0) / scale).toFixed(1)} ${unit} · p95 ${((s.p95 ?? 0) / scale).toFixed(1)} ${unit}` : "no data yet"
 
 function Heading({ title, note }: { title: string, note?: ReactNode }) {
-  return <div className="pt-2"><h3 className="text-xs uppercase tracking-[0.06em] text-muted">{title}</h3>{note && <p className="mt-1 text-sm text-muted">{note}</p>}</div>
+  return <div className="pt-2"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">{title}</span></h3>{note && <p className="mt-2 text-sm text-muted">{note}</p>}</div>
 }
 
 function Figures({ items }: { items: [string, string, ReactNode, ReactNode?][] }) {
   return <section aria-label="Headline figures" className={`${PANEL} grid grid-cols-2 lg:grid-cols-4`}>
     {items.map(([k, v, sub, sub2], i) => <div key={k} className={`p-5 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
-      <div className="text-xs text-muted">{k}</div><div className="mt-2 font-serif text-3xl tabular-nums">{v}</div><div className="mt-1.5 text-xs text-muted">{sub}</div>{sub2 && <div className="mt-0.5 text-xs text-muted">{sub2}</div>}
+      <div className="text-xs text-muted">{k}</div><div className="mt-2 font-serif text-3xl tabular-nums"><RollIn key={v} text={v} delay={150 + i * 90}/></div><div className="mt-1.5 text-xs text-muted">{sub}</div>{sub2 && <div className="mt-0.5 text-xs text-muted">{sub2}</div>}
     </div>)}
   </section>
 }
@@ -180,31 +181,33 @@ function PerCase({ tables, targets }: { tables: CaseTable[], targets?: Record<st
 
 const COLS = "sm:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem]"
 function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<string, number> }) {
-  const cell = (v: number | undefined) => (v != null ? pct(v) : "–")
+  const view = useDrawOnView<HTMLElement>(0.05)
+  const cell = (v: number | undefined, at = 0) => { const s = v != null ? pct(v) : "–"; return <RollIn key={s} text={s} delay={150 + at * 60}/> }
   const t = (k: string) => targets?.[k] != null ? ` (target ${pct(targets[k])})` : ""
-  const keyFactCell = (r: TelemetryRun) => {
+  const keyFactCell = (r: TelemetryRun, at: number) => {
     const kf = keyFacts(r.metrics)
     // the same lane's and brand's scripted run: briefing_agent@BXC is set against briefing_scripted@BXC
     const scripted = runs.find(x => x.lane === r.lane && x.system === r.system.replace(AGENT_SYSTEM, "_scripted$2"))
     const scriptedKf = scripted ? keyFacts(scripted.metrics) : undefined
-    if (!AGENT_SYSTEM.test(r.system) || kf == null || scriptedKf == null) return cell(kf)
-    return <span title={LOST_TITLE}>{Math.round(Math.max(0, scriptedKf - kf) * 100)} pts lost</span>
+    if (!AGENT_SYSTEM.test(r.system) || kf == null || scriptedKf == null) return cell(kf, at)
+    const lost = `${Math.round(Math.max(0, scriptedKf - kf) * 100)} pts lost`
+    return <span title={LOST_TITLE}><RollIn key={lost} text={lost} delay={150 + at * 60}/></span>
   }
-  return <section className={PANEL}>
+  return <section ref={view} className={PANEL}>
     <div className={`hidden gap-4 border-b border-rule py-2 pl-10 pr-5 text-[11px] text-muted sm:grid ${COLS}`}>
       <span>System</span><span>Run</span><span className="text-right" title={`Share of the golden key facts the run stated, all cases pooled${t("key_fact_recall")}. Agent rows show the points lost against the scripted engine instead (target 0).`}>Key facts found</span>
       <span className="text-right" title={`Share of the golden findings the run reached, all cases pooled${t("finding_recall")}`}>Findings found</span>
       <span className="text-right">Number recall</span><span className="text-right">Claims reconcile</span>
     </div>
-    <ul className="divide-y divide-rule">{runs.map(r => <li key={r.run_id}>
+    <ul className="divide-y divide-rule">{runs.map((r, at) => <li key={r.run_id}>
       <details>
         <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 py-3 pl-10 pr-5 hover:bg-paper/60 ${COLS}`}>
           <span className="min-w-0"><span className="block truncate text-sm">{name(r)}</span>{r.model && <span className="block truncate text-xs text-muted">{modelName(r.model)}</span>}</span>
           <span className="text-xs text-muted sm:text-sm">{when(r.started)}</span>
-          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{keyFactCell(r)}</span>
-          <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Findings </span>{cell(findings(r.metrics))}</span>
-          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Number recall </span>{cell(r.metrics.golden_number_recall)}</span>
-          <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile)}</span>
+          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{keyFactCell(r, at)}</span>
+          <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Findings </span>{cell(findings(r.metrics), at)}</span>
+          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Number recall </span>{cell(r.metrics.golden_number_recall, at)}</span>
+          <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile, at)}</span>
         </summary>
         <div className="pb-4 pl-10 pr-5">
           <p className="mb-2 text-xs text-muted">{r.cases} questions · {r.reruns} rerun{r.reruns > 1 ? "s" : ""}{r.minutes != null ? ` · ${r.minutes} min` : ""} · run {r.run_id} · code {r.code_version || "n/a"} · data {r.data_version || "n/a"}</p>

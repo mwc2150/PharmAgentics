@@ -1,4 +1,5 @@
-import { useEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from "react"
+import { useEffect, useRef, type CSSProperties, type HTMLAttributes, type ReactNode, type RefObject } from "react"
+import { useDrawOnView } from "../motion"
 import { fmtDate, getSettings } from "../userSettings"
 
 /* Visual identity and SVG icon geometry. One icon set, outline style, stroke 1.6 next to 14px text.
@@ -28,6 +29,13 @@ export type IconName = keyof typeof PATHS
    signs stand still. It always lands on the real figure, about a second in. Screen readers and copying get the number
    whole; with reduced motion the wheels start where they stop. Key it by its text where it is used, so a new value
    spins again. `delay` (ms) staggers several numbers. */
+/* A block whose padlock numbers (RollIn) wait to spin until it first scrolls into view, the way a chart waits to draw:
+   a table further down the page spins when it is reached, not unseen at load. */
+export function InView({as: Tag = "div", children, ...rest}: {as?: "div" | "section", children: ReactNode} & HTMLAttributes<HTMLElement>) {
+  const ref = useDrawOnView<HTMLElement>(0.05)
+  return <Tag ref={ref as RefObject<HTMLDivElement>} {...rest}>{children}</Tag>
+}
+
 export function RollIn({text, delay = 0}: {text: string, delay?: number}) {
   let seed = text.length * 7 + 3
   return <><span className="pa-roll" aria-hidden="true">{[...text].map((c, i) => {

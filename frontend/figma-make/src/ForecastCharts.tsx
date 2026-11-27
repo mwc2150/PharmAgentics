@@ -4,7 +4,8 @@
 // never carries a meaning alone: bars sit left or right of the zero line and carry their signed value, the second
 // series of a pair is hollow (bars) or dashed (lines), provisional weeks are outlined, and the legend names every
 // encoding.
-import { useState } from "react"
+import { useState, type CSSProperties } from "react"
+import { useDrawOnView } from "./motion"
 
 export type ChartSpec = {
   kind: "waterfall" | "bars" | "lines"; title: string; unit?: string; series?: string[]
@@ -34,7 +35,8 @@ function SignedBars({ rows, series, unit }: { rows: { label: string; values: num
   const plot = W - labelW - pad * 2, scale = plot / span, zero = labelW + pad + -lo * scale
   const H = rows.length * band + 24
   const color = (i: number, v: number) => (series.length > 1 ? [LIME, LAV][i] : v < 0 ? RED : LIME)
-  return <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={series.join(" and ")}>
+  const draw = useDrawOnView<SVGSVGElement>()
+  return <svg ref={draw} viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={series.join(" and ")}>
     <line x1={zero} x2={zero} y1={0} y2={H - 20} stroke={AXIS} strokeWidth={1}/>
     {rows.map((r, i) => {
       const y0 = i * band + 6
@@ -44,8 +46,8 @@ function SignedBars({ rows, series, unit }: { rows: { label: string; values: num
           const w = Math.max(1, Math.abs(v) * scale), y = y0 + (series.length > 1 ? j * (h + 2) : (band - h) / 2 - 3)
           const x = v < 0 ? zero - w : zero
           return <g key={j}>
-            <rect x={x} y={y} width={w} height={h} rx={2} fill={series.length > 1 && j === 1 ? "none" : color(j, v)} pointerEvents="all" stroke={color(j, v)} strokeWidth={series.length > 1 && j === 1 ? 1.5 : 0}><title>{`${r.label}${series.length > 1 ? ` · ${series[j]}` : ""}: ${fmt(v, unit)}${unit === "%" ? "" : ` ${unit}`}${r.note ? ` (${r.note})` : ""}`}</title></rect>
-            {(series.length === 1 || j === 0) && <text x={v < 0 ? x - 4 : x + w + 4} y={y + h / 2} dominantBaseline="middle" textAnchor={v < 0 ? "end" : "start"} className="fill-ink text-[12px] tabular-nums">{fmt(v, unit)}</text>}
+            <rect className="pa-bar" style={{"--o": v < 0 ? "right center" : "left center", "--i": i} as CSSProperties} x={x} y={y} width={w} height={h} rx={2} fill={series.length > 1 && j === 1 ? "none" : color(j, v)} pointerEvents="all" stroke={color(j, v)} strokeWidth={series.length > 1 && j === 1 ? 1.5 : 0}><title>{`${r.label}${series.length > 1 ? ` · ${series[j]}` : ""}: ${fmt(v, unit)}${unit === "%" ? "" : ` ${unit}`}${r.note ? ` (${r.note})` : ""}`}</title></rect>
+            {(series.length === 1 || j === 0) && <text x={v < 0 ? x - 4 : x + w + 4} y={y + h / 2} dominantBaseline="middle" textAnchor={v < 0 ? "end" : "start"} className="pa-dot fill-ink text-[12px] tabular-nums">{fmt(v, unit)}</text>}
           </g>
         })}
       </g>
@@ -63,14 +65,15 @@ function WeekColumns({ rows, unit }: { rows: { label: string; a: number; flag?: 
   const scale = (pos && neg ? (H - top - bottom) / 2 : H - top - bottom) / max
   const step = (W - left) / rows.length, bw = Math.min(24, step - 2)
   const every = Math.ceil(rows.length / 8)
-  return <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Miss by week">
+  const draw = useDrawOnView<SVGSVGElement>()
+  return <svg ref={draw} viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Miss by week">
     <line x1={left} x2={W} y1={zero} y2={zero} stroke={AXIS} strokeWidth={1}/>
     <text x={left - 6} y={zero} dominantBaseline="middle" textAnchor="end" className="fill-muted text-[11px]">0</text>
     {rows.map((r, i) => {
       const hgt = Math.max(1, Math.abs(r.a) * scale), x = left + i * step + (step - bw) / 2, y = r.a < 0 ? zero : zero - hgt
       const c = r.a < 0 ? RED : LIME
       return <g key={r.label}>
-        <rect x={x} y={y} width={bw} height={hgt} rx={2} fill={r.flag ? "none" : c} pointerEvents="all" stroke={r.flag ? c : "none"} strokeWidth={1.5} strokeDasharray={r.flag ? "3 2" : undefined}>
+        <rect className="pa-bar pa-col" style={{"--o": r.a < 0 ? "center top" : "center bottom", "--i": i} as CSSProperties} x={x} y={y} width={bw} height={hgt} rx={2} fill={r.flag ? "none" : c} pointerEvents="all" stroke={r.flag ? c : "none"} strokeWidth={1.5} strokeDasharray={r.flag ? "3 2" : undefined}>
           <title>{`${r.label}: ${fmt(r.a)} ${unit}${r.flag ? " (provisional actual)" : ""}`}</title></rect>
         {i % every === 0 && <text x={x + bw / 2} y={H - 10} textAnchor="middle" className="fill-muted text-[11px]">{r.label.slice(5)}</text>}
       </g>
@@ -90,11 +93,12 @@ function TwoLines({ rows, series, unit }: { rows: { label: string; a: number; b?
   const path = (k: "a" | "b") => rows.map((r, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y((r[k] ?? r.a) as number).toFixed(1)}`).join(" ")
   const ticks = [y0 + (y1 - y0) * 0.1, (y0 + y1) / 2, y1 - (y1 - y0) * 0.1]
   const every = Math.ceil(rows.length / 8)
-  return <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={series.join(" and ")} onMouseLeave={() => setHover(null)}>
+  const draw = useDrawOnView<SVGSVGElement>()
+  return <svg ref={draw} viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={series.join(" and ")} onMouseLeave={() => setHover(null)}>
     {ticks.map(t => <g key={t}><line x1={left} x2={W - right} y1={y(t)} y2={y(t)} stroke={GRID} strokeWidth={1}/><text x={left - 6} y={y(t)} dominantBaseline="middle" textAnchor="end" className="fill-muted text-[11px] tabular-nums">{fmt(t)}</text></g>)}
     {/* a: the forecast, dashed and lavender; b: the actual, solid and teal */}
-    <path d={path("a")} fill="none" stroke={LAV} strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round"/>
-    <path d={path("b")} fill="none" stroke={LIME} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+    <path className="pa-dot" d={path("a")} fill="none" stroke={LAV} strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round"/>
+    <path className="pa-line" pathLength={1} d={path("b")} fill="none" stroke={LIME} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
     {rows.map((r, i) => <g key={r.label}>
       {i % every === 0 && <text x={x(i)} y={H - 10} textAnchor="middle" className="fill-muted text-[11px]">{r.label.slice(5)}</text>}
       <rect x={x(i) - (W - left) / rows.length / 2} y={top} width={(W - left) / rows.length} height={H - top - bottom} fill="transparent" onMouseEnter={() => setHover(i)}/>

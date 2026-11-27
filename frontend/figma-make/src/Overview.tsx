@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
-import { Icon, Notice, RollIn, plainValue } from "./agent/primitives"
+import { Icon, InView, Notice, RollIn, plainValue } from "./agent/primitives"
 import { fmtDate } from "./userSettings"
 import { useDrawOnView } from "./motion"
 
@@ -175,7 +175,7 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
         className={`absolute tabular-nums ${i === 0 ? "" : i === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2"}`}>{v > 0 ? "+" : ""}{Math.round(v * 100)}%</span>)}</span>
       <span className="hidden text-right md:block">TRx</span><span className="text-right">Change</span>
     </div>
-    <ul className="divide-y divide-rule">
+    <InView><ul className="divide-y divide-rule">
       {o.territories.map((t, i) => <li key={t.id} className={`${cols} px-5 py-3`}>
         <button onClick={() => onOpen(t)} className="min-w-0 text-left">
           <span className="block truncate text-sm font-medium hover:underline">{t.label}</span>
@@ -186,7 +186,7 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
         <span className="hidden text-right text-sm tabular-nums md:block"><RollIn key={int(t.trx)} text={int(t.trx)} delay={300 + i * 50}/></span>
         <span className="col-start-2 row-start-1 text-right text-sm tabular-nums md:col-start-auto md:row-start-auto"><RollIn key={pct(t.change)} text={pct(t.change)} delay={340 + i * 50}/></span>
       </li>)}
-    </ul>
+    </ul></InView>
   </section>
 }
 

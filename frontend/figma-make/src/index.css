@@ -226,6 +226,8 @@
   .pa-reel-strip > span { display: block; }
   /* a cited figure keeps its dotted underline through the wheels */
   .pa-cite :is(.pa-roll, .pa-reel, .pa-reel-strip) { text-decoration: inherit; }
+  /* a table's wheels wait, held at their first digit, until the table scrolls into view (primitives.tsx InView) */
+  .pa-drawready:not(.pa-inview) .pa-reel-strip { animation-play-state: paused; }
   /* A finished brief arrives in sequence: its sections rise in one after another. */
   .pa-sequence > * { animation: pa-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-sequence > :nth-child(2) { animation-delay: 70ms; }
@@ -239,6 +241,12 @@
   .pa-drawready .pa-line { stroke-dasharray: 1; stroke-dashoffset: 1; }
   .pa-drawready.pa-inview .pa-line { animation: pa-draw 900ms cubic-bezier(0.65, 0, 0.35, 1) forwards; }
   .pa-drawready .pa-dot { opacity: 0; }
+  /* Forecast bars grow out of the zero line (ForecastCharts.tsx): --o is the end they grow from, --i staggers them */
+  .pa-bar { transform-box: fill-box; transform-origin: var(--o, left center); }
+  .pa-drawready .pa-bar { transform: scaleX(0); }
+  .pa-drawready .pa-bar.pa-col { transform: scaleY(0); }
+  .pa-drawready.pa-inview .pa-bar { animation: pa-grow-x 650ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  .pa-drawready.pa-inview .pa-bar.pa-col { animation-name: pa-grow-y; }
   .pa-drawready.pa-inview .pa-dot { animation: pa-fade 300ms 650ms both; }
   /* A status that changes while the brief is open (sent, signed off, returned) pops once, with a ring; its check draws in. */
   .pa-pop { animation: pa-pop 560ms cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -344,6 +352,14 @@
   70% { filter: blur(0.4px); }
   to { transform: translateY(calc(var(--to, 0) * -1.15em)); filter: none; }
 }
+@keyframes pa-grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes pa-grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
 @keyframes pa-pop {
   0% { transform: scale(0.8); opacity: 0; box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent); }
   45% { transform: scale(1.08); opacity: 1; }
@@ -374,6 +390,8 @@
   button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]), summary::before, .pa-frostbar::before { display: none !important; }
   .pa-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
   .pa-dot { opacity: 1 !important; }
+  .pa-bar { transform: none !important; animation: none !important; }
+  .pa-reel-strip { animation: none !important; }  /* every wheel at its figure on paper */
   /* the memo */
   .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pa-memo > * { break-inside: auto; }
@@ -414,4 +432,4 @@ html[data-motion="on"] details::details-content { transition: none; }
 
 /* Page changes (motion.ts): a short crossfade; a brief's title moves from the list row into its heading. */
 ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
-::view-transition-group(pa-brief-title) { animation-duration: 380ms; }
+::view-transition-group(pa-brief-title), ::view-transition-group(pa-run-title) { animation-duration: 380ms; }

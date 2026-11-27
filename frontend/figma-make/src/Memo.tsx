@@ -2,7 +2,7 @@
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
 import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
-import { RollIn, longDates } from "./agent/primitives"
+import { InView, RollIn, longDates } from "./agent/primitives"
 import { fmtShortDay } from "./userSettings"
 import { BudgetNote, PromotionPanel } from "./Promotion"
 import { useDrawOnView } from "./motion"
@@ -14,7 +14,8 @@ const PANEL_COLOR = "var(--color-amber)"
 // `roll`: the cited figures roll in (a headline number tile), `roll` ms after the brief opens.
 function Cited({text, spans, claims, onOpen, roll}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void, roll?: number}) {
   const sorted = [...(spans ?? [])].sort((a, b) => a.start - b.start)
-  if (!sorted.length || !claims || !onOpen) return <>{longDates(text)}</>
+  // `roll` without citations to link (the leader view): the figure still spins, as text
+  if (!sorted.length || !claims || !onOpen) return roll !== undefined && /\d/.test(text) ? <RollIn key={text} text={text} delay={roll}/> : <>{longDates(text)}</>
   const parts: ReactNode[] = []
   let pos = 0
   sorted.forEach((sp, i) => {
@@ -260,7 +261,8 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
   const basisAt = table.columns.findIndex(c => c.trim().toLowerCase() === "basis")
   const lastData = basisAt > 0 ? basisAt - 1 : table.columns.length - 1
   const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
-  return <div className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
+  // The figures spin in like the tiles above (Michael, 2026-11-27), row by row, once the table scrolls into view.
+  return <InView className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
       <caption className="sr-only">Territory figures{table.note ? `. ${longDates(table.note)}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
@@ -273,13 +275,13 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
             if (j === 0) return <th key={j} scope="row" className="px-1.5 sm:px-2.5 py-1.5 text-left font-medium text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></th>
             if (withheld && j >= 1 && j <= lastData) return j === 1 ? <td key={j} colSpan={lastData} className="px-1.5 sm:px-2.5 py-1.5 text-right italic text-muted">withheld</td> : null
             if (j === basisAt) return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-left">{withheld ? <span aria-hidden="true" className="text-muted">—</span> : <BasisLabel row={r} text={cell || r.basis}/>}</td>
-            return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></td>
+            return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen} roll={Math.min(i, 10) * 60 + j * 30}/></td>
           })}
         </tr>
       })}</tbody>
     </table>
     {table.note && <p className="mt-2 font-sans text-[12px] leading-snug text-muted">{longDates(table.note)}</p>}
-  </div>
+  </InView>
 }
 
 const CONFIDENCE = {

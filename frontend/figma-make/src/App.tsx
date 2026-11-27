@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
-import { Avatar, BrandMark, Icon, Notice, longDates, modelName, plainModels, plainValue, useModalFocus, type IconName } from "./agent/primitives"
+import { Avatar, BrandMark, Icon, InView, Notice, RollIn, longDates, modelName, plainModels, plainValue, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
-import { BRIEF_TITLE, openInTransition, pageChange } from "./motion"
+import { BRIEF_TITLE, RUN_TITLE, openInTransition, pageChange } from "./motion"
 import { SettingsWorkspace } from "./Settings"
 import { fmtDate, fmtIsoDate, fmtTime, getSettings, useResolvedTheme, useSettings } from "./userSettings"
 import { getUsage } from "./agent/telemetryApi"
@@ -238,7 +238,7 @@ const Flag = ({children, className = ""}: {children: ReactNode, className?: stri
 
 function ForecastReport({run}: {run: ForecastRun}) {
   const report = run.report
-  return <div className="space-y-4">
+  return <div className="space-y-4 pa-sequence">
     <article className="pa-panel rounded-xl border border-rule bg-sheet p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted">
         <span>{forecastReviewLabel(run.review_status)}{report.investigator_mode ? ` · ${report.investigator_mode === "ollama" ? "Agent (local model)" : "Scripted"}` : ""} · written report coming soon</span>
@@ -247,13 +247,13 @@ function ForecastReport({run}: {run: ForecastRun}) {
       {report.abstained && <Flag className="mt-3">Attribution paused</Flag>}
       <h2 className="mt-3 text-2xl">{report.headline}</h2>
       <p className="mt-1.5 text-sm text-muted">{labelTerritory(report.territory_id)} · week ending {labelWeek(report.week_ending)} · {report.window_weeks}-week window</p>
-      <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Variance",report.variance_trx]].map(([label,value])=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums">{formatNumber(value as number | null)}</dd></div>)}</dl>
+      <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Variance",report.variance_trx]].map(([label,value],i)=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums"><RollIn key={formatNumber(value as number | null)} text={formatNumber(value as number | null)} delay={150 + i * 90}/></dd></div>)}</dl>
       {report.variance_pct !== null && report.variance_pct !== undefined && <p className="mt-3 text-sm text-muted tabular-nums">Variance {(report.variance_pct * 100).toFixed(1)}% · residual {formatNumber(report.residual_trx)} TRx · verification {report.verification?.verdict ?? "—"}</p>}
     </article>
-    <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">Drivers</h3>{report.drivers.length ? <ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={d.driver} className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span className="capitalize">{d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink">{formatNumber(d.impact_trx)} TRx</span> · {d.confidence}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">No driver attribution is shown because the data-quality gate paused this run.</p>}</section>
+    <InView as="section" className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">Drivers</span></h3>{report.drivers.length ? <ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={d.driver} className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span className="capitalize">{d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink"><RollIn key={formatNumber(d.impact_trx)} text={formatNumber(d.impact_trx)} delay={200}/> TRx</span> · {d.confidence}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">No driver attribution is shown because the data-quality gate paused this run.</p>}</InView>
     {!!report.caveats.length && <Notice tone="warn" title="Caveats" className="p-6"><ul className="mt-2 list-disc space-y-1 pl-5">{report.caveats.map(c=><li key={c}>{c}</li>)}</ul></Notice>}
-    {!!report.what_to_check.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">What to check next</h3><ul className="mt-2 divide-y divide-rule">{report.what_to_check.map(c=><li key={c.question} className="py-3 text-sm"><p className="font-medium">{c.question}</p><p className="mt-1 text-muted">{c.why}</p><p className="mt-1 text-xs text-muted">Owner: <span className="text-ink">{c.owner}</span></p></li>)}</ul></section>}
-    {run.view === "analyst" && run.stages && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How this explanation was made</h3><ol className="mt-2 divide-y divide-rule">{run.stages.map(s=><li key={s.stage} className="flex items-baseline justify-between gap-3 py-2 text-sm"><span><span className="mr-2 tabular-nums text-muted">{s.stage}</span>{s.name}</span><span className="text-xs text-muted">{s.status}</span></li>)}</ol></section>}
+    {!!report.what_to_check.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">What to check next</span></h3><ul className="mt-2 divide-y divide-rule">{report.what_to_check.map(c=><li key={c.question} className="py-3 text-sm"><p className="font-medium">{c.question}</p><p className="mt-1 text-muted">{c.why}</p><p className="mt-1 text-xs text-muted">Owner: <span className="text-ink">{c.owner}</span></p></li>)}</ul></section>}
+    {run.view === "analyst" && run.stages && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">How this explanation was made</span></h3><ol className="mt-2 divide-y divide-rule">{run.stages.map(s=><li key={s.stage} className="flex items-baseline justify-between gap-3 py-2 text-sm"><span><span className="mr-2 tabular-nums text-muted">{s.stage}</span>{s.name}</span><span className="text-xs text-muted">{s.status}</span></li>)}</ol></section>}
   </div>
 }
 
@@ -284,8 +284,8 @@ function StepList({progress}: {progress: { tool: string; args: Record<string, un
 
 type Kpis = { forecast: number; actual: number; miss: number; miss_pct?: number; scope: string }
 function KpiBoxes({k}: {k: Kpis}) {
-  return <div className="my-2"><dl className="grid grid-cols-3 divide-x divide-rule border-y border-rule">{([["Forecast", k.forecast], ["Actual", k.actual], ["Miss", k.miss]] as const).map(([label, value])=><div key={label} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums">{formatNumber(value)}</dd></div>)}</dl>
-    <p className="mt-1.5 text-xs text-muted">{k.scope}{k.miss_pct !== undefined ? ` · ${Math.abs(k.miss_pct).toFixed(1)}% ${k.miss < 0 ? "below" : "above"} forecast` : ""}</p></div>
+  return <InView className="my-2"><dl className="grid grid-cols-3 divide-x divide-rule border-y border-rule">{([["Forecast", k.forecast], ["Actual", k.actual], ["Miss", k.miss]] as const).map(([label, value], i)=><div key={label} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums"><RollIn key={formatNumber(value)} text={formatNumber(value)} delay={150 + i * 90}/></dd></div>)}</dl>
+    <p className="mt-1.5 text-xs text-muted">{k.scope}{k.miss_pct !== undefined ? ` · ${Math.abs(k.miss_pct).toFixed(1)}% ${k.miss < 0 ? "below" : "above"} forecast` : ""}</p></InView>
 }
 
 function SectionText({text, charts, kpis, passages}: {text: string, charts?: Record<string, ChartSpec>, kpis?: Record<string, Kpis>, passages?: Record<string, { title: string; text: string }>}) {
@@ -347,7 +347,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
     {drafting && <div role="status" className="rounded-xl border border-rule bg-paper px-5 py-4 text-sm text-ink">{r.job?.step ?? "Drafting"}{r.model ? ` (${modelName(r.model)})` : ""}<span aria-hidden="true"> · {draftSecs} s</span>. Code places every figure, table and chart and checks each paragraph before it appears.{r.model?.startsWith("ollama:") ? " A local model takes a minute or two." : ""}</div>}
     {r.job?.status === "failed" && r.job.message && <Notice tone="error" role="alert">{r.job.message} The last good version is kept.</Notice>}
     {!r.sections.length && !drafting && <p className="text-sm text-muted">No draft yet.</p>}
-    {r.sections.map((sec,i)=><section key={i} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text} charts={r.charts} kpis={r.kpis} passages={r.blocks}/></section>)}
+    {r.sections.map((sec,i)=><section key={i} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">{sec.title}</span></h3><SectionText text={sec.text} charts={r.charts} kpis={r.kpis} passages={r.blocks}/></section>)}
     {editable && <section className={`${PANEL} space-y-3 p-5`}>
       <form onSubmit={e=>{ e.preventDefault(); const t = instruction.trim(); if (t) void act(async()=>{ const v = await draftReport(id, t); setInstruction(""); return v }) }} className="flex flex-col gap-2 sm:flex-row">
         <input value={instruction} onChange={e=>setInstruction(e.target.value)} maxLength={500} disabled={busy || drafting || !r.model} placeholder={r.model ? "Ask for a revision, e.g. shorter, lead with the Southeast, put the chart first" : "Revising by request needs a language model on the server"} className={`${FIELD} flex-1`}/>
@@ -400,11 +400,11 @@ function ForecastReports({me, onOpenRun, approvedOnly=false}: {me: Me, onOpenRun
   const approved = useApprovedList<ReportSummary>("forecast", approvedOnly && !open, async()=>(await listReports()).filter(x=>x.review_status === "approved"), x=>x.reviewed_at)
   const rows = approvedOnly ? approved.items : all, error = approvedOnly ? approved.error : failed
   useEffect(()=>{ if (!open && !approvedOnly) listReports().then(setAll).catch(e=>setFailed(message(e))) }, [open, approvedOnly])
-  if (open) return <ReportEditor id={open} analyst={analyst} canPreview={canPreview} onBack={()=>setOpen(null)} onOpenRun={onOpenRun}/>
+  if (open) return <ReportEditor id={open} analyst={analyst} canPreview={canPreview} onBack={()=>pageChange(()=>setOpen(null))} onOpenRun={onOpenRun}/>
   return <div className="space-y-6">
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {analyst && !approvedOnly && <p className="text-sm text-muted">A report starts from a question: investigate it under New explanation, pin the follow-ups you want, then choose Create report. The model drafts from everything pinned, you ask for revisions, and code checks every number before the Brand Manager sees it.</p>}
-    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>setOpen(x.id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{approvedOnly && approved.isNew(x) && <><span className="font-semibold text-primaryink">New</span> · </>}{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
+    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>pageChange(()=>setOpen(x.id))} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{approvedOnly && approved.isNew(x) && <><span className="font-semibold text-primaryink">New</span> · </>}{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
   </div>
 }
 
@@ -441,17 +441,17 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
   const elapsed = useElapsed(running)
   const analystView = run.view === "analyst"
   if (run.job_status === "failed") return <Notice tone="error" role="alert">The investigation failed: {run.job_error ?? "unknown error"}. Ask again, or rephrase the question.</Notice>
-  return <div className="space-y-4">
+  return <div className="space-y-4 pa-sequence">
     <article className="pa-panel rounded-xl border border-rule bg-sheet p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted">
         <span>{forecastReviewLabel(run.review_status)}{report.investigator_mode ? ` · ${ENGINE_LABEL(report.investigator_mode)}` : ""}{report.summary_by === "model" ? " · summary worded by the model" : ""}</span>
         <ClassLabel tab={`forecast.view.${run.view}`}/>
       </div>
-      {report.question && <p className="mt-3 text-sm text-muted">“{report.question}”</p>}
+      {report.question && <p className="mt-3 text-sm text-muted" style={{viewTransitionName: RUN_TITLE}}>“{report.question}”</p>}
       {report.abstained && !running && <Flag className="mt-3">{report.out_of_scope ? "Out of scope" : "Attribution paused"}</Flag>}
       <h2 className="mt-2 text-2xl">{running ? "Investigating…" : report.headline}</h2>
       {!running && report.week_start && <p className="mt-1.5 text-sm text-muted">{labelTerritory(report.territory_id)} · {report.window_weeks === 1 ? `week of ${labelWeek(report.week_start)}` : `${report.window_weeks} weeks from ${labelWeek(report.week_start)}`}{report.set_aside_weeks?.length ? ` · ${report.set_aside_weeks.length} provisional week${report.set_aside_weeks.length > 1 ? "s" : ""} set aside` : ""}</p>}
-      {!running && report.forecast_trx !== null && report.forecast_trx !== undefined && <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Miss",report.variance_trx]].map(([label,value])=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums">{formatNumber(value as number | null)}</dd></div>)}</dl>}
+      {!running && report.forecast_trx !== null && report.forecast_trx !== undefined && <dl className="mt-5 grid grid-cols-3 divide-x divide-rule border-y border-rule">{[["Forecast",report.forecast_trx],["Actual",report.actual_trx],["Miss",report.variance_trx]].map(([label,value],i)=><div key={String(label)} className="px-4 py-3 first:pl-0"><dt className="text-xs text-muted">{label} TRx</dt><dd className="mt-0.5 font-display text-2xl font-bold tabular-nums"><RollIn key={formatNumber(value as number | null)} text={formatNumber(value as number | null)} delay={150 + i * 90}/></dd></div>)}</dl>}
       {!running && report.summary && report.summary.trim() !== report.headline.trim() && <p className="mt-4 text-sm leading-relaxed">{report.summary.startsWith(report.headline) ? report.summary.slice(report.headline.length).trim() : report.summary}</p>}
       {running && <div className="mt-4 space-y-3">
         <p className="text-sm text-muted">Working for {elapsed} s. Steps appear as they finish; every number is computed by code. With local Qwen, the steps marked "with the model" take the longest.</p>
@@ -459,11 +459,11 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
       </div>}
     </article>
     {!running && !!report.charts_shown?.length && <section className="space-y-3">{report.charts_shown.map(k=>report.charts?.[k] && <ForecastChart key={k} spec={report.charts[k]} standalone/>)}{analystView && <p className="text-xs text-muted">{report.charts_by === "model" ? "Chart chosen by the model for this question; drawn from the answer's own numbers." : "Default chart for this kind of question; drawn from the answer's own numbers."}</p>}</section>}
-    {!running && !!report.drivers.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">Drivers</h3><ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={(d.label ?? d.driver) + d.impact_trx} className="py-2.5 text-sm"><div className="flex flex-wrap items-baseline justify-between gap-2"><span>{d.label ?? d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink">{formatNumber(d.impact_trx)} TRx</span> · <span className={CONF_TONE[d.confidence] ?? ""}>{d.confidence}</span></span></div>{analystView && !!d.confidence_reasons?.length && <p className="mt-1 text-xs text-muted">{d.confidence_reasons.join("; ")}</p>}</li>)}
-      {report.bias_trx !== null && report.bias_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm text-muted"><span>Usual forecast bias</span><span className="tabular-nums">{formatNumber(report.bias_trx)} TRx</span></li>}
-      {report.residual_trx !== null && report.residual_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span>Unexplained residual</span><span className="tabular-nums">{formatNumber(report.residual_trx)} TRx</span></li>}</ul></section>}
-    {!running && report.sections?.map(sec=><section key={sec.id} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">{sec.title}</h3><SectionText text={sec.text}/></section>)}
-    {!running && analystView && !!report.decisions?.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-sm font-semibold">How the investigation decided</h3><p className="mt-1 text-xs text-muted">Each decision, who made it and why. Reasons are words only: the agent cannot write a number.</p><ol className="mt-3 space-y-2">{report.decisions.map((d,i)=><li key={i} className="text-sm"><span className={`${TAG} mr-2 ${d.by.startsWith("agent") ? "border-edge text-ink" : "border-rule text-muted"}`}>{d.by}</span><span className="font-medium">{d.action.replace(/_/g, " ")}</span> <span className="text-muted">{d.target}</span><p className="mt-0.5 text-muted">{d.reason}</p></li>)}</ol></section>}
+    {!running && !!report.drivers.length && <InView as="section" className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">Drivers</span></h3><ul className="mt-2 divide-y divide-rule">{report.drivers.map(d=><li key={(d.label ?? d.driver) + d.impact_trx} className="py-2.5 text-sm"><div className="flex flex-wrap items-baseline justify-between gap-2"><span>{d.label ?? d.driver}</span><span className="tabular-nums text-muted"><span className="text-ink"><RollIn key={formatNumber(d.impact_trx)} text={formatNumber(d.impact_trx)} delay={200}/> TRx</span> · <span className={CONF_TONE[d.confidence] ?? ""}>{d.confidence}</span></span></div>{analystView && !!d.confidence_reasons?.length && <p className="mt-1 text-xs text-muted">{d.confidence_reasons.join("; ")}</p>}</li>)}
+      {report.bias_trx !== null && report.bias_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm text-muted"><span>Usual forecast bias</span><span className="tabular-nums"><RollIn key={formatNumber(report.bias_trx)} text={formatNumber(report.bias_trx)} delay={260}/> TRx</span></li>}
+      {report.residual_trx !== null && report.residual_trx !== undefined && <li className="flex flex-wrap items-baseline justify-between gap-2 py-2.5 text-sm"><span>Unexplained residual</span><span className="tabular-nums"><RollIn key={formatNumber(report.residual_trx)} text={formatNumber(report.residual_trx)} delay={300}/> TRx</span></li>}</ul></InView>}
+    {!running && report.sections?.map(sec=><section key={sec.id} className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">{sec.title}</span></h3><SectionText text={sec.text}/></section>)}
+    {!running && analystView && !!report.decisions?.length && <section className="pa-panel rounded-xl border border-rule bg-sheet p-6"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">How the investigation decided</span></h3><p className="mt-1 text-xs text-muted">Each decision, who made it and why. Reasons are words only: the agent cannot write a number.</p><ol className="mt-3 space-y-2">{report.decisions.map((d,i)=><li key={i} className="text-sm"><span className={`${TAG} mr-2 ${d.by.startsWith("agent") ? "border-edge text-ink" : "border-rule text-muted"}`}>{d.by}</span><span className="font-medium">{d.action.replace(/_/g, " ")}</span> <span className="text-muted">{d.target}</span><p className="mt-0.5 text-muted">{d.reason}</p></li>)}</ol></section>}
     {!running && analystView && !!report.comparisons?.length && <details className="pa-panel rounded-xl border border-rule bg-sheet p-6"><summary className="cursor-pointer text-sm font-semibold">Comparisons run ({report.comparisons.length})</summary><ul className="mt-3 space-y-3 text-xs">{report.comparisons.map(c=><li key={c.id}><p className="font-medium">{c.id} · {c.episode} · {c.method.replace(/_/g, " ")}{c.flags.length ? ` · flags: ${c.flags.join(", ")}` : ""}</p>{!!c.controls.length && <p className="text-muted">Controls: {c.controls.map(labelTerritory).join(", ")}</p>}<p className="text-muted tabular-nums">{Object.entries(c.stats).flatMap(([k,v])=>v && typeof v === "object" && !Array.isArray(v) ? Object.entries(v as Record<string, unknown>) : [[k,v] as [string, unknown]]).filter(([,v])=>v !== null && v !== undefined && typeof v !== "object").map(([k,v])=>`${k.replace(/_/g, " ")} ${String(v)}`).join(" · ")}</p></li>)}</ul></details>}
     {!running && analystView && report.verification?.checks && <p className="text-xs text-muted">Verification {report.verification.verdict}: {report.verification.checks.map(c=>`${c.detail} (${c.status})`).join("; ")}.</p>}
     {!running && analystView && run.job_status === "done" && onFollowup && onOpen && <ForecastFollowups run={run} onAsk={onFollowup} onOpen={onOpen} onPin={onPin}/>}
@@ -586,30 +586,25 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   useEffect(()=>{ onBusy?.(working) }, [working])  // eslint-disable-line react-hooks/exhaustive-deps
   // A running investigation, or one with a follow-up in flight, is polled until it finishes.
   useEffect(()=>{ if (!selected || (selected.job_status !== "running" && !followupsRunning)) return; const id = selected.forecast_run_id, view = selected.view; const t = setInterval(()=>{ void openForecast(id, view).then(r=>{ setSelected(cur => cur && cur.forecast_run_id === id ? r : cur); if (r.job_status !== "running" && !r.followups?.some(f=>f.status === "running")) { void refresh(); if (analyst) listForecasts().then(rs=>setBgRunning(isRunning(rs))).catch(()=>{}) } }).catch(()=>{}) }, 2000); return ()=>clearInterval(t) }, [selected?.forecast_run_id, selected?.job_status, selected?.view, followupsRunning])
-  const open = async (id: string, view?: ForecastRun["view"]) => {
-    setBusy(true)
+  // A page transition (motion.ts): a quick load goes straight from the list to the run, its question moving into place.
+  const open = async (id: string, view?: ForecastRun["view"], from?: Element | null) => {
     setError(null)
-    try {
-      setSelected(await openForecast(id, view))
-    } catch (e) {
-      setError(message(e))
-    } finally {
-      setBusy(false)
-    }
+    await openInTransition(openForecast(id, view), () => setBusy(true),
+      r => { if (r.ok) setSelected(r.value); else setError(message(r.error)); setBusy(false) }, from, 350, RUN_TITLE)
   }
   const submit = async () => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await submitForecast(selected.forecast_run_id)); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const decide = async (decision: "approved" | "rejected" | "returned") => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await reviewForecast(selected.forecast_run_id, decision, note)); setNote(""); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   return <div className={`${section === "reports" ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
     {/* One greeting per lane: on its landing section (the same one Shell opens), with no run open */}
     {section === (analyst ? "workbench" : "reports") && !selected && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
-    <SubTabs label="Forecast explanation" value={section} onChange={onSection} dots={{approved: news.has("forecast") && section !== "approved"}} options={(analyst
+    <SubTabs label="Forecast explanation" value={section} onChange={s=>pageChange(()=>onSection(s))} dots={{approved: news.has("forecast") && section !== "approved"}} options={(analyst
       ? [["workbench", "New explanation", "forecast.new"], ["reports", "Reports", "forecast.reports"], ["approved", "Approved reports", "forecast.approved"]]
       : [["reports", "Reports to review", "forecast.review"], ["approved", "Approved reports", "forecast.approved"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
-    {section !== "workbench" ? <ForecastReports key={section} me={me} approvedOnly={section === "approved"} onOpenRun={id=>{ pendingRun = id; onSection("workbench") }}/> : <>
+    {section !== "workbench" ? <ForecastReports key={section} me={me} approvedOnly={section === "approved"} onOpenRun={id=>{ pendingRun = id; pageChange(()=>onSection("workbench")) }}/> : <>
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {selected ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>setSelected(null)}><Icon name="back" className="h-4 w-4"/>All forecast questions</button>
+        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>pageChange(()=>setSelected(null))}><Icon name="back" className="h-4 w-4"/>All forecast questions</button>
       </div>
       {selected.parent_run_id && <button type="button" disabled={busy} onClick={()=>void open(selected.parent_run_id!)} className="text-xs text-primaryink hover:underline">Follow-up rerun · back to the original report</button>}
       {selected.kind === "question" ? <ForecastQuestionReport run={selected} onFollowup={analyst ? followup : undefined} onOpen={id=>void open(id)} onPin={analyst && selected.view === "analyst" ? pin : undefined}/> : <ForecastReport run={selected}/>}
@@ -653,7 +648,7 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
       </section>}
     </>}
     {!analyst && section === "workbench" && <p className="text-sm text-muted">Forecast reports waiting for your review are under the Reports tab.</p>}
-    <section><h3 className="text-sm font-semibold">{analyst ? "Your forecast questions" : "Waiting for your review"}</h3>{loading ? <div className="mt-2"><ListSkeleton/></div> : runs.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{runs.map(run=><li key={run.forecast_run_id}><button disabled={busy} onClick={()=>void open(run.forecast_run_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{run.question ?? run.headline}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{run.job_status === "running" ? "Investigating…" : run.job_status === "failed" ? "Failed" : <>{labelTerritory(run.territory_id)} · miss {formatNumber(run.variance_trx)} TRx · {forecastReviewLabel(run.review_status)}</>}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{analyst ? "No forecast questions yet. Ask one above, or start from an example." : "Nothing is waiting for your review."}</p>}</section></>}
+    <section><h3 className="text-sm font-semibold">{analyst ? "Your forecast questions" : "Waiting for your review"}</h3>{loading ? <div className="mt-2"><ListSkeleton/></div> : runs.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{runs.map(run=><li key={run.forecast_run_id}><button disabled={busy} onClick={e=>void open(run.forecast_run_id, undefined, e.currentTarget.querySelector("[data-title]"))} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span data-title className="block text-sm">{run.question ?? run.headline}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{run.job_status === "running" ? "Investigating…" : run.job_status === "failed" ? "Failed" : <>{labelTerritory(run.territory_id)} · miss {formatNumber(run.variance_trx)} TRx · {forecastReviewLabel(run.review_status)}</>}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{analyst ? "No forecast questions yet. Ask one above, or start from an example." : "Nothing is waiting for your review."}</p>}</section></>}
     </>}
   </div>
 }
@@ -720,10 +715,11 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
     window.addEventListener("keydown", key)
     return () => window.removeEventListener("keydown", key)
   },[])
-  const goBriefing = onBriefingHome ? () => { setTelemetry(false); setSettings(false); setForecast(false); onBriefingHome() } : undefined
-  const goForecast = () => { setTelemetry(false); setSettings(false); setForecast(true); setForecastVisited(true); setForecastSection(forecastHome) }
-  const goTelemetry = () => { setSettings(false); setTelemetry(true) }
-  const goSettings = () => { setTelemetry(false); setSettings(true) }
+  // Moving between workspaces is a page transition (motion.ts), as a tab change is.
+  const goBriefing = onBriefingHome ? () => pageChange(() => { setTelemetry(false); setSettings(false); setForecast(false); onBriefingHome() }) : undefined
+  const goForecast = () => pageChange(() => { setTelemetry(false); setSettings(false); setForecast(true); setForecastVisited(true); setForecastSection(forecastHome) })
+  const goTelemetry = () => pageChange(() => { setSettings(false); setTelemetry(true) })
+  const goSettings = () => pageChange(() => { setTelemetry(false); setSettings(true) })
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
   const title = settings ? "Settings" : telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"
   useEffect(()=>{ document.title = `${title} · PharmAgentics` },[title])  // 2.4.2: the tab names the workspace that is open
