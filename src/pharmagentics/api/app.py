@@ -278,6 +278,30 @@ async def queue(response: Response, who=Briefing) -> list[dict]:
     return sorted(rows, key=lambda x: order[x["review_status"]])
 
 
+@app.get("/api/briefing/mine", tags=["briefing"])
+async def mine(response: Response, who=Briefing) -> list[dict]:
+    """The briefs this login generated on the current data version, in every review state, newest first: the analyst's
+    Your briefings, so a brief made and left is still there to open. Only a role that runs briefs has them. Rows carry
+    no evidence and name no person (a brief records a pseudonym of who made it)."""
+    p, role = who
+    rbac.allow(role, "run")
+    _no_store(response)
+    version = await run_in_threadpool(service.current_data_version)
+    me = rbac.pseudonym(p.sub)
+    rows = []
+    for r in store.listed(set(signoff.STATES), version, brand_access.allowed_brands(p)):
+        if r.get("created_by") != me:
+            continue
+        note = signoff.returned_note(r)
+        state = signoff.state_of(r)
+        rows.append({**{k: r["result"].get(k) for k in ("brand_id", "week_start", "week_end", "territory_id", "engine", "abstained")},
+                     "brief_id": r["brief_id"], "review_status": state, "created_at": r.get("created_at"),
+                     "sent_at": r.get("reviewed_at") if state in (signoff.SENT, signoff.SIGNED_OFF) else None,
+                     "signed_off_at": r.get("signed_off_at"), "returned_at": note["at"] if note else None,
+                     "rejected_at": r.get("reviewed_at") if state == signoff.REJECTED else None})
+    return sorted(rows, key=lambda x: x["created_at"] or "", reverse=True)
+
+
 @app.get("/api/briefing/{brief_id}", tags=["briefing"])
 async def open_brief(brief_id: str, response: Response, view: str | None = Query(default=None), who=Briefing) -> dict:
     p, role = who

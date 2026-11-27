@@ -23,10 +23,10 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "./components/ui/dropdown-menu"
 import {
-  getContext, getBriefing, getMe, getTriage, listPublished, listQueue, openBrief, reviewBrief, signoffBrief, NotSignedIn,
+  getContext, getBriefing, getMe, getTriage, listMine, listPublished, listQueue, openBrief, reviewBrief, signoffBrief, NotSignedIn,
   getAgentStatus, submitAgentJob, waitAgentJob, agentPlan, agentBrief, getClassification, setViewAs,
   type AgentStatus, type AgentJob, type Classification,
-  type BriefDefinition, type BriefingResult, type Claim, type ClaimFlag, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type QueueRow, type ReleaseContext, type ReviewStatus, type RunEvent,
+  type BriefDefinition, type BriefingResult, type Claim, type ClaimFlag, type Comparison, type Evidence, type LeadershipBrief, type Me, type MineRow, type PublishedBrief, type QueueRow, type ReleaseContext, type ReviewStatus, type RunEvent,
   type Stage, type TrailEntry, type TriageDecision, type TriagePlan, type TriageRecord, type ViewAs,
 } from "./agent/briefingApi"
 import {
@@ -389,24 +389,46 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
   </div>
 }
 
-function ForecastReports({me, onOpenRun, approvedOnly=false, onEditing}: {me: Me, onOpenRun: (runId: string) => void, approvedOnly?: boolean, onEditing?: (open: boolean) => void}) {
+// Your reports (Michael, 2026-11-27), laid out as the Weekly briefing's Your briefings: approved (what leadership
+// sees) on top, then what needs you, then what is with the other side of the review; rejected items fold away. Both
+// things the Brand Manager reviews are here, as they were before: reports, and question runs (each row says which).
+// The analyst's "needs you" is what came back and drafts; the Brand Manager's is what waits for their review.
+function ForecastReports({me, onOpenRun, onEditing}: {me: Me, onOpenRun: (runId: string) => void, onEditing?: (open: boolean) => void}) {
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
-  const [all,setAll] = useState<ReportSummary[] | null>(null)
   const [open,setOpen] = useState<string | null>(()=>{ const p = pendingReport; pendingReport = null; return p })
-  const [failed,setFailed] = useState<string | null>(null)
-  // The approved list follows newly approved reports; the working list loads when it opens or a report closes.
-  const approved = useApprovedList<ReportSummary>("forecast", approvedOnly && !open, async()=>(await listReports()).filter(x=>x.review_status === "approved"), x=>x.reviewed_at)
-  const rows = approvedOnly ? approved.items : all, error = approvedOnly ? approved.error : failed
-  useEffect(()=>{ if (!open && !approvedOnly) listReports().then(setAll).catch(e=>setFailed(message(e))) }, [open, approvedOnly])
+  // Every report, loaded whenever the list is in view; approved ones carry their "New" mark (ApprovedNews).
+  const all = useApprovedList<ReportSummary>("forecast", !open, listReports, x=>x.review_status === "approved" ? x.reviewed_at : null)
+  const [runs,setRuns] = useState<ForecastSummary[] | null>(null)
+  useEffect(()=>{
+    if (open) return
+    let live = true
+    listForecasts().then(xs=>{ if (live) setRuns(xs.filter(x=>x.job_status !== "failed")) }).catch(()=>{ if (live) setRuns([]) })
+    return ()=>{ live = false }
+  }, [open, all.items])
   useEffect(()=>{ onEditing?.(!!open) }, [open])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>()=>onEditing?.(false), [])  // eslint-disable-line react-hooks/exhaustive-deps
   if (open) return <ReportEditor id={open} analyst={analyst} canPreview={canPreview} onBack={()=>pageChange(()=>setOpen(null))} onOpenRun={onOpenRun}/>
-  return <div className="space-y-6">
-    {error && <Notice tone="error" role="alert">{error}</Notice>}
-    {analyst && !approvedOnly && <p className="text-sm text-muted">A report starts from a question: investigate it under New explanation, pin the follow-ups you want, then choose Create report. The model drafts from everything pinned, you ask for revisions, and code checks every number before the Brand Manager sees it.</p>}
-    <section><h3 className="text-sm font-semibold">{approvedOnly ? "Approved reports" : analyst ? "Your reports" : "Reports"}</h3>{rows === null ? <div className="mt-2"><ListSkeleton/></div> : rows.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{(analyst ? rows : [...rows].sort((a,b)=>Number(b.review_status === "pending_review") - Number(a.review_status === "pending_review"))).map(x=><li key={x.id}><button onClick={()=>pageChange(()=>setOpen(x.id))} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{approvedOnly && approved.isNew(x) && <><span className="font-semibold text-primaryink">New</span> · </>}{x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul> : <p className="mt-2 text-sm text-muted">{approvedOnly ? "No approved reports yet. They appear here once the Brand Manager approves one." : analyst ? "No reports yet." : "Nothing has been submitted yet."}</p>}</section>
+  const rows = all.items
+  type Entry = {key: string, title: string, line: ReactNode, open: () => void}
+  const report = (x: ReportSummary): Entry => ({key: `r${x.id}`, title: x.title, open: ()=>pageChange(()=>setOpen(x.id)),
+    line: <>{x.review_status === "approved" && all.isNew(x) && <><span className="font-semibold text-primaryink">New</span> · </>}Report · {x.findings} pinned item{x.findings === 1 ? "" : "s"}{x.version ? ` · version ${x.version}` : ""} · {forecastReviewLabel(x.review_status)}</>})
+  const run = (x: ForecastSummary): Entry => ({key: `q${x.forecast_run_id}`, title: x.question ?? x.headline, open: ()=>onOpenRun(x.forecast_run_id),
+    line: x.job_status === "running" ? "Question · investigating…" : <>Question · {labelTerritory(x.territory_id)} · miss {formatNumber(x.variance_trx)} TRx · {forecastReviewLabel(x.review_status)}</>})
+  const of = (...states: string[]) => [...(rows ?? []).filter(x=>states.includes(x.review_status)).map(report), ...(runs ?? []).filter(x=>states.includes(x.review_status)).map(run)]
+  const needs = analyst ? [...of("returned"), ...of("not_submitted")] : of("pending_review")
+  const other = analyst ? of("pending_review") : of("returned")
+  const rejected = of("rejected")
+  const list = (xs: Entry[]) => <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{xs.map(x=><li key={x.key}><button onClick={x.open} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"><span className="min-w-0"><span className="block text-sm">{x.title}</span><span className="mt-0.5 block text-xs text-muted tabular-nums">{x.line}</span></span><Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul>
+  const part = (title: string, xs: Entry[], empty: string, note?: string) => <section><h3 className="text-sm font-semibold">{title}</h3>{note && <p className="mt-0.5 text-xs text-muted">{note}</p>}{rows === null || runs === null ? <div className="mt-2"><ListSkeleton/></div> : xs.length ? list(xs) : <p className="mt-2 text-sm text-muted">{empty}</p>}</section>
+  return <div className="space-y-8">
+    {all.error && <Notice tone="error" role="alert">{all.error}</Notice>}
+    {analyst && <p className="text-sm text-muted">A report starts from a question: investigate it under New explanation, pin the follow-ups you want, then choose Create report. The model drafts from everything pinned, you ask for revisions, and code checks every number before the Brand Manager sees it.</p>}
+    {part("Approved", of("approved"), "Nothing approved yet. Reports and questions appear here once the Brand Manager approves them.", "What leadership sees: reports and questions the Brand Manager approved.")}
+    {part("Needs you", needs, analyst ? "Nothing needs you. A question you investigate or a report you create stays here until you submit it." : "Nothing is waiting for your review.")}
+    {part(analyst ? "With the reviewer" : "With the analyst", other, analyst ? "Nothing is waiting for approval." : "Nothing is back with the analyst.")}
+    {!!rejected.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">Rejected ({rejected.length})</summary>{list(rejected)}</details>}
   </div>
 }
 
@@ -541,7 +563,7 @@ const FORECAST_EXAMPLES = [
 ]
 
 type ForecastSection = "workbench" | "approved" | "reports"
-function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: ForecastSection, onSection: (s: ForecastSection) => void, onBusy?: (busy: boolean) => void}) {
+function ForecastWorkspace({me, section, onSection, onBusy, ask}: {me: Me, section: ForecastSection, onSection: (s: ForecastSection) => void, onBusy?: (busy: boolean) => void, ask?: {question: string, n: number} | null}) {
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
@@ -583,6 +605,8 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   const pin = async (followupId: string, on: boolean) => { if (!selected) return; setError(null); try { setSelected(await (on ? pinFollowup : unpinFollowup)(selected.forecast_run_id, followupId)) } catch(e) { setError(message(e)) } }
   const toReport = async () => { if (!selected) return; setBusy(true); setError(null); try { const v = await createReport({run_id: selected.forecast_run_id}); pendingReport = v.id; onSection("reports") } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   useEffect(()=>{ if (pendingRun && section === "workbench") { const id = pendingRun; pendingRun = null; void open(id) } }, [section])
+  // A question from the Overview's "Explain the forecast miss": read into the scope card for the analyst to check, as if typed.
+  useEffect(()=>{ if (!ask || !analyst) return; setSelected(null); setQuestion(ask.question); void readScope(ask.question) }, [ask?.n])  // eslint-disable-line react-hooks/exhaustive-deps
   const followup = async (q: string) => { if (!selected) return; setError(null); try { setSelected(await askFollowup(selected.forecast_run_id, q)) } catch(e) { setError(message(e)) } }
   const followupsRunning = !!selected?.followups?.some(f=>f.status === "running")
   const working = selected?.job_status === "running" || followupsRunning || bgRunning
@@ -598,16 +622,14 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   const submit = async () => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await submitForecast(selected.forecast_run_id)); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const decide = async (decision: "approved" | "rejected" | "returned") => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await reviewForecast(selected.forecast_run_id, decision, note)); setNote(""); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   return <div className={`${section === "reports" && editing ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
-    {/* One greeting per lane: on its landing section (the same one Shell opens), with no run open */}
-    {section === (analyst ? "workbench" : "reports") && !selected && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
-    <SubTabs label="Forecast explanation" value={section} onChange={s=>pageChange(()=>onSection(s))} dots={{approved: news.has("forecast") && section !== "approved"}} options={(analyst
-      ? [["workbench", "New explanation", "forecast.new"], ["reports", "Reports", "forecast.reports"], ["approved", "Approved reports", "forecast.approved"]]
-      : [["reports", "Reports to review", "forecast.review"], ["approved", "Approved reports", "forecast.approved"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
-    {section !== "workbench" ? <ForecastReports key={section} me={me} approvedOnly={section === "approved"} onEditing={setEditing} onOpenRun={id=>{ pendingRun = id; pageChange(()=>onSection("workbench")) }}/> : <>
+    <SubTabs label="Forecast explanation" value={section} onChange={s=>pageChange(()=>onSection(s))} dots={{reports: news.has("forecast") && section !== "reports"}} options={(analyst
+      ? [["workbench", "New explanation", "forecast.new"], ["reports", "Your reports", "forecast.reports"]]
+      : [["reports", "Reports", "forecast.review"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
+    {section !== "workbench" ? <ForecastReports key={section} me={me} onEditing={setEditing} onOpenRun={id=>{ pendingRun = id; pageChange(()=>onSection("workbench")) }}/> : <>
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {selected ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>pageChange(()=>setSelected(null))}><Icon name="back" className="h-4 w-4"/>All forecast questions</button>
+        <button disabled={busy} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>pageChange(()=>{ setSelected(null); if (!analyst) onSection("reports") })}><Icon name="back" className="h-4 w-4"/>{analyst ? "All forecast questions" : "Back to reports"}</button>
       </div>
       {selected.parent_run_id && <button type="button" disabled={busy} onClick={()=>void open(selected.parent_run_id!)} className="text-xs text-primaryink hover:underline">Follow-up rerun · back to the original report</button>}
       {selected.kind === "question" ? <ForecastQuestionReport run={selected} onFollowup={analyst ? followup : undefined} onOpen={id=>void open(id)} onPin={analyst && selected.view === "analyst" ? pin : undefined}/> : <ForecastReport run={selected}/>}
@@ -624,7 +646,7 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
         </div>
       </section>}
     </> : <>{analyst && section === "workbench" && <>
-      <p className="text-sm text-muted">Ask about forecast versus actual TRx for {context?.brand ?? "BXA Cardiovela"}: how big a miss is, where it sits, what drove it, and what to check.</p>
+      <p className="text-sm text-muted">Ask about forecast versus actual TRx for {context?.brand ?? "BXA Cardiovela"}{context ? `, with data through ${labelWeek(context.latest_week)}` : ""}: how big a miss is, where it sits, what drove it, and what to check.</p>
       <form onSubmit={onAsk} className={`${PANEL} space-y-4 p-6`}>
         <label className={LABEL}>Your question<textarea value={question} onChange={e=>{ setQuestion(e.target.value); setScope(null) }} disabled={busy} rows={2} maxLength={400} placeholder="e.g. Why did we miss forecast in the week of 2026-08-24?" className={`${FIELD} mt-0.5`}/></label>
         <div className="flex flex-wrap gap-2">{FORECAST_EXAMPLES.map(q=><button key={q} type="button" disabled={busy} onClick={()=>{ setQuestion(q); void readScope(q) }} className="rounded-lg border border-edge px-3 py-1.5 text-xs text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-60">{q}</button>)}</div>
@@ -656,13 +678,46 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   </div>
 }
 
+// The Overview workspace (Michael, 2026-11-27): the data to inspect before choosing a use case. It is where the app
+// greets. From a territory it offers a brief (Weekly briefing) or an explanation of the forecast miss (Forecast
+// explanation), each only to a role that can start one; the forecast one only for Cardiovela, the brand the Forecast
+// lane covers. The Director and the Marketer have the item too, with a note on who can grant viewing access.
+function OverviewWorkspace({me, onBrief, onForecast}: {me: Me, onBrief?: (brand: string, territory: string, week: string) => void, onForecast?: (territory: string, week: string) => void}) {
+  const openable = !!me.lanes.briefing?.actions.includes("overview")
+  const [context,setContext] = useState<ReleaseContext | null>(null)
+  const [error,setError] = useState<string | null>(null)
+  const [brand,setBrand] = useState("")
+  const [week,setWeek] = useState("")
+  useEffect(()=>{
+    if (!openable) return
+    let live = true
+    getContext().then(c=>{ if (!live) return; setContext(c); setBrand(b=>c.product_ids.includes(b) ? b : (c.product_ids[0] ?? "")); setWeek(w=>c.available_weeks.includes(w) ? w : c.latest_week) })
+      .catch(e=>{ if (live) setError(message(e)) })
+    return ()=>{ live = false }
+  },[openable])
+  const canBrief = !!me.lanes.briefing?.actions.includes("run") && !!onBrief
+  const canExplain = !!me.lanes.forecast?.actions.includes("run") && !!onForecast
+  return <div className="workspace-wide space-y-5 pb-10 pt-6 sm:pt-8 pa-rise">
+    <div className="flex flex-wrap items-start justify-between gap-3"><Greeting/>{openable && <ClassLabel tab="briefing.overview"/>}</div>
+    {!openable ? <Notice tone="warn" title="Viewing access needed">The Overview is open to the Commercial Analyst and the Insights Manager. Ask one of them for viewing access.</Notice>
+      : error ? <Notice tone="error" role="alert">{error}</Notice>
+      : context && !context.product_ids.length ? <p className="text-sm text-muted">Your account has no authorized brands. Ask the project owner to assign brand access, then sign out and sign in again.</p>
+      : brand ? <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} brands={context?.brands ?? []} onBrand={setBrand} week={week} onWeek={setWeek} weeks={context?.available_weeks ?? []}
+          onBrief={canBrief ? (t,w)=>onBrief!(brand,t,w) : undefined} onForecast={canExplain && brand === "BXA" ? onForecast : undefined}/></>
+      : <ListSkeleton/>}
+  </div>
+}
+
+// The question the Overview's "Explain the forecast miss" puts in the Forecast form, in the form the reader takes.
+const forecastQuestion = (territory: string, week: string) => `Week of ${week}, ${labelTerritory(territory)}: How much of the miss does each driver explain?`
+
 // The sidebar is a narrow rail of icons; a toggle in the header (or Ctrl+B) opens it to full width, and the page
 // re-centres beside it. The choice is remembered in this browser. On phones the same toggle opens a slide-out menu.
 // Every icon has an explicit size: a className without one lets the SVG grow to fill its row.
 const OPEN_KEY = "pa_sidebar_open"
 const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
 
-function SideNav({me, expanded, forecast, telemetry, settings, briefingBusy, forecastBusy, onBriefing, onForecast, onTelemetry, onSettings, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, settings: boolean, briefingBusy: boolean, forecastBusy: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onSettings: () => void, onAnyClick?: () => void}) {
+function SideNav({me, expanded, overview, forecast, telemetry, settings, briefingBusy, forecastBusy, onOverview, onBriefing, onForecast, onTelemetry, onSettings, onAnyClick}: {me: Me, expanded: boolean, overview: boolean, forecast: boolean, telemetry: boolean, settings: boolean, briefingBusy: boolean, forecastBusy: boolean, onOverview?: () => void, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onSettings: () => void, onAnyClick?: () => void}) {
   const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-primarybg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   // A run still going shows a small dot (on the icon in the rail, at the row's end when open); the words are for screen readers.
@@ -680,8 +735,9 @@ function SideNav({me, expanded, forecast, telemetry, settings, briefingBusy, for
       {expanded ? <span className="pa-fade flex min-w-0 flex-1 items-baseline gap-1.5 whitespace-nowrap"><span className="truncate font-display text-[18px] font-bold tracking-tight">PharmAgentics</span><span className="text-xs font-medium text-muted">v2</span></span> : <span className="sr-only">PharmAgentics v2</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
-      {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry && !settings, onBriefing, briefingBusy, news.has("briefing"))}
-      {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry && !settings, onForecast, forecastBusy, news.has("forecast"))}
+      {onOverview && item("grid", "Overview", overview && !telemetry && !settings, onOverview)}
+      {onBriefing && item("briefcase", "Weekly briefing", !overview && !forecast && !telemetry && !settings, onBriefing, briefingBusy, news.has("briefing"))}
+      {me.lanes.forecast?.available && item("trend", "Forecast explanation", !overview && forecast && !telemetry && !settings, onForecast, forecastBusy, news.has("forecast"))}
       {me.evaluation && item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
     <div className="mt-auto space-y-2 px-3 pb-4">
@@ -701,8 +757,14 @@ function MobileNav({onClose, children}: {onClose: () => void, children: ReactNod
     <div ref={drawer} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide">{children}</div></div>
 }
 
-function Shell({me, onBriefingHome, children, startInForecast=false, briefingBusy=false}: {me: Me, onBriefingHome?: () => void, children: ReactNode, startInForecast?: boolean, briefingBusy?: boolean}) {
+function Shell({me, onBriefingHome, onBriefFromOverview, children, startInForecast=false, briefingBusy=false}: {me: Me, onBriefingHome?: () => void, onBriefFromOverview?: (brand: string, territory: string, week: string) => void, children: ReactNode, startInForecast?: boolean, briefingBusy?: boolean}) {
   const [mobileNav,setMobileNav] = useState(false)
+  // The Overview workspace: every Briefing role has the item; a role that can open it starts there (it greets).
+  const hasOverview = !!me.lanes.briefing
+  const startInOverview = !!me.lanes.briefing?.actions.includes("overview") && !startInForecast
+  const [overview,setOverview] = useState(startInOverview)
+  const [overviewVisited,setOverviewVisited] = useState(startInOverview)
+  const [forecastAsk,setForecastAsk] = useState<{question: string, n: number} | null>(null)
   const [forecast,setForecast] = useState(startInForecast)
   const [forecastVisited,setForecastVisited] = useState(startInForecast)  // once opened, the workspace stays mounted so a running investigation survives lane switches
   const [forecastBusy,setForecastBusy] = useState(false)
@@ -719,33 +781,40 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
     return () => window.removeEventListener("keydown", key)
   },[])
   // Moving between workspaces is a page transition (motion.ts), as a tab change is.
-  const goBriefing = onBriefingHome ? () => pageChange(() => { setTelemetry(false); setSettings(false); setForecast(false); onBriefingHome() }) : undefined
-  const goForecast = () => pageChange(() => { setTelemetry(false); setSettings(false); setForecast(true); setForecastVisited(true); setForecastSection(forecastHome) })
+  const goBriefing = onBriefingHome ? () => pageChange(() => { setTelemetry(false); setSettings(false); setOverview(false); setForecast(false); onBriefingHome() }) : undefined
+  const goForecast = () => pageChange(() => { setTelemetry(false); setSettings(false); setOverview(false); setForecast(true); setForecastVisited(true); setForecastSection(forecastHome) })
+  const goOverview = hasOverview ? () => pageChange(() => { setTelemetry(false); setSettings(false); setOverview(true); setOverviewVisited(true) }) : undefined
+  // From a territory on the Overview: the New briefing form filled in, or the Forecast form with its question read.
+  const briefFromOverview = onBriefFromOverview ? (brand: string, territory: string, week: string) => pageChange(() => {
+    setOverview(false); setForecast(false); onBriefFromOverview(brand, territory, week) }) : undefined
+  const forecastFromOverview = (territory: string, week: string) => pageChange(() => {
+    setOverview(false); setForecast(true); setForecastVisited(true); setForecastSection("workbench")
+    setForecastAsk(a => ({question: forecastQuestion(territory, week), n: (a?.n ?? 0) + 1})) })
   const goTelemetry = () => pageChange(() => { setSettings(false); setTelemetry(true) })
   const goSettings = () => pageChange(() => { setTelemetry(false); setSettings(true) })
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
-  const title = settings ? "Settings" : telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"
+  const title = settings ? "Settings" : telemetry ? "Evaluation" : overview ? "Overview" : forecast ? "Forecast explanation" : "Weekly briefing"
   useEffect(()=>{ document.title = `${title} · PharmAgentics` },[title])  // 2.4.2: the tab names the workspace that is open
   const content = useRef<HTMLElement>(null)
   const theme = useResolvedTheme()  // the toasts follow the app's theme
   // --rail is the width the sidebar occupies; .workspace-content uses it to centre on the whole page (0 on phones).
-  return <ActiveWorkspace.Provider value={telemetry || settings ? "evaluation" : forecast ? "forecast" : "briefing"}><SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
+  return <ActiveWorkspace.Provider value={telemetry || settings || overview ? "evaluation" : forecast ? "forecast" : "briefing"}><SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
     <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-rail transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
-      <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings}/>
+      <SideNav me={me} expanded={open} overview={overview} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onOverview={goOverview} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings}/>
     </aside>
-    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
+    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded overview={overview} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onOverview={goOverview} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
     <main className="relative flex min-w-0 flex-1 flex-col">
       {/* The workspace band floats over the content, frosted: the page scrolls under it and shows through, blurred (2026-11-27) */}
       <header className="pa-frost absolute inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <button type="button" onClick={toggleNav} aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
             className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="panel" className="h-5 w-5"/></button>
-          <h1 key={settings ? "s" : telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{title}</h1>
+          <h1 key={settings ? "s" : telemetry ? "t" : overview ? "o" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{title}</h1>
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 scroll-pt-20 overflow-y-auto pt-16 print:pt-0"><div hidden={forecast || telemetry || settings}>{children}</div>{settings && <SettingsWorkspace me={me}/>}{telemetry && !settings && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={!forecast || telemetry || settings}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 scroll-pt-20 overflow-y-auto pt-16 print:pt-0"><div hidden={overview || forecast || telemetry || settings}>{children}</div>{overviewVisited && <div hidden={!overview || telemetry || settings}><OverviewWorkspace me={me} onBrief={briefFromOverview} onForecast={forecastFromOverview}/></div>}{settings && <SettingsWorkspace me={me}/>}{telemetry && !settings && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={overview || !forecast || telemetry || settings}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy} ask={forecastAsk}/></div>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
     <Toaster theme={theme} position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
@@ -811,7 +880,7 @@ function Greeting({detail}: {detail?: string}) {
   const first = useContext(SignedInName).trim().split(/\s+/)[0]
   const part = (h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + (first ? `, ${first}` : "")
   // A greeting is not a section heading, so it is a paragraph; the h1 in the header names the page. No full stop (Michael, 2026-11-27).
-  return <div className="pa-fade mb-4"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
+  return <div className="pa-fade"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
 }
 
 // An agent job's real progress: the server reports queued, then running; the result arrives when it is done and
@@ -986,6 +1055,38 @@ function QueueList({mode, onOpen}: {mode: "analyst" | "insights", onOpen: (id: s
     </section> })}</div>
 }
 
+// Your briefings (Michael, 2026-11-27), laid out as Forecast's Your reports: what leadership sees on top, then what
+// needs you (returned with a comment, drafts, and a run still going), then what is with the reviewer; rejected briefs
+// fold away. A brief made and left stays here to open, so nothing is run twice.
+function YourBriefings({onOpen, running}: {onOpen: (id: string, from?: Element | null) => void, running?: {title: string, note: string, go: () => void} | null}) {
+  const [rows,setRows] = useState<MineRow[] | null>(null)
+  const [error,setError] = useState<string | null>(null)
+  useEffect(()=>{
+    let live = true
+    listMine().then(r=>{ if (live) setRows(r) }).catch(e=>{ if (live) setError(message(e)) })
+    return ()=>{ live = false }
+  },[])
+  const of = (...states: MineRow["review_status"][]) => (rows ?? []).filter(r=>states.includes(r.review_status))
+  const needs = [...of("returned"), ...of("draft")], waiting = of("sent"), rejected = of("rejected")
+  const line = (r: MineRow) => r.review_status === "returned" ? `Returned ${labelTime(r.returned_at)} · open it to read the comment`
+    : r.review_status === "draft" ? `Draft · made ${labelTime(r.created_at)}` : r.review_status === "sent" ? `Sent for sign-off ${labelTime(r.sent_at)}`
+    : r.review_status === "rejected" ? `Rejected ${labelTime(r.rejected_at)}` : `Signed off ${labelTime(r.signed_off_at)}`
+  const chevron = <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/>
+  const rowClass = "group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"
+  const list = (xs: MineRow[], live?: typeof running) => <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>
+    {live && <li><button type="button" onClick={live.go} className={rowClass}><span className="min-w-0"><span className="block text-sm">{live.title}</span><span className="mt-0.5 block text-xs text-muted">{live.note}</span></span>{chevron}</button></li>}
+    {xs.map(r=><li key={r.brief_id}><button onClick={e=>onOpen(r.brief_id, e.currentTarget.querySelector("[data-title]"))} className={rowClass}>
+      <span className="min-w-0"><span data-title className="block w-fit text-sm">{r.brand_id} · {labelTerritory(r.territory_id)}, {periodLabel(r.week_start, r.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{line(r)}{r.abstained ? " · unresolved findings" : ""}</span></span>{chevron}</button></li>)}</ul>
+  return <div className="space-y-8">
+    <section><h3 className="text-sm font-semibold">Approved</h3><p className="mt-0.5 text-xs text-muted">What the Brand Director and the Marketer can open: briefings the Insights Manager signed off, on the current data release.</p><div className="mt-2"><PublishedList onOpen={onOpen}/></div></section>
+    {error ? <Notice tone="error" role="alert">{error}</Notice> : rows === null ? <ListSkeleton/> : <>
+      <section><h3 className="text-sm font-semibold">Needs you</h3>{needs.length || running ? list(needs, running) : <p className="mt-2 text-sm text-muted">Nothing needs you. A briefing you generate stays here until you send it for sign-off.</p>}</section>
+      <section><h3 className="text-sm font-semibold">With the reviewer</h3>{waiting.length ? list(waiting) : <p className="mt-2 text-sm text-muted">Nothing is out for sign-off.</p>}</section>
+      {!!rejected.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">Rejected ({rejected.length})</summary>{list(rejected)}</details>}
+    </>}
+  </div>
+}
+
 // brief-002 US8: the code triage plan, reviewed by the analyst before stage 4 runs.
 const QUESTIONS = [["decision","Decision"],["population","Population"],["granularity","Granularity"],["time","Time"]] as const
 
@@ -1132,18 +1233,13 @@ function AnalystApp({me}: {me: Me}) {
   const [contextError,setContextError] = useState<string | null>(null)
   const [loadingContext,setLoadingContext] = useState(true)
   const [brand,setBrand] = useState("")  // the New briefing's brand: one of the brief's own choices, set on the form
-  // The Overview's own brand and week, for exploring only (Michael, 2026-11-27): changing them never touches the New
-  // briefing form, and the form never touches them. The one link is the Overview's "Generate brief for <territory>",
-  // which carries its brand, territory and week to the form on purpose.
-  const [overviewBrand,setOverviewBrand] = useState("")
-  const [overviewWeek,setOverviewWeek] = useState("")
   const [territory,setTerritory] = useState("")
   const [week,setWeek] = useState("")
   const [weekEnd,setWeekEnd] = useState("")  // brief-008: the last week of the period; equal to `week` for one week
   const [pending,setPending] = useState(false)
   const [result,setResult] = useState<BriefingResult | null>(null)
   const [runError,setRunError] = useState<string | null>(null)
-  const [view,setView] = useState<"overview" | "home" | "triage" | "result" | "approved">("overview")
+  const [view,setView] = useState<"home" | "triage" | "result" | "approved">("home")
   // The current run's own view: the New briefing tab returns to it, so a run keeps going while the analyst looks elsewhere.
   const [runView,setRunView] = useState<"triage" | "result" | null>(null)
   const [looked,setLooked] = useState(true)  // false from the moment a run starts until its finished plan or brief has been on screen
@@ -1241,10 +1337,8 @@ function AnalystApp({me}: {me: Me}) {
       const wanted = getSettings(), firstBrand = c.product_ids.includes(wanted.defaultBrand) ? wanted.defaultBrand : (c.product_ids[0] ?? "")
       setBrand(b=>c.product_ids.includes(b)?b:firstBrand)
       if (!engineSeeded.current) { engineSeeded.current = true; if (wanted.defaultEngine === "agent" && c.brands.find(b=>b.id===firstBrand)?.engines.includes("agent")) setEngine("agent") }
-      setOverviewBrand(b=>c.product_ids.includes(b)?b:(c.product_ids[0] ?? ""))
       setTerritory(t=>c.territory_ids.includes(t)?t:c.territory_ids[0])
       setWeek(w=>c.available_weeks.includes(w)?w:c.latest_week)
-      setOverviewWeek(w=>c.available_weeks.includes(w)?w:c.latest_week)
       setWeekEnd(w=>c.available_weeks.includes(w)?w:c.latest_week)
     } catch(e) {setContext(null);setContextError(message(e))}
     finally {setLoadingContext(false)}
@@ -1309,7 +1403,7 @@ function AnalystApp({me}: {me: Me}) {
   }
   const closeOpened = () => pageChange(() => { openedToken.current++; setOpened(null);setOpenedError(null);setOpenedLoading(false);setChip(null);setBarEvidence(null) })
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
-  const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : "new"
+  const tab = view==="approved" ? "approved" : "new"
   const scopeText = (s: NonNullable<typeof requestScope>) => `${s.brand} · ${labelTerritory(s.territory)} · ${s.promotion ? "release-wide Promotion review" : s.weekEnd > s.week ? `weeks ${labelWeek(s.week)} to ${labelWeek(s.weekEnd)}` : `week of ${labelWeek(s.week)}`}`
   // Back on the form with nothing running, the last run is let go; while one runs, the New briefing tab still leads back to it.
   // A run "holds" the New briefing tab while it is going, while its plan waits for review, or while its finished brief or error has not been looked at.
@@ -1317,7 +1411,7 @@ function AnalystApp({me}: {me: Me}) {
   useEffect(()=>{ if (view==="home" && !held) setRunView(null) },[view])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(()=>{ if (pending) setLooked(false); else if (view==="triage" || view==="result") setLooked(true) },[pending,view])
   // One quiet line on the other tabs while a run is going, or has finished and not been looked at yet.
-  const awayFromRun = view==="home" || view==="overview" || view==="approved"
+  const awayFromRun = view==="home" || view==="approved"
   const runLine = !awayFromRun || !runView ? null
     : pending ? {text: `A briefing is being prepared${requestScope ? ` · ${scopeText(requestScope)}` : ""}`, go: "View progress"}
     : runView==="triage" && plan ? {text: "The plan for your briefing is ready for review", go: "Review it"}
@@ -1340,11 +1434,13 @@ function AnalystApp({me}: {me: Me}) {
   // first control of the new view, so a keyboard user does not start again from the top of the page.
   const scopeBack = useRef<HTMLButtonElement>(null)
   useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
-  return <Shell me={me} onBriefingHome={()=>setView("overview")} briefingBusy={pending}><FeedbackDock slot={dock}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets; what the data covers is the line under the tab row. Other tabs start at the tab row */}{view==="overview" && <Greeting/>}<SubTabs label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>pageChange(()=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") })} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>
+  // The Overview (its own workspace) fills the New briefing form with its brand, territory and week; nothing runs yet.
+  const briefFromOverview = (b: string, t: string, w: string) => { clearQuestion(); chooseBrand(b); setTerritory(t); setWeek(w); setWeekEnd(w); setView("home") }
+  return <Shell me={me} onBriefingHome={()=>{}} onBriefFromOverview={briefFromOverview} briefingBusy={pending}><FeedbackDock slot={dock}>
+    <div className="workspace-content pt-5 sm:pt-6"><SubTabs label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>pageChange(()=>{ if (t==="approved") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") })} options={[["new","New briefing","briefing.new"],["approved","Your briefings","briefing.approved","Yours"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
-    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? overviewBrand && <><h2 className="sr-only">Overview</h2><Overview key={overviewBrand} brand={overviewBrand} brands={context?.brands ?? []} onBrand={setOverviewBrand} week={overviewWeek} onWeek={setOverviewWeek} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();chooseBrand(overviewBrand);setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
+    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <IntroWithHow introId="new-briefing-intro">Generate the week's brand-performance briefing, check its evidence, and send it to the Insights Manager for sign-off. The brief states the choices below in its Assumptions, and its numbers follow them.</IntroWithHow>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
@@ -1381,12 +1477,13 @@ function AnalystApp({me}: {me: Me}) {
       </form>
     </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8">{openedShown ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={closeOpened}><Icon name="back" className="h-4 w-4"/>All approved briefings</button>
+        <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={closeOpened}><Icon name="back" className="h-4 w-4"/>All your briefings</button>
       </div>
       {openedLoading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
       {openedError && <Notice tone="error" role="alert">{openedError}</Notice>}
       {opened && <AnalystBrief stepsFolded onStartNew={startNew} result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
-    </> : <><QueueList mode="analyst" onOpen={(id, from)=>void openApproved(id, from)}/><p className="text-sm text-muted">What the Brand Director and the Marketer can open: briefings the Insights Manager has signed off, on the current data release.</p><PublishedList onOpen={(id, from)=>void openApproved(id, from)}/></>}</div>
+    </> : <YourBriefings onOpen={(id, from)=>void openApproved(id, from)} running={runView && runLine ? {title: requestScope ? scopeText(requestScope) : "Your briefing", go: ()=>setView(runView),
+      note: pending ? "Generating…" : runView==="triage" && plan ? "Its plan is ready for review" : runError ? "It could not be generated" : "Ready to open"} : null}/>}</div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>{ setView("home"); if (!pending) setRunView(null) }}><Icon name="back"/>Change scope</button>
@@ -1424,7 +1521,7 @@ function LeaderApp({me}: {me: Me}) {
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <Notice tone="error" role="alert">{error}</Notice>}
         {brief && <SummaryCard brief={brief}/>}
-      </> : <><Greeting/><IntroWithHow>{me.lanes.briefing?.persona === "P4" ? "Signed-off briefings, with how promotion moved new patients and TRx in each story territory." : "Executive summaries the Commercial Analyst has reviewed and the Insights Manager has signed off."}</IntroWithHow><PublishedList onOpen={id=>void open(id)}/></>}
+      </> : <><IntroWithHow>{me.lanes.briefing?.persona === "P4" ? "Signed-off briefings, with how promotion moved new patients and TRx in each story territory." : "Executive summaries the Commercial Analyst has reviewed and the Insights Manager has signed off."}</IntroWithHow><PublishedList onOpen={id=>void open(id)}/></>}
     </div>
   </Shell>
 }
@@ -1453,7 +1550,7 @@ function InsightsApp({me}: {me: Me}) {
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <Notice tone="error" role="alert">{error}</Notice>}
         {opened && <AnalystBrief reviewer="insights" stepsFolded result={opened} onChange={setOpened} onAsk={setChip} openEvidence={barEvidence}/>}
-      </> : <><Greeting/><IntroWithHow>Briefings the Commercial Analyst has sent you. Read the evidence, then sign a briefing off for the Brand Director and the Marketer, or return it with a comment.</IntroWithHow>
+      </> : <><IntroWithHow>Briefings the Commercial Analyst has sent you. Read the evidence, then sign a briefing off for the Brand Director and the Marketer, or return it with a comment.</IntroWithHow>
         <div className="flex justify-end"><ClassLabel tab="briefing.signoff"/></div>
         <QueueList mode="insights" onOpen={(id, from)=>void open(id, from)}/></>}
     </div>

@@ -76,8 +76,18 @@ def choose(page: Page, group: str, label: str) -> None:
 
 
 def to_lane(page: Page, name: str) -> None:
-    page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile(f"^{name}")).click()
+    item = page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile(f"^{name}"))
+    if not item.first.is_visible():  # on a phone the workspaces sit in the navigation drawer
+        page.get_by_role("button", name="Expand the sidebar").click()
+        page.wait_for_timeout(400)
+    page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile(f"^{name}")).last.click()
     page.wait_for_timeout(1500)
+
+
+def to_new_briefing(page: Page) -> None:
+    """The analyst opens on the Overview (its own workspace since 2026-11-27): go to the Weekly briefing's form."""
+    to_lane(page, "Weekly briefing")
+    page.get_by_role("tab", name="New briefing").click()
 
 
 # ---- contrast ---------------------------------------------------------------------------------------------------
@@ -203,12 +213,11 @@ def assertions(browser, base: str) -> None:
     if other:
         brand_select.select_option(other[0])
         page.reload(); page.get_by_role("heading", level=1).first.wait_for(); page.wait_for_timeout(800)
-        page.get_by_role("tab", name="New briefing").click(); page.wait_for_timeout(800)
+        to_new_briefing(page); page.wait_for_timeout(800)
         form_brand = page.locator("form label", has_text="Brand").locator("select").first.input_value()
         check("default brand sets the New briefing form's initial brand after reload", form_brand == other[0], f"form={form_brand} want={other[0]}")
-        overview_brand = page.get_by_role("tab", name="Overview")
-        page.get_by_role("tab", name="Overview").click(); page.wait_for_timeout(800)
-        ov = page.locator("select").first.input_value()
+        to_lane(page, "Overview")
+        ov = page.locator("main select:visible").first.input_value()
         check("default brand does not change the Overview's own brand", ov == values[0], f"overview={ov} first={values[0]}")
     open_settings(page)
     page.get_by_label("Default brand").select_option(values[0])
@@ -225,7 +234,7 @@ def assertions(browser, base: str) -> None:
     if agent_offered:
         choose(page, "Default engine", "Agent team")
         page.reload(); page.get_by_role("heading", level=1).first.wait_for(); page.wait_for_timeout(800)
-        page.get_by_role("tab", name="New briefing").click(); page.wait_for_timeout(800)
+        to_new_briefing(page); page.wait_for_timeout(800)
         radio = page.get_by_role("radio", name=re.compile(r"^Agent team"))
         check("default engine Agent team is the form's initial engine after reload", radio.is_checked())
         open_settings(page)
@@ -258,12 +267,12 @@ def assertions(browser, base: str) -> None:
     # 6. date style, footnotes, density, reduced motion
     ctx = new_ctx(browser, DESKTOP)
     page = sign_in(ctx, base, "analyst")
-    greeting = lambda: page.locator("#briefing-panel label", has_text=re.compile(r"^Week")).locator("select option:checked").first.inner_text()
+    greeting = lambda: page.locator("main label:visible", has_text=re.compile(r"^Week")).locator("select option:checked").first.inner_text()  # the Overview's week
     before = greeting()
     open_settings(page)
     choose(page, "Date style", "2026-10-05")
     about_weeks = page.get_by_test_id("about-weeks").inner_text()
-    page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile("^Weekly briefing")).click(); page.wait_for_timeout(900)
+    page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile("^Overview")).click(); page.wait_for_timeout(900)
     after = greeting()
     check("date style: long form by default", bool(re.search(r"[A-Z][a-z]{2} \d{1,2}, \d{4}", before)), before)
     check("date style: ISO changes a visible week label", bool(re.search(r"\d{4}-\d{2}-\d{2}", after)) and after != before, after)
@@ -348,7 +357,7 @@ def toast_theme_of(page: Page) -> str | None:
 
 
 def generate_brief(page: Page, territory: str = "Southeast") -> None:
-    page.get_by_role("tab", name="New briefing").click()
+    to_new_briefing(page)
     page.wait_for_timeout(800)
     page.get_by_role("combobox", name="Territory").select_option(label=territory)
     page.get_by_role("button", name="Generate briefing").click()
@@ -367,7 +376,7 @@ def screens(browser, base: str, out: Path) -> None:
             ctx = new_ctx(browser, size, theme=theme, scheme="dark" if theme == "dark" else "light")
             page = sign_in(ctx, base, "analyst")
             snap(page, out, theme, vp, "overview")
-            page.get_by_role("tab", name="New briefing").click(); page.wait_for_timeout(900)
+            to_new_briefing(page); page.wait_for_timeout(900)
             snap(page, out, theme, vp, "new-briefing-form")
             generate_brief(page)
             snap(page, out, theme, vp, "analyst-brief")

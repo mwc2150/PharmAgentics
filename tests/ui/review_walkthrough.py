@@ -269,7 +269,11 @@ class Review:
             page.wait_for_timeout(400)
 
     def to_nav(self, page: Page, name: str) -> None:
-        page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile(name)).click()
+        items = page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile(name))
+        if not items.count():  # on a phone the workspaces sit in the navigation drawer
+            page.get_by_role("button", name="Expand the sidebar").click()
+            page.wait_for_timeout(400)
+        page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=re.compile(name)).last.click()
         page.wait_for_timeout(1500)
 
     def open_feedback(self, page: Page) -> None:
@@ -409,7 +413,8 @@ def analyst_desktop(r: Review, page: Page) -> None:
         sign_off_queue(r.base)  # the Insights Manager (P2) signs it off, so the Director and the Marketer can open it
         page.reload()
         page.wait_for_timeout(1000)
-        page.get_by_role("tab", name="Approved briefings").click()
+        r.to_nav(page, "Weekly briefing")
+        page.get_by_role("tab", name="Your briefings").click()
         page.wait_for_timeout(1200)
         r.shot(page, "approved-list")
     r.step("approve-and-approved-list", decide)
@@ -463,7 +468,7 @@ def forecast_desktop(r: Review, page: Page) -> None:
 
     def report():
         page.get_by_role("button", name="Create report").click()
-        page.get_by_role("tab", name="Reports", exact=True).wait_for(timeout=20000)
+        page.get_by_role("tab", name="Your reports").wait_for(timeout=20000)
         page.get_by_role("button", name="Leadership preview").wait_for(timeout=20000)
         r.shot(page, "report-analyst-view", full=True)
         page.get_by_role("button", name="Leadership preview").click()
@@ -498,10 +503,9 @@ def manager_desktop(r: Review, page: Page) -> None:
     r.step("landing", lambda: r.shot(page, "landing"))
 
     def empty_approved():
-        page.get_by_role("tab", name="Approved reports").click()
+        page.get_by_role("tab", name="Reports", exact=True).click()
         page.wait_for_timeout(800)
         r.shot(page, "approved-reports-before-any")
-        page.get_by_role("tab", name="Reports to review").click()
     r.step("approved-reports-empty-state", empty_approved)
 
     def review():
@@ -510,8 +514,8 @@ def manager_desktop(r: Review, page: Page) -> None:
         r.shot(page, "report-for-review", full=True)
         page.get_by_role("button", name="Approve", exact=True).click()
         page.wait_for_timeout(1500)
-        page.get_by_role("tab", name="Approved reports").click()
-        page.wait_for_timeout(1000)
+        page.reload()  # back on the Reports list, approved on top
+        page.wait_for_timeout(1500)
         r.shot(page, "approved-reports")
     r.step("review-and-approve", review)
     r.step("evaluation", lambda: (r.to_nav(page, "Evaluation"), r.shot(page, "evaluation", full=False)))
@@ -554,8 +558,8 @@ def mobile_pass(r: Review, browser) -> None:
             page = r.sign_in(ctx, who)
             r.step("landing", lambda: r.shot(page, "landing", full=True))
             if who == "analyst":
-                r.step("new-briefing", lambda: (page.get_by_role("tab", name="New briefing").click(), r.shot(page, "new-briefing-form", full=True)))
-                r.step("territory-drawer", lambda: (page.get_by_role("tab", name="Overview").click(),
+                r.step("new-briefing", lambda: (r.to_nav(page, "Weekly briefing"), page.get_by_role("tab", name="New briefing").click(), r.shot(page, "new-briefing-form", full=True)))
+                r.step("territory-drawer", lambda: (r.to_nav(page, "Overview"),
                                                     page.get_by_role("button", name=re.compile(r"^Southeast ")).first.click(),
                                                     page.get_by_role("dialog").wait_for(timeout=8000), r.shot(page, "territory-drawer", full=True)))
             if who == "director":

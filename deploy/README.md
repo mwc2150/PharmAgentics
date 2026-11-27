@@ -4,8 +4,8 @@ One app image (Meghna's UI and the Briefing API on one origin, scripted engine o
 
 | Role (Keycloak realm role) | Persona | Sees |
 | :- | :- | :- |
-| `briefing-analyst` | P1 Commercial Analyst | Full brief with claims and evidence; runs briefs, **sends them for sign-off** or rejects them; reads what P2 returned; can preview the leadership view |
-| `briefing-insights` | P2 Insights Manager | The analyst's full view of briefs sent for sign-off, read-only (evidence, SQL, triage plan, agent timeline); **signs off** or **returns** them (a comment is required; single claims can be flagged). Does not run briefs |
+| `briefing-analyst` | P1 Commercial Analyst | The Overview; full brief with claims and evidence; runs briefs, **sends them for sign-off** or rejects them; reads what P2 returned; can preview the leadership view |
+| `briefing-insights` | P2 Insights Manager | The Overview (to inspect, not to start a brief); the analyst's full view of briefs sent for sign-off, read-only (evidence, SQL, triage plan, agent timeline); **signs off** or **returns** them (a comment is required; single claims can be flagged). Does not run briefs |
 | `briefing-director` | P3 Brand Director | Executive summary only, of signed-off briefs |
 | `briefing-marketer` | P4 Marketer | The same executive summary as P3 for now (no evidence, no SQL), of signed-off briefs; marketer-specific content comes later |
 | `forecast-analyst` | CA Commercial Analytics Analyst | "Not available yet" (reserved; Alvin and Sienna confirm) |

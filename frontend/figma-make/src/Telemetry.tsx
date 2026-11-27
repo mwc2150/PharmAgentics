@@ -32,7 +32,13 @@ const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toF
 const fmt = (v: number, unit?: "share" | "count" | "flag") =>
   unit === "count" ? String(Math.round(v)) : unit === "flag" ? (v >= 0.5 ? "Yes" : "No") : pct(v)
 // Exported: Forecast driver recovery prints its dates the same way.
-const name = (r: TelemetryRun) => NAMES[r.system] ?? r.system
+// A Briefing run names its brand: "@BXC" is a Lipidara run, no suffix a Cardiovela one (the harness's default brand).
+const BRANDS: Record<string, string> = { BXA: "Cardiovela", BXC: "Lipidara", "BXA+BXC": "Cardiovela and Lipidara" }
+const name = (r: TelemetryRun) => {
+  const [base, brand] = r.system.split("@")
+  const n = NAMES[base] ?? base
+  return base.startsWith("briefing") ? `${n} · ${BRANDS[brand ?? "BXA"] ?? brand}` : n
+}
 // "briefing_agent:anthropic:claude-haiku-5-5" -> "Briefing agent · Haiku"
 const baseOf = (system: string) => system.split(":")[0]
 const tableName = (t: CaseTable) => { const base = baseOf(t.system); return [NAMES[base] ?? base, modelName(t.system.slice(base.length + 1))].filter(Boolean).join(" · ") }

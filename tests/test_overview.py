@@ -1,4 +1,4 @@
-"""The analyst's brand overview: analyst-only, every headline figure traceable, territories judged by the triage rule."""
+"""The brand overview: the Commercial Analyst and the Insights Manager only, every headline figure traceable, territories judged by the triage rule."""
 from __future__ import annotations
 
 import pytest
@@ -32,10 +32,12 @@ def june() -> dict:
     return overview.build(JUNE)
 
 
-def test_only_analysts_can_open_it():
-    r = signed_in("dev-analyst").get(f"/api/briefing/overview?week={JUNE}")
-    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
-    assert signed_in("dev-director").get("/api/briefing/overview").status_code == 403
+def test_the_analyst_and_the_insights_manager_open_it_and_the_leaders_do_not():
+    for user in ("dev-analyst", "dev-insights"):
+        r = signed_in(user).get(f"/api/briefing/overview?week={JUNE}")
+        assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    for leader in ("dev-director", "dev-marketer"):
+        assert signed_in(leader).get("/api/briefing/overview").status_code == 403
     assert signed_in("dev-forecast-analyst").get("/api/briefing/overview").status_code == 403
     assert TestClient(app).get("/api/briefing/overview").status_code == 401
 

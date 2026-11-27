@@ -137,7 +137,7 @@ def build(week: str | None = None, brand_id: str = "BXA") -> dict:
 @router.get("/overview")
 async def overview(response: Response, week: date | None = Query(default=None), brand_id: str = Query(default="BXA"), who=Depends(rbac.require_briefing)) -> dict:
     p, role = who
-    rbac.allow(role, "run")
+    rbac.allow(role, "overview")  # the Commercial Analyst and the Insights Manager (Michael, 2026-11-27)
     brand_access.require_brand(p, brand_id)
     brand_access.require_engine(brand_id, "scripted")
     response.headers["Cache-Control"] = "no-store"
