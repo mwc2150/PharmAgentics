@@ -144,6 +144,7 @@ class ReleaseContext(BaseModel):
         BrandCapability(id="BXA", name="Cardiovela", engines=["scripted", "agent"])])
     supported_intents: list[Literal["weekly_brief"]] = Field(default_factory=lambda: ["weekly_brief"])
     engine: Literal["scripted"] = "scripted"
+    data_version: str | None = None  # the loaded release's pinned version (shown under Settings > About)
 
 
 class ViewAs(BaseModel):

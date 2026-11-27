@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState } from "react"
 import { getAgentsInfo, type AgentCard, type AgentComparison, type AgentsInfo, type CompareRow } from "./agent/briefingApi"
 import { KIND_NAME, KIND_STYLE } from "./Timeline"
-import { Notice, modelName } from "./agent/primitives"
+import { InView, Notice, RollIn, modelName } from "./agent/primitives"
+import { fmtDate } from "./userSettings"
 
 // brief-009 FR-006: how the briefing is made. The flow from question to brief, the four actors the architecture names
 // (Manager, Data Forensics, Driver Investigator, and the Writer, which is an LLM step and not an agent), what each
@@ -11,7 +12,7 @@ import { Notice, modelName } from "./agent/primitives"
 const PANEL = "rounded-xl border border-rule bg-sheet"
 // An outlined word, never a filled pill (DESIGN.md).
 const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
-const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+const when = fmtDate
 
 function show(row: CompareRow, v: number | null): string {
   if (v === null || v === undefined) return "—"
@@ -63,7 +64,9 @@ function Actor({ a, promptsShown }: { a: AgentCard, promptsShown: boolean }) {
 function Comparison({ c }: { c: AgentComparison }) {
   if (!c.available) return <div className={`${PANEL} p-5 text-sm text-muted`}>{c.note}</div>
   const groups = [...new Set(c.rows.map(r => r.group))]
-  return <div className={`${PANEL} overflow-x-auto`}>
+  // The figures spin in, row by row, when the table is seen (as a brief's tables do).
+  const spin = (r: CompareRow, v: number | null, at: number) => { const s = show(r, v); return s === "—" ? s : <RollIn key={s} text={s} delay={120 + at * 45}/> }
+  return <InView className={`${PANEL} relative overflow-x-auto`}>
     <table className="w-full min-w-[30rem] text-sm">
       <caption className="sr-only">Scripted engine against agent team on the same golden questions</caption>
       <thead><tr className="border-b border-rule text-left text-xs text-muted">
@@ -73,15 +76,15 @@ function Comparison({ c }: { c: AgentComparison }) {
       </tr></thead>
       <tbody>{groups.map(g => <Fragment key={g}>
         <tr className="border-b border-rule bg-paper/50"><th colSpan={3} scope="colgroup" className="px-5 py-1.5 text-left text-xs font-medium uppercase tracking-[0.06em] text-muted">{g}</th></tr>
-        {c.rows.filter(r => r.group === g).map(r => <tr key={r.label} className="border-b border-rule last:border-0">
+        {c.rows.filter(r => r.group === g).map((r, at) => <tr key={r.label} className="border-b border-rule last:border-0">
           <th scope="row" className="px-5 py-2 text-left font-normal">{r.label}{r.note && <span className="block text-xs text-muted">{r.note}</span>}</th>
-          <td className="px-3 py-2 text-right tabular-nums">{show(r, r.scripted)}</td>
-          <td className="px-5 py-2 text-right tabular-nums">{show(r, r.agent)}</td>
+          <td className="px-3 py-2 text-right tabular-nums">{spin(r, r.scripted, at)}</td>
+          <td className="px-5 py-2 text-right tabular-nums">{spin(r, r.agent, at)}</td>
         </tr>)}
       </Fragment>)}</tbody>
     </table>
     <p className="border-t border-rule px-5 py-3 text-xs text-muted">{c.note} The full scores are on the Evaluation page.</p>
-  </div>
+  </InView>
 }
 
 function modelLine(m: AgentsInfo["model"]) {

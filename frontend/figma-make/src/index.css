@@ -15,21 +15,23 @@
   --radius-lg: 0.875rem;               /* controls */
   --radius-xl: 1.375rem;               /* panels */
   --radius-2xl: 1.75rem;
-  /* Direction B, "Positivus dark", with a seafoam accent since 2026-11-23 (was lime). Near-black page, panels one
-     step lighter, one accent: seafoam #3ecfb2. It is the
+  /* Direction B, "Positivus dark", with a seafoam accent since 2026-11-23 (was lime). Neutral greys since 2026-11-27
+     (Michael: the blue-grey sidebar and outlines read muddy): a near-black page, panels one step lighter, the sidebar
+     true black (the theme's extreme, as it is white in light), quiet hairlines. One accent: seafoam #3ecfb2. It is the
      primary action fill (near-black text), the current selection, the focus ring and the highlight block behind
      section headings; nothing else is seafoam. Panels and buttons carry a hard offset shadow (no blur). */
-  --color-paper: #0c0d12;      /* the page, input wells */
-  --color-sheet: #17181f;      /* panels and the sidebar: one flat, solid layer */
+  --color-paper: #0e0e10;      /* the page, input wells */
+  --color-sheet: #161619;      /* panels: one flat, solid layer, a step above the page */
+  --color-rail: #000000;       /* the sidebar: true black, a crisp edge against the page (white in light) */
   --color-ink: #f3f3f3;        /* body text (Positivus grey) */
-  --color-muted: #a6aabf;      /* secondary text */
-  --color-rule: #373a52;       /* panel borders and dividers */
-  --color-edge: #8a8ea6;       /* borders of controls (fields, secondary buttons): 6.0:1 on paper, 5.5:1 on sheet, 4.8:1 on primarybg (3:1 is the floor for UI boundaries) */
-  --color-slab: #3a3e58;       /* the hard offset shadow under panels and secondary buttons */
-  --color-warn: #c9ccd8;
-  --color-warnbg: #23253a;
+  --color-muted: #a3a3ab;      /* secondary text: 7.7:1 on paper, 7.2:1 on sheet */
+  --color-rule: #2e2e33;       /* panel borders and dividers: a quiet hairline */
+  --color-edge: #86868f;       /* borders of controls (fields, secondary buttons): 5.3:1 on paper, 5.0:1 on sheet, 4.4:1 on primarybg (3:1 is the floor for UI boundaries) */
+  --color-slab: #28282d;       /* the hard offset shadow under panels and secondary buttons: toned down, neutral */
+  --color-warn: #cbcbd2;
+  --color-warnbg: #222226;
   /* Primary: solid seafoam with near-black text (10.0:1). One accent for the primary action, selection, focus and
-     accent text: 10.0:1 on paper, 9.1:1 on sheet, so links and citations use the same shade (primaryink). */
+     accent text: 9.9:1 on paper, 9.3:1 on sheet, so links and citations use the same shade (primaryink). */
   --color-primary: #3ecfb2;
   --color-primaryhover: #62dbc3;
   --color-primarydeep: #1f7a68;   /* the hard shadow under a seafoam button */
@@ -66,17 +68,83 @@
   scrollbar-color: var(--color-edge) transparent;   /* thumb 5.8:1 on the page; the old rule colour was 1.7:1 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Values that are not Tailwind tokens but still change with the theme. Dark is the product's default look. */
+  --pa-glass: 27 27 30;                  /* rgb of the floating glass (sidebar drawer, menus, toasts) */
+  --pa-mark-face: #3ecfb2;              /* the logo tile, and the block behind a section heading: a 3D-printed face */
+  /* The account avatar's fill, down the rainbow by seniority (App.tsx seniority()); near-black letter, 7:1 or more */
+  --pa-rank-0: #86868f; --pa-rank-1: #f87171; --pa-rank-2: #fb923c; --pa-rank-3: #facc15; --pa-rank-4: #4ade80; --pa-rank-5: #60a5fa; --pa-rank-6: #a78bfa;
+  --pa-onrank: #0b0c10;
+  --pa-mark-edge: #00857c;
+  --pa-mark-ink: #0b0c10;
+}
+
+/* Light theme (Settings > Theme; public/theme-init.js sets data-theme on <html> before first paint). Every token above is
+   redefined here, and :root keeps the dark values. Contrast, by pair (WCAG AA: 4.5:1 for text, 3:1 for control edges):
+   ink 16.5:1 on paper and 18.0:1 on sheet; muted 7.0:1 on paper, 7.6:1 on sheet, 6.6:1 on primarybg; primaryink 4.8:1 on paper,
+   5.2:1 on sheet, 4.5:1 on primarybg; amber 5.4:1 on paper; neg 6.0:1 on paper; human 6.5:1 on paper; edge 3.9:1 on paper,
+   4.3:1 on sheet; white on the primary fill 4.5:1. Seafoam (#3ecfb2) is a fill or a decoration here, never text on a light page. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-paper: #f4f5f8;
+  --color-sheet: #ffffff;
+  --color-rail: #ffffff;
+  --color-ink: #14161f;
+  --color-muted: #4d5368;
+  --color-rule: #d5d9e4;
+  --color-edge: #737a91;
+  --color-slab: #cdd1de;
+  --color-warn: #3d4256;
+  --color-warnbg: #eceef4;
+  --color-primary: #00857c;        /* fills, the focus ring, borders and chart lines; text on it is white */
+  --color-primaryhover: #006d66;
+  --color-primarydeep: #00564f;
+  --color-primaryink: #007a72;     /* accent text and links: a shade under the fill so it clears 4.5:1 on the grey page too */
+  --color-onprimary: #ffffff;
+  --color-human: #5b3fc4;
+  --color-humanbg: #efeafc;
+  --color-primarybg: #e0f3f0;
+  --color-ok: var(--color-primaryink);
+  --color-okbg: var(--color-primarybg);
+  --color-amber: #8a5a00;
+  --color-amberbg: #fbf2de;
+  --color-amberline: #b08540;
+  --color-neg: #b42318;
+  --color-negline: #c9726a;
+  --pa-glass: 255 255 255;
+  --pa-mark-face: #00857c;
+  --pa-mark-edge: #3ecfb2;
+  --pa-mark-ink: #ffffff;
+  --pa-rank-0: #5b6175; --pa-rank-1: #b91c1c; --pa-rank-2: #c2410c; --pa-rank-3: #a16207; --pa-rank-4: #15803d; --pa-rank-5: #1d4ed8; --pa-rank-6: #6d28d9;
+  --pa-onrank: #ffffff;  /* white on each, 4.8:1 or more */
 }
 
 @layer base {
   /* Briefing only (the Forecast lane's screens are Alvin and Sienna's): a 24 px target for native checkboxes and radios on phones */
   @media (max-width: 639px) { #briefing-panel :is(input[type="checkbox"], input[type="radio"]) { width: 1.5rem; height: 1.5rem; flex-shrink: 0; } }
-  /* Answer feedback docked on the question bar: the card, the suggestions and the bar read as one solid stack, so the
-     page never shows through the gaps between them. */
+  /* The foot of a brief (the vote card, the suggested questions, the question bar) floats over a frosted strip, like the
+     workspace band at the top; the strip's top edge fades in, so it has no hard line (Michael, 2026-11-27). Without
+     backdrop-filter it is the solid page colour, as before. */
+  .pa-frostbar::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: var(--color-paper);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.75rem); mask-image: linear-gradient(to bottom, transparent, #000 1.75rem);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .pa-frostbar::before { background: color-mix(in srgb, var(--color-paper) 40%, transparent); -webkit-backdrop-filter: blur(6px) saturate(170%); backdrop-filter: blur(6px) saturate(170%); }
+  }
   /* A reason or comment box is open on the brief (see useParkedBars in App.tsx): the bars sit in the flow at the end of the page. */
   html[data-bars-parked] .pa-bars { position: static !important; }
-  .pa-dock:not(:empty) { margin-top: 2rem; padding-top: 1.25rem; background: linear-gradient(to top, var(--color-paper) 75%, transparent); }
-  .pa-dock:not(:empty) + * { margin-top: 0 !important; padding-top: 0 !important; background: var(--color-paper) !important; }  /* over the bar's own spacing utilities */
+  html[data-bars-parked] .pa-frostbar::before { display: none; }
+  .pa-dock:not(:empty) { margin-top: 2rem; padding-top: 1.25rem; }
+  .pa-dock:not(:empty) + * { margin-top: 0 !important; padding-top: 0 !important; }  /* over the bar's own spacing utilities */
+  /* Behind an open drawer or dialog the page dims and blurs, so the eye goes to what opened. */
+  .pa-scrim { background: rgb(0 0 0 / 0.55); }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .pa-scrim { background: rgb(0 0 0 / 0.4); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
+    :root[data-theme="light"] .pa-scrim { background: rgb(20 22 31 / 0.25); }
+  }
+  /* Folds open and close smoothly: the content eases to its height (where the browser supports it; elsewhere it snaps). */
+  details { interpolate-size: allow-keywords; }
   body {
     background: var(--color-paper);
     color: var(--color-ink);
@@ -149,10 +217,47 @@
     border-radius: 0.375rem;
   }
   .pa-draw path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: pa-draw 420ms 80ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  /* Headline numbers roll in like a combination lock (primitives.tsx RollIn): each digit a wheel of 1.15em lines. */
+  .pa-roll { display: inline-flex; user-select: none; }  /* copying takes the whole number from the screen-reader copy beside it, once */
+  .pa-reel { display: block; height: 1.15em; line-height: 1.15em; overflow: hidden; white-space: pre; }
+  /* At rest the wheel shows its digit (so no animation, reduced motion or print all show the figure); the spin runs from
+     --from to --to with a small overshoot, the click of a lock wheel. */
+  .pa-reel-strip { display: block; transform: translateY(calc(var(--to, 0) * -1.15em)); animation: pa-spin var(--dur, 800ms) cubic-bezier(0.2, 0.9, 0.3, 1.08) var(--d, 0ms) both; }
+  .pa-reel-strip > span { display: block; }
+  /* a cited figure keeps its dotted underline through the wheels */
+  .pa-cite :is(.pa-roll, .pa-reel, .pa-reel-strip) { text-decoration: inherit; }
+  /* a table's wheels wait, held at their first digit, until the table scrolls into view (primitives.tsx InView) */
+  .pa-drawready:not(.pa-inview) .pa-reel-strip { animation-play-state: paused; }
+  /* A finished brief arrives in sequence: its sections rise in one after another. */
+  .pa-sequence > * { animation: pa-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .pa-sequence > :nth-child(2) { animation-delay: 70ms; }
+  .pa-sequence > :nth-child(3) { animation-delay: 140ms; }
+  .pa-sequence > :nth-child(4) { animation-delay: 210ms; }
+  .pa-sequence > :nth-child(5) { animation-delay: 280ms; }
+  .pa-sequence > :nth-child(6) { animation-delay: 350ms; }
+  .pa-sequence > :nth-child(n+7) { animation-delay: 420ms; }
+  /* A chart draws its lines the first time it scrolls into view (motion.ts useDrawOnView); points follow. Nothing is
+     hidden until script marks the chart ready. */
+  .pa-drawready .pa-line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .pa-drawready.pa-inview .pa-line { animation: pa-draw 900ms cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+  .pa-drawready .pa-dot { opacity: 0; }
+  /* Forecast bars grow out of the zero line (ForecastCharts.tsx): --o is the end they grow from, --i staggers them */
+  .pa-bar { transform-box: fill-box; transform-origin: var(--o, left center); }
+  .pa-drawready .pa-bar { transform: scaleX(0); }
+  .pa-drawready .pa-bar.pa-col { transform: scaleY(0); }
+  .pa-drawready.pa-inview .pa-bar { animation: pa-grow-x 650ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  .pa-drawready.pa-inview .pa-bar.pa-col { animation-name: pa-grow-y; }
+  .pa-drawready.pa-inview .pa-dot { animation: pa-fade 300ms 650ms both; }
+  /* A status that changes while the brief is open (sent, signed off, returned) pops once, with a ring; its check draws in. */
+  .pa-pop { animation: pa-pop 560ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  /* A tile you can click lifts toward you on hover, its edge showing below like the logo tile, and presses down on click. */
+  .pa-lift { transition: translate 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms; }
+  @media (hover: hover) { .pa-lift:hover { translate: 0 -3px; box-shadow: 0 3px 0 var(--color-slab); } }
+  .pa-lift:active { translate: 0 0; box-shadow: 0 0 0 var(--color-slab); }
   /* Frosted glass only where something floats over the page: the sidebar while it hovers open, menus,
      the phone drawer and toasts. Without backdrop-filter the 92%-opaque fill still reads. */
   .glass {
-    background: rgb(27 29 39 / 0.96);
+    background: rgb(var(--pa-glass) / 0.96);
   }
   /* The workspace band (Weekly briefing, Forecast explanation, Evaluation): the page shows through it, blurred. A light
      veil and a soft blur with a colour lift, so what scrolls under keeps its colour and a chart line stays visible as
@@ -169,7 +274,7 @@
   }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .glass {
-      background: rgb(27 29 39 / 0.8);
+      background: rgb(var(--pa-glass) / 0.8);
       -webkit-backdrop-filter: blur(16px) saturate(130%);
       backdrop-filter: blur(16px) saturate(130%);
     }
@@ -177,18 +282,41 @@
   /* Hard offset shadow, no blur: a flat slab under a panel. */
   .pa-panel { box-shadow: 0 5px 0 var(--color-slab); }
   /* The Positivus highlight: a seafoam block behind a section heading, dark text. */
-  .pa-mark { background: var(--color-primary); color: var(--color-onprimary); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  /* The section-heading block is a tile like the logo: its face, and its edge showing below and to the right (Michael, 2026-11-27) */
+  .pa-mark { background: var(--pa-mark-face); color: var(--pa-mark-ink); box-shadow: 3px 4px 0 var(--pa-mark-edge); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .pa-rise { animation: pa-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-slide { animation: pa-slide 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-pulse { animation: pa-pulse 1.2s ease-in-out infinite; }
   /* Reduced motion (WCAG 2.3.3): no slides, rises, travelling underline, sidebar width glide or press-down.
      State still shows: the button's shadow flattens on press, the tab keeps its pill, the sidebar snaps. */
   @media (prefers-reduced-motion: reduce) {
-    .pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-stagger > *, .pa-skeleton { animation: none; }
-    .pa-draw path { animation: none; stroke-dashoffset: 0; }
-    .workspace-content, .workspace-wide, .pa-tabbar { transition: none; }
-    *, ::before, ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
-    [class*="active:translate"]:active { translate: none !important; }
+    html:not([data-motion="off"]) :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
+    html:not([data-motion="off"]) :is(.pa-stagger, .pa-sequence) > *, html:not([data-motion="off"]) :is(.pa-pop, .pa-dot, .pa-reel-strip) { animation: none; }
+    html:not([data-motion="off"]) .pa-lift { translate: none !important; }
+    html:not([data-motion="off"]) .pa-draw path { animation: none; stroke-dashoffset: 0; }
+    html:not([data-motion="off"]) :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
+    html:not([data-motion="off"]) *, html:not([data-motion="off"]) ::before, html:not([data-motion="off"]) ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    html:not([data-motion="off"]) [class*="active:translate"]:active { translate: none !important; }
+  }
+  /* Settings > Reduce motion "On": the same, whatever the system says. "Off" lifts the rules above; "Follow system" sets nothing. */
+  html[data-motion="on"] :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
+  html[data-motion="on"] :is(.pa-stagger, .pa-sequence) > *, html[data-motion="on"] :is(.pa-pop, .pa-dot, .pa-reel-strip) { animation: none; }
+  html[data-motion="on"] .pa-lift { translate: none !important; }
+  html[data-motion="on"] .pa-draw path { animation: none; stroke-dashoffset: 0; }
+  html[data-motion="on"] :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
+  html[data-motion="on"] *, html[data-motion="on"] ::before, html[data-motion="on"] ::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  html[data-motion="on"] [class*="active:translate"]:active { translate: none !important; }
+  /* Settings > Evidence footnote numbers "Hide": the superscript goes; the figure stays a button named "value, evidence N". */
+  html[data-footnotes="hide"] .pa-fn { display: none; }
+  /* Settings > Density "Compact": tighter padding in panels, list rows and table cells; spacing utilities are overridden here, not in the components. */
+  @media screen {
+    html[data-density="compact"] :is(.p-6, .p-5) { padding: 0.875rem; }
+    html[data-density="compact"] :is(.px-6, .px-5) { padding-inline: 0.875rem; }
+    html[data-density="compact"] :is(.py-6, .py-5) { padding-block: 0.75rem; }
+    html[data-density="compact"] li > button:is(.py-3\.5, .py-3) { padding-block: 0.5rem; }
+    html[data-density="compact"] summary:is(.py-3, .py-3\.5) { padding-block: 0.5rem; }
+    html[data-density="compact"] :is(td, th):not([class*="p-0"]) { padding-block: 0.25rem; }
+    html[data-density="compact"] :is(.pa-panel, .pa-card) :is(.mt-4, .mt-5, .mt-6) { margin-top: 0.625rem; }
   }
   /* Forced colours (Windows High Contrast): the seafoam block behind a heading drops away, so the heading keeps a
      rule under it, and buttons that rely on a fill or a shadow for their edge get a border. */
@@ -219,6 +347,24 @@
   from { transform: translateX(-12px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+@keyframes pa-spin {
+  from { transform: translateY(calc(var(--from, 0) * -1.15em)); filter: blur(1.5px); }
+  70% { filter: blur(0.4px); }
+  to { transform: translateY(calc(var(--to, 0) * -1.15em)); filter: none; }
+}
+@keyframes pa-grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes pa-grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes pa-pop {
+  0% { transform: scale(0.8); opacity: 0; box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent); }
+  45% { transform: scale(1.08); opacity: 1; }
+  100% { transform: none; opacity: 1; box-shadow: 0 0 0 10px transparent; }
+}
 @keyframes pa-pulse {
   0%, 100% { opacity: 0.35; }
   50% { opacity: 1; }
@@ -228,11 +374,11 @@
    details stay folded, and tiles, table rows, figures and story cards are not split across pages. */
 @media print {
   @page { size: A4; margin: 12mm 14mm 13mm; }
-  :root {
+  :root, :root[data-theme] {
     color-scheme: light;
     --color-paper: #ffffff; --color-sheet: #ffffff; --color-ink: #151a18; --color-muted: #4b5652;
     --color-rule: #c8cfcc; --color-warn: #444444; --color-warnbg: #f3f4f4;
-    --color-primary: #1f6055; --color-edge: #6b7280; --color-slab: #c8cfcc; --color-primarybg: #edf4f2;
+    --color-primary: #1f6055; --color-primaryink: var(--color-primary); --color-edge: #6b7280; --color-slab: #c8cfcc; --color-primarybg: #edf4f2;
     --color-ok: #1f6055; --color-okbg: #edf4f2; --color-amber: #85540a; --color-amberbg: #fbf2de;
     --color-amberline: #d9b36a; --color-neg: #b02323; --color-negline: #e3a5a5; --color-human: #5a3fb0; --color-humanbg: #efeafa;
   }
@@ -241,7 +387,11 @@
   .h-dvh, main, main > section { display: block !important; height: auto !important; overflow: visible !important; }
   /* app chrome and anything you press */
   aside, header, footer, nav, form, textarea, select, dialog, [role="dialog"], [data-sonner-toaster],
-  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]), summary::before { display: none !important; }
+  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]), summary::before, .pa-frostbar::before { display: none !important; }
+  .pa-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+  .pa-dot { opacity: 1 !important; }
+  .pa-bar { transform: none !important; animation: none !important; }
+  .pa-reel-strip { animation: none !important; }  /* every wheel at its figure on paper */
   /* the memo */
   .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pa-memo > * { break-inside: auto; }
@@ -270,3 +420,16 @@
   .pa-cite { text-decoration: none; }
   .pa-cite sup { display: none; }
 }
+
+/* Folds (see details above): separate rules, so a browser without ::details-content drops only these. */
+details::details-content {
+  block-size: 0; overflow: clip; overflow-clip-margin: 0.5rem;
+  transition: block-size 280ms cubic-bezier(0.16, 1, 0.3, 1), content-visibility 280ms allow-discrete;
+}
+details[open]::details-content { block-size: auto; }
+@media (prefers-reduced-motion: reduce) { html:not([data-motion="off"]) details::details-content { transition: none; } }
+html[data-motion="on"] details::details-content { transition: none; }
+
+/* Page changes (motion.ts): a short crossfade; a brief's title moves from the list row into its heading. */
+::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+::view-transition-group(pa-brief-title), ::view-transition-group(pa-run-title) { animation-duration: 380ms; }

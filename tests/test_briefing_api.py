@@ -291,6 +291,7 @@ def test_context_queries_release_instead_of_hardcoding_choices():
     class DbStub:
         def is_file(self): return True
     class RegistryStub:
+        data_version = "dv-test"
         def __init__(self, db): self.db = db
         def rows(self, sql):
             if "raw.calendar" in sql:
@@ -310,6 +311,7 @@ def test_context_queries_release_instead_of_hardcoding_choices():
     assert actual.territory_ids == ["PACIFIC", "MOUNTAIN"]
     assert actual.product_ids == ["BXA", "BXC"]
     assert actual.supported_intents == ["weekly_brief"]
+    assert actual.data_version == "dv-test"  # the loaded release's version, for Settings > About
 
 
 def test_nonrelease_week_is_refused_before_engine_is_called():

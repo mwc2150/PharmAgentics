@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
-import { Icon, Notice, plainValue } from "./agent/primitives"
+import { Icon, InView, Notice, RollIn, plainValue } from "./agent/primitives"
+import { fmtDate } from "./userSettings"
+import { useDrawOnView } from "./motion"
 
 // These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
@@ -9,7 +11,7 @@ const FIELD = "rounded-lg border border-edge bg-paper px-3 py-1.5 text-sm text-i
 const int = (v: number | null | undefined) => (v == null ? "–" : Math.round(v).toLocaleString())
 const pct = (v: number | null | undefined, signed = true) =>
   v == null ? "–" : `${signed && v > 0 ? "+" : ""}${(v * 100).toFixed(1)}%`
-const day = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+const day = fmtDate
 const STATUS = { material: "Material change", normal: "Within normal range", no_baseline: "No comparison weeks", held_back: "Held back" } as const
 
 function Drawer({ title, kicker, onClose, children }: { title: string, kicker: string, onClose: () => void, children: ReactNode }) {
@@ -22,7 +24,7 @@ function Drawer({ title, kicker, onClose, children }: { title: string, kicker: s
     return () => { document.removeEventListener("keydown", esc); opener?.focus() }
   }, [onClose])
   return <div className="fixed inset-0 z-40 flex justify-end">
-    <button className="absolute inset-0 bg-black/60" aria-label="Close panel" tabIndex={-1} onClick={onClose}/>
+    <button className="pa-scrim pa-fade absolute inset-0" aria-label="Close panel" tabIndex={-1} onClick={onClose}/>
     <aside role="dialog" aria-modal="true" aria-labelledby="overview-drawer-title" className="pa-slide relative z-10 flex h-full w-full max-w-lg flex-col border-l border-rule bg-sheet">
       <div className="flex items-start justify-between gap-3 border-b border-rule p-5">
         <div><div className="text-xs uppercase tracking-[0.06em] text-muted">{kicker}</div><h2 id="overview-drawer-title" className="mt-1 text-xl">{title}</h2></div>
@@ -42,13 +44,14 @@ function Query({ ev }: { ev: Evidence }) {
 }
 
 function Sparkline({ points, label }: { points: number[], label: string }) {
+  const draw = useDrawOnView<SVGSVGElement>()
   if (points.length < 2) return <span className="text-xs text-muted">–</span>
   const lo = Math.min(...points), hi = Math.max(...points), w = 96, h = 28, pad = 3
   const x = (i: number) => pad + (i * (w - 2 * pad)) / (points.length - 1)
   const y = (v: number) => (hi === lo ? h / 2 : h - pad - ((v - lo) * (h - 2 * pad)) / (hi - lo))
-  return <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={label} className="shrink-0 text-muted">
-    <polyline points={points.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
-    <circle cx={x(points.length - 1)} cy={y(points[points.length - 1])} r="2.5" className="fill-ink"/>
+  return <svg ref={draw} width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={label} className="shrink-0 text-muted">
+    <polyline className="pa-line" pathLength={1} points={points.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
+    <circle cx={x(points.length - 1)} cy={y(points[points.length - 1])} r="2.5" className="pa-dot fill-ink"/>
   </svg>
 }
 
@@ -120,9 +123,9 @@ function TerritoryPanel({ t, o, onClose, onGenerate }: { t: TerritoryRow, o: O, 
 function StatBar({ stats, onOpen }: { stats: Stat[], onOpen: (s: Stat) => void }) {
   return <section aria-label="This week" className={`${PANEL} grid grid-cols-2 lg:grid-cols-4`}>
     {stats.map((s, i) => <button key={s.key} onClick={() => onOpen(s)}
-      className={`group p-5 text-left transition-colors hover:bg-paper/60 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
+      className={`group pa-lift relative p-5 text-left hover:z-[1] hover:rounded-xl hover:bg-sheet ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
       <div className="text-xs text-muted">{s.label}</div>
-      <div className="mt-2 font-display text-3xl font-bold tabular-nums">{s.value}</div>
+      <div className="mt-2 font-display text-3xl font-bold tabular-nums"><RollIn key={s.value} text={s.value} delay={150 + i * 90}/></div>
       <div className={`mt-1.5 text-xs tabular-nums ${s.adverse ? "text-amber" : "text-muted"}`}>
         {s.key === "material" ? `of ${s.change?.value ?? "–"} like-for-like territories`
           : s.key === "health" ? (s.raw ? "flagged feeds this week" : "every feed passed")
@@ -172,23 +175,25 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
         className={`absolute tabular-nums ${i === 0 ? "" : i === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2"}`}>{v > 0 ? "+" : ""}{Math.round(v * 100)}%</span>)}</span>
       <span className="hidden text-right md:block">TRx</span><span className="text-right">Change</span>
     </div>
-    <ul className="divide-y divide-rule">
-      {o.territories.map(t => <li key={t.id} className={`${cols} px-5 py-3`}>
+    <InView><ul className="divide-y divide-rule">
+      {o.territories.map((t, i) => <li key={t.id} className={`${cols} px-5 py-3`}>
         <button onClick={() => onOpen(t)} className="min-w-0 text-left">
           <span className="block truncate text-sm font-medium hover:underline">{t.label}</span>
           <span className={`block text-xs ${t.status === "material" ? "text-ink" : "text-muted"}`}>{STATUS[t.status]}</span>
         </button>
         <span className="hidden md:block"><Sparkline points={t.series.map(p => p.trx)} label={`${t.label} TRx over ${t.series.length} weeks`}/></span>
         <span className="col-span-2 row-start-2 mt-2 md:col-span-1 md:row-start-auto md:mt-0"><Strip t={t} domain={domain} onOpen={() => onOpen(t)}/></span>
-        <span className="hidden text-right text-sm tabular-nums md:block">{int(t.trx)}</span>
-        <span className="col-start-2 row-start-1 text-right text-sm tabular-nums md:col-start-auto md:row-start-auto">{pct(t.change)}</span>
+        <span className="hidden text-right text-sm tabular-nums md:block"><RollIn key={int(t.trx)} text={int(t.trx)} delay={300 + i * 50}/></span>
+        <span className="col-start-2 row-start-1 text-right text-sm tabular-nums md:col-start-auto md:row-start-auto"><RollIn key={pct(t.change)} text={pct(t.change)} delay={340 + i * 50}/></span>
       </li>)}
-    </ul>
+    </ul></InView>
   </section>
 }
 
-export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: string[], brand: string, week: string, onWeek: (week: string) => void, onGenerate: (territory: string, week: string) => void }) {
+// The Overview's own brand and week, side by side above the figures (Michael, 2026-11-27); neither touches the New briefing form.
+export function Overview({ weeks, brand, brands, onBrand, week, onWeek, onGenerate }: { weeks: string[], brand: string, brands: { id: string, name: string }[], onBrand: (brand: string) => void, week: string, onWeek: (week: string) => void, onGenerate: (territory: string, week: string) => void }) {
   const [o, setO] = useState<O | null>(null)
+  const latest = weeks.reduce((a, w) => (w > a ? w : a), week)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<{ kind: "territory", t: TerritoryRow } | { kind: "stat", s: Stat } | null>(null)
   useEffect(() => {
@@ -201,12 +206,20 @@ export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: st
   const statEvidence = stat && o ? o.evidence.filter(e => e.id === stat.evidence_id || e.id === stat.change?.evidence_id) : []
   return <><div className="workspace-wide pa-stagger space-y-6 py-8">
     <div className="flex flex-wrap items-end justify-between gap-4">
-      <p className="text-sm text-muted">{o ? `${o.product_name} (${o.product}), week of ${day(o.week)}. Every figure is computed from the governed data; select one to see its query.` : "Loading the week…"}</p>
-      <label className="flex items-center gap-2 text-xs text-muted">Week
-        <select value={week} onChange={e => onWeek(e.target.value)} className={FIELD}>
-          {[...weeks].reverse().map(w => <option key={w} value={w}>{day(w)}</option>)}
-        </select>
-      </label>
+      {/* The selectors name the brand and week; the line says only what they do not: how many territories, and how far the data runs */}
+      <p className="text-sm text-muted">{o ? `${o.territories.length} territories${o.week === latest ? ", the latest week of data" : `; the data runs through ${day(latest)}`}. Select any figure to see its query.` : "Loading the week…"}</p>
+      <div className="pa-noprint flex flex-wrap items-center gap-x-4 gap-y-2">
+        <label className="flex items-center gap-2 text-xs text-muted">Brand
+          <select value={brand} onChange={e => onBrand(e.target.value)} disabled={!brands.length} className={FIELD}>
+            {brands.map(b => <option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-xs text-muted">Week
+          <select value={week} onChange={e => onWeek(e.target.value)} className={FIELD}>
+            {[...weeks].reverse().map(w => <option key={w} value={w}>{day(w)}</option>)}
+          </select>
+        </label>
+      </div>
     </div>
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {o?.note && <Notice tone="warn">{o.note}</Notice>}

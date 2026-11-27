@@ -27,7 +27,7 @@ export function FeedbackResponses() {
         </div>)}
       </div>
       {r.umux && <p className="text-xs text-muted">UMUX-Lite uses the {r.umux.n} {r.umux.n === 1 ? "response" : "responses"} that answered both usability items.</p>}
-      {r.rows.length === 0 ? <p className="text-sm text-muted">No responses yet.</p> : <div className={`${PANEL} overflow-x-auto`}>
+      {r.rows.length === 0 ? <p className="text-sm text-muted">No responses yet.</p> : <div className={`${PANEL} relative overflow-x-auto`}>
         <table className="w-full text-left text-sm">
           <thead className="text-xs text-muted"><tr>
             <th className="px-4 py-2 font-medium">Time</th><th className="pr-4 font-medium">Role</th><th className="pr-4 font-medium">Meets needs</th>

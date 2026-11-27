@@ -1,4 +1,6 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from "react"
+import { useEffect, useRef, type CSSProperties, type HTMLAttributes, type ReactNode, type RefObject } from "react"
+import { useDrawOnView } from "../motion"
+import { fmtDate, getSettings } from "../userSettings"
 
 /* Visual identity and SVG icon geometry. One icon set, outline style, stroke 1.6 next to 14px text.
    Always pass a size class (h-4 w-4, h-5 w-5): a className without one lets the SVG grow to fill its row. */
@@ -18,9 +20,42 @@ const PATHS={
   clipboard:"M8 4h8v3H8zM8 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-2M9 12h6M9 16h6",
   briefcase:"M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18",
   warning:"M12 4L2.8 19.5a1 1 0 0 0 .9 1.5h16.6a1 1 0 0 0 .9-1.5zM12 10v4.5M12 17.5h.01",
-  alert:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5M12 16h.01"
+  alert:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5v5M12 16h.01",
+  gear:"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"
 } as const
 export type IconName = keyof typeof PATHS
+/* A headline number that rolls in like a combination lock (index.css .pa-roll, Michael 2026-11-27): each digit is a
+   wheel that spins, blurred, through the digits and clicks to its value, each wheel at its own speed; commas, points and
+   signs stand still. It always lands on the real figure, about a second in. Screen readers and copying get the number
+   whole; with reduced motion the wheels start where they stop. Key it by its text where it is used, so a new value
+   spins again. `delay` (ms) staggers several numbers. */
+/* A block whose padlock numbers (RollIn) wait to spin until it first scrolls into view, the way a chart waits to draw:
+   a table further down the page spins when it is reached, not unseen at load. */
+export function InView({as: Tag = "div", children, ...rest}: {as?: "div" | "section", children: ReactNode} & HTMLAttributes<HTMLElement>) {
+  const ref = useDrawOnView<HTMLElement>(0.05)
+  return <Tag ref={ref as RefObject<HTMLDivElement>} {...rest}>{children}</Tag>
+}
+
+export function RollIn({text, delay = 0}: {text: string, delay?: number}) {
+  let seed = text.length * 7 + 3
+  return <><span className="pa-roll" aria-hidden="true">{[...text].map((c, i) => {
+    if (!/[0-9]/.test(c)) return <span key={i} className="pa-reel"><span className="pa-reel-strip"><span>{c}</span></span></span>
+    seed = (seed * 31 + c.charCodeAt(0) * 7 + i * 13) % 997
+    const laps = 1 + (seed % 2), to = laps * 10 + Number(c)   // the wheel passes 0-9 once or twice, then stops on the digit
+    const style = {"--from": seed % 10, "--to": to, "--dur": `${720 + (seed % 5) * 110}ms`, "--d": `${delay + i * 35}ms`} as CSSProperties
+    return <span key={i} className="pa-reel"><span className="pa-reel-strip" style={style}>
+      {Array.from({length: to + 1}, (_, k) => <span key={k}>{k % 10}</span>)}</span></span>
+  })}</span><span className="sr-only">{text}</span></>
+}
+
+/* A person's initial in a circle (the account button, Michael 2026-11-27). `rank` picks the fill (index.css --pa-rank-N,
+   a rainbow by seniority); the name always sits beside it, so the colour only helps. */
+export function Avatar({name, rank, size = "sm"}: {name: string, rank: number, size?: "sm" | "md"}) {
+  const initial = (name.trim()[0] ?? "?").toLocaleUpperCase()
+  return <span aria-hidden="true" style={{background: `var(--pa-rank-${rank})`, color: "var(--pa-onrank)"}}
+    className={`grid shrink-0 select-none place-items-center rounded-full font-display font-bold leading-none ${size === "md" ? "h-9 w-9 text-base" : "h-7 w-7 text-[13px]"}`}>{initial}</span>
+}
+
 export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string}) {
   return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATHS[name]}/></svg>
 }
@@ -38,12 +73,21 @@ export function Notice({tone,title,children,role,className="",action}:{tone:"war
   </div>
 }
 
-/* The "Pa" mark (public/pa-mark.svg): styled like a periodic-table tile, with the version "v1" where an element's
-   number would sit. Space Grotesk outlines on teal with the teal-button shadow; it scales to any size.
-   public/favicon.svg drops the version for 16px. */
+/* The "Pa" mark (public/pa-mark.svg): a 3D-printed tile, a flat face with a thick edge showing 6 px below and 3 px to
+   the right, "Pa" in Space Grotesk outlines on it. It is drawn inline so it follows the app's theme through three
+   variables (index.css): dark has a seafoam face with a teal edge, light swaps the two. public/favicon.svg carries the
+   same two colourways behind a prefers-color-scheme query, since a tab icon cannot follow the in-app setting. */
 const MARK={sm:"h-9 w-9",lg:"h-14 w-14"} as const
+const PA_GLYPHS=[
+  ["9.60",'M66 0V700H354Q420 700 470.5 673.5Q521 647 549.5 599.0Q578 551 578 485V471Q578 406 548.5 357.5Q519 309 468.5 282.5Q418 256 354 256H198V0ZM198 376H341Q388 376 417.0 402.0Q446 428 446 473V483Q446 528 417.0 554.0Q388 580 341 580H198Z'],
+  ["31.29",'M224 -14Q171 -14 129.0 4.5Q87 23 62.5 58.5Q38 94 38 145Q38 196 62.5 230.5Q87 265 130.5 282.5Q174 300 230 300H366V328Q366 363 344.0 385.5Q322 408 274 408Q227 408 204.0 386.5Q181 365 174 331L58 370Q70 408 96.5 439.5Q123 471 167.5 490.5Q212 510 276 510Q374 510 431.0 461.0Q488 412 488 319V134Q488 104 516 104H556V0H472Q435 0 411.0 18.0Q387 36 387 66V67H368Q364 55 350.0 35.5Q336 16 306.0 1.0Q276 -14 224 -14ZM246 88Q299 88 332.5 117.5Q366 147 366 196V206H239Q204 206 184.0 191.0Q164 176 164 149Q164 122 185.0 105.0Q206 88 246 88Z'],
+] as const
 export function BrandMark({size="sm"}:{size?:keyof typeof MARK}){
-  return <img src="/pa-mark.svg" alt="" width={64} height={64} draggable={false} className={`shrink-0 select-none ${MARK[size]}`}/>
+  return <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" className={`pa-logo shrink-0 select-none ${MARK[size]}`}>
+    <rect x="3" y="6" width="61" height="58" rx="10" fill="var(--pa-mark-edge)"/>
+    <rect x="0" y="0" width="61" height="58" rx="10" fill="var(--pa-mark-face)"/>
+    <g fill="var(--pa-mark-ink)">{PA_GLYPHS.map(([x,d])=><path key={x} transform={`translate(${x} 42.00) scale(0.03714 -0.03714)`} d={d}/>)}</g>
+  </svg>
 }
 
 /* A modal drawer or dialog: on open, focus moves inside; Tab and Shift+Tab wrap within it; Escape closes it; on close,
@@ -96,13 +140,14 @@ export function plainModels(text: string): string {
 }
 
 /** A date as the app prints it everywhere ("Nov 23, 2026"); a bare ISO date is read as local midnight. */
-export const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+export const when = fmtDate
 
 
 const ISO_DATE = /(?<![\d-])(\d{4})-(\d{2})-(\d{2})(?![\d-])/g
 /** Display only: ISO dates in prose ("2026-10-05") in the long form the headers use ("Oct 5, 2026"). The server's text
  *  keeps ISO dates (it is scored); call this on the pieces between claim tokens, never on a claim's own value. */
 export function longDates(text: string): string {
+  if (getSettings().dateStyle === "iso") return text  // the reader chose the ISO style: the server's own dates stand
   return text.replace(ISO_DATE, (all, y, m, d) => {
     const at = new Date(Date.UTC(+y, +m - 1, +d))
     if (Number.isNaN(at.getTime()) || at.getUTCMonth() !== +m - 1 || at.getUTCDate() !== +d) return all

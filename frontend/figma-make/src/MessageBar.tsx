@@ -3,6 +3,7 @@
 // starts a brief. While a brief is written it holds the message; on a brief it asks a follow-up in the analyst's
 // own thread. Answers come from the server only. The suggested questions are scripted and free; free text goes to the
 // agent when the app has a model (it counts toward the thread's 20) and is disabled, with the reason, when it has none.
+import { motionReduced } from "./userSettings"
 import { useEffect, useRef, useState } from "react"
 import { AnswerFeedback } from "./Feedback"
 import { Icon, Notice } from "./agent/primitives"
@@ -83,7 +84,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
     if (!briefId) { setError("The brief is not ready yet. Ask once it is written."); return }
     void ask(question)
   }
-  const cite = (n: string) => document.getElementById(`memo-${briefId}-${n}`)?.scrollIntoView({behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start"})
+  const cite = (n: string) => document.getElementById(`memo-${briefId}-${n}`)?.scrollIntoView({behavior: motionReduced() ? "auto" : "smooth", block: "start"})
   const tips = !briefId ? [] : (thread?.suggestions[chip?.number ?? "1"] ?? []).slice(0, 3)
   const readOnly = thread && !thread.mine
   const full = thread ? thread.used_turns >= thread.max_turns : false  // free-text turns only; the chips never fill it
@@ -93,7 +94,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
   const form = !briefId && !!onRead  // the New briefing form
   const shownError = error ?? readError
 
-  return <div className="pa-bars sticky bottom-0 z-20 -mx-2 mt-8 bg-gradient-to-t from-paper via-paper to-paper/0 px-2 pb-3 pt-6" role="region" aria-label={form ? "Ask a question" : "Follow-up questions"}>
+  return <div className="pa-bars sticky bottom-0 z-20 -mx-2 mt-8 px-2 pb-3 pt-6" role="region" aria-label={form ? "Ask a question" : "Follow-up questions"}>
     {thread && thread.turns.length > 0 && <div className="mb-2 rounded-2xl border border-rule bg-paper/95 shadow-2xl backdrop-blur">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-2 text-xs text-muted">
         <span>{readOnly ? "Shared thread, read-only" : `Free-text follow-ups, ${thread.used_turns} of ${thread.max_turns}`}{thread.shared_from ? " · continued from a shared thread" : ""}</span>
@@ -104,7 +105,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex items-center gap-1 text-primaryink hover:underline"><Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/>{open ? "Collapse" : "Show"}</button>
         </span>
       </div>
-      {open && <ol aria-live="polite" aria-relevant="additions" className="max-h-[50vh] space-y-4 overflow-y-auto px-4 py-4">
+      {open && <ol aria-live="polite" aria-relevant="additions" className="pa-rise max-h-[50vh] space-y-4 overflow-y-auto px-4 py-4">
         {thread.turns.map(t => <TurnView key={t.n} turn={t} briefId={thread.brief_id} mine={!readOnly} latest={t === thread.turns[thread.turns.length - 1]} onCite={cite} onOpenEvidence={onOpenEvidence} onOfferScope={onOfferScope}/>)}
       </ol>}
     </div>}
@@ -113,7 +114,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
     </div>}
     {shownError && <Notice tone="error" role="alert" className="mb-2 px-3 py-2 text-xs">{shownError}</Notice>}
     {queued && <p role="status" className="mb-2 text-xs text-muted">Will ask when the brief is ready: “{queued}”</p>}
-    {!readOnly && <form onSubmit={e => { e.preventDefault(); send(text) }} className="flex items-end gap-2 rounded-2xl border border-edge bg-sheet px-3 py-2 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-primary">
+    {!readOnly && <form onSubmit={e => { e.preventDefault(); send(text) }} className="flex items-end gap-2 sm:-mx-4 sm:px-4 rounded-2xl border border-edge bg-sheet px-3 py-2 has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-primary">
       {chip && <span className="mb-1 inline-flex shrink-0 items-center gap-1 rounded bg-primarybg px-2 py-1 font-mono text-[11px] text-primaryink">§{chip.number} {chip.title}
         <button type="button" aria-label="Remove the section" onClick={onClearChip} className="ml-1 text-muted hover:text-ink">×</button></span>}
       <label htmlFor="pa-message" className="sr-only">{form ? "Ask a question to fill the form" : "Ask about this brief"}</label>

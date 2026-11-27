@@ -1,17 +1,21 @@
 // brief-003: the weekly brief as a memo. Sections, charts and the data behind them come from the server;
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
-import { useState, type ReactNode } from "react"
+import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
-import { longDates } from "./agent/primitives"
+import { InView, RollIn, longDates } from "./agent/primitives"
+import { fmtShortDay } from "./userSettings"
 import { BudgetNote, PromotionPanel } from "./Promotion"
+import { useDrawOnView } from "./motion"
 import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
 const COLORS = ["var(--color-primary)", "var(--color-human)"]
 const PANEL_COLOR = "var(--color-amber)"
 
-function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+// `roll`: the cited figures roll in (a headline number tile), `roll` ms after the brief opens.
+function Cited({text, spans, claims, onOpen, roll}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void, roll?: number}) {
   const sorted = [...(spans ?? [])].sort((a, b) => a.start - b.start)
-  if (!sorted.length || !claims || !onOpen) return <>{longDates(text)}</>
+  // `roll` without citations to link (the leader view): the figure still spins, as text
+  if (!sorted.length || !claims || !onOpen) return roll !== undefined && /\d/.test(text) ? <RollIn key={text} text={text} delay={roll}/> : <>{longDates(text)}</>
   const parts: ReactNode[] = []
   let pos = 0
   sorted.forEach((sp, i) => {
@@ -20,17 +24,14 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     parts.push(longDates(text.slice(pos, sp.start)))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
       aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{roll === undefined ? claim.value : <RollIn key={claim.value} text={claim.value} delay={roll}/>}<span className="sr-only"> </span><sup aria-hidden="true" className="pa-fn ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(longDates(text.slice(pos)))
   return <>{parts}</>
 }
 
-function shortWeek(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`)
-  return d.toLocaleDateString(undefined, {month: "short", day: "numeric"})
-}
+const shortWeek = fmtShortDay
 
 function fmt(v: number, unit = "count"): string {
   if (unit === "rate") return v.toFixed(2)
@@ -49,12 +50,13 @@ function scale(values: number[], lo?: number, hi?: number) {
 }
 
 function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[], series: {name: string, points: ChartPoint[], color: string, dash?: string}[], band?: ChartSpec["band"], unit?: string, label: string}) {
+  const draw = useDrawOnView<SVGSVGElement>()
   const values = series.flatMap(s => s.points.map(p => p.value).filter((v): v is number => v !== null))
   if (!values.length) return null
   const sc = scale(values, band?.low, band?.high)
   const x = (w: string) => PAD.l + (W - PAD.l - PAD.r) * (weeks.length < 2 ? 0.5 : weeks.indexOf(w) / (weeks.length - 1))
   const ticks = [weeks[0], weeks[Math.floor((weeks.length - 1) / 2)], weeks[weeks.length - 1]]
-  return <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
+  return <svg ref={draw} viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
     {band && <g><rect x={PAD.l} width={W - PAD.l - PAD.r} y={sc.y(band.high)} height={Math.max(1, sc.y(band.low) - sc.y(band.high))} fill="var(--color-primary)" opacity={0.1}/>
       <text x={W - PAD.r} y={sc.y(band.high) - 3} textAnchor="end" className="fill-muted text-[10px]">baseline band</text></g>}
     {[sc.min, (sc.min + sc.max) / 2, sc.max].map((v, i) => <g key={i}>
@@ -64,10 +66,10 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
     {series.map((s, si) => {
       const pts = s.points.filter(p => p.value !== null)
       return <g key={si}>
-        <polyline fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
+        <polyline fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} pathLength={s.dash ? undefined : 1} className={s.dash ? "pa-dot" : "pa-line"} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
         {pts.map((p, i) => {
           const assumed = p.basis && p.basis !== "observed"
-          return <circle key={i} cx={x(p.week)} cy={sc.y(p.value as number)} r={assumed || p.restated ? 4.5 : 3}
+          return <circle key={i} className="pa-dot" cx={x(p.week)} cy={sc.y(p.value as number)} r={assumed || p.restated ? 4.5 : 3}
             fill={assumed ? "var(--color-sheet)" : s.color} stroke={s.color} strokeWidth={1.5} strokeDasharray={p.restated ? "2 2" : undefined}>
             <title>{`${s.name}, week of ${p.week}: ${fmt(p.value as number, unit)}${assumed ? ` (${p.basis}, an assumption)` : ""}${p.restated ? " (restated)" : ""}`}</title>
           </circle>
@@ -233,10 +235,15 @@ function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], on
   return <dl aria-label="Key figures" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
     {kpis.map((k, i) => {
       const dir = k.direction ? DIRECTION[k.direction] : null
-      return <div key={i} className="break-inside-avoid rounded-lg border border-rule bg-sheet/60 px-3.5 py-3">
+      const first = [...(k.value_citation ?? [])].sort((a, b) => a.start - b.start)[0]
+      const main = first && claims ? claims[first.claim] : undefined
+      // A click anywhere on the tile opens its number's source; the number stays the button a keyboard reaches.
+      const openMain = main && onOpen ? (e: ReactMouseEvent) => { if (!(e.target as Element).closest("button")) onOpen(main.evidence_id) } : undefined
+      return <div key={i} onClick={openMain} title={main && openMain ? `Open the query behind ${main.value}` : undefined}
+        className={`break-inside-avoid rounded-lg border border-rule bg-sheet/60 px-3.5 py-3 ${openMain ? "pa-lift cursor-pointer" : ""}`}>
         <dt className="font-sans text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</dt>
         <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-display text-[28px] font-bold leading-none tabular-nums text-ink">
-          <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
+          <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen} roll={200 + i * 90}/></span>
           {dir && <><svg viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 ${dir.color}`} fill="currentColor" aria-hidden="true"><path d={dir.d}/></svg><span className="sr-only">, {dir.word}</span></>}
         </dd>
         {k.detail && <dd className="mt-1.5 font-sans text-[12px] leading-snug text-muted">{longDates(k.detail)}</dd>}
@@ -254,7 +261,8 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
   const basisAt = table.columns.findIndex(c => c.trim().toLowerCase() === "basis")
   const lastData = basisAt > 0 ? basisAt - 1 : table.columns.length - 1
   const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
-  return <div className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
+  // The figures spin in like the tiles above (Michael, 2026-11-27), row by row, once the table scrolls into view.
+  return <InView className="relative my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
       <caption className="sr-only">Territory figures{table.note ? `. ${longDates(table.note)}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
@@ -267,13 +275,13 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
             if (j === 0) return <th key={j} scope="row" className="px-1.5 sm:px-2.5 py-1.5 text-left font-medium text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></th>
             if (withheld && j >= 1 && j <= lastData) return j === 1 ? <td key={j} colSpan={lastData} className="px-1.5 sm:px-2.5 py-1.5 text-right italic text-muted">withheld</td> : null
             if (j === basisAt) return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-left">{withheld ? <span aria-hidden="true" className="text-muted">—</span> : <BasisLabel row={r} text={cell || r.basis}/>}</td>
-            return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></td>
+            return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen} roll={Math.min(i, 10) * 60 + j * 30}/></td>
           })}
         </tr>
       })}</tbody>
     </table>
     {table.note && <p className="mt-2 font-sans text-[12px] leading-snug text-muted">{longDates(table.note)}</p>}
-  </div>
+  </InView>
 }
 
 const CONFIDENCE = {
@@ -342,7 +350,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
   // The Assumptions block lives in §6; a memo without a §6 shows the definition under its last section.
   const topLevel = sections.filter(s => !s.number.includes("."))
   const assumptionsAt = topLevel.some(s => s.number === "6") ? "6" : topLevel[topLevel.length - 1]?.number
-  return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>
+  return <div className="pa-memo pa-sequence space-y-7" data-view={analyst ? "analyst" : "leader"}>
     {sections.filter(s => !s.number.includes(".")).map(s => {
       const children = sections.filter(c => c.number.startsWith(`${s.number}.`))
       return <section key={s.number} aria-labelledby={`memo-${briefId}-${s.number}`}>
