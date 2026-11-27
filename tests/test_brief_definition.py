@@ -234,7 +234,10 @@ def test_measure_trx_and_nbrx_is_both_and_puts_nbrx_beside_trx():
     labels = [k["label"] for k in section(env, "1")["kpis"]]
     assert any("TRx" in x for x in labels) and any("new patients (NBRx)" in x for x in labels)
     story = next(s for s in env["sections"] if s["number"].startswith("3.") and s.get("card") and s["card"]["territory"])
-    assert "New patients (NBRx) averaged" in story["text"] and "New patients (NBRx)" in story["card"]["headline"]
+    # The story's lines may sit in the folded detail when the brief is at the word budget (memo.compose); either way
+    # the NBRx sentence is part of the story.
+    assert "New patients (NBRx) averaged" in story["text"] + (story.get("detail") or "")
+    assert "New patients (NBRx)" in story["card"]["headline"]
     # the same definition said as the string "both" is the same brief
     assert brief(STORY, definition={"measure": "both"})["answer"] == text
 

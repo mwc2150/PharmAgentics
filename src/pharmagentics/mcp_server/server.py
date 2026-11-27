@@ -216,9 +216,8 @@ class RunSession:
         if (again := self._repeat(name, t)):
             return again
         B = context_baseline(self.p.weeks, self.p.baseline) if reference and self.p.comparison is None else self.p.baseline
-        if fn is check_promotion:
-            return self._remember(name, t, self._record(
-                t, check_promotion(self.reg, t, self.p.weeks, self.p.baseline, source_baseline=B)))
+        if fn is check_promotion:  # the stated comparison weeks, as the scripted brief (assumptions first)
+            return self._remember(name, t, self._record(t, check_promotion(self.reg, t, self.p.weeks, self.p.baseline)))
         if fn is check_competitor and self.p.comparison is not None:
             return self._remember(name, t, self._record(
                 t, check_competitor(self.reg, t, self.p.weeks, B, exact_comparison=True, pct_format="pct")))

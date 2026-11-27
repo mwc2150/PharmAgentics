@@ -111,6 +111,7 @@ class Period:
     extra_baselines: list[tuple[Comparison, list[str]]] = field(default_factory=list)  # each extra comparison and its weeks (FR-000e)
     ok_extra: list[list[str]] = field(default_factory=list)  # per extra comparison: reportable in every week of period and extra weeks
     ok_base_extra: list[list[str]] = field(default_factory=list)  # per extra comparison: reportable in every extra comparison week
+    material: dict = field(default_factory=dict)  # territory -> beyond its normal range on the comparison weeks (screen)
 
     @property
     def col(self) -> str:
@@ -558,11 +559,7 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
     if not p.has("territory"):  # the brief's grain leaves territory stories out (brief-010 FR-000c)
         return [], []
     series = _series(reg, p.brand_id)
-    B = p.baseline
-    if p.comparison is None and len(p.requested) > 1:
-        # The materiality screen compares every territory over the same reportable weeks.
-        preceding = (q.shift(p.requested[0], -i) for i in range(min(len(p.requested), 13), 0, -1))
-        B = [w for w in preceding if w >= p.first and all(w in series[t] for t in ok)]
+    B = screen_weeks(reg, p, series)
     flagged_cal = {w for (w,) in reg.rows("select week_start::varchar from raw.calendar where holiday_flag = 1 or plan_year_reset = 1")}
     found, quiet = [], []
     for t in ok:
@@ -577,6 +574,7 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
         sigma = max(statistics.pstdev(devs), 0.04) if len(devs) > 8 else 0.08
         threshold = max(MATERIAL_CHANGE, NOISE_Z * sigma / min(len(W), 3) ** 0.5)
         material = abs(change) >= threshold and abs(gap) >= MATERIAL_GAP
+        p.material[t] = material
         if details is not None:
             details[t] = {"change": change, "gap": gap, "threshold": threshold}
         if material or t == focus:
@@ -627,6 +625,33 @@ def _against(reg: Registry, p: Period, t: str, kind: str, col: str) -> tuple[str
     return word(reg.scalar(sql) or 0), token
 
 
+def screen_weeks(reg: Registry, p: Period, series: dict | None = None) -> list[str]:
+    """The weeks the materiality screen compares with (brief-007 FR-001): the comparison weeks, except a multi-week
+    period on the default comparison, which is screened against as many weeks before it as it is long, up to 13, that
+    every like-for-like territory reports. The Assumptions state these weeks whenever they differ (assumptions first)."""
+    if p.comparison is None and len(p.requested) > 1:
+        series = series if series is not None else _series(reg, p.brand_id)
+        preceding = (q.shift(p.requested[0], -i) for i in range(min(len(p.requested), 13), 0, -1))
+        return [w for w in preceding if w >= p.first and all(w in series[t] for t in p.ok)]
+    return list(p.baseline)
+
+
+def within_normal_range(reg: Registry, p: Period, t: str) -> bool:
+    """True for the territory the question names when the screen finds its change inside its normal range: it has a
+    story only because it was asked about, and the brief says so rather than presenting the change as material."""
+    if t != p.focus:
+        return False
+    if t not in p.material:
+        screen(reg, p)
+    return p.material.get(t) is False
+
+
+def asked_note(reg: Registry, p: Period, t: str) -> str:
+    """The sentence a story or §1 adds for a territory asked about whose change is inside its normal range."""
+    return (f" {q.name(t)} moved within its normal range; it is reported because the question asks about it."
+            if within_normal_range(reg, p, t) else "")
+
+
 def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None) -> str:
     """A story's head. The primary measure sets the figures and each extra measure adds its own sentence; the primary
     `relative_to` sets what the change is set against (the other territories, the national change, or nothing) and each
@@ -671,7 +696,7 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
         if facts is not None:
             facts["xc"].append({"word": word(reg.scalar(sql) or 0), "pct": tok, "since": since})
         text += f" It is {word(reg.scalar(sql) or 0)} {tok} {since}."
-    return text
+    return text + asked_note(reg, p, t)
 
 
 def _competitor_reading(reg: Registry, p: Period) -> dict:

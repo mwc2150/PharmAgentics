@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field, replace
 
+from . import checks
 from . import queries as q
 from . import stages
 from .checks import DECISION, OWNER, confidence, launch_date
@@ -374,6 +375,9 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
         x, b = q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id, col=p.col), q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id, col=p.col)
         change = reg.scalar(q.pct_change(x, b)) or 0
         pct = reg.claim("get_metric", q.pct_change(x, b), "pct", territory=t)
+        if stages.within_normal_range(reg, p, t):  # asked about, not material: never presented as a change
+            return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}), within its normal range; "
+                    "reported because the question asks about it.")
         return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}); its confidence, {s['confidence']}, "
                 "is the lowest of this brief's stories.")
     if len(p.weeks) == 1 and p.baseline and p.has("national"):
@@ -469,16 +473,19 @@ def appendix(reg: Registry, brand_id: str = "BXA", *, p=None, proj: Projection |
     """§6 text: the data version and the Assumptions block. The method and the glossary are folded (compose)."""
     brand_id = briefing_brand(p.brand_id if p is not None else brand_id)
     lines = [f"Data version {reg.data_version}. Product: {brand_id} ({PRODUCTS[brand_id]}), synthetic data."]
-    return lines + (assumptions(p, proj, restated) if p is not None else [])
+    return lines + (assumptions(p, proj, restated, reg=reg) if p is not None else [])
 
 
-def assumptions(p, proj: Projection | None, restated: bool = False) -> list[str]:
+def assumptions(p, proj: Projection | None, restated: bool = False, *, reg: Registry | None = None) -> list[str]:
     """The Assumptions block (brief-007 FR-012; the Week 6 assumption book): each assumption with its source, in
     at most five items (brief-008 FR-004)."""
-    source = "the brief's default rule, the four weeks before the period" if p.comparison is None else p.baseline_source
+    source = "the brief's default rule" if p.comparison is None else p.baseline_source
     fewer = (f" The release starts on {p.first}, so fewer weeks exist."
              if p.comparison is None and p.baseline and len(p.baseline) < stages.BASELINE_WEEKS else "")
-    lines = ["Assumptions:", f"- Comparison weeks: {comparison_text(p)}. Source: {source}.{fewer}"]
+    screened = stages.screen_weeks(reg, p) if reg is not None and p.has("territory") else p.baseline
+    screen = (f" Material-change screen: {screened[0]} to {screened[-1]}."
+              if screened and screened != list(p.baseline) else "")
+    lines = ["Assumptions:", f"- Comparison weeks: {comparison_text(p)}. Source: {source}.{fewer}{screen}"]
     lines.append("- Like for like: changes use only territories whose feed passed the gate in every week compared. "
                  "Withheld cuts are left out of every change and story, and never read as zero demand."
                  + (" Calendar weeks are left out of the stories." if p.calendar_note else " Holiday weeks are left out.")
@@ -491,9 +498,16 @@ def assumptions(p, proj: Projection | None, restated: bool = False) -> list[str]
         lines.append(f"- Not observed: {', '.join(q.name(t) for t in marked)} "
                      f"{'is' if len(marked) == 1 else 'are'} projected or estimated, not counted. Source: panel coverage "
                      "and each territory's recent share of national.")
+    # Every driver check reads the comparison weeks; the one that reads other weeks says which (assumptions first).
+    exact = p.comparison is not None
+    context = p.baseline if exact else checks.context_baseline(p.weeks, p.baseline) if p.weeks else []
+    rival = checks.competitor_assumption(reg, p.weeks, context, exact=exact) if reg is not None else None
     if p.brand_id == "BXA":
         lines.append("- Drivers: the checks evaluate the same week and delays of one and two weeks. "
-                     "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.")
+                     "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag."
+                     + (f" {rival}" if rival else ""))
+    elif rival:
+        lines.append(f"- Drivers: {rival}")
     return lines
 
 

@@ -79,9 +79,10 @@ def _trx_direction(reg: Registry, terr: str, W, B) -> float | None:
     return reg.scalar(q.pct_change(q.mean_weekly(W, terrs=[terr]), q.mean_weekly(B, terrs=[terr])))
 
 
-def check_promotion(reg: Registry, terr: str, W, B, *, source_baseline=None) -> Check:
-    reference = B if source_baseline is None else source_baseline
-    cuts = _lagged_levels(reg, "promo_activity", "rep_calls_aggregated", terr, W, reference)
+def check_promotion(reg: Registry, terr: str, W, B) -> Check:
+    """Promotion against the brief's stated comparison weeks B, the same weeks as TRx (assumptions first): a longer,
+    unstated window can hold a lapse and turn a recovery into a push. A lapse still running gets a continuing card."""
+    cuts = _lagged_levels(reg, "promo_activity", "rep_calls_aggregated", terr, W, B)
     trx = _trx_direction(reg, terr, W, B)
     if not cuts or trx is None:
         return Check("promotion", "insufficient", "Promotion: insufficient. No complete TRx and promotion comparison is available.")
@@ -94,12 +95,29 @@ def check_promotion(reg: Registry, terr: str, W, B, *, source_baseline=None) -> 
     b = reg.claim("lookup_promo", earlier, "int", territory=terr, weeks=baseline)
     if not matches:
         return Check("promotion", "ruled_out", f"Promotion: ruled out. No tested lag lines up with TRx. "
-                     f"Aggregated calls averaged {a} a week against {b} in the reference weeks.")
+                     f"Aggregated calls averaged {a} a week against {b} in the comparison weeks{_lag_note(lag)}.")
     pct = reg.claim("lookup_promo", q.pct_change(recent, earlier), "pct", territory=terr, lag=lag)
     direction = "lower" if avg < prior else "higher"
+    lapse = _lapse_in(reg, terr, baseline) if avg > prior else None
+    lapse = lapse if lapse and lapse[1] < current[-1] else None  # calls came back inside the period: recovery
+    if lapse:  # the comparison holds a lapse: calls coming back is recovery, not a push (mentor review 2.1)
+        return Check("promotion", "supported", f"Promotion: supported as recovery after the promotion lapse of {lapse[0]} to "
+                     f"{lapse[1]}, {LAG_LABELS[lag]}. Aggregated calls averaged {a} a week against {b} in the comparison "
+                     f"weeks{_lag_note(lag)}, which include lapse weeks ({pct} {direction}).", {"lag": lag, "lapse": lapse})
     return Check("promotion", "supported", f"Promotion: supported as an association, {LAG_LABELS[lag]}. "
-                 f"Aggregated calls averaged {a} a week against {b} in the reference weeks ({pct} {direction}).",
+                 f"Aggregated calls averaged {a} a week against {b} in the comparison weeks{_lag_note(lag)} ({pct} {direction}).",
                  {"lag": lag})
+
+
+def _lapse_in(reg: Registry, terr: str, weeks) -> tuple[str, str] | None:
+    """The territory's promotion lapse (the Promotion review's rule) with a week inside `weeks`, as (start, end)."""
+    from .promotion import lapses  # local: promotion imports memo, which imports this module
+    return next(((e.start, e.end) for e in lapses(reg, terr) if any(e.start <= w <= e.end for w in weeks)), None)
+
+
+def _lag_note(lag: int) -> str:
+    """With a lag, both windows sit that many weeks earlier than the period and the comparison weeks."""
+    return f", each shifted {'one week' if lag == 1 else 'two weeks'} earlier" if lag else ""
 
 
 def check_supply(reg: Registry, terr: str, W, B) -> Check:
@@ -125,8 +143,8 @@ def run_checks(reg: Registry, terr: str, W, B, *, brand_id: str = "BXA",
                use_selected_baseline: bool = False) -> list[Check]:
     if brand_id != "BXA":
         return run_brand_checks(reg, terr, W, B, brand_id, use_selected_baseline=use_selected_baseline, pct_format="pct")
-    ref = B if use_selected_baseline else context_baseline(W, B)
-    return [check_data(reg, terr, W, B), check_access(reg, terr, W, B), check_promotion(reg, terr, W, B, source_baseline=ref),
+    ref = B if use_selected_baseline else context_baseline(W, B)  # competitor only; its weeks are stated (memo.assumptions)
+    return [check_data(reg, terr, W, B), check_access(reg, terr, W, B), check_promotion(reg, terr, W, B),
             check_supply(reg, terr, W, B), check_competitor(reg, terr, W, ref, exact_comparison=use_selected_baseline, pct_format="pct")]
 
 
