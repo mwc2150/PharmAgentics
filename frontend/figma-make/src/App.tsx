@@ -150,12 +150,12 @@ function ViewAsSwitch({me}: {me: Me}) {
 
 function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
-  const name = me.name.trim() || "Account"  // the button shows the name only; the open menu adds the username and each lane's role
+  const name = me.name.trim() || "Account"  // the button shows the name only (at phone width too, truncated); the open menu adds the username and each lane's role
   // Each lane's role, named by its lane so two analysts never read the same ("Briefing · Commercial Analyst"). The labels are the API's.
   const roles = (["briefing","forecast"] as const).flatMap(l=>me.lanes[l] ? [`${l==="briefing" ? "Briefing" : "Forecast"} · ${me.lanes[l]!.label}`] : [])
   return <DropdownMenu>
     <DropdownMenuTrigger aria-label={`Account: ${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink transition hover:bg-paper">
-      <Icon name="user" className="h-5 w-5 text-muted sm:hidden"/><span className="hidden max-w-[240px] truncate sm:inline">{name}</span>
+      <Icon name="user" className="h-5 w-5 shrink-0 text-muted sm:hidden"/><span className="max-w-[7rem] truncate sm:max-w-[240px]">{name}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-72">
@@ -464,7 +464,7 @@ function ForecastQuestionReport({run, onFollowup, onOpen, onPin}: {run: Forecast
 // Tabs by the APG pattern: one tab stop (the selected tab), Left/Right/Home/End move focus along the row, Enter or
 // Space selects. `panelId` (optional) names the tabpanel the page renders under the row; the selected tab labels it
 // (id `${panelId}-tab-${key}`). The sliding pill is decoration.
-function SubTabs<T extends string>({label, value, options, onChange, panelId, aside, dots}: {label: string, value: T, options: readonly (readonly [T, string, string?])[], onChange: (v: T) => void, panelId?: string, aside?: ReactNode, dots?: Partial<Record<T, boolean>>}) {
+function SubTabs<T extends string>({label, value, options, onChange, panelId, aside, dots}: {label: string, value: T, options: readonly (readonly [T, string, string?, string?])[], onChange: (v: T) => void, panelId?: string, aside?: ReactNode, dots?: Partial<Record<T, boolean>>}) {
   const current = options.find(o => o[0] === value)
   const list = useRef<HTMLDivElement>(null)
   const [bar,setBar] = useState<{left: number, top: number, width: number, height: number} | null>(null)
@@ -485,9 +485,9 @@ function SubTabs<T extends string>({label, value, options, onChange, panelId, as
   return <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
     {/* The row wraps rather than scrolls, so at 320 px or 200% zoom no tab sits past an edge */}
     <div ref={list} role="tablist" aria-label={label} onKeyDown={onKey} className="pa-noprint relative flex min-w-0 flex-wrap gap-0.5 sm:gap-1">
-      {options.map(([key, text]) => <button key={key} type="button" role="tab" aria-selected={value === key} tabIndex={value === key ? 0 : -1}
+      {options.map(([key, text,, short]) => <button key={key} type="button" role="tab" aria-selected={value === key} tabIndex={value === key ? 0 : -1}
         id={panelId ? `${panelId}-tab-${key}` : undefined} aria-controls={panelId && value === key ? panelId : undefined} onClick={() => onChange(key)}
-        className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primaryink" : "text-muted hover:text-ink"}`}><span className="inline-flex items-center gap-1.5">{text}{dots?.[key] && <NewDot/>}</span></button>)}
+        className={`relative z-10 whitespace-nowrap rounded-lg px-3 py-2 text-sm sm:px-4 font-medium transition-colors duration-200 ${value === key ? "font-semibold text-primaryink" : "text-muted hover:text-ink"}`}><span className="inline-flex items-center gap-1.5">{short ? <><span className="sm:hidden">{short}</span><span className="max-sm:hidden">{text}</span></> : text}{dots?.[key] && <NewDot/>}</span></button>)}
       {bar && <span aria-hidden="true" className="pa-tabbar absolute rounded-lg border border-edge bg-paper shadow-[0_3px_0_var(--color-slab)]" style={{left: bar.left, top: bar.top, width: bar.width, height: bar.height}}/>}
     </div>
     {/* `aside` (the Briefing brand picker) sits left of the classification label */}
@@ -752,7 +752,7 @@ function IntroWithHow({introId, children}: {introId?: string, children: ReactNod
   return <div className="space-y-3" onKeyDown={e=>{ if (e.key==="Escape" && open) { e.stopPropagation(); close() } }}>
     <div className="flex items-start justify-between gap-3">
       <p id={introId} tabIndex={introId ? -1 : undefined} className="min-w-0 text-sm text-muted outline-none">{children}</p>
-      <button ref={button} type="button" aria-expanded={open} aria-controls={open ? panel : undefined} onClick={()=>open ? close() : setOpen(true)} className="flex shrink-0 items-center gap-1.5 rounded-lg text-sm text-primaryink hover:underline"><Icon name="help" className="h-4 w-4"/><span className="max-sm:sr-only">How it works</span></button>
+      <button ref={button} type="button" aria-expanded={open} aria-controls={open ? panel : undefined} onClick={()=>open ? close() : setOpen(true)} className="flex min-h-6 min-w-6 shrink-0 items-center justify-center gap-1.5 rounded-lg text-sm text-primaryink hover:underline"><Icon name="help" className="h-4 w-4"/><span className="max-sm:sr-only">How it works</span></button>
     </div>
     {open && <section id={panel} aria-label="How it works" className="space-y-3 border-y border-rule py-4">
       <div className="flex items-center justify-between gap-3"><ClassLabel tab="briefing.how"/><button type="button" onClick={close} aria-label="Close How it works" className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-4 w-4"/></button></div>
@@ -849,6 +849,18 @@ function ReviewHistory({trail}: {trail: TrailEntry[] | undefined}) {
   </details>
 }
 
+// While a reason or comment box is open on the brief, the bars that float over its foot (the feedback card, the open
+// follow-up thread and the question bar) stop floating: they sit at the end of the page, as plain content, so they never
+// cover the box or its buttons. Nothing above them moves, so a click in progress still lands. See `html[data-bars-parked]` in index.css.
+function useParkedBars(active: boolean) {
+  useEffect(() => {
+    if (!active) return
+    const root = document.documentElement
+    root.setAttribute("data-bars-parked", "")
+    return () => root.removeAttribute("data-bars-parked")
+  }, [active])
+}
+
 // P1: send the brief for sign-off, or reject it. Once the Insights Manager has signed it off it is frozen.
 function ReviewPanel({result, onChange, onOpen}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onOpen: (evidenceId: string) => void}) {
   const [reason,setReason] = useState("")
@@ -856,6 +868,9 @@ function ReviewPanel({result, onChange, onOpen}: {result: BriefingResult, onChan
   const [busy,setBusy] = useState(false)
   const [error,setError] = useState<string | null>(null)
   const state = result.review_status
+  const reasonBox = useRef<HTMLDivElement>(null)
+  useParkedBars(rejecting)
+  useEffect(()=>{ if (rejecting) reasonBox.current?.scrollIntoView({block: "nearest"}) },[rejecting])  // after the bars are parked: the box and its buttons are on screen
   const decide = async (decision: "sent" | "rejected") => {
     setBusy(true); setError(null)
     try { const r = await reviewBrief(result.brief_id, decision, reason); onChange(r); setRejecting(false); setReason(""); toast.success(decision==="sent" ? "Sent for sign-off. The Insights Manager can now open it." : "Rejected. It stays hidden from everyone but you.") }
@@ -876,7 +891,7 @@ function ReviewPanel({result, onChange, onOpen}: {result: BriefingResult, onChan
       {note.comment && <p className="mt-1">{note.comment}</p>}
       {!!note.flags?.length && <ul className="mt-2 space-y-1.5">{note.flags.map(f=><li key={f.claim} className="text-xs"><button type="button" onClick={()=>onOpen(f.evidence_id)} className="font-mono font-medium text-primaryink underline underline-offset-4">{f.value}</button>{f.note ? ` · ${f.note}` : " · flagged as wrong"}</li>)}</ul>}
     </Notice>}
-    {state !== "signed_off" && (rejecting ? <div className="mt-3 space-y-2">
+    {state !== "signed_off" && (rejecting ? <div ref={reasonBox} className="mt-3 space-y-2">
       <label className="block text-xs font-medium text-muted" htmlFor="reject-reason">Reason for rejecting (required)</label>
       <textarea id="reject-reason" value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} rows={2} className={FIELD}/>
       <div className="flex justify-end gap-2"><button onClick={()=>setRejecting(false)} className={BTN2}>Cancel</button><button disabled={busy || !reason.trim()} onClick={()=>void decide("rejected")} className={`${BTN2} border-neg text-neg! hover:bg-paper`}>Reject briefing</button></div>
@@ -895,7 +910,9 @@ function SignoffPanel({result, flags, onChange}: {result: BriefingResult, flags:
   const [comment,setComment] = useState("")
   const [busy,setBusy] = useState(false)
   const [error,setError] = useState<string | null>(null)
+  const [inside,setInside] = useState(false)  // focus is in the comment box or on its buttons
   const state = result.review_status
+  useParkedBars(state === "sent" && (inside || !!comment.trim()))
   const marked = Object.keys(flags).map(Number).sort((a, b) => a - b)
   const decide = async (decision: "signed_off" | "returned") => {
     setBusy(true); setError(null)
@@ -914,11 +931,12 @@ function SignoffPanel({result, flags, onChange}: {result: BriefingResult, flags:
     {state !== "sent" ? <p className="mt-1 text-xs text-muted">{done[state] ?? "This briefing is not waiting for sign-off."}</p> : <>
       <p className="mt-1 text-xs text-muted">The Brand Director and the Marketer see this briefing only after you sign it off. To mark a number as wrong, click it and choose “Flag this number as wrong”.</p>
       {!!marked.length && <ul className="mt-3 space-y-1 text-sm" aria-label="Numbers you flagged">{marked.map(i => <li key={i}><Flag><span className="font-mono">{result.claims[i]?.value}</span>{flags[i].trim() ? ` · ${flags[i].trim()}` : " · flagged as wrong"}</Flag></li>)}</ul>}
-      <label className={`${LABEL} mt-3`}>Comment (needed to return it)<textarea value={comment} onChange={e=>setComment(e.target.value)} maxLength={1000} rows={3} className={`${FIELD} mt-0.5`}/></label>
+      <div onFocus={()=>setInside(true)} onBlur={e=>{ if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setInside(false) }}>
+      <label className={`${LABEL} mt-3`}>Comment (needed to return it)<textarea value={comment} onChange={e=>setComment(e.target.value)} onFocus={e=>e.currentTarget.scrollIntoView({block: "nearest"})} maxLength={1000} rows={3} className={`${FIELD} mt-0.5`}/></label>
       <div className="mt-3 flex flex-wrap justify-end gap-2">
         <button disabled={busy || !comment.trim()} onClick={()=>void decide("returned")} className={BTN2}>Return to the analyst</button>
         <button disabled={busy} onClick={()=>void decide("signed_off")} className={BTN}>Sign off</button>
-      </div>
+      </div></div>
     </>}
     {error && <p role="alert" className="mt-2 text-xs text-neg">{error}</p>}
     <ReviewHistory trail={result.review_trail}/>
@@ -992,7 +1010,7 @@ function TriageReview({plan, busy, onApprove}: {plan: TriagePlan, busy: boolean,
         <div className="flex shrink-0 items-center gap-1">
           <button aria-label={`Move ${c.title} up`} disabled={i===0} onClick={()=>move(id,-1)} className="grid h-9 w-9 place-items-center rounded-lg border border-edge text-sm transition-colors hover:bg-paper disabled:border-rule disabled:text-muted">↑</button>
           <button aria-label={`Move ${c.title} down`} disabled={i===order.length-1} onClick={()=>move(id,1)} className="grid h-9 w-9 place-items-center rounded-lg border border-edge text-sm transition-colors hover:bg-paper disabled:border-rule disabled:text-muted">↓</button>
-          <label className="ml-2 flex min-h-9 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={on} onChange={()=>toggle(id)} className="h-4 w-4"/>Investigate</label>
+          <label className="ml-2 flex min-h-9 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={on} onChange={()=>toggle(id)} className="h-4 w-4 max-sm:h-6 max-sm:w-6"/>Investigate</label>
         </div>
       </div>
       <p className="mt-3 text-sm leading-relaxed">{longDates(c.what_moved)}</p>
@@ -1290,7 +1308,7 @@ function AnalystApp({me}: {me: Me}) {
     <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets with the data line under it, as the Forecast lane does; other tabs start at the tab row */}{view==="overview" && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<SubTabs aside={<label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label>} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved"]] as const}/></div>
+      </select></label>} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
@@ -1350,7 +1368,7 @@ function AnalystApp({me}: {me: Me}) {
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
       {view==="result" && result && <AnalystBrief onStartNew={pending ? undefined : startNew} result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </div>}</div>
-    {brand && (view==="home" || (view==="result" && (!!result || agentSupported)) || (view==="triage" && agentSupported) || (view==="approved" && !!opened)) && <div className="workspace-content sticky bottom-0 z-20"><div ref={setDock} className="pa-dock"/>{/* the feedback card on the open answer sits here, on top of the bar */}<MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : view==="approved" && opened ? opened.brief_id : null} pending={view==="approved" ? false : pending} chip={chip} onClearChip={()=>setChip(null)}
+    {brand && (view==="home" || (view==="result" && (!!result || agentSupported)) || (view==="triage" && agentSupported) || (view==="approved" && !!opened)) && <div className="pa-bars workspace-content sticky bottom-0 z-20"><div ref={setDock} className="pa-dock"/>{/* the feedback card on the open answer sits here, on top of the bar */}<MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : view==="approved" && opened ? opened.brief_id : null} pending={view==="approved" ? false : pending} chip={chip} onClearChip={()=>setChip(null)}
       onRead={view==="home" ? reader.run : undefined} readBusy={reader.busy} readError={view==="home" ? reader.error : null}
       onOfferScope={o=>{ clearQuestion(); if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})}/></div>}
   </FeedbackDock></Shell>

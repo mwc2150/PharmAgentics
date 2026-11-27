@@ -143,8 +143,11 @@ function Strip({ t, domain, onOpen }: { t: TerritoryRow, domain: number, onOpen:
     <div className="absolute inset-y-0 left-1/2 w-px bg-muted"/>
     <button onClick={onOpen} aria-label={`${t.label}: ${pct(t.change)} against a normal range of ±${pct(t.threshold, false)}; ${STATUS[t.status]}`}
       title={`${t.label}: ${pct(t.change)} (normal range ±${pct(t.threshold, false)}), ${int(t.trx)} TRx`}
-      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary outline-offset-2 ${t.status === "material" ? "bg-primary" : "bg-sheet"}`}
-      style={{ left: pos(Math.max(-domain, Math.min(domain, t.change))), width: size, height: size }}/>
+      className="absolute top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full outline-offset-2"
+      style={{ left: pos(Math.max(-domain, Math.min(domain, t.change))), width: Math.max(24, size), height: Math.max(24, size) }}>
+      {/* the button is at least 24 px (WCAG 2.2 target size); the drawn dot keeps its own size */}
+      <span aria-hidden="true" className={`block rounded-full border-2 border-primary ${t.status === "material" ? "bg-primary" : "bg-sheet"}`} style={{ width: size, height: size }}/>
+    </button>
   </div>
 }
 

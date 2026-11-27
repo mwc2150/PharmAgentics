@@ -69,8 +69,11 @@
 }
 
 @layer base {
+  @media (max-width: 639px) { input[type="checkbox"], input[type="radio"] { width: 1.5rem; height: 1.5rem; flex-shrink: 0; } }
   /* Answer feedback docked on the question bar: the card, the suggestions and the bar read as one solid stack, so the
      page never shows through the gaps between them. */
+  /* A reason or comment box is open on the brief (see useParkedBars in App.tsx): the bars sit in the flow at the end of the page. */
+  html[data-bars-parked] .pa-bars { position: static !important; }
   .pa-dock:not(:empty) { margin-top: 2rem; padding-top: 1.25rem; background: linear-gradient(to top, var(--color-paper) 75%, transparent); }
   .pa-dock:not(:empty) + * { margin-top: 0 !important; padding-top: 0 !important; background: var(--color-paper) !important; }  /* over the bar's own spacing utilities */
   body {
