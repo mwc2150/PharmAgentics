@@ -189,3 +189,14 @@ def test_the_marketer_never_reaches_a_thread(brief_id):
     m = signed_in("dev-marketer")
     assert m.get(f"/api/briefing/{brief_id}/thread").status_code == 404
     assert m.post(f"/api/briefing/{brief_id}/thread/ask", json={"question": "Restate the bottom line"}).status_code == 404
+
+
+@needs_db
+def test_the_test_login_asks_follow_ups_as_the_insights_manager_but_not_as_the_marketer(brief_id):
+    """The test login reaches every persona Michael added (2026-11-27), with exactly that persona's rights."""
+    assert signed_in("dev-analyst").post(f"/api/briefing/{brief_id}/review", json={"decision": "sent"}).status_code == 200
+    t = signed_in("dev-tester")
+    assert t.post("/api/me/view-as", json={"view": "insights"}).status_code == 200
+    assert t.post(f"/api/briefing/{brief_id}/thread/ask", json={"question": "Restate the bottom line"}).status_code == 200
+    assert t.post("/api/me/view-as", json={"view": "marketer"}).status_code == 200
+    assert t.get(f"/api/briefing/{brief_id}/thread").status_code == 404
