@@ -4,14 +4,24 @@ import { useLayoutEffect, useRef, type RefObject } from "react"
 import { flushSync } from "react-dom"
 import { motionReduced } from "./userSettings"
 
-type Transition = { updateCallbackDone: Promise<void>, finished: Promise<void> }
+type Transition = { updateCallbackDone: Promise<void>, ready: Promise<void>, finished: Promise<void> }
 type Start = (update: () => void | Promise<void>) => Transition
 
-/** The View Transitions API when motion is allowed, else null. */
+/** The View Transitions API when motion is allowed, else null. A transition that a newer one replaces is skipped, and
+    its promises reject ("Transition was skipped"); the update still ran, so those rejections are expected and handled
+    here rather than left as page errors (a Recents item starts one transition to change workspace and another to open
+    what it names). */
 function starter(): Start | null {
   if (typeof document === "undefined" || motionReduced()) return null
   const d = document as Document & { startViewTransition?: Start }
-  return typeof d.startViewTransition === "function" ? d.startViewTransition.bind(d) : null
+  if (typeof d.startViewTransition !== "function") return null
+  const begin = d.startViewTransition.bind(d)
+  return update => {
+    const t = begin(update)
+    const ignore = () => { /* skipped: the change already happened */ }
+    t.ready?.catch(ignore); t.finished?.catch(ignore); t.updateCallbackDone?.catch(ignore)
+    return t
+  }
 }
 
 /** The name a brief's heading and the list row it was opened from share, so the title moves from one to the other. */
