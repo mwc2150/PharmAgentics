@@ -71,6 +71,9 @@
   /* Values that are not Tailwind tokens but still change with the theme. Dark is the product's default look. */
   --pa-glass: 27 27 30;                  /* rgb of the floating glass (sidebar drawer, menus, toasts) */
   --pa-mark-face: #3ecfb2;              /* the logo tile, and the block behind a section heading: a 3D-printed face */
+  /* The account avatar's fill, down the rainbow by seniority (App.tsx seniority()); near-black letter, 7:1 or more */
+  --pa-rank-0: #86868f; --pa-rank-1: #f87171; --pa-rank-2: #fb923c; --pa-rank-3: #facc15; --pa-rank-4: #4ade80; --pa-rank-5: #60a5fa; --pa-rank-6: #a78bfa;
+  --pa-onrank: #0b0c10;
   --pa-mark-edge: #00857c;
   --pa-mark-ink: #0b0c10;
 }
@@ -111,6 +114,8 @@
   --pa-mark-face: #00857c;
   --pa-mark-edge: #3ecfb2;
   --pa-mark-ink: #ffffff;
+  --pa-rank-0: #5b6175; --pa-rank-1: #b91c1c; --pa-rank-2: #c2410c; --pa-rank-3: #a16207; --pa-rank-4: #15803d; --pa-rank-5: #1d4ed8; --pa-rank-6: #6d28d9;
+  --pa-onrank: #ffffff;  /* white on each, 4.8:1 or more */
 }
 
 @layer base {

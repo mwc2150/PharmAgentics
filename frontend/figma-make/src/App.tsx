@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { Toaster, toast } from "sonner"
-import { BrandMark, Icon, Notice, longDates, modelName, plainModels, plainValue, useModalFocus, type IconName } from "./agent/primitives"
+import { Avatar, BrandMark, Icon, Notice, longDates, modelName, plainModels, plainValue, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
 import { BRIEF_TITLE, openInTransition, pageChange } from "./motion"
 import { SettingsWorkspace } from "./Settings"
@@ -148,20 +148,31 @@ function ViewAsSwitch({me}: {me: Me}) {
   </>
 }
 
+// The avatar's colour, down the rainbow by seniority (Michael, 2026-11-27): 1 Brand Director, 2 Brand Manager, 3 Insights
+// Manager, 4 Marketer, 5 Commercial Analyst (either lane), 6 the test login; 0 no role. Someone in two lanes takes the
+// more senior. The roles are the API's (roles.json).
+const SENIORITY = [["briefing-director"], ["forecast-manager"], ["briefing-insights"], ["briefing-marketer"], ["briefing-analyst", "forecast-analyst"]]
+function seniority(me: Me): number {
+  if (me.tester) return 6
+  const held = (["briefing", "forecast"] as const).flatMap(l => me.lanes[l] ? [me.lanes[l]!.role] : [])
+  const at = SENIORITY.findIndex(roles => roles.some(r => held.includes(r)))
+  return at < 0 ? 0 : at + 1
+}
+
 function AccountMenu({me}: {me: Me}) {
   const {openSurvey, openSuggest, signOut, surveyDone} = useFeedbackActions()
   const name = me.name.trim() || "Account"  // the button shows the name only (at phone width too, truncated); the open menu adds the username and each lane's role
   // Each lane's role, named by its lane so two analysts never read the same ("Briefing · Commercial Analyst"). The labels are the API's.
   const roles = (["briefing","forecast"] as const).flatMap(l=>me.lanes[l] ? [`${l==="briefing" ? "Briefing" : "Forecast"} · ${me.lanes[l]!.label}`] : [])
   return <DropdownMenu>
-    <DropdownMenuTrigger aria-label={`Account: ${name}`} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-ink transition hover:bg-paper">
-      <Icon name="user" className="h-5 w-5 shrink-0 text-muted sm:hidden"/><span className="max-w-[7rem] truncate sm:max-w-[240px]">{name}</span>
+    <DropdownMenuTrigger aria-label={`Account: ${name}`} className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 text-sm text-ink transition hover:bg-paper">
+      <Avatar name={name} rank={seniority(me)}/><span className="max-w-[7rem] truncate sm:max-w-[240px]">{name}</span>
       <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="w-72">
-      <DropdownMenuLabel><span className="block truncate text-sm font-medium">{name}{me.username && <span className="font-normal text-muted"> · {me.username}</span>}</span>
+      <DropdownMenuLabel className="flex items-start gap-3"><Avatar name={name} rank={seniority(me)} size="md"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{name}{me.username && <span className="font-normal text-muted"> · {me.username}</span>}</span>
         {roles.map(r=><span key={r} className="block truncate text-xs font-normal text-muted">{r}</span>)}
-        <span className="block text-xs font-normal text-muted">{me.auth_mode==="dev" ? "Development sign-in" : "Signed in"}</span></DropdownMenuLabel>
+        <span className="block text-xs font-normal text-muted">{me.auth_mode==="dev" ? "Development sign-in" : "Signed in"}</span></span></DropdownMenuLabel>
       {me.tester && <ViewAsSwitch me={me}/>}
       <DropdownMenuSeparator/>
       <DropdownMenuItem onSelect={openSuggest}>Suggest an improvement</DropdownMenuItem>

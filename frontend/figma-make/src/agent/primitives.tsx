@@ -40,6 +40,14 @@ export function RollIn({text, delay = 0}: {text: string, delay?: number}) {
   })}</span><span className="sr-only">{text}</span></>
 }
 
+/* A person's initial in a circle (the account button, Michael 2026-11-27). `rank` picks the fill (index.css --pa-rank-N,
+   a rainbow by seniority); the name always sits beside it, so the colour only helps. */
+export function Avatar({name, rank, size = "sm"}: {name: string, rank: number, size?: "sm" | "md"}) {
+  const initial = (name.trim()[0] ?? "?").toLocaleUpperCase()
+  return <span aria-hidden="true" style={{background: `var(--pa-rank-${rank})`, color: "var(--pa-onrank)"}}
+    className={`grid shrink-0 select-none place-items-center rounded-full font-display font-bold leading-none ${size === "md" ? "h-9 w-9 text-base" : "h-7 w-7 text-[13px]"}`}>{initial}</span>
+}
+
 export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string}) {
   return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={PATHS[name]}/></svg>
 }

@@ -73,6 +73,17 @@ def _client():
     return _oauth.keycloak
 
 
+# The avatar colours, down the rainbow by seniority, as in the app (frontend index.css --pa-rank-N, dark).
+_RANKS = [({"briefing-director"}, "#f87171"), ({"forecast-manager"}, "#fb923c"), ({"briefing-insights"}, "#facc15"),
+          ({"briefing-marketer"}, "#4ade80"), ({"briefing-analyst", "forecast-analyst"}, "#60a5fa")]
+
+
+def _rank_color(roles: list[str]) -> str:
+    if "tester" in roles:
+        return "#a78bfa"
+    return next((color for names, color in _RANKS if names & set(roles)), "#86868f")
+
+
 def _set_user(request: Request, sub: str, name: str, roles: list[str]) -> None:
     known = rbac.known_role_names()
     request.session.clear()
@@ -87,21 +98,22 @@ _PAGE_CSS = """
 @font-face{font-family:"IBM Plex Sans";font-weight:100 700;font-display:swap;src:url("/fonts/ibm-plex-sans-latin.woff2") format("woff2")}
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:48px 16px;background:#0c0d12;color:#f3f3f3;
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:48px 16px;background:#0e0e10;color:#f3f3f3;
   font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-main{width:100%;max-width:440px;background:#17181f;border:1px solid #373a52;border-radius:22px;box-shadow:0 5px 0 #3a3e58;padding:32px}
+main{width:100%;max-width:440px;background:#161619;border:1px solid #2e2e33;border-radius:22px;box-shadow:0 5px 0 #28282d;padding:32px}
 .mark{display:block;width:56px;height:56px;margin-bottom:24px}
 h1{margin:0;font:700 28px/1.25 "Space Grotesk",system-ui,sans-serif;letter-spacing:-0.02em}
-h1 span{background:#3ecfb2;color:#0b0c10;padding:0.05em 0.4em 0.1em;border-radius:8px}
-p{margin:14px 0 0;color:#a6aabf;font-size:14px}
+h1 span{background:#3ecfb2;color:#0b0c10;padding:0.05em 0.4em 0.1em;border-radius:8px;box-shadow:3px 4px 0 #00857c}
+p{margin:14px 0 0;color:#a3a3ab;font-size:14px}
 form{margin-top:20px;display:grid;gap:12px}
-button{display:block;width:100%;padding:12px 16px;border:1px solid #8a8ea6;border-radius:14px;background:transparent;color:#f3f3f3;
-  text-align:left;font:500 15px/1.4 inherit;font-family:inherit;cursor:pointer;box-shadow:0 3px 0 #3a3e58;
+button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:1px solid #86868f;border-radius:14px;background:transparent;color:#f3f3f3;
+  text-align:left;font:500 15px/1.4 inherit;font-family:inherit;cursor:pointer;box-shadow:0 3px 0 #28282d;
   transition:background-color .15s,transform .15s,box-shadow .15s}
-button:hover{background:#0c0d12}
-button:active{transform:translateY(2px);box-shadow:0 1px 0 #3a3e58}
+button:hover{background:#0e0e10}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 #28282d}
 button:focus-visible{outline:2px solid #3ecfb2;outline-offset:2px}
-small{display:block;margin-top:2px;color:#a6aabf;font-size:12px;font-weight:400}
+small{display:block;margin-top:2px;color:#a3a3ab;font-size:12px;font-weight:400}
+.av{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;color:#0b0c10;font:700 14px/1 "Space Grotesk",system-ui,sans-serif}
 a.go{display:inline-block;margin-top:22px;padding:11px 20px;border-radius:12px;background:#3ecfb2;color:#0b0c10;font-weight:600;
   text-decoration:none;box-shadow:0 4px 0 #1f7a68}
 a.go:hover{background:#62dbc3}
@@ -112,7 +124,7 @@ a.go:focus-visible{outline:2px solid #f3f3f3;outline-offset:2px}
 
 def _page(title: str, body: str, *, head: str = "", status_code: int = 200, headers: dict[str, str] | None = None) -> HTMLResponse:
     return HTMLResponse(f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c0d12">{head}
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0e0e10">{head}
 <title>{html.escape(title)} · PharmAgentics</title><link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" href="/favicon.ico" sizes="any"><style>{_PAGE_CSS}</style></head>
 <body><main><img class="mark" src="/pa-mark.svg" alt="PharmAgentics" width="56" height="56">{body}</main></body></html>""",
@@ -123,8 +135,9 @@ def _page(title: str, body: str, *, head: str = "", status_code: int = 200, head
 async def login(request: Request):
     if mode() == "dev":
         buttons = "".join(
-            f'<button name="username" value="{html.escape(u)}">{html.escape(n)}'
-            f'<small>{html.escape(", ".join(r) or "no role")}</small></button>'
+            f'<button name="username" value="{html.escape(u)}"><span class="av" aria-hidden="true" style="background:{_rank_color(r)}">'
+            f'{html.escape(n[:1].upper())}</span><span>{html.escape(n)}'
+            f'<small>{html.escape(", ".join(r) or "no role")}</small></span></button>'
             for u, (n, r) in DEV_USERS.items())
         return _page("Development sign-in", f"""<h1><span>Development sign-in</span></h1>
 <p>Stand-in identities for local work. The deployed app signs in through Keycloak instead.</p>
