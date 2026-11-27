@@ -800,8 +800,8 @@ function Greeting({detail}: {detail?: string}) {
   const h = new Date().getHours()
   const first = useContext(SignedInName).trim().split(/\s+/)[0]
   const part = (h < 5 ? "Working late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening") + (first ? `, ${first}` : "")
-  // A greeting is not a section heading, so it is a paragraph; the h1 in the header names the page.
-  return <div className="pa-fade mb-4"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}.</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
+  // A greeting is not a section heading, so it is a paragraph; the h1 in the header names the page. No full stop (Michael, 2026-11-27).
+  return <div className="pa-fade mb-4"><p className="font-display text-[2rem] font-bold leading-[1.25] tracking-[-0.02em]"><span className="pa-mark">{part}</span></p>{detail && <p className="mt-3 text-sm text-muted">{detail}</p>}</div>
 }
 
 // An agent job's real progress: the server reports queued, then running; the result arrives when it is done and
@@ -1331,7 +1331,7 @@ function AnalystApp({me}: {me: Me}) {
   const scopeBack = useRef<HTMLButtonElement>(null)
   useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
   return <Shell me={me} onBriefingHome={()=>setView("overview")} briefingBusy={pending}><FeedbackDock slot={dock}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets with the data line under it, as the Forecast lane does; other tabs start at the tab row */}{view==="overview" && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<SubTabs aside={view==="overview" ? <label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets; what the data covers is the line under the tab row. Other tabs start at the tab row */}{view==="overview" && <Greeting/>}<SubTabs aside={view==="overview" ? <label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={overviewBrand} onChange={e=>setOverviewBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
       </select></label> : undefined} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>pageChange(()=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") })} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>

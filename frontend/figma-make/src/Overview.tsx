@@ -192,6 +192,7 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
 
 export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: string[], brand: string, week: string, onWeek: (week: string) => void, onGenerate: (territory: string, week: string) => void }) {
   const [o, setO] = useState<O | null>(null)
+  const latest = weeks.reduce((a, w) => (w > a ? w : a), week)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<{ kind: "territory", t: TerritoryRow } | { kind: "stat", s: Stat } | null>(null)
   useEffect(() => {
@@ -204,7 +205,8 @@ export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: st
   const statEvidence = stat && o ? o.evidence.filter(e => e.id === stat.evidence_id || e.id === stat.change?.evidence_id) : []
   return <><div className="workspace-wide pa-stagger space-y-6 py-8">
     <div className="flex flex-wrap items-end justify-between gap-4">
-      <p className="text-sm text-muted">{o ? `${o.product_name} (${o.product}), week of ${day(o.week)}. Every figure is computed from the governed data; select one to see its query.` : "Loading the week…"}</p>
+      {/* What the page covers, once: brand, territories and week, and how far the data runs when an earlier week is chosen */}
+      <p className="text-sm text-muted">{o ? `${o.product_name} (${o.product}) across ${o.territories.length} territories, week of ${day(o.week)}${o.week === latest ? ", the latest week of data." : `. The data runs through ${day(latest)}.`} Every figure comes from the governed data; select one to see its query.` : "Loading the week…"}</p>
       <label className="flex items-center gap-2 text-xs text-muted">Week
         <select value={week} onChange={e => onWeek(e.target.value)} className={FIELD}>
           {[...weeks].reverse().map(w => <option key={w} value={w}>{day(w)}</option>)}
