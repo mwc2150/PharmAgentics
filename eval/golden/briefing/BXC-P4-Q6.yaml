@@ -1,0 +1,94 @@
+id: C-056
+lane: briefing
+brand: BXC
+story: BXC-P4-Q6
+persona: P4 Marketer (Magdalena)
+category: stress
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-09-14 to 2026-10-05: Where should the next dollar go?'
+review_note: null
+period: weeks of 2026-09-14 to 2026-10-05
+anchor: No territory lapse, broad Metacora-era loss (Lipidara)
+definition:
+  first_week: '2026-09-14'
+  last_week: '2026-10-05'
+  comparison:
+    kind: pre_launch
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Magdalena, I want budget arguments grounded in evidence, so that shifts are not argued from anecdote.
+given: a brand-wide share loss with steady promotion in every territory.
+when: the Lipidara (BXC) brief writes next steps.
+then: it says the data supports no territory-specific shift, recommends discussing next steps with marketing at brand level, and says the promotion effect cannot be measured here.
+reference_answer: 'The data supports no territory-specific shift for Lipidara. No territory had a promotion lapse: rep calls across all territories averaged 215 a week against 220 before Metacora launched, and no territory fell below 0.91 of its own pre-launch level. Digital impressions across all territories were 7,613 a week against 7,295. TRx is 9.8% below the pre-launch weeks and the loss is broad: 7 of 8 territories are below their own pre-launch level, South Central most (15.4%) and Mountain not at all (up 2.0%). It cannot rank channels or price a dollar: there is no spend data, no reach by segment, and no promotion change to measure a response against.'
+must_not_say:
+  text: a cost per incremental prescription, or any rep-level line.
+  phrases: []
+  semantic: []
+action: Magdalena takes the finding into the budget talk with P3 and asks for spend and reach data to test a response.
+eval_items:
+- EV-7.3
+- EV-9.1
+facts:
+- id: national_change_pct
+  role: must
+  value: -9.8
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: territories_below_pre_launch
+  role: context
+  value: 7
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select count(*) from (select territory_id, avg(s) filter (where week_start between DATE '2026-09-14' and DATE '2026-10-05') l, avg(s) filter (where week_start between DATE '2026-02-02' and DATE '2026-02-23') p from (select week_start, territory_id, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id in (select territory_id from ok) group by 1, 2) group by 1) where l < p
+  reviewed: false
+- id: sc_change_pct
+  role: context
+  value: -15.4
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: mountain_change_pct
+  role: context
+  value: 2.0
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'MOUNTAIN' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'MOUNTAIN' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: bxc_rep_calls_before_per_week
+  role: context
+  value: 220
+  sql: select sum(rep_calls_aggregated) * 1.0 / 4 from raw.promo_activity where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23'
+  reviewed: false
+- id: bxc_rep_calls_period_per_week
+  role: context
+  value: 215
+  sql: select sum(rep_calls_aggregated) * 1.0 / 4 from raw.promo_activity where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05'
+  reviewed: false
+- id: bxc_digital_before_per_week
+  role: context
+  value: 7295
+  sql: select sum(digital_impressions) * 1.0 / 4 from raw.promo_activity where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23'
+  reviewed: false
+- id: bxc_digital_period_per_week
+  role: context
+  value: 7613
+  sql: select sum(digital_impressions) * 1.0 / 4 from raw.promo_activity where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05'
+  reviewed: false
+- id: lowest_territory_rep_calls_ratio
+  role: context
+  value: 0.91
+  sql: select min(r) from (select avg(rep_calls_aggregated) filter (where week_start between DATE '2026-09-14' and DATE '2026-10-05') / avg(rep_calls_aggregated) filter (where week_start between DATE '2026-02-02' and DATE '2026-02-23') r from raw.promo_activity where product_id = 'BXC' group by territory_id)
+  reviewed: false
+findings: []
+must_say:
+  phrases:
+  - no territory-specific|no territory specific
+  - no spend data|without spend data
+  - cannot rank channels|rank channels
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P4-Q6

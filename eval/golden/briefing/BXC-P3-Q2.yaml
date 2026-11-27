@@ -1,0 +1,113 @@
+id: C-046
+lane: briefing
+brand: BXC
+story: BXC-P3-Q2
+persona: P3 Brand Director (Diana)
+category: calendar_effect
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-12-22 and 2025-12-29: Does this matter for the brand, or can I ignore it?'
+review_note: null
+period: weeks of 2025-12-22 and 2025-12-29
+anchor: Holiday weeks, Dec 2025 (Lipidara)
+definition:
+  first_week: '2025-12-22'
+  last_week: '2025-12-29'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Diana, I want expected seasonal dips labelled, so that I am not pulled into false alarms.
+given: two holiday weeks with lower business days.
+when: the Lipidara (BXC) brief runs.
+then: it labels the drop a calendar effect, cites last year's same weeks, and opens no story.
+reference_answer: National BXC TRx was 4,041 and 3,987, together 20.2% below the four weeks before (2025-11-24 to 2025-12-15), or 19.7% and 20.8% week by week. Both weeks had 4 business days, and the second was the plan-year reset. The same two weeks a year earlier were 18.4% below their four weeks before (2024-11-25 to 2024-12-16), or 21.1% and 15.6% week by week. The next week rebounded to 4,656, up 16.8%.
+must_not_say:
+  text: '"BXC fell 20%" with no calendar label.'
+  phrases: []
+  semantic:
+  - BXC fell 20%
+action: Diana ignores it. The brief tells her to expect the rebound the next week.
+eval_items:
+- EV-3.4
+- EV-3.2
+facts:
+- id: national_bxc_trx_christmas
+  role: context
+  value: 4041
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2025-12-22'
+  reviewed: false
+- id: christmas_vs_4wk_avg_pct
+  role: context
+  value: -19.7
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2025-12-22'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-11-24' and DATE '2025-12-15' group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  reviewed: false
+- id: holiday_weeks_vs_4wk_avg_pct
+  role: must
+  value: -20.2
+  sql: select 100.0 * ((select avg(s) from (select sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-12-22' and DATE '2025-12-29' group by week_start)) / (select avg(s) from (select sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-11-24' and DATE '2025-12-15' group by week_start)) - 1)
+  reviewed: false
+- id: national_bxc_trx_new_year
+  role: context
+  value: 3987
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2025-12-29'
+  reviewed: false
+- id: new_year_vs_4wk_avg_pct
+  role: context
+  value: -20.8
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2025-12-29'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-11-24' and DATE '2025-12-15' group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  reviewed: false
+- id: national_bxc_trx_rebound
+  role: context
+  value: 4656
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2026-01-05'
+  reviewed: false
+- id: business_days_new_year
+  role: context
+  value: 4
+  sql: select business_days from raw.calendar where week_start = DATE '2025-12-29'
+  reviewed: false
+- id: plan_year_reset_new_year
+  role: context
+  value: 1
+  sql: select plan_year_reset from raw.calendar where week_start = DATE '2025-12-29'
+  reviewed: false
+- id: prior_year_christmas_vs_4wk_avg_pct
+  role: context
+  value: -21.1
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2024-12-23'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2024-11-25' and DATE '2024-12-16' group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  reviewed: false
+- id: prior_year_new_year_vs_4wk_avg_pct
+  role: context
+  value: -15.6
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2024-12-30'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2024-11-25' and DATE '2024-12-16' group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  reviewed: false
+- id: prior_year_holiday_weeks_vs_4wk_avg_pct
+  role: context
+  value: -18.4
+  sql: select 100.0 * ((select avg(s) from (select sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2024-12-23' and DATE '2024-12-30' group by week_start)) / (select avg(s) from (select sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2024-11-25' and DATE '2024-12-16' group by week_start)) - 1)
+  reviewed: false
+- id: rebound_week_change_pct
+  role: context
+  value: 16.8
+  sql: select 100.0 * (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2026-01-05') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2025-12-29') - 100.0
+  reviewed: false
+findings:
+- id: national_holiday_drop
+  territory: NATIONAL
+  direction: down
+  drivers_supported:
+  - holiday
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P3-Q2

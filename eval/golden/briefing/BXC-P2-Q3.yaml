@@ -1,0 +1,107 @@
+id: C-041
+lane: briefing
+brand: BXC
+story: BXC-P2-Q3
+persona: P2 Insights Manager (Marcus)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-06-15 to 2026-07-13, South Central: How confident are we, and where should we say we don''t know yet?'
+review_note: null
+period: weeks of 2026-06-15 to 2026-07-13, South Central
+anchor: South Central gap, Jun to Jul 2026 (Lipidara)
+definition:
+  first_week: '2026-06-15'
+  last_week: '2026-07-13'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Marcus, I want an honest "not enough evidence yet," so that I never overclaim in front of leadership.
+given: a sustained regional gap with no driver visible in access, promotion, supply, competitor or feed data.
+when: the Lipidara (BXC) brief investigates.
+then: the story closes at Low confidence as "unresolved, investigate next," lists the checks run, and names no driver.
+reference_answer: 'Like for like (the seven territories that report in every week compared; Great Lakes is out because its 2026-07-06 feed fails), South Central BXC TRx averaged 17.0% below the four weeks before (2026-05-18 to 2026-06-08) while the other territories rose 0.6%, a gap of 17.6 points. Nothing in the context tables explains it: South Central rep calls averaged 27 a week (median 27) with no vacancy, no Lipidara plan changed tier, prior authorization or step therapy, inventory fill averaged 0.987, and every South Central feed passed. Metacora''s share there (13.0%) is within the range of the other territories (12.3% to 13.5%).'
+must_not_say:
+  text: '"South Central is down because of Metacora."'
+  phrases:
+  - South Central is down because of Metacora
+  semantic: []
+action: 'Marcus presents it as "still investigating." The brief tells him what to check next: plan and specialty splits, and local context from sales leadership.'
+eval_items:
+- EV-5.1
+- EV-5.2
+- EV-5.3
+facts:
+- id: sc_change_pct
+  role: must
+  value: -17.0
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-05-18' and DATE '2026-06-08' or week_start between DATE '2026-06-15' and DATE '2026-07-13') group by 1 having count(*) = 9 and count(*) filter (where health_status = 'PASS') = 9) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-06-15' and DATE '2026-07-13' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 5.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-05-18' and DATE '2026-06-08' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: other_territories_change_pct
+  role: must
+  value: 0.6
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-05-18' and DATE '2026-06-08' or week_start between DATE '2026-06-15' and DATE '2026-07-13') group by 1 having count(*) = 9 and count(*) filter (where health_status = 'PASS') = 9) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-06-15' and DATE '2026-07-13' and territory_id <> 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 5.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-05-18' and DATE '2026-06-08' and territory_id <> 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: sc_gap_points
+  role: context
+  value: 17.6
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-05-18' and DATE '2026-06-08' or week_start between DATE '2026-06-15' and DATE '2026-07-13') group by 1 having count(*) = 9 and count(*) filter (where health_status = 'PASS') = 9) select (100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-06-15' and DATE '2026-07-13' and territory_id <> 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 5.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-05-18' and DATE '2026-06-08' and territory_id <> 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) - 1)) - (100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-06-15' and DATE '2026-07-13' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 5.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-05-18' and DATE '2026-06-08' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) - 1))
+  reviewed: false
+- id: sc_bxc_rep_calls_per_week
+  role: context
+  value: 27
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTH_CENTRAL' and week_start between DATE '2026-06-15' and DATE '2026-07-13'
+  reviewed: false
+- id: sc_bxc_rep_calls_median
+  role: context
+  value: 27
+  sql: select median(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTH_CENTRAL'
+  reviewed: false
+- id: sc_bxc_vacancies
+  role: context
+  value: 0
+  sql: select sum(rep_vacancy_count_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTH_CENTRAL' and week_start between DATE '2026-06-15' and DATE '2026-07-13'
+  reviewed: false
+- id: sc_fill_rate_mean
+  role: context
+  value: 0.987
+  sql: select avg(inventory_fill_rate) from raw.inventory_weekly where product_id = 'BXC' and territory_id = 'SOUTH_CENTRAL' and week_start between DATE '2026-06-15' and DATE '2026-07-13'
+  reviewed: false
+- id: sc_metacora_share_pct
+  role: context
+  value: 13.0
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-06-15' and DATE '2026-07-13' and territory_id = 'SOUTH_CENTRAL'
+  reviewed: false
+- id: other_metacora_share_min_pct
+  role: context
+  value: 12.3
+  sql: select min(s) from (select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) s from reporting.v_weekly_rx_kpis where week_start between DATE '2026-06-15' and DATE '2026-07-13' and territory_id <> 'SOUTH_CENTRAL' group by territory_id)
+  reviewed: false
+- id: other_metacora_share_max_pct
+  role: context
+  value: 13.5
+  sql: select max(s) from (select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) s from reporting.v_weekly_rx_kpis where week_start between DATE '2026-06-15' and DATE '2026-07-13' and territory_id <> 'SOUTH_CENTRAL' group by territory_id)
+  reviewed: false
+findings:
+- id: south_central_unresolved
+  territory: SOUTH_CENTRAL
+  direction: down
+  drivers_supported: []
+  drivers_ruled_out:
+  - access
+  - promotion
+  - supply
+  - data
+  withheld: false
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P2-Q3

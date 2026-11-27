@@ -1,0 +1,118 @@
+id: C-034
+lane: briefing
+brand: BXC
+story: BXC-P1-Q2
+persona: P1 Commercial Analyst (Ace)
+category: data_artifact
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-05-04: Is this week''s data complete, and which cuts can''t I report?'
+review_note: null
+period: week of 2026-05-04
+anchor: New England incomplete feed, 2026-05-04 (Lipidara)
+definition:
+  first_week: '2026-05-04'
+  last_week: '2026-05-04'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Ace, I want feed problems found before drafting, so that I never write commentary on numbers that are wrong.
+given: New England fails the feed gate for 2026-05-04.
+when: the Lipidara (BXC) brief runs.
+then: the Bottom line says first that New England's feed is incomplete; The numbers gives a projected national with New England labelled as projected, an assumption from its panel coverage; What the data can't tell us names New England as not reportable with its reasons; every like-for-like figure states how many territories it covers; and no story is opened for New England.
+reference_answer: New England delivered 84 of 128 rows (44 missing keys), panel coverage 0.656 against a 0.98 floor, 10.29 days after week end against a 7-day target; status INCOMPLETE. Its observed BXC TRx of 214 compares with 365 to 404 in the four weeks before. Projected from its panel coverage, New England is about 326 (214 divided by 0.656), an assumption the brief labels as projected, and projected national BXC TRx is 4,277. The other seven territories pass.
+must_not_say:
+  text: '"New England BXC fell 45%."'
+  phrases:
+  - New England BXC fell 45%
+  semantic: []
+action: Ace leaves New England out of the commentary and adds it to next week's re-check list. The brief tells Ace to re-run New England when the reload lands and to disclose the restated week.
+eval_items:
+- EV-2.1
+- EV-2.3
+- EV-1.1
+facts:
+- id: ne_rows_observed
+  role: context
+  value: 84
+  sql: select observed_rows from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: false
+- id: ne_missing_keys
+  role: context
+  value: 44
+  sql: select missing_key_count from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: false
+- id: ne_panel_coverage
+  role: must
+  value: 0.656
+  sql: select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: false
+- id: ne_days_late
+  role: context
+  value: 10.29
+  sql: select actual_lag_days from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: false
+- id: ne_source_status
+  role: context
+  value: INCOMPLETE
+  sql: select source_status from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: false
+- id: ne_bxc_trx_observed
+  role: must
+  value: 214
+  sql: select (select sum(trx) from raw.rx_weekly where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND' and product_id = 'BXC')
+  reviewed: false
+- id: ne_prior_4wk_min
+  role: context
+  value: 365
+  sql: select min(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'NEW_ENGLAND' and week_start between DATE '2026-04-06' and DATE '2026-04-27' group by 1)
+  reviewed: false
+- id: ne_prior_4wk_max
+  role: context
+  value: 404
+  sql: select max(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'NEW_ENGLAND' and week_start between DATE '2026-04-06' and DATE '2026-04-27' group by 1)
+  reviewed: false
+- id: ne_projected_trx
+  role: must
+  value: 326
+  sql: select (select sum(trx) from raw.rx_weekly where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND' and product_id = 'BXC') / (select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND')
+  reviewed: false
+- id: national_projected_trx
+  role: must
+  value: 4277
+  sql: select (select sum(trx) from reporting.v_reportable_rx where week_start = DATE '2026-05-04' and product_id = 'BXC') + (select sum(trx) from raw.rx_weekly where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND' and product_id = 'BXC') / (select panel_coverage_ratio from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND')
+  reviewed: false
+- id: ne_expected_lag_days
+  role: context
+  value: 7
+  sql: select expected_lag_days from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: false
+- id: ne_expected_rows
+  role: context
+  value: 128
+  sql: select expected_rows from reporting.v_feed_health where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND'
+  reviewed: false
+- id: ne_naive_drop_pct
+  role: context
+  value: -45
+  sql: select 100.0 * ((select sum(trx) from raw.rx_weekly where week_start = DATE '2026-05-04' and territory_id = 'NEW_ENGLAND' and product_id = 'BXC') / (select avg(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'NEW_ENGLAND' and week_start between DATE '2026-04-06' and DATE '2026-04-27' group by 1)) - 1)
+  reviewed: false
+findings:
+- id: new_england_feed_incomplete
+  territory: NEW_ENGLAND
+  drivers_supported:
+  - data
+  drivers_ruled_out: []
+  withheld: true
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P1-Q2

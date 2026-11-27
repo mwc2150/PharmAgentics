@@ -1,0 +1,114 @@
+id: C-049
+lane: briefing
+brand: BXC
+story: BXC-P3-Q5
+persona: P3 Brand Director (Diana)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic: What should I do, and who should I loop in?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic
+anchor: Mid-Atlantic plan, competitor access change, Aug to Oct 2025 (Lipidara)
+definition:
+  first_week: '2025-08-04'
+  last_week: '2025-10-27'
+  comparison:
+    kind: custom
+    start: '2025-06-02'
+    end: '2025-07-28'
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Diana, I want next steps and the right function named, so that implications for sales, access and finance are not left implicit.
+given: a plan-level rise that came from a competitor's access change, shown only at plan and territory level.
+when: the Lipidara (BXC) brief writes next steps.
+then: it says "involve market access on the plan" and "involve sales leadership on Mid-Atlantic," and stays at territory level.
+reference_answer: 'Lipidara TRx on one Mid-Atlantic Medicare Part D plan rose 21.1% (162 to 197 TRx a week, Labor Day week left out) without any change on Lipidara''s side there: rep calls in Mid-Atlantic averaged 32 a week against 31 before, and Lipidara''s tier on the plan stayed at 3. The change on the plan was a competitor''s: Cardiovela (BXA) moved from tier 2 to tier 3 on 2025-08-01 and returned to tier 2 on 2025-11-01. The plan carries 26.0% of the territory''s covered lives. Next steps: involve market access on that plan (what Lipidara''s own formulary position is, and whether the competitor''s move will repeat) and sales leadership on Mid-Atlantic, at territory level.'
+must_not_say:
+  text: any line that points to one rep, or a claim that Lipidara's own access improved.
+  phrases:
+  - Lipidara access improved
+  semantic: []
+action: Diana asks market access about the plan and takes the finding into budget talks with P4.
+eval_items:
+- EV-7.3
+- EV-9.1
+facts:
+- id: plan_trx_before_per_week
+  role: must
+  value: 162
+  sql: select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28')
+  reviewed: false
+  needs: plan_cut
+- id: plan_trx_after_per_week
+  role: must
+  value: 197
+  sql: select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01')
+  reviewed: false
+  needs: plan_cut
+- id: plan_change_pct
+  role: must
+  value: 21.1
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+  needs: plan_cut
+- id: bxa_plan_tier_jul_2025
+  role: context
+  value: 2
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-07-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA'
+  reviewed: false
+  needs: plan_cut
+- id: bxa_plan_tier_aug_2025
+  role: context
+  value: 3
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-08-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA'
+  reviewed: false
+  needs: plan_cut
+- id: bxa_plan_tier_nov_2025
+  role: context
+  value: 2
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-11-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA'
+  reviewed: false
+  needs: plan_cut
+- id: bxc_plan_tier_aug_2025
+  role: context
+  value: 3
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-08-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXC'
+  reviewed: false
+  needs: plan_cut
+- id: plan_covered_lives_share_pct
+  role: context
+  value: 26.0
+  sql: select 100.0 * (select covered_lives_weight from raw.access_status_monthly where month = DATE '2025-08-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXC') / (select sum(covered_lives_weight) from raw.access_status_monthly where month = DATE '2025-08-01' and territory_id = 'MID_ATLANTIC' and product_id = 'BXC')
+  reviewed: false
+  needs: plan_cut
+- id: ma_bxc_rep_calls_per_week
+  role: context
+  value: 32
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01'
+  reviewed: false
+- id: ma_bxc_rep_calls_before_per_week
+  role: context
+  value: 31
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and week_start between DATE '2025-06-02' and DATE '2025-07-28'
+  reviewed: false
+findings:
+- id: mid_atlantic_plan_competitor_access
+  territory: MID_ATLANTIC
+  direction: up
+  drivers_supported:
+  - competitor
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+  cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1
+  needs: plan_cut
+source: docs/planning/user-stories-lipidara.md#BXC-P3-Q5

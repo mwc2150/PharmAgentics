@@ -1,0 +1,85 @@
+id: C-045
+lane: briefing
+brand: BXC
+story: BXC-P3-Q1
+persona: P3 Brand Director (Diana)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-04-27: What changed this week that I need to know about?'
+review_note: null
+period: week of 2026-04-27
+anchor: Metacora at 8 weeks, 2026-04-27 (Lipidara)
+definition:
+  first_week: '2026-04-27'
+  last_week: '2026-04-27'
+  comparison:
+    kind: pre_launch
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Diana, I want the two or three changes that matter at the top, so that I don't dig through a long report.
+given: a competitor launch eight weeks old and still gaining.
+when: the Lipidara (BXC) brief runs.
+then: the first story is Metacora's share gain and Lipidara's share loss, with both figures and the launch date.
+reference_answer: Eight weeks after launch, competitor Metacora (BXE) held 9.3% of the four-brand basket. Lipidara's share was 31.6%, down 3.8 points from 35.4% in the four weeks before launch (2026-02-02 to 2026-02-23). No Lipidara access change (none in the release) and no supply shortfall (fill 0.957 or higher) sits in that week.
+must_not_say:
+  text: a list of territory moves with the competitor story buried below them.
+  phrases: []
+  semantic: []
+action: Diana raises competitive response at the leadership meeting. The brief tells her to loop in sales and marketing.
+eval_items:
+- EV-3.1
+- EV-3.3
+facts:
+- id: metacora_share_pct
+  role: must
+  value: 9.3
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-04-27' and DATE '2026-04-27'
+  reviewed: false
+- id: bxc_share_pct
+  role: must
+  value: 31.6
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-04-27' and DATE '2026-04-27'
+  reviewed: false
+- id: bxc_share_pre_launch_pct
+  role: must
+  value: 35.4
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-02-02' and DATE '2026-02-23'
+  reviewed: false
+- id: bxc_share_drop_points
+  role: context
+  value: 3.8
+  sql: select (select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-02-02' and DATE '2026-02-23') - (select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-04-27' and DATE '2026-04-27')
+  reviewed: false
+- id: bxc_min_fill_rate_week
+  role: context
+  value: 0.957
+  sql: select min(inventory_fill_rate) from raw.inventory_weekly where product_id = 'BXC' and week_start = DATE '2026-04-27'
+  reviewed: false
+- id: bxc_access_changes_in_release
+  role: context
+  value: 0
+  sql: select count(*) from (select plan_id, month, formulary_tier, lag(formulary_tier) over w pt, prior_authorization pa, lag(prior_authorization) over w ppa, step_therapy st, lag(step_therapy) over w pst, covered c, lag(covered) over w pc from raw.access_status_monthly where product_id = 'BXC' window w as (partition by plan_id order by month)) where pt is not null and (formulary_tier <> pt or pa <> ppa or st <> pst or c <> pc)
+  reviewed: false
+findings:
+- id: national_metacora_share_gain
+  territory: NATIONAL
+  direction: down
+  drivers_supported:
+  - competitor
+  drivers_ruled_out:
+  - access
+  - promotion
+  - supply
+  withheld: false
+  reviewed: false
+  measure: bxa_share
+source: docs/planning/user-stories-lipidara.md#BXC-P3-Q1

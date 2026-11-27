@@ -1,0 +1,75 @@
+id: C-050
+lane: briefing
+brand: BXC
+story: BXC-P3-Q6
+persona: P3 Brand Director (Diana)
+category: data_artifact
+scenario: null
+split: dev
+status: draft
+question: 'Brief of 2026-07-13: Can I quote these numbers in my leadership meeting?'
+review_note: null
+period: brief of 2026-07-13
+anchor: No Lipidara restatement, brief of 2026-07-13 (Lipidara)
+definition:
+  first_week: '2026-07-13'
+  last_week: '2026-07-13'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Diana, I want numbers that will not be corrected later, so that my credibility holds upward.
+given: a brief for a week after a failed feed, with no restatement of any Lipidara number.
+when: the next Lipidara (BXC) brief runs.
+then: it quotes the KPI table without a correction note, any like-for-like figure built on 7 territories says so, and the projected national labels a projected or estimated territory as an assumption instead of leaving it out.
+reference_answer: 'No Lipidara figure has been restated: the restatement log holds no row for BXC. Projected national BXC TRx for the week of 2026-07-13 is 3,830, with every territory observed (8 of 8 pass). The like-for-like change against the four weeks before (2026-06-15 to 2026-07-06) is 6.1% down and covers 7 of 8 territories, because Great Lakes failed its checks for 2026-07-06. Three weeks in the release have one failed territory cut (2026-04-06, 2026-05-04, 2026-07-06); their projected national labels that territory as projected or estimated, an assumption, instead of leaving it out.'
+must_not_say:
+  text: a restatement note for a Lipidara number that was not restated, or a like-for-like change that does not say it covers 7 of 8 territories.
+  phrases:
+  - Lipidara was restated
+  semantic: []
+action: Diana quotes only from the KPI table. The brief tells her no earlier Lipidara figure changed.
+eval_items:
+- EV-1.1
+- EV-1.2
+facts:
+- id: national_bxc_trx_0713
+  role: must
+  value: 3830
+  sql: select sum(trx) from reporting.v_reportable_rx where week_start = DATE '2026-07-13' and product_id = 'BXC'
+  reviewed: false
+- id: territories_passing_0713
+  role: context
+  value: 8
+  sql: select count(*) from reporting.v_feed_health where week_start = DATE '2026-07-13' and health_status = 'PASS'
+  reviewed: false
+- id: like_for_like_territories
+  role: context
+  value: 7
+  sql: select count(distinct territory_id) from reporting.v_feed_health h where week_start between DATE '2026-06-15' and DATE '2026-07-13' and not exists (select 1 from reporting.v_feed_health f where f.territory_id = h.territory_id and f.week_start between DATE '2026-06-15' and DATE '2026-07-13' and f.health_status <> 'PASS')
+  reviewed: false
+- id: like_for_like_change_pct
+  role: must
+  value: -6.1
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-06-15' and DATE '2026-07-06' or week_start between DATE '2026-07-13' and DATE '2026-07-13') group by 1 having count(*) = 5 and count(*) filter (where health_status = 'PASS') = 5) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-07-13' and DATE '2026-07-13' and territory_id in (select territory_id from ok)) / 1.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-06-15' and DATE '2026-07-06' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: gl_week_0706_flag
+  role: context
+  value: FLAG
+  sql: select health_status from reporting.v_feed_health where week_start = DATE '2026-07-06' and territory_id = 'GREAT_LAKES'
+  reviewed: false
+- id: bxc_restatement_rows
+  role: context
+  value: 0
+  sql: select count(*) from raw.restatement_log where product_id = 'BXC'
+  reviewed: false
+findings: []
+source: docs/planning/user-stories-lipidara.md#BXC-P3-Q6

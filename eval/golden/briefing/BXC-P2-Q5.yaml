@@ -1,0 +1,81 @@
+id: C-043
+lane: briefing
+brand: BXC
+story: BXC-P2-Q5
+persona: P2 Insights Manager (Marcus)
+category: data_artifact
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-04-06, Mid-Atlantic: If someone challenges a claim, can I show the evidence behind it?'
+review_note: null
+period: week of 2026-04-06, Mid-Atlantic
+anchor: Mid-Atlantic withheld, no Lipidara restatement (Lipidara)
+definition:
+  first_week: '2026-04-06'
+  last_week: '2026-04-06'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Marcus, I want every claim answered against the numbers as they stood at sign-off, so that a challenge does not mean rebuilding the analyst's work.
+given: a challenge to a Lipidara figure for a week where the territory's cut was withheld.
+when: someone challenges the April number.
+then: its evidence link opens the gated view on the pinned snapshot, shows Mid-Atlantic as withheld, and the restatement record shows no BXC row, so no restated figure is quoted.
+reference_answer: 'Mid-Atlantic''s cut for the week of 2026-04-06 is withheld for restatement review, so national BXC TRx is 3,892 across 7 of 8 territories, with no Mid-Atlantic figure in it. No Lipidara figure was restated: the restatement log holds no row for BXC, and none for Mid-Atlantic that week. The only restatement in the release belongs to another product. A challenge to a Mid-Atlantic Lipidara number for that week is answered with the withheld flag, not with a restated value.'
+must_not_say:
+  text: '"Lipidara Mid-Atlantic TRx was restated", or any Mid-Atlantic BXC figure for that week.'
+  phrases:
+  - Lipidara Mid-Atlantic TRx was restated
+  semantic: []
+action: 'Marcus answers on the spot: the Mid-Atlantic cut was withheld, and nothing was restated for Lipidara.'
+eval_items:
+- EV-6.2
+- EV-1.2
+facts:
+- id: national_bxc_trx
+  role: must
+  value: 3892
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2026-04-06'
+  reviewed: false
+- id: territories_reporting
+  role: context
+  value: 7
+  sql: select count(distinct territory_id) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2026-04-06'
+  reviewed: false
+- id: mid_atlantic_flag
+  role: context
+  value: RESTATEMENT_REVIEW
+  sql: select flag_reasons from reporting.v_feed_health where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC'
+  reviewed: false
+- id: bxc_restatement_rows
+  role: context
+  value: 0
+  sql: select count(*) from raw.restatement_log where product_id = 'BXC'
+  reviewed: false
+- id: bxc_restatement_rows_mid_atlantic_apr06
+  role: context
+  value: 0
+  sql: select count(*) from raw.restatement_log where week_start = DATE '2026-04-06' and territory_id = 'MID_ATLANTIC' and product_id = 'BXC'
+  reviewed: false
+- id: restated_products_in_release
+  role: context
+  value: 1
+  sql: select count(distinct product_id) from raw.restatement_log
+  reviewed: false
+findings:
+- id: mid_atlantic_restatement_withheld
+  territory: MID_ATLANTIC
+  drivers_supported: []
+  drivers_ruled_out: []
+  withheld: true
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P2-Q5
