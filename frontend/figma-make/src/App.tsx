@@ -1406,19 +1406,26 @@ function InsightsApp({me}: {me: Me}) {
     try { const b = await openBrief(id, "analyst"); if (t === token.current) setOpened(b) }
     catch(e) { if (t === token.current) setError(message(e)) } finally { if (t === token.current) setLoading(false) }
   }
-  const close = () => { token.current++; setOpened(null); setError(null); setLoading(false) }
-  return <Shell me={me} onBriefingHome={close}>
+  const close = () => { token.current++; setOpened(null); setError(null); setLoading(false); setChip(null) }
+  // Follow-ups (Michael, 2026-11-27): P2 asks about the brief being signed off, in P2's own thread, as the analyst does.
+  // The bar's offer to start a new brief is left out: P2 does not run briefs.
+  const [dock,setDock] = useState<HTMLElement | null>(null)
+  const [chip,setChip] = useState<Chip | null>(null)
+  const [barEvidence,setBarEvidence] = useState<{id: string} | null>(null)
+  return <Shell me={me} onBriefingHome={close}><FeedbackDock slot={dock}>
     <div className="workspace-content space-y-6 py-8 sm:py-10">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : opened || loading || error ? <>
         <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={close}><Icon name="back"/>All briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <Notice tone="error" role="alert">{error}</Notice>}
-        {opened && <AnalystBrief reviewer="insights" stepsFolded result={opened} onChange={setOpened}/>}
+        {opened && <AnalystBrief reviewer="insights" stepsFolded result={opened} onChange={setOpened} onAsk={setChip} openEvidence={barEvidence}/>}
       </> : <><Greeting/><IntroWithHow>Briefings the Commercial Analyst has sent you. Read the evidence, then sign a briefing off for the Brand Director and the Marketer, or return it with a comment.</IntroWithHow>
         <div className="flex justify-end"><ClassLabel tab="briefing.signoff"/></div>
         <QueueList mode="insights" onOpen={id=>void open(id)}/></>}
     </div>
-  </Shell>
+    {opened && <div className="pa-bars workspace-content sticky bottom-0 z-20"><div ref={setDock} className="pa-dock"/>
+      <MessageBar key={opened.brief_id} briefId={opened.brief_id} pending={false} chip={chip} onClearChip={()=>setChip(null)} onOpenEvidence={id=>setBarEvidence({id})}/></div>}
+  </FeedbackDock></Shell>
 }
 
 export default function App() {
