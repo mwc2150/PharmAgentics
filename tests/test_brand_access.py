@@ -145,7 +145,7 @@ def test_approval_and_leadership_access_are_also_brand_checked(bxc):
 @needs_db
 def test_saved_brief_reviews_threads_links_and_votes_do_not_leak(bxc):
     a, b = signed_in("dev-analyst-multibrand"), signed_in("dev-analyst")
-    assert a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Restate Lipidara's bottom line"}).status_code == 200
+    assert a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Restate the bottom line"}).status_code == 200
     saved = a.post(f"/api/briefing/{bxc}/thread/save").json()
     for path in (f"/api/briefing/{bxc}", f"/api/briefing/{bxc}/thread", saved["share_path"]):
         denied = b.get(path)
@@ -211,7 +211,7 @@ def test_agent_worker_and_result_admission_refuse_a_different_brand():
 def test_bxc_agent_followup_cannot_call_the_bxa_agent(bxc):
     a = signed_in("dev-analyst-multibrand")
     with patch("pharmagentics.api.agent_host.model") as model:
-        assert a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Explain the change", "engine": "agent"}).status_code == 400
+        assert a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Explain the change"}).status_code == 409  # free text needs the agent, which BXC lacks
         model.assert_not_called()
 
 

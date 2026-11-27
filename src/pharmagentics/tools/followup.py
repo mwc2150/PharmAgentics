@@ -1,6 +1,7 @@
 """Scripted follow-ups on a brief (brief-006 FR-004; Session 2026-11-20). No model, no new query.
 
-The scripted engine answers only from the brief it is asked about: its sections, claims and evidence. In order:
+The scripted engine answers only from the brief it is asked about: its sections, claims and evidence. It serves the
+suggested questions (chips); free text goes to the agent when a model is configured (threads.py, 2026-11-27). In order:
 
 1. which section: the pinned chip, else "§3.1" in the text, else the Bottom line;
 2. out of scope (another territory with no story here, another product, another week): say what the brief covers
@@ -36,6 +37,12 @@ SUGGESTIONS = {  # per section kind, phrased so the scripted engine can answer t
     "4": ["Why is a cut withheld?", "Restate the data limits"],
     "5": ["Who owns the next checks?", "Restate the next checks"],
 }
+
+
+def is_suggested(question: str) -> bool:
+    """True when the question is one of the code-written suggestions (a chip), so the scripted engine answers it."""
+    asked = " ".join((question or "").split()).lower()
+    return any(asked == " ".join(t.split()).lower() for texts in SUGGESTIONS.values() for t in texts)
 
 
 def suggestions(sections: list[dict]) -> dict[str, list[str]]:
@@ -161,7 +168,7 @@ def answer(result: dict, question: str, section: str | None = None) -> dict:
     if NEW_NUMBER.search(text):
         return {**base, "kind": "not_in_brief", "cited": [ref], "offer": {"agent": True},
                 "answer": f"That number is not in this brief. The scripted engine answers only from the brief's own "
-                          f"numbers (§{ref} {s['title']}); ask the agent to run a new query."}
+                          f"numbers (§{ref} {s['title']}); where the agent is configured, type the question to run a new query."}
 
     claims, evidence = _pick(result, s.get("claims") or [])
     body = "\n".join(x for x in (s.get("text"), s.get("prose")) if x)

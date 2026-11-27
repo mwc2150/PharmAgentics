@@ -43,6 +43,8 @@ Rules:
 - Cite the section you answer about as "§3.1" (only sections listed below).
 - For a split by plan, specialty or channel, call split_change. Never generalize from a cut marked noisy.
 - The brief's sections are final: a check you rerun now confirms or adds detail; it does not reopen a story.
+- If neither the sections nor the tools can answer the question, say so plainly in one sentence and name what the brief
+  does cover. Never restate a section as if it answered a question it does not.
 - One to four short sentences. Use only what the tools and sections say. Causal words only for a High story.
 - Never name or number an individual rep. Say "competitive intelligence", never "surveillance". "New patients" only
   for NBRx. Never name a driver for a territory the brief marks as projected or estimated.

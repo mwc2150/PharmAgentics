@@ -35,22 +35,25 @@ def analyst() -> TestClient:
 
 
 @needs_db
-def test_the_agent_engine_needs_the_app_to_run_the_agent(monkeypatch):
+def test_free_text_needs_the_app_to_run_the_agent(monkeypatch):
     a = analyst()
     bid = a.post("/api/briefing/query", json=SCOPE).json()["brief_id"]
     monkeypatch.setattr(agent_host, "model", lambda: None)
-    r = a.post(f"/api/briefing/{bid}/thread/ask", json={"question": "Split this by plan", "engine": "agent"})
-    assert r.status_code == 409 and "not available" in r.json()["detail"]
+    r = a.post(f"/api/briefing/{bid}/thread/ask", json={"question": "Why did the Pacific territory move so much?"})
+    assert r.status_code == 409 and r.json()["detail"] == threads.NO_FREE_TEXT
+    t = a.get(f"/api/briefing/{bid}/thread").json()
+    assert t["turns"] == [] and t["free_text"] is False and t["free_text_reason"] == threads.NO_FREE_TEXT
 
 
 @needs_db
 def test_an_agent_timeout_is_shown_and_keeps_no_answer(monkeypatch):
     a = analyst()
     bid = a.post("/api/briefing/query", json=SCOPE).json()["brief_id"]
+    monkeypatch.setattr(agent_host, "model", lambda: "anthropic:test")
     monkeypatch.setattr(threads, "_agent_answer", lambda result, q, s: {
         "answer": "Didn't finish in time; nothing was guessed.", "error": "timeout", "seconds": 60.0,
         "claims": [], "evidence": [], "cited": [], "kind": "timeout", "engine": "agent"})
-    r = a.post(f"/api/briefing/{bid}/thread/ask", json={"question": "Split this by plan", "engine": "agent"})
+    r = a.post(f"/api/briefing/{bid}/thread/ask", json={"question": "Split the change by payer type"})
     assert r.status_code == 504 and "nothing was guessed" in r.json()["detail"]
     assert a.get(f"/api/briefing/{bid}/thread").json()["turns"] == []  # FR-010: no answer text stored
 
