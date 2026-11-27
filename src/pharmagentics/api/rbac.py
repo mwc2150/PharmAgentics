@@ -17,7 +17,7 @@ from pathlib import Path
 from fastapi import HTTPException, Request
 
 POLICY_FILE = Path(__file__).with_name("roles.json")
-ANALYST, LEADERSHIP = "analyst", "leadership"
+ANALYST, LEADERSHIP, INSIGHTS, MARKETER = "analyst", "leadership", "insights", "marketer"
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,7 @@ class Role:
     label: str
     views: tuple[str, ...]
     actions: tuple[str, ...]
+    states: tuple[str, ...] = ()  # Briefing: the review states of a brief this role may list and open (brief-005)
 
 
 @lru_cache(maxsize=1)
@@ -36,8 +37,13 @@ def policy() -> dict:
 
 
 def roles() -> dict[str, Role]:
-    return {name: Role(name, r["lane"], r["persona"], r["label"], tuple(r["views"]), tuple(r["actions"]))
+    return {name: Role(name, r["lane"], r["persona"], r["label"], tuple(r["views"]), tuple(r["actions"]), tuple(r.get("states", ())))
             for name, r in policy()["roles"].items()}
+
+
+def test_views() -> dict[str, dict[str, str]]:
+    """What the test login can look at: each choice names the persona it acts as in each lane (a lane with none is absent)."""
+    return (policy().get("test_role") or {}).get("views", {})
 
 
 def test_role() -> str | None:
@@ -58,7 +64,7 @@ class Principal:
     sub: str
     name: str
     role_names: tuple[str, ...]
-    view_as: str = ANALYST  # the test login only: which side of each lane it is looking at
+    view_as: str = ANALYST  # the test login only: which persona it is looking at (a key of test_views())
     brand_grants: tuple[str, ...] = ()
 
     @property
@@ -68,13 +74,10 @@ class Principal:
     def role(self, lane: str) -> Role | None:
         """The user's role in a lane. Roles not in the policy are ignored; if a user holds two roles
         in one lane by mistake, the more restricted one (fewer views) applies. The test login gets the
-        lane's analyst role or its leadership role, whichever it has chosen to view as."""
+        lane's role of the persona it has chosen to view as (none if the lane has no such persona)."""
         if self.is_tester:
-            lane_roles = [r for r in roles().values() if r.lane == lane]
-            if not lane_roles:
-                return None
-            pick = max if self.view_as == ANALYST else min
-            return pick(lane_roles, key=lambda r: (len(r.views), r.name))
+            persona = test_views().get(self.view_as, {}).get(lane)
+            return next((r for r in roles().values() if r.lane == lane and r.persona == persona), None)
         known = [r for n, r in roles().items() if n in self.role_names and r.lane == lane]
         return min(known, key=lambda r: (len(r.views), r.name)) if known else None
 
@@ -91,7 +94,7 @@ def principal(request: Request) -> Principal | None:
     user = request.session.get("user")
     if not user:
         return None
-    view_as = LEADERSHIP if user.get("view_as") == LEADERSHIP else ANALYST
+    view_as = user.get("view_as") if user.get("view_as") in test_views() else ANALYST
     return Principal(user["sub"], user.get("name", ""), tuple(user.get("roles", [])), view_as,
                      tuple(user.get("brand_grants", [])))
 
@@ -120,6 +123,11 @@ def require_forecast(request: Request) -> tuple[Principal, Role]:
 
     require_brand(p, "BXA")  # the current Forecast series and investigator are BXA-only
     return p, role
+
+
+def can_evaluate(p: Principal) -> bool:
+    """The Evaluation page: analysts (P1, CA), the Insights Manager (P2) and the test login. Not P3, P4 or BM."""
+    return p.is_tester or any("evaluation" in r.actions for r in p.lanes)
 
 
 def allow(role: Role, action: str) -> None:

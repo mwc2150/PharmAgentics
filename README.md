@@ -10,11 +10,13 @@ A multi-agent AI platform that helps pharma commercial teams see what moved a br
 
 | Login | Password | Role |
 | :- | :- | :- |
-| `uat-briefing-analyst` | `1kS0UoPCUFR9aqw4` | Commercial Analyst (P1), Weekly briefing |
-| `uat-briefing-director` | `J41a1R8lgkZUmkv2` | Brand Director (P3), Weekly briefing |
+| `uat-briefing-analyst` | `1kS0UoPCUFR9aqw4` | Commercial Analyst (P1), Weekly briefing: runs a brief and sends it for sign-off |
+| `uat-briefing-insights` | `Potk5cY8snyayrHb` | Insights Manager (P2), Weekly briefing: signs a brief off or returns it |
+| `uat-briefing-director` | `J41a1R8lgkZUmkv2` | Brand Director (P3), Weekly briefing: signed-off briefs only |
+| `uat-briefing-marketer` | `mZIJQCNASQgmhUXz` | Marketer (P4), Weekly briefing: signed-off briefs only |
 | `uat-forecast-analyst` | `UHzTdiSH0hPIHmnC` | Commercial Analytics Analyst (CA), Forecast explanation |
 | `uat-forecast-manager` | `eIaf0-YtGvg7nPca` | Brand Manager (BM), Forecast explanation |
-| `uat-tester` | `BjpYK5HgqNCObxxL` | Test view: both lanes; "View as" in the account menu switches between Analyst (P1, CA) and Leadership (P3, BM) |
+| `uat-tester` | `BjpYK5HgqNCObxxL` | Test view: both lanes; "View as" in the account menu switches between Analyst (P1, CA), Insights Manager (P2), Leadership (P3, BM) and Marketer (P4) |
 
 The same passwords work on the local stack (`deploy/make_env.py`, then `docker compose up --build`); they come from [`deploy/demo-credentials.env`](deploy/demo-credentials.env). They are shared on purpose: this is a class project on synthetic data. The service secrets in `deploy/.env.uat` are not, so keep that file out of git.
 
@@ -22,7 +24,7 @@ If you ran `env-pull` on 2026-11-19, run it again to get the right worker token:
 
 ## v1 at a glance
 
-**Weekly briefing agent (Briefing lane).** An analyst picks a brand, a period and what to compare with, or types a question and lets the app read it into those choices. The agent team (Manager, Data Forensics, Driver Investigator, Writer) triages the changes, investigates the ones the analyst approves, and writes a memo of two pages at most: a KPI strip, a territory table, story cards with the drivers supported and ruled out, and the assumptions. Every number is a claim token filled by code from a governed query, so no digit comes from a language model. The analyst reviews and approves; the brand director sees an executive summary of approved briefings only.
+**Weekly briefing agent (Briefing lane).** An analyst picks a brand, a period and what to compare with, or types a question and lets the app read it into those choices. The agent team (Manager, Data Forensics, Driver Investigator, Writer) triages the changes, investigates the ones the analyst approves, and writes a memo of two pages at most: a KPI strip, a territory table, story cards with the drivers supported and ruled out, and the assumptions. Every number is a claim token filled by code from a governed query, so no digit comes from a language model. The analyst reviews and sends the memo for sign-off; the Insights Manager signs it off or returns it with a comment; the brand director and the marketer see an executive summary of signed-off briefings only.
 
 **Forecast explanation agent (Forecast lane).** An analyst asks why the forecast missed. The agent reads the question into a scope, confirms it with the analyst, then splits the miss into driver contributions plus a residual that is reported, never absorbed into a driver. It can split an unexplained gap by channel, specialty and plan, chart its findings, answer follow-ups, and draft a report from pinned findings that the brand manager reviews. Code does all the arithmetic; the model only reads the question and words the result.
 

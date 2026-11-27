@@ -29,7 +29,7 @@ def test_real_weekly_briefing_end_to_end(monkeypatch, tmp_path):
     body = response.json()
     assert body["system"] == "briefing_scripted"
     assert body["status"] == "draft_requires_review"
-    assert body["review_status"] == "pending"  # stored for the analyst's review (core-007)
+    assert body["review_status"] == "draft"  # stored for the analyst's review (core-007)
     assert "2026-06-08" in body["answer"]
     assert body["claims"] and body["evidence"]
     evidence = {item["id"]: item for item in body["evidence"]}
@@ -38,4 +38,4 @@ def test_real_weekly_briefing_end_to_end(monkeypatch, tmp_path):
         assert claim["evidence_id"] in evidence
         assert evidence[claim["evidence_id"]]["data_version"] == body["data_version"]
     # Running a brief never approves it; only the analyst's review does (core-007 FR-009).
-    assert body["review_status"] == "pending"
+    assert body["review_status"] == "draft"

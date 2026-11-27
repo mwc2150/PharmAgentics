@@ -8,8 +8,9 @@ Set PHARMAGENTICS_STATIC_DIR to a built frontend (vite build output) to serve th
 UI from the same origin as the API; the container image does this (core-007 FR-017).
 
 Every data route needs a signed-in user with a Briefing role. The server decides the view:
-the Commercial Analyst (P1) gets the analyst view and may preview the leadership view; the
-Brand Director (P3) gets only the leadership view, only of briefs the analyst approved.
+the Commercial Analyst (P1) gets the analyst view, runs briefs and sends them for sign-off; the
+Insights Manager (P2) reads the analyst view and signs a brief off or returns it; the Brand
+Director (P3) and the Marketer (P4) get only the leadership view, only of signed-off briefs.
 """
 from __future__ import annotations
 
@@ -29,8 +30,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_host, auth, security_headers, brand_access, classification, cloud, feedback, forecast, jobs, overview, rbac, service, store, telemetry, views
-from .schemas import (AgentJobRequest, BriefingQuery, BriefingScope, BriefingScopeRequest, InsightMark, ReleaseContext, ReviewRequest, ViewAs, WorkerPoll,
-                      WorkerProgress, WorkerResult)
+from . import signoff
+from .schemas import (AgentJobRequest, BriefingQuery, BriefingScope, BriefingScopeRequest, InsightMark, ReleaseContext, ReviewRequest, SignoffRequest,
+                      ViewAs, WorkerPoll, WorkerProgress, WorkerResult)
 from pharmagentics.tools import events as events_mod
 
 logger = logging.getLogger(__name__)
@@ -141,12 +143,13 @@ def me(response: Response, p: rbac.Principal = Depends(rbac.require_user)) -> di
                       "actions": list(r.actions), "available": rbac.lane_available(r.lane)
                       and (r.lane != "forecast" or "BXA" in brand_access.allowed_brands(p))} for r in p.lanes}
     return {"name": p.name, "username": p.sub, "auth_mode": auth.mode(), "lanes": lanes, "brand_ids": sorted(brand_access.allowed_brands(p)),
-            "tester": p.is_tester, "view_as": p.view_as if p.is_tester else None}
+            "evaluation": rbac.can_evaluate(p), "tester": p.is_tester, "view_as": p.view_as if p.is_tester else None}
 
 
 @app.post("/api/me/view-as", tags=["app"])
 def view_as(body: ViewAs, request: Request, response: Response, p: rbac.Principal = Depends(rbac.require_user)) -> dict:
-    """The test login switches between the analyst roles (P1, CA) and the leadership roles (P3, BM) of both lanes."""
+    """The test login switches between the analyst roles (P1, CA), the Insights Manager (P2), the leadership roles (P3, BM)
+    and the Marketer (P4). P2 and P4 exist in Briefing only, so the Forecast lane drops out in those two views."""
     if not p.is_tester:
         raise HTTPException(status_code=403, detail="Only the test login can switch views.")
     request.session["user"] = {**request.session["user"], "view_as": body.view}
@@ -241,13 +244,38 @@ async def briefing_query(payload: BriefingQuery, response: Response, who=Briefin
 
 @app.get("/api/briefing/published", tags=["briefing"])
 async def published(response: Response, who=Briefing) -> list[dict]:
-    """Analyst-approved briefs on the current data version (FR-009), as leadership summaries' headers."""
+    """Signed-off briefs on the current data version (FR-009), as leadership summaries' headers. `reviewed_at` is when
+    the Insights Manager signed it off (a brief approved before sign-off existed keeps its approval time)."""
     p, role = who
     rbac.allow(role, "read")
     _no_store(response)
     version = await run_in_threadpool(service.current_data_version)
-    return [{k: views.leadership(r)[k] for k in ("brief_id", "brand_id", "week_start", "week_end", "territory_id", "engine", "reviewed_at", "abstained")}
+    return [{k: views.leader_payload(r, role.persona)[k] for k in ("brief_id", "brand_id", "week_start", "week_end", "territory_id", "engine", "reviewed_at", "abstained")}
             for r in store.approved(version, brand_access.allowed_brands(p))]
+
+
+@app.get("/api/briefing/queue", tags=["briefing"])
+async def queue(response: Response, who=Briefing) -> list[dict]:
+    """The sign-off queue on the current data version. The Insights Manager (P2) gets the briefs sent for sign-off,
+    those returned and those signed off; the analyst (P1) gets the ones waiting on P2 and the ones returned to them.
+    Anyone else is refused. Rows carry no evidence."""
+    p, role = who
+    if "signoff" in role.actions:
+        states = set(role.states)
+    elif "review" in role.actions:
+        states = {signoff.SENT, signoff.RETURNED}
+    else:
+        raise HTTPException(status_code=403, detail=f"The {role.label} role has no sign-off queue.")
+    _no_store(response)
+    version = await run_in_threadpool(service.current_data_version)
+    rows = []
+    for r in store.listed(states, version, brand_access.allowed_brands(p)):
+        note = signoff.returned_note(r)
+        rows.append({**{k: r["result"].get(k) for k in ("brand_id", "week_start", "week_end", "territory_id", "engine", "abstained")},
+                     "brief_id": r["brief_id"], "review_status": signoff.state_of(r), "sent_at": r.get("reviewed_at"),
+                     "signed_off_at": r.get("signed_off_at"), "returned_at": note["at"] if note else None})
+    order = {signoff.SENT: 0, signoff.RETURNED: 1, signoff.SIGNED_OFF: 2}
+    return sorted(rows, key=lambda x: order[x["review_status"]])
 
 
 @app.get("/api/briefing/{brief_id}", tags=["briefing"])
@@ -258,28 +286,67 @@ async def open_brief(brief_id: str, response: Response, view: str | None = Query
     chosen = rbac.view_for(role, view)
     record = brand_access.brief_for(p, role, brief_id)
     store.record_event("opened", **_who(p, role), brief_id=brief_id, view=chosen)
-    return views.analyst(record) if chosen == rbac.ANALYST else views.leadership(record)
+    return views.analyst(record) if chosen == rbac.ANALYST else views.leader_payload(record, role.persona)
+
+
+def _moved(record: dict, p: rbac.Principal, role: rbac.Role, action: str, **fields) -> None:
+    """The UAT event of one review transition: who, in which role, to which state."""
+    store.record_event("reviewed", **_who(p, role), brief_id=record["brief_id"], decision=signoff.DONE[action],
+                       state=signoff.state_of(record), **fields)
 
 
 @app.post("/api/briefing/{brief_id}/review", tags=["briefing"])
 async def review(brief_id: str, decision: ReviewRequest, response: Response, who=Briefing) -> dict:
+    """P1's decision: send the brief for sign-off, or reject it (brief-005). Who may do what from which state is signoff.py's table."""
     p, role = who
     rbac.allow(role, "review")
     _no_store(response)
-    brand_access.brief_for(p, role, brief_id)
-    if decision.decision == "rejected" and not decision.reason:
+    action = "send" if decision.decision == "sent" else "reject"
+    earlier = brand_access.brief_for(p, role, brief_id)
+    signoff.require(role, earlier, action)
+    if action == "reject" and not decision.reason:
         raise HTTPException(status_code=422, detail="A rejection needs a reason.")
-    earlier = store.get_brief(brief_id)
-    first_decision = bool(earlier) and not earlier.get("reviewed_at")
+    first_decision = not earlier.get("reviewed_at")
     try:
-        record = store.set_review(brief_id, decision.decision, decision.reason, by=rbac.pseudonym(p.sub))
+        record = store.move(brief_id, action, by=rbac.pseudonym(p.sub), persona=role.persona, comment=decision.reason)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="No such briefing.") from exc
-    store.record_event("reviewed", **_who(p, role), brief_id=brief_id, decision=decision.decision, reason=decision.reason)
-    # core-007 FR-025 (2026-11-23): the analyst's first approve or reject is the moment they have what they need, so
+    _moved(record, p, role, action, reason=decision.reason)
+    # core-007 FR-025 (2026-11-23): the analyst's first send or reject is the moment they have what they need, so
     # it records the insight time, once per brief; the separate "I have what I need" button is gone from the app.
     if first_decision:
         store.record_event("insight", **_who(p, role), brief_id=brief_id, view="analyst")
+    return views.analyst(record)
+
+
+@app.post("/api/briefing/{brief_id}/signoff", tags=["briefing"])
+async def sign_off(brief_id: str, decision: SignoffRequest, response: Response, who=Briefing) -> dict:
+    """P2's decision on a brief sent for sign-off: sign it off (it then reaches P3 and P4, frozen) or return it to P1 with a
+    comment and, optionally, flags on single claims (brief-005; Session 2026-11-27). Both steps stay in the brief's trail."""
+    p, role = who
+    rbac.allow(role, "signoff")
+    _no_store(response)
+    action = "sign_off" if decision.decision == "signed_off" else "return"
+    earlier = brand_access.brief_for(p, role, brief_id)
+    signoff.require(role, earlier, action)
+    flags: list[dict] = []
+    if action == "return":
+        if not decision.comment:
+            raise HTTPException(status_code=422, detail="Returning a briefing needs a comment.")
+        claims = earlier["result"].get("claims") or []
+        if len({f.claim for f in decision.flags}) != len(decision.flags):
+            raise HTTPException(status_code=422, detail="Each claim can be flagged once.")
+        for f in decision.flags:
+            if f.claim >= len(claims):
+                raise HTTPException(status_code=422, detail=f"The briefing has no claim {f.claim}.")
+            flags.append({"claim": f.claim, "value": claims[f.claim]["value"], "evidence_id": claims[f.claim]["evidence_id"], "note": f.note})
+    elif decision.flags:
+        raise HTTPException(status_code=422, detail="Flags go with a return, not a sign-off.")
+    try:
+        record = store.move(brief_id, action, by=rbac.pseudonym(p.sub), persona=role.persona, comment=decision.comment, flags=flags)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="No such briefing.") from exc
+    _moved(record, p, role, action, comment=decision.comment, flags=len(flags))
     return views.analyst(record)
 
 

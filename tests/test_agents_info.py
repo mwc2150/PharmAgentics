@@ -40,7 +40,7 @@ def test_the_analyst_reads_each_prompt_verbatim():
         assert p["ref"] == f"{pid}@{p['hash']}" and len(p["hash"]) == 7
 
 
-@pytest.mark.parametrize("user", ["dev-director", "dev-director-multibrand"])
+@pytest.mark.parametrize("user", ["dev-director", "dev-marketer"])
 def test_a_leader_gets_the_actors_and_no_prompt(user):
     r = signed_in(user).get("/api/briefing/agents")
     assert r.status_code == 200

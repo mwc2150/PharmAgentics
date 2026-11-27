@@ -1,6 +1,6 @@
 {
   "_comment": "Data classification per tab and view (core-009). Version 1 is labels only: nothing here changes access, which core-007 (roles.json) still decides. These mappings record the v1 classification policy for the current tabs and roles. Levels run lowest to highest. Every tab or view the web app shows needs a key here, and every role in roles.json needs a clearance; the tests check both.",
-  "version": "2026-11-20",
+  "version": "2026-11-27",
   "levels": [
     {"id": "public", "label": "Public", "description": "Can be shared outside the company."},
     {"id": "proprietary", "label": "Proprietary", "description": "Internal business information; not for outside parties."},
@@ -11,6 +11,7 @@
     "briefing.overview": "confidential",
     "briefing.new": "confidential",
     "briefing.approved": "proprietary",
+    "briefing.signoff": "confidential",
     "briefing.how": "proprietary",
     "briefing.view.analyst": "confidential",
     "briefing.view.leadership": "proprietary",
@@ -24,7 +25,9 @@
   },
   "clearance": {
     "briefing-analyst": "confidential",
+    "briefing-insights": "confidential",
     "briefing-director": "proprietary",
+    "briefing-marketer": "proprietary",
     "forecast-analyst": "confidential",
     "forecast-manager": "proprietary"
   }

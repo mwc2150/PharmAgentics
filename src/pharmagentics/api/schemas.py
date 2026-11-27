@@ -147,20 +147,47 @@ class ReleaseContext(BaseModel):
 
 
 class ViewAs(BaseModel):
-    """The test login's choice: the analyst roles (P1, CA) or the leadership roles (P3, BM) of both lanes."""
+    """The test login's choice: the analyst roles (P1, CA), the Insights Manager (P2), the leadership roles (P3, BM) or the Marketer (P4)."""
     model_config = ConfigDict(extra="forbid")
 
-    view: Literal["analyst", "leadership"]
+    view: Literal["analyst", "insights", "leadership", "marketer"]
 
 
 class ReviewRequest(BaseModel):
-    """The analyst's decision on one brief (core-007 FR-010). A rejection needs a reason."""
+    """The analyst's decision on one brief (core-007 FR-010; brief-005): send it for sign-off, or reject it. A rejection needs a reason."""
     model_config = ConfigDict(extra="forbid")
 
-    decision: Literal["approved", "rejected"]
+    decision: Literal["sent", "rejected"]
     reason: str | None = Field(default=None, max_length=500)
 
     @field_validator("reason")
+    @classmethod
+    def strip(cls, value: str | None) -> str | None:
+        return value.strip() or None if value else None
+
+
+class ClaimFlag(BaseModel):
+    """One claim the Insights Manager marks as wrong: its index in the brief's claims, and an optional note."""
+    model_config = ConfigDict(extra="forbid")
+
+    claim: int = Field(ge=0)
+    note: str | None = Field(default=None, max_length=300)
+
+    @field_validator("note")
+    @classmethod
+    def strip(cls, value: str | None) -> str | None:
+        return value.strip() or None if value else None
+
+
+class SignoffRequest(BaseModel):
+    """The Insights Manager's decision on a brief sent for sign-off (brief-005). Returning needs a comment; flags are optional."""
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["signed_off", "returned"]
+    comment: str | None = Field(default=None, max_length=1000)
+    flags: list[ClaimFlag] = Field(default_factory=list, max_length=50)
+
+    @field_validator("comment")
     @classmethod
     def strip(cls, value: str | None) -> str | None:
         return value.strip() or None if value else None

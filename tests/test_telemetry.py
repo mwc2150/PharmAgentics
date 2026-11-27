@@ -113,16 +113,45 @@ def test_usage_endpoint_shows_only_the_signed_in_lanes_and_no_person():
     store.record_event("forecast_run", user=rbac.pseudonym("dev-forecast-analyst"), role="forecast-analyst", persona="CA")
     assert signed_in("dev-tester").post("/api/feedback/pulse", json={"rating": "bad", "where": "briefing"}).status_code == 200
 
-    director = signed_in("dev-director").get("/api/telemetry/usage")
-    assert director.status_code == 200 and director.headers["cache-control"] == "no-store"
-    body = director.json()
+    insights = signed_in("dev-insights").get("/api/telemetry/usage")
+    assert insights.status_code == 200 and insights.headers["cache-control"] == "no-store"
+    body = insights.json()
     assert set(body["lanes"]) == {"briefing"} and body["lanes"]["briefing"]["requests"] == 1
     assert body["sessions"] == {**{r: 0 for r in feedback.RATINGS}, "bad": 1}  # the shared tester login counts
     assert p1 not in json.dumps(body)
 
-    assert set(signed_in("dev-forecast-manager").get("/api/telemetry/usage").json()["lanes"]) == {"forecast"}
+    assert set(signed_in("dev-forecast-analyst").get("/api/telemetry/usage").json()["lanes"]) == {"forecast"}
     assert signed_in("dev-norole").get("/api/telemetry/usage").status_code == 403
     assert TestClient(app).get("/api/telemetry/usage").status_code == 401
+
+
+@pytest.mark.parametrize("user,code", [("dev-analyst", 200), ("dev-insights", 200), ("dev-forecast-analyst", 200), ("dev-tester", 200),
+                                       ("dev-director", 403), ("dev-marketer", 403), ("dev-forecast-manager", 403), ("dev-norole", 403)])
+def test_the_evaluation_page_is_for_analysts_the_insights_manager_and_the_tester(user, code):
+    """Michael, 2026-11-27 (Q17): not the Director, the Marketer or the Forecast Brand Manager; the server refuses, not just the nav."""
+    c = signed_in(user)
+    assert c.get("/api/telemetry").status_code == code and c.get("/api/telemetry/usage").status_code == code
+    if user != "dev-norole":
+        assert c.get("/api/me").json()["evaluation"] is (code == 200)
+
+
+def test_the_tester_keeps_the_page_in_every_view_and_loses_it_never():
+    c = signed_in("dev-tester")
+    for view in ("analyst", "insights", "leadership", "marketer"):
+        assert c.post("/api/me/view-as", json={"view": view}).json()["evaluation"] is True
+        assert c.get("/api/telemetry").status_code == 200, view
+
+
+def test_review_outcomes_count_a_brief_once_by_its_latest_decision_and_leave_waiting_ones_out():
+    def ev(i, brief, decision):
+        return {"kind": "reviewed", "ts": f"2026-11-27T10:{i:02d}:00+00:00", "brief_id": brief, "decision": decision}
+    events = [ev(0, "b1", "sent"), ev(1, "b1", "returned"), ev(2, "b1", "sent"), ev(3, "b1", "signed_off"),  # returned, then signed off: approved once
+              ev(4, "b2", "sent"), ev(5, "b2", "returned"),                                             # returned: rejected
+              ev(6, "b3", "sent"),                                                                        # waiting: not counted
+              ev(7, "b4", "rejected"),                                                                    # the analyst's own rejection
+              ev(8, "b5", "approved")]                                                                    # approved before sign-off existed
+    out = telemetry.review_outcomes(events)
+    assert (out["briefs"], out["approved"], out["rejected"]) == (4, 2, 2)
 
 
 def test_eval_endpoint_filters_runs_by_lane():

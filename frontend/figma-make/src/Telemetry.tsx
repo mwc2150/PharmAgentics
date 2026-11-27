@@ -228,7 +228,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
   }, [])
   const b = u?.lanes.briefing ?? u?.lanes.forecast
   const reviewed = b ? Object.values(b.decisions).reduce((x, y) => x + y, 0) : 0
-  const approved = b ? (b.decisions.approved ?? b.decisions.approve ?? 0) : 0
+  const approved = b ? (b.decisions.signed_off ?? b.decisions.approved ?? b.decisions.approve ?? 0) : 0
   const rv = b?.review  // per brief, latest decision; the Forecast lane has none and keeps the event count
   const approvedTile: [string, string, string] = rv
     ? (rv.enough && rv.approved_pct != null

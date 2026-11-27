@@ -61,7 +61,7 @@ def test_success_contract_and_no_store():
     assert response.json()["claims"][0]["evidence_id"] == response.json()["evidence"][0]["id"]
     runner.assert_called_once()
     assert runner.call_args.args[0].territory_id == "PACIFIC"
-    assert response.json()["view"] == "analyst" and response.json()["review_status"] == "pending"
+    assert response.json()["view"] == "analyst" and response.json()["review_status"] == "draft"
 
 
 @pytest.mark.parametrize("changes", [

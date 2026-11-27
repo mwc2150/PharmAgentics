@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from pharmagentics.api import auth, rbac, service, views
 from pharmagentics.api.app import app
 from pharmagentics.api.schemas import BriefingResult
+from signoff_helpers import approve
 
 VALID = {"intent": "weekly_brief", "brand_id": "BXA", "territory_id": "NEW_ENGLAND",
          "week_start": "2026-05-04", "question": "Generate the weekly brand-performance briefing."}
@@ -146,16 +147,17 @@ def test_two_roles_in_one_lane_get_the_more_restricted_one():
 
 def test_analyst_gets_full_view_and_brief_starts_pending():
     body = run_brief(signed_in("dev-analyst"))
-    assert body["view"] == "analyst" and body["review_status"] == "pending"
+    assert body["view"] == "analyst" and body["review_status"] == "draft"
     assert body["claims"] and body["evidence"] and body["answer"] == ANSWER
 
 
 def test_director_cannot_run_review_or_open_analyst_view():
     analyst, director = signed_in("dev-analyst"), signed_in("dev-director")
     bid = run_brief(analyst)["brief_id"]
-    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
+    approve(analyst, bid)
     assert director.post("/api/briefing/query", json=VALID).status_code == 403
-    assert director.post(f"/api/briefing/{bid}/review", json={"decision": "approved"}).status_code == 403
+    assert director.post(f"/api/briefing/{bid}/review", json={"decision": "sent"}).status_code == 403
+    assert director.post(f"/api/briefing/{bid}/signoff", json={"decision": "signed_off"}).status_code == 403
     assert director.get(f"/api/briefing/{bid}?view=analyst").status_code == 403
 
 
@@ -167,7 +169,10 @@ def test_director_sees_only_approved_briefs():
         assert director.get(f"/api/briefing/{bid}").status_code == 404
         analyst.post(f"/api/briefing/{bid}/review", json={"decision": "rejected", "reason": "numbers look off"})
         assert director.get(f"/api/briefing/{bid}").status_code == 404
-        analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
+        analyst.post(f"/api/briefing/{bid}/review", json={"decision": "sent"})
+        assert director.get(f"/api/briefing/{bid}").status_code == 404  # sent is not signed off
+        assert director.get("/api/briefing/published").json() == []
+        assert signed_in("dev-insights").post(f"/api/briefing/{bid}/signoff", json={"decision": "signed_off"}).status_code == 200
         assert [b["brief_id"] for b in director.get("/api/briefing/published").json()] == [bid]
         assert director.get(f"/api/briefing/{bid}").status_code == 200
     with patch.object(service, "current_data_version", return_value="another-release"):
@@ -177,7 +182,7 @@ def test_director_sees_only_approved_briefs():
 def test_leadership_response_carries_no_evidence_query_or_trace():
     analyst, director = signed_in("dev-analyst"), signed_in("dev-director")
     bid = run_brief(analyst)["brief_id"]
-    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
+    approve(analyst, bid)
     response = director.get(f"/api/briefing/{bid}")
     body = response.json()
     assert response.headers["cache-control"] == "no-store"
@@ -190,7 +195,7 @@ def test_analyst_preview_matches_what_the_director_sees():
     analyst, director = signed_in("dev-analyst"), signed_in("dev-director")
     bid = run_brief(analyst)["brief_id"]
     preview = analyst.get(f"/api/briefing/{bid}?view=leadership").json()
-    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
+    approve(analyst, bid)
     seen = director.get(f"/api/briefing/{bid}").json()
     assert preview["summary"] == seen["summary"] and leaks(preview) == []
 
@@ -216,13 +221,14 @@ def test_summary_keeps_caveats_and_drops_only_check_detail():
 def test_uat_events_are_pseudonymous(tmp_path):
     analyst = signed_in("dev-analyst")
     bid = run_brief(analyst)["brief_id"]
-    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})  # the decision is the insight time
+    approve(analyst, bid)  # the analyst's first decision is the insight time; the sign-off is a second review event
     events = [json.loads(p.read_text()) for p in (tmp_path / "events").rglob("*.json")]
-    assert sorted(e["kind"] for e in events) == ["insight", "requested", "reviewed"]
+    assert sorted(e["kind"] for e in events) == ["insight", "requested", "reviewed", "reviewed"]
+    assert sorted(e["decision"] for e in events if e["kind"] == "reviewed") == ["sent", "signed_off"]
     assert next(e for e in events if e["kind"] == "insight")["view"] == "analyst"
     text = json.dumps(events)
     assert "dev-analyst" not in text and auth.DEV_USERS["dev-analyst"][0] not in text
-    assert {e["user"] for e in events} == {rbac.pseudonym("dev-analyst")}
+    assert {e["user"] for e in events} == {rbac.pseudonym("dev-analyst"), rbac.pseudonym("dev-insights")}
     assert next(e for e in events if e["kind"] == "requested")["latency_ms"] >= 0
 
 
@@ -230,7 +236,7 @@ def test_only_the_first_decision_records_the_insight(tmp_path):
     analyst = signed_in("dev-analyst")
     bid = run_brief(analyst)["brief_id"]
     analyst.post(f"/api/briefing/{bid}/review", json={"decision": "rejected", "reason": "Wrong week."})
-    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "approved"})
+    analyst.post(f"/api/briefing/{bid}/review", json={"decision": "sent"})
     events = [json.loads(p.read_text()) for p in (tmp_path / "events").rglob("*.json")]
     assert sum(e["kind"] == "insight" for e in events) == 1 and sum(e["kind"] == "reviewed" for e in events) == 2
 
@@ -252,7 +258,7 @@ def test_real_new_england_week_keeps_the_withheld_cut_for_leaders():
     """User story P1-Q2 through the real scripted baseline: leaders still learn New England is not reportable."""
     analyst, director = signed_in("dev-analyst"), signed_in("dev-director")
     brief = analyst.post("/api/briefing/query", json=VALID).json()
-    analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "approved"})
+    approve(analyst, brief["brief_id"])
     body = director.get(f"/api/briefing/{brief['brief_id']}").json()
     assert leaks(body) == []
     summary = body["summary"]
@@ -297,17 +303,19 @@ def test_flow_and_triage_record_reach_the_analyst_only():
     brief = analyst.post("/api/briefing/query", json={**TRIAGE_Q, "triage": decision}).json()
     assert brief["triage"]["default"] is False and "Left out of this brief by the analyst: Mid-Atlantic, Medicare Part D plan two in Mid-Atlantic." in brief["answer"]  # the plan cut card is a candidate too (brief-010 P)
     assert brief["flow"][-1]["states"] == ["IN_REVIEW"]
-    approved = analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "approved"}).json()
+    assert analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "sent"}).json()["flow"][-1]["states"] == ["IN_REVIEW"]
+    approved = signed_in("dev-insights").post(f"/api/briefing/{brief['brief_id']}/signoff", json={"decision": "signed_off"}).json()
     assert approved["flow"][-1]["states"] == ["IN_REVIEW", "PUBLISHED"]
     seen = director.get(f"/api/briefing/{brief['brief_id']}").json()
     assert "flow" not in seen and "triage" not in seen and leaks(seen) == []
-    rejected = analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "rejected", "reason": "test"}).json()
-    assert rejected["flow"][-1]["states"] == ["IN_REVIEW", "RETURNED"]
+    assert analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "rejected", "reason": "test"}).status_code == 409  # frozen at sign-off
     # The default plan is the same brief as running without triage (same brief_id, same text)
     default = {"plan_id": plan["plan_id"], "stories": [c["id"] for c in plan["stories"] if c["proposed"] == "investigate"]}
     a = analyst.post("/api/briefing/query", json={**TRIAGE_Q, "triage": default}).json()
     b = analyst.post("/api/briefing/query", json=TRIAGE_Q).json()
     assert a["brief_id"] == b["brief_id"] and a["answer"] == b["answer"] and a["brief_id"] != brief["brief_id"]
+    rejected = analyst.post(f"/api/briefing/{a['brief_id']}/review", json={"decision": "rejected", "reason": "test"}).json()
+    assert rejected["flow"][-1]["states"] == ["IN_REVIEW", "RETURNED"]
 
 
 def test_login_shows_a_retry_page_while_keycloak_is_starting(monkeypatch):
@@ -329,7 +337,7 @@ def test_citations_reach_the_analyst_only():
     analyst, director = signed_in("dev-analyst"), signed_in("dev-director")
     brief = analyst.post("/api/briefing/query", json=TRIAGE_Q).json()
     assert brief["citations"] and all(brief["answer"][s["start"]:s["end"]] == brief["claims"][s["claim"]]["value"] for s in brief["citations"])
-    analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "approved"})
+    approve(analyst, brief["brief_id"])
     assert "citations" not in director.get(f"/api/briefing/{brief['brief_id']}").json()
 
 

@@ -40,9 +40,14 @@ def a_brief(status: str = "pending", **extra) -> str:
               "territory_id": "GREAT_LAKES", "week_start": "2026-10-05", "question": None,
               "answer": "BXA TRx rose.\nChecked, in this order:\n- SQL detail for the analyst."}
     bid = store.save_brief(result, by="u-test")["brief_id"]
-    if status != "pending":
-        store.set_review(bid, status, None, by="u-test")
+    if status == "approved":  # sent for sign-off by P1, then signed off by P2
+        sign_off(bid)
     return bid
+
+
+def sign_off(bid: str) -> None:
+    store.move(bid, "send", by="u-test", persona="P1")
+    store.move(bid, "sign_off", by="u-test", persona="P2")
 
 
 def a_forecast_run(submitted: bool = False) -> str:
@@ -91,7 +96,9 @@ def test_a_leader_votes_only_on_approved_briefs_and_only_the_summary_is_kept(tmp
     assert c.post("/api/feedback/vote", json=body).status_code == 404  # existence not disclosed
     assert c.get("/api/feedback/vote", params={k: body[k] for k in ("lane", "ref", "view")}).status_code == 404
     assert not stored(tmp_path)
-    store.set_review(bid, "approved", None, by="u-test")
+    store.move(bid, "send", by="u-test", persona="P1")
+    assert c.post("/api/feedback/vote", json=body).status_code == 404  # sent for sign-off is still hidden from a leader
+    store.move(bid, "sign_off", by="u-test", persona="P2")
     assert c.post("/api/feedback/vote", json=body).status_code == 200
     assert c.post("/api/feedback/vote", json={**body, "view": "analyst"}).status_code == 403
     (doc,) = stored(tmp_path)

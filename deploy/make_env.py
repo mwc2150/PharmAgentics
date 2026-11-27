@@ -1,6 +1,6 @@
 """Create deploy/.env.uat with random service secrets and the shared demo logins (core-007 FR-013).
 
-The file is git-ignored because it holds service secrets. The five shared sign-in passwords come from
+The file is git-ignored because it holds service secrets. The seven shared sign-in passwords come from
 the tracked deploy/demo-credentials.env and always replace what the file had, so every clone signs in
 with the same passwords. Every other existing value is kept, so rerunning never changes a secret.
 Usage: uv run python deploy/make_env.py
@@ -16,13 +16,12 @@ DEMO_CREDENTIALS = Path(__file__).with_name("demo-credentials.env")
 # Sign-in account -> its password line in demo-credentials.env.
 DEMO_ACCOUNTS = {
     "uat-briefing-analyst": "UAT_PASSWORD_BRIEFING_ANALYST",
+    "uat-briefing-insights": "UAT_PASSWORD_BRIEFING_INSIGHTS",
     "uat-briefing-director": "UAT_PASSWORD_BRIEFING_DIRECTOR",
-    # Same shared demo password per persona; distinct accounts prove per-user brand grants.
-    "uat-briefing-analyst-multibrand": "UAT_PASSWORD_BRIEFING_ANALYST",
-    "uat-briefing-director-multibrand": "UAT_PASSWORD_BRIEFING_DIRECTOR",
+    "uat-briefing-marketer": "UAT_PASSWORD_BRIEFING_MARKETER",
     "uat-forecast-analyst": "UAT_PASSWORD_FORECAST_ANALYST",
     "uat-forecast-manager": "UAT_PASSWORD_FORECAST_MANAGER",
-    "uat-tester": "UAT_PASSWORD_TESTER",  # test view: switches between the analyst and leadership views of both lanes
+    "uat-tester": "UAT_PASSWORD_TESTER",  # test view: switches between the analyst, Insights Manager, leadership and Marketer views
 }
 
 
