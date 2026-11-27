@@ -2,6 +2,7 @@
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
 import { useState, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
+import { longDates } from "./agent/primitives"
 import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
 const COLORS = ["var(--color-primary)", "var(--color-human)"]
@@ -9,19 +10,19 @@ const PANEL_COLOR = "var(--color-amber)"
 
 function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   const sorted = [...(spans ?? [])].sort((a, b) => a.start - b.start)
-  if (!sorted.length || !claims || !onOpen) return <>{text}</>
+  if (!sorted.length || !claims || !onOpen) return <>{longDates(text)}</>
   const parts: ReactNode[] = []
   let pos = 0
   sorted.forEach((sp, i) => {
     const claim = claims[sp.claim]
     if (!claim || sp.start < pos || text.slice(sp.start, sp.end) !== claim.value) return
-    parts.push(text.slice(pos, sp.start))
+    parts.push(longDates(text.slice(pos, sp.start)))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
       aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
-  parts.push(text.slice(pos))
+  parts.push(longDates(text.slice(pos)))
   return <>{parts}</>
 }
 
@@ -117,7 +118,7 @@ function ChartBlock({chart, onOpen, claims, explanationSpans, bare = false}: {ch
         <LineChart weeks={chart.weeks} series={[{name: chart.panel.name, points: chart.panel.points, color: PANEL_COLOR}]} unit={chart.panel.unit} label={chart.panel.name}/>
       </div>}
     </>}
-    <figcaption className="mt-3 text-[13px] leading-relaxed text-muted">{chart.caption}</figcaption>
+    <figcaption className="mt-3 text-[13px] leading-relaxed text-muted">{longDates(chart.caption)}</figcaption>
     <p className="mt-1 text-[14px] leading-relaxed text-ink"><Cited text={chart.explanation} spans={explanationSpans} claims={claims} onOpen={onOpen}/></p>
   </figure>
 }
@@ -237,7 +238,7 @@ function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], on
           <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
           {dir && <><svg viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 ${dir.color}`} fill="currentColor" aria-hidden="true"><path d={dir.d}/></svg><span className="sr-only">, {dir.word}</span></>}
         </dd>
-        {k.detail && <dd className="mt-1.5 font-sans text-[12px] leading-snug text-muted">{k.detail}</dd>}
+        {k.detail && <dd className="mt-1.5 font-sans text-[12px] leading-snug text-muted">{longDates(k.detail)}</dd>}
       </div>
     })}
   </dl>
@@ -254,7 +255,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
   const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
   return <div className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
-      <caption className="sr-only">Territory figures{table.note ? `. ${table.note}` : ""}</caption>
+      <caption className="sr-only">Territory figures{table.note ? `. ${longDates(table.note)}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
         <th key={j} scope="col" className={`px-2.5 py-1.5 text-[11px] font-medium text-muted ${align(j)}`}>{c}</th>)}</tr></thead>
       <tbody>{table.rows.map((r, i) => {
@@ -270,7 +271,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
         </tr>
       })}</tbody>
     </table>
-    {table.note && <p className="mt-2 font-sans text-[12px] leading-snug text-muted">{table.note}</p>}
+    {table.note && <p className="mt-2 font-sans text-[12px] leading-snug text-muted">{longDates(table.note)}</p>}
   </div>
 }
 
@@ -286,7 +287,7 @@ function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[
       <p className="max-w-[56ch] font-sans text-[16px] font-semibold leading-snug text-ink"><Cited text={card.headline} spans={card.headline_citations} claims={claims} onOpen={onOpen}/></p>
       <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 font-sans text-[11px] font-medium ${CONFIDENCE[card.confidence] ?? "bg-warnbg text-muted"}`}>{card.confidence} confidence</span>
     </div>
-    {card.drivers_checked.length > 0 && <p className="mt-1 font-sans text-[12px] text-muted">Checked: {card.drivers_checked.join(", ")}</p>}
+    {card.drivers_checked.length > 0 && <p className="mt-1 font-sans text-[12px] text-muted">Checked: {longDates(card.drivers_checked.join(", "))}</p>}
   </>
 }
 
@@ -333,7 +334,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
   // The page's outline is h1 (the workspace), h2 (the brief), h3 (a section), h4 (a subsection).
   const heading = (s: MemoSection, sub: boolean) => { const Tag = sub ? "h4" : "h3"; return <div className="flex items-baseline justify-between gap-3">
     <Tag id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
-      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</Tag>
+      <span className="mr-1 font-mono text-sm text-muted">§{s.number}</span>{" "}{sub ? s.title : <span className="pa-mark">{s.title}</span>}</Tag>
     {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} aria-label={`Ask about this: section ${s.number}, ${s.title}`} className="pa-noprint shrink-0 text-xs text-primaryink hover:underline">Ask about this</button>}
   </div> }
   // The Assumptions block lives in §6; a memo without a §6 shows the definition under its last section.

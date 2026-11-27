@@ -13,6 +13,7 @@ const PATHS={
   panel:"M4 5h16v14H4zM9.5 5v14",
   trend:"M4 17l5-5 4 3 7-8M15 7h5v5",
   user:"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0",
+  info:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.5M12 7.5h.01",
   help:"M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01",
   clipboard:"M8 4h8v3H8zM8 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-2M9 12h6M9 16h6",
   briefcase:"M4 7h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 13h18",
@@ -96,3 +97,21 @@ export function plainModels(text: string): string {
 
 /** A date as the app prints it everywhere ("Nov 23, 2026"); a bare ISO date is read as local midnight. */
 export const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+
+
+const ISO_DATE = /(?<![\d-])(\d{4})-(\d{2})-(\d{2})(?![\d-])/g
+/** Display only: ISO dates in prose ("2026-10-05") in the long form the headers use ("Oct 5, 2026"). The server's text
+ *  keeps ISO dates (it is scored); call this on the pieces between claim tokens, never on a claim's own value. */
+export function longDates(text: string): string {
+  return text.replace(ISO_DATE, (all, y, m, d) => {
+    const at = new Date(Date.UTC(+y, +m - 1, +d))
+    if (Number.isNaN(at.getTime()) || at.getUTCMonth() !== +m - 1 || at.getUTCDate() !== +d) return all
+    return at.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })
+  })
+}
+
+/** A number for reading: whole numbers as they are, others to 4 significant figures. The raw value belongs in a title. */
+export function plainValue(v: unknown): string {
+  if (typeof v !== "number" || !Number.isFinite(v)) return v === null || v === undefined ? "–" : typeof v === "string" ? v : JSON.stringify(v)
+  return Number.isInteger(v) ? v.toLocaleString("en-US") : v.toLocaleString("en-US", { maximumSignificantDigits: 4 })
+}

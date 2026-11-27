@@ -221,7 +221,8 @@ export type LaneRole = {
 }
 export type ViewAs = "analyst" | "leadership"
 // tester: the test login, which switches between the analyst and the leadership roles of both lanes (view_as).
-export type Me = { name: string; auth_mode: "oidc" | "dev"; brand_ids: string[]; lanes: { briefing?: LaneRole; forecast?: LaneRole }; tester?: boolean; view_as?: ViewAs | null }
+export type Me = { name: string; username?: string;  // username: the sign-in name, shown when /api/me sends it
+   auth_mode: "oidc" | "dev"; brand_ids: string[]; lanes: { briefing?: LaneRole; forecast?: LaneRole }; tester?: boolean; view_as?: ViewAs | null }
 // Data classification per tab and view (core-009): labels only, from src/pharmagentics/api/classification.json.
 export type ClassLevel = { id: string; label: string; description: string }
 export type Classification = { version: string; levels: ClassLevel[]; tabs: Record<string, string>; clearance: Record<string, string> }

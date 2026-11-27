@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
-import { Icon, Notice } from "./agent/primitives"
+import { Icon, Notice, plainValue } from "./agent/primitives"
 
 // These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
@@ -36,7 +36,7 @@ function Drawer({ title, kicker, onClose, children }: { title: string, kicker: s
 function Query({ ev }: { ev: Evidence }) {
   const scope = typeof ev.params.scope === "string" ? ev.params.scope : ev.tool
   return <li className="py-3">
-    <div className="flex items-baseline justify-between gap-3 text-sm"><span>{scope}</span><span className="tabular-nums text-muted">{String(ev.result)}</span></div>
+    <div className="flex items-baseline justify-between gap-3 text-sm"><span>{scope}</span><span className="tabular-nums text-muted" title={typeof ev.result === "number" ? String(ev.result) : undefined}>{plainValue(ev.result)}</span></div>
     <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-paper p-3 font-mono text-xs leading-relaxed text-muted">{ev.query}</pre>
   </li>
 }
