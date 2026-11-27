@@ -99,12 +99,19 @@ def ollama_runtime(spec: str | None = None) -> dict:
     return {}
 
 
-def chat_options(spec: str | None = None, temperature: float = 0.0) -> dict:
+def chat_options(spec: str | None = None, temperature: float = 0.0, cache: bool = False) -> dict:
     """Default options per provider: deterministic sampling, and a context window Ollama will not truncate.
-    Current Claude models reject a non-default temperature, so the Anthropic provider sends none."""
+    Current Claude models reject a non-default temperature, so the Anthropic provider sends none.
+
+    `cache` (Claude only) turns on Anthropic's automatic prompt caching, for a caller whose model loops over tool calls:
+    each call then reads the conversation so far from the cache at a tenth of the input price, and pays a quarter more,
+    once, to write what is new. The model sees the same prompt either way. A one-shot call would only pay the write, so
+    it is off unless the caller asks; PHARMAGENTICS_ANTHROPIC_CACHE=off turns it off everywhere (to measure it)."""
     provider = model_spec(spec).partition(":")[0]
     if provider == "anthropic":
         opts: dict = {"max_tokens": ANTHROPIC_MAX_TOKENS}
+        if cache and os.environ.get("PHARMAGENTICS_ANTHROPIC_CACHE", "").strip().lower() not in ("off", "disabled", "0"):
+            opts["cache_control"] = {"type": "ephemeral"}
         # Opt-in: Claude Haiku 5.5 thinks by default, and its thinking blocks are bound to the conversation that made
         # them. Magentic's orchestrator rewrites its own history, which Anthropic refuses (HTTP 400, "Invalid
         # `signature` in `thinking` block") on accounts held to that check. PHARMAGENTICS_ANTHROPIC_THINKING=off sends
