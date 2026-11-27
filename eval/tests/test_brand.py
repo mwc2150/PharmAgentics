@@ -44,16 +44,16 @@ def test_an_unknown_brand_is_refused():
 
 def test_the_loader_defaults_to_bxa_so_every_older_caller_reads_what_it_always_read():
     assert {c.brand for c in load_cases()} == {"BXA"}
-    assert len(load_cases()) == 50
+    assert len(load_cases()) == 51  # 33 Briefing (REV-1 added 2026-11-27) + 18 Forecast
     assert {c.brand for c in load_cases(brand="BXC")} == {"BXC"}
-    assert len(load_cases(brand="all")) == 50 + 24
+    assert len(load_cases(brand="all")) == 51 + 24
 
 
 def test_there_is_one_lipidara_case_per_persona_question_with_its_own_id():
     cases = load_cases("briefing", brand="BXC")
     assert {c.story for c in cases} == LIPIDARA_STORIES
     assert {c.story.removeprefix("BXC-") for c in cases} == PERSONA_QUESTIONS
-    assert len({c.id for c in load_cases(brand="all")}) == 74  # no id is used twice across brands
+    assert len({c.id for c in load_cases(brand="all")}) == 75  # no id is used twice across brands
     assert sorted(c.id for c in cases) == [f"C-{n:03d}" for n in range(33, 57)]
     assert not LIPIDARA_STORIES & BRIEFING_STORIES  # a Lipidara story never answers to a Cardiovela story id
     assert id_problems(load_cases(brand="all")) == []

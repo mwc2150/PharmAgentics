@@ -69,6 +69,12 @@ def test_p4_q5_is_a_promotion_review_and_the_prefixed_question_reads_as_one():
     assert derive_scope(sent).intent == "promotion_review"
 
 
+def test_p4_q3_is_a_promotion_review():
+    """Michael, 2026-11-27: P4-Q3's assumptions are a release-wide Promotion review, which the engine read from its words."""
+    case = next(c for c in load_cases("briefing") if c.story == "P4-Q3")
+    assert case.intent == "promotion_review" and case.inputs()["intent"] == "promotion_review"
+
+
 def test_other_briefing_cases_stay_brief():
-    others = [c for c in load_cases("briefing") if c.story != "P4-Q5"]
+    others = [c for c in load_cases("briefing") if c.story not in ("P4-Q5", "P4-Q3")]
     assert others and all(c.intent == "brief" for c in others)

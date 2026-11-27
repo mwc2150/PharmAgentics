@@ -148,7 +148,7 @@ def test_golden_key_facts_can_be_matched():
     """Every Briefing case loads, and no must-state fact is a value the answer-side extractor skips
     (integers 0 to 10), which no brief could ever be credited for."""
     cases = load_cases("briefing")
-    assert len(cases) == 32
+    assert len(cases) == 33
     for case in cases:
         for f in case.expectations()["key_facts"]:
             assert not (isinstance(f["value"], int) and abs(f["value"]) <= 10), (case.id, f["id"])

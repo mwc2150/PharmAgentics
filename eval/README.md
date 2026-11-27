@@ -10,7 +10,7 @@ All from the repository root, after `uv sync` and building the database (`uv run
 
 | Command | Does |
 | :- | :- |
-| `uv run python -m eval check` | Validates every case (50 Cardiovela, 24 Lipidara) and recomputes every fact from the data |
+| `uv run python -m eval check` | Validates every case (51 Cardiovela, 24 Lipidara) and recomputes every fact from the data |
 | `uv run python -m eval run --system reference` | Scores the golden answers (positive control) |
 | `uv run python -m eval run --system naive_llm` | Scores a local model with no data (negative control); needs Ollama |
 | `uv run python -m eval run --system briefing_scripted --lane briefing` | The Briefing scripted baseline (`agents/brand-briefing/briefing_baseline/`) |

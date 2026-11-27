@@ -14,7 +14,8 @@ from .paths import DATABASE, EVAL_PACK
 FE_IDS = {f"FE-{i:02d}" for i in range(1, 32)}
 BRIEFING_STORIES = ({f"P{p}-Q{q}" for p in range(1, 5) for q in range(1, 7)}
                     | {f"FU-{n}" for n in range(1, 7)}  # brief-006 FR-013
-                    | {"WIN-1", "WIN-2"})  # brief-007 FR-014
+                    | {"WIN-1", "WIN-2"}  # brief-007 FR-014
+                    | {"REV-1"})  # the mentor's review of 2026-11-20, item 2.1 (v2)
 FORECAST_STORIES = {f"{p}-Q{q}" for p in ("CA", "BM", "FM") for q in range(1, 7)}
 LIPIDARA_STORIES = {f"BXC-P{p}-Q{q}" for p in range(1, 5) for q in range(1, 7)}  # one per Briefing persona question, brand BXC
 
