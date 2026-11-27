@@ -6,6 +6,7 @@ EVAL_DIR = REPO_ROOT / "eval"
 GOLDEN_DIR = EVAL_DIR / "golden"
 MLFLOW_DIR = EVAL_DIR / "mlflow"
 STORIES = REPO_ROOT / "docs" / "planning" / "user-stories.md"
+STORIES_BXC = REPO_ROOT / "docs" / "planning" / "user-stories-lipidara.md"  # the Lipidara (BXC) stories, a draft for the master doc
 EVAL_PACK = REPO_ROOT / "docs" / "planning" / "briefing-evaluation-pack.md"
 DATABASE = REPO_ROOT / "local" / "pharmagentics.duckdb"
 SOT_DIR = REPO_ROOT / "SoT"

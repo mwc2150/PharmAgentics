@@ -1,4 +1,5 @@
-"""Draft golden case files from docs/planning/user-stories.md.
+"""Draft golden case files from docs/planning/user-stories.md (Cardiovela, BXA) or docs/planning/user-stories-lipidara.md
+(Lipidara, BXC; story IDs prefixed `BXC-`, files `BXC-P1-Q1.yaml`, ids continuing after the highest existing C-NNN).
 
 An existing case file is never overwritten unless asked: facts, reviewed questions and hand
 edits live in the case files, and the importer only seeds them (core-006 plan, user-story importer).
@@ -9,12 +10,14 @@ import re
 
 import yaml
 
-from .paths import GOLDEN_DIR, REPO_ROOT, STORIES
+from .paths import GOLDEN_DIR, REPO_ROOT, STORIES, STORIES_BXC
 
-STORY_RE = re.compile(r"^### \*\*((?:P[1-4]|CA|BM|FM)-Q[1-6]) · (.+?)\*\*\s*$")
+STORY_RE = re.compile(r"^### \*\*((?:BXC-)?(?:P[1-4]|CA|BM|FM)-Q[1-6]) · (.+?)\*\*\s*$")
 PERSONA_RE = re.compile(r"^## \*\*(P[1-4]|CA|BM|FM) · (.+?)\*\*\s*$")
 PART_RE = re.compile(r"^# \*\*Part ([AB])\.")
-COVERAGE_RE = re.compile(r"^\| ((?:P[1-4]|CA|BM|FM)-Q[1-6]) \| ([^|]*) \| ([^|]*) \| ([^|]*) \|")
+COVERAGE_RE = re.compile(r"^\| ((?:BXC-)?(?:P[1-4]|CA|BM|FM)-Q[1-6]) \| ([^|]*) \| ([^|]*) \| ([^|]*) \|")
+BRAND_PREFIX = {"BXA": "", "BXC": "BXC-"}
+STORY_FILES = {"BXA": STORIES, "BXC": STORIES_BXC}
 ANSWER_RE = re.compile(r"^\s*-\s*\*\*Answer from the data(?: \((.*?)\))?\.\*\*\s*(.*)$")
 GWT_RE = re.compile(r"\*\*Given\*\*(.*?)\*\*When\*\*(.*?)\*\*Then\*\*(.*)$")
 QUOTED_RE = re.compile(r'["“]([^"”]+)["”]')
@@ -80,7 +83,7 @@ def _must_not_say(text: str) -> dict:
     return {"text": text, "phrases": phrases, "semantic": semantic}
 
 
-def build_case(st: dict, number: int, anchor: str) -> dict:
+def build_case(st: dict, number: int, anchor: str, brand: str = "BXA", source_file=None) -> dict:
     body = st["lines"]
     i_answer = next(i for i, line in enumerate(body) if ANSWER_RE.match(line))
     i_given = next(i for i, line in enumerate(body) if "**Given**" in line)
@@ -91,12 +94,14 @@ def build_case(st: dict, number: int, anchor: str) -> dict:
     period, note = _period(header, anchor)
     lane = st["lane"]
     question = st["question"] if not period else f"{period[0].upper()}{period[1:]}: {st['question']}"
+    base_story = st["story"].removeprefix(BRAND_PREFIX["BXC"])  # the persona question: P1-Q1 for BXC-P1-Q1
     return {
         "id": f"C-{number:03d}" if lane == "briefing" else f"F-{number:03d}",
         "lane": lane,
+        **({"brand": brand} if brand != "BXA" else {}),  # a Cardiovela file has no brand line, as before
         "story": st["story"],
         "persona": st["persona"],
-        "category": BRIEFING_CATEGORY.get(st["story"]) if lane == "briefing" else None,
+        "category": BRIEFING_CATEGORY.get(base_story) if lane == "briefing" else None,
         "scenario": None,
         "split": "dev",
         "status": "draft",
@@ -113,7 +118,7 @@ def build_case(st: dict, number: int, anchor: str) -> dict:
         "action": field("**Action.**"),
         "eval_items": EVAL_ID_RE.findall(field("**Eval items**")),
         "facts": [],
-        "source": f"{STORIES.relative_to(REPO_ROOT).as_posix()}#{st['story']}",
+        "source": f"{(source_file or STORIES).relative_to(REPO_ROOT).as_posix()}#{st['story']}",
     }
 
 
@@ -133,15 +138,43 @@ def dump(case: dict) -> str:
     return yaml.dump(case, Dumper=_Dumper, sort_keys=False, allow_unicode=True, width=10_000)
 
 
-def run(force: bool = False) -> list[str]:
-    stories, coverage = parse(STORIES.read_text(encoding="utf8"))
+def _existing_numbers(lane: str) -> list[int]:
+    """The number of every C-NNN (or F-NNN) id already used in a lane folder, read from the `id:` line of each file."""
+    letter = "C" if lane == "briefing" else "F"
+    found = []
+    for path in (GOLDEN_DIR / lane).glob("*.yaml"):
+        m = re.search(rf"^id:\s*{letter}-(\d+)\s*$", path.read_text(encoding="utf8"), flags=re.M)
+        if m:
+            found.append(int(m.group(1)))
+    return found
+
+
+def run(force: bool = False, brand: str = "BXA") -> list[str]:
+    """Draft a case file for every story that has none. BXA numbers its cases C-001 onward as it always did; a later brand
+    continues after the highest id in the lane, so an existing file keeps its id and a new one never reuses an id."""
+    source = STORY_FILES[brand]
+    stories, coverage = parse(source.read_text(encoding="utf8"))
+    prefix = BRAND_PREFIX[brand]
     written, counters = [], {"briefing": 0, "forecast": 0}
+    taken = {lane: max(_existing_numbers(lane), default=0) for lane in counters}
     for story_id, st in stories.items():
-        counters[st["lane"]] += 1
+        if brand != "BXA" and not story_id.startswith(prefix):
+            continue
         path = GOLDEN_DIR / st["lane"] / f"{story_id}.yaml"
+        if brand == "BXA":
+            counters[st["lane"]] += 1
+            number = counters[st["lane"]]
+        else:
+            number = None
         if path.exists() and not force:
             continue
+        if number is None:
+            if force and path.exists():  # keep the id the file already has
+                number = int(re.search(r"^id:\s*[CF]-(\d+)", path.read_text(encoding="utf8"), flags=re.M).group(1))
+            else:
+                taken[st["lane"]] += 1
+                number = taken[st["lane"]]
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(dump(build_case(st, counters[st["lane"]], coverage.get(story_id, ""))), encoding="utf8")
+        path.write_text(dump(build_case(st, number, coverage.get(story_id, ""), brand, source)), encoding="utf8")
         written.append(story_id)
     return written
