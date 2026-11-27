@@ -258,7 +258,7 @@ def assertions(browser, base: str) -> None:
     # 6. date style, footnotes, density, reduced motion
     ctx = new_ctx(browser, DESKTOP)
     page = sign_in(ctx, base, "analyst")
-    greeting = lambda: page.locator("p", has_text=re.compile(r"across \d+ territories, week of")).first.inner_text()
+    greeting = lambda: page.locator("#briefing-panel label", has_text=re.compile(r"^Week")).locator("select option:checked").first.inner_text()
     before = greeting()
     open_settings(page)
     choose(page, "Date style", "2026-10-05")

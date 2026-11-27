@@ -8,7 +8,7 @@
 ## Invariants
 
 - **I1. Exploring never changes the work.** The Overview has its own brand and week; changing them never changes the New briefing form, and the form never changes them. The one link is the Overview's "Generate brief for <territory>", which carries its brand, territory and week to the form.
-- **I2. The brand is a choice of the brief.** The New briefing form has a Brand field. The tab-row brand toggle shows on the Overview only; the Approved tab lists every brand, each row labelled.
+- **I2. The brand is a choice of the brief.** The New briefing form has a Brand field. The Overview has its own brand selector beside its week selector; the tab row has no brand toggle; the Approved tab lists every brand, each row labelled.
 - **I3. The form reads the dates the app prints.** The Briefing question reader takes "Aug 24, 2026", "24 Aug 2026" and "8/24/2026" as the week typed; a date that is not a real day is named, never silently replaced by the latest week. The Forecast lane's reading is unchanged.
 - **I4. Selector descriptions on demand.** Each brief-definition option's description shows on hover or focus and is always the input's accessible description.
 - **I5. Nothing covers what you are doing.** A reason or comment box (Reject, Return) is never under the floating bars; one vote prompt shows at a time (in a follow-up thread, on the newest answer only); at 390 px no table cell is clipped, the account button shows a name, and controls have a 24 px target.

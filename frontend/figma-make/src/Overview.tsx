@@ -190,7 +190,8 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
   </section>
 }
 
-export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: string[], brand: string, week: string, onWeek: (week: string) => void, onGenerate: (territory: string, week: string) => void }) {
+// The Overview's own brand and week, side by side above the figures (Michael, 2026-11-27); neither touches the New briefing form.
+export function Overview({ weeks, brand, brands, onBrand, week, onWeek, onGenerate }: { weeks: string[], brand: string, brands: { id: string, name: string }[], onBrand: (brand: string) => void, week: string, onWeek: (week: string) => void, onGenerate: (territory: string, week: string) => void }) {
   const [o, setO] = useState<O | null>(null)
   const latest = weeks.reduce((a, w) => (w > a ? w : a), week)
   const [error, setError] = useState<string | null>(null)
@@ -205,13 +206,20 @@ export function Overview({ weeks, brand, week, onWeek, onGenerate }: { weeks: st
   const statEvidence = stat && o ? o.evidence.filter(e => e.id === stat.evidence_id || e.id === stat.change?.evidence_id) : []
   return <><div className="workspace-wide pa-stagger space-y-6 py-8">
     <div className="flex flex-wrap items-end justify-between gap-4">
-      {/* What the page covers, once: brand, territories and week, and how far the data runs when an earlier week is chosen */}
-      <p className="text-sm text-muted">{o ? `${o.product_name} (${o.product}) across ${o.territories.length} territories, week of ${day(o.week)}${o.week === latest ? ", the latest week of data." : `. The data runs through ${day(latest)}.`} Every figure comes from the governed data; select one to see its query.` : "Loading the week…"}</p>
-      <label className="flex items-center gap-2 text-xs text-muted">Week
-        <select value={week} onChange={e => onWeek(e.target.value)} className={FIELD}>
-          {[...weeks].reverse().map(w => <option key={w} value={w}>{day(w)}</option>)}
-        </select>
-      </label>
+      {/* The selectors name the brand and week; the line says only what they do not: how many territories, and how far the data runs */}
+      <p className="text-sm text-muted">{o ? `${o.territories.length} territories${o.week === latest ? ", the latest week of data" : `; the data runs through ${day(latest)}`}. Select any figure to see its query.` : "Loading the week…"}</p>
+      <div className="pa-noprint flex flex-wrap items-center gap-x-4 gap-y-2">
+        <label className="flex items-center gap-2 text-xs text-muted">Brand
+          <select value={brand} onChange={e => onBrand(e.target.value)} disabled={!brands.length} className={FIELD}>
+            {brands.map(b => <option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-xs text-muted">Week
+          <select value={week} onChange={e => onWeek(e.target.value)} className={FIELD}>
+            {[...weeks].reverse().map(w => <option key={w} value={w}>{day(w)}</option>)}
+          </select>
+        </label>
+      </div>
     </div>
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {o?.note && <Notice tone="warn">{o.note}</Notice>}

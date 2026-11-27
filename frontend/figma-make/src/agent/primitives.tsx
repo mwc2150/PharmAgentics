@@ -23,12 +23,21 @@ const PATHS={
   gear:"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"
 } as const
 export type IconName = keyof typeof PATHS
-/* A headline number that rolls in (index.css .pa-roll): its final characters slide up into place one after another,
-   never a count-up, so no figure on screen is ever wrong. Screen readers get the number whole. Key it by its text where
-   it is used, so a new value rolls in again. `delay` (ms) staggers several numbers. */
+/* A headline number that rolls in like a combination lock (index.css .pa-roll, Michael 2026-11-27): each digit is a
+   wheel that spins, blurred, through the digits and clicks to its value, each wheel at its own speed; commas, points and
+   signs stand still. It always lands on the real figure, about a second in. Screen readers and copying get the number
+   whole; with reduced motion the wheels start where they stop. Key it by its text where it is used, so a new value
+   spins again. `delay` (ms) staggers several numbers. */
 export function RollIn({text, delay = 0}: {text: string, delay?: number}) {
-  return <><span className="pa-roll" aria-hidden="true" style={{"--d": `${delay}ms`} as CSSProperties}>
-    {[...text].map((c, i) => <span key={i} style={{"--i": i} as CSSProperties}>{c}</span>)}</span><span className="sr-only">{text}</span></>
+  let seed = text.length * 7 + 3
+  return <><span className="pa-roll" aria-hidden="true">{[...text].map((c, i) => {
+    if (!/[0-9]/.test(c)) return <span key={i} className="pa-reel"><span className="pa-reel-strip"><span>{c}</span></span></span>
+    seed = (seed * 31 + c.charCodeAt(0) * 7 + i * 13) % 997
+    const laps = 1 + (seed % 2), to = laps * 10 + Number(c)   // the wheel passes 0-9 once or twice, then stops on the digit
+    const style = {"--from": seed % 10, "--to": to, "--dur": `${720 + (seed % 5) * 110}ms`, "--d": `${delay + i * 35}ms`} as CSSProperties
+    return <span key={i} className="pa-reel"><span className="pa-reel-strip" style={style}>
+      {Array.from({length: to + 1}, (_, k) => <span key={k}>{k % 10}</span>)}</span></span>
+  })}</span><span className="sr-only">{text}</span></>
 }
 
 export function Icon({name,className="h-4 w-4"}:{name:IconName,className?:string}) {

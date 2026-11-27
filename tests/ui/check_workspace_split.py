@@ -1,8 +1,8 @@
 """The Briefing workspace keeps the Overview and New briefing apart (brief-015, Michael 2026-11-27).
 
 The Overview is for exploring; New briefing does the work. Changing the Overview's brand or week never changes the
-form, the form never changes the Overview, the brand is a field of the form, the tab-row brand toggle shows on the
-Overview only, and the Overview's "Generate brief for <territory>" is the one link: it carries its brand, territory and
+form, the form never changes the Overview, the brand is a field of the form, the Overview's brand selector sits beside its week (no
+tab-row toggle), and the Overview's "Generate brief for <territory>" is the one link: it carries its brand, territory and
 week to the form. Every fold on an approved brief shows a chevron that turns down when open. Drives the LOCAL app (dev sign-in, a built frontend) with Playwright and prints PASS/FAIL per check;
 exit code 1 if any fails. No model and no secret are needed.
 
@@ -34,6 +34,7 @@ def run(page: Page, base: str) -> None:
     page.goto(base + "/")
     page.wait_for_load_state("networkidle")
     toggle = lambda: page.get_by_role("tablist", name="Weekly briefing").locator("xpath=..").get_by_label("Brand")  # noqa: E731
+    overview_brand = lambda: page.locator("#briefing-panel label", has_text=re.compile(r"^Brand")).locator("select").first  # noqa: E731
     overview_week = lambda: page.locator("label", has_text=re.compile(r"^Week")).locator("select").first  # noqa: E731
     form = lambda: page.locator("form").first  # noqa: E731
     brand_field = lambda: form().locator("label", has_text="Brand").locator("select").first  # noqa: E731
@@ -45,7 +46,7 @@ def run(page: Page, base: str) -> None:
         return (brand_field().input_value(), form().get_by_label("First week", exact=True).input_value(),
                 form().get_by_label("Last week", exact=True).input_value(), territory.input_value())
 
-    check(toggle().count() == 1, "Overview: the tab-row brand toggle is shown")
+    check(toggle().count() == 0 and overview_brand().count() == 1, "Overview: the brand selector sits beside the week, not in the tab row")
     start = form_state()
     check(toggle().count() == 0, "New briefing: no tab-row brand toggle; the brand is a form field")
     check(brand_field().count() == 1, "New briefing: the form has a Brand field")
@@ -53,7 +54,7 @@ def run(page: Page, base: str) -> None:
     page.get_by_role("tab", name="Overview").click()
     page.wait_for_timeout(500)
     other = "BXC" if start[0] == "BXA" else "BXA"
-    toggle().select_option(other)
+    overview_brand().select_option(other)
     page.wait_for_timeout(800)
     overview_week().select_option("2026-08-24")
     page.wait_for_load_state("networkidle")
@@ -63,7 +64,7 @@ def run(page: Page, base: str) -> None:
     page.wait_for_timeout(300)
     page.get_by_role("tab", name="Overview").click()
     page.wait_for_timeout(800)
-    check((toggle().input_value(), overview_week().input_value()) == (other, "2026-08-24"),
+    check((overview_brand().input_value(), overview_week().input_value()) == (other, "2026-08-24"),
           "Changing the form's first week leaves the Overview's brand and week as they were")
 
     page.get_by_role("button", name=re.compile("Pacific")).first.click()
