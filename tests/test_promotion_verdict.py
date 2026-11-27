@@ -47,7 +47,7 @@ def test_a_supported_promotion_states_new_patients_first_the_lag_the_comparison_
     check, text, p = _promotion(SOUTHEAST, "SOUTHEAST")
     assert check.verdict == "supported" and text.startswith("Promotion: supported as recovery after the promotion lapse of 2026-08-03 to 2026-08-31")
     assert text.index("New patients (NBRx)") < text.index("TRx rose")  # NBRx first, TRx as the follow-through
-    assert "Compared with territories without a promotion change" in text and "extra TRx a week" in text
+    assert "Compared with territories without a promotion change" in text and re.search(r"(extra|fewer) TRx a week|a change of", text)
     assert text.endswith("Re-check after 2026-11-02.")  # the last week plus as many weeks as the comparison
     assert "two-week lag" in text
     assert not digits_outside_tokens(check.text) and "ROI" not in text and "attribut" not in text
@@ -142,16 +142,24 @@ def test_the_events_log_reads_the_two_new_verdicts_as_inconclusive():
 def test_the_scripted_brief_card_has_the_promotion_data_filled_and_the_detail_folds_the_channels():
     from briefing_baseline.pipeline import answer
 
-    env = answer(SOUTHEAST)
+    from pharmagentics.tools.window import Comparison
+
+    # Southeast in the lapse week against the July weeks (WIN-2's reading): material, and promotion is supported.
+    env = answer("Week of 2026-08-24, Southeast: How did BXA TRx move, and why?",
+                 comparison=Comparison(kind="custom", start="2026-07-06", end="2026-07-27"))
     section = next(s for s in env["sections"] if s["number"] == "3.1")
     card = section["card"]
     assert card["drivers_supported"] == ["promotion"] and card["promotion"]["verdict"] == "supported"
     assert "{c" not in json.dumps(card["promotion"])  # tokens are filled in the card's structured data
-    assert card["promotion"]["recheck"] == "2026-11-02"
-    for label in ("New patients (NBRx)", "Rep calls", "Digital impressions", "Samples", "Speaker programs", "A fuller read is possible after 2026-11-02"):
+    assert card["promotion"]["recheck"] == "2026-09-21"
+    assert "during the promotion lapse of 2026-08-03 to 2026-08-31" in env["answer"] and "fewer TRx a week" in env["answer"]
+    for label in ("New patients (NBRx)", "Rep calls", "Digital impressions", "Samples", "Speaker programs", "A fuller read is possible after 2026-09-21"):
         assert label in section["detail"]
     assert section["detail"].index("New patients (NBRx):") < section["detail"].index("- TRx:")
     assert "promotion change" in env["answer"] and "Promotion: controls first, then comparable territories." in env["answer"]  # the Assumptions line
+    # The mentor's week (REV-1): within its normal range, so the card credits nothing and states no effect (brief-011 I6).
+    mentor = next(s for s in answer(SOUTHEAST)["sections"] if s["number"] == "3.1")["card"]
+    assert mentor["drivers_supported"] == [] and mentor["promotion"]["verdict"] == "within_range" and mentor["promotion"]["effect"] is None
 
 
 @needs_db
@@ -161,7 +169,8 @@ def test_the_agents_promotion_check_equals_the_scripted_check_whatever_order_it_
         reg = Registry(service.DB)
         try:
             p = stages.resolve(reg, SOUTHEAST, brand)
-            scripted = {c.driver: reg.render(c.text) for c in run_checks(reg, "SOUTHEAST", p.weeks, p.baseline, brand_id=brand)}
+            scripted = {c.driver: reg.render(stages.credit_rule(reg, p, "SOUTHEAST", c).text)  # the story's own rule (I6)
+                        for c in run_checks(reg, "SOUTHEAST", p.weeks, p.baseline, brand_id=brand)}
         finally:
             reg.close()
         s = RunSession()
@@ -171,7 +180,8 @@ def test_the_agents_promotion_check_equals_the_scripted_check_whatever_order_it_
             s.check_access("SOUTHEAST")
             s.check_competitor("SOUTHEAST")
             assert s.reg.render(s.checks["SOUTHEAST"]["promotion"].text) == scripted["promotion"], brand
-            assert s.checks["SOUTHEAST"]["promotion"].detail["promotion"]["verdict"] == ("supported" if brand == "BXA" else "ruled_out")
+            # BXA: supported, then not credited, as Southeast moved within its normal range (REV-1); BXC: ruled out.
+            assert s.checks["SOUTHEAST"]["promotion"].detail["promotion"]["verdict"] == ("within_range" if brand == "BXA" else "ruled_out")
         finally:
             s.close()
 

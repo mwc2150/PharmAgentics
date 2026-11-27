@@ -262,6 +262,7 @@ class RunSession:
             raise ToolError("brief_sections must run before memo_close")
         told = [{"territory": t, "confidence": st["confidence"],
                  "drivers": [d for d, v in st["verdicts"].items() if v == "supported"],
+                 "in_range": stages.in_range(self.checks.get(t, {}).values()),
                  "lags": {d: c.detail["lag"] for d, c in self.checks.get(t, {}).items() if c.detail and "lag" in c.detail}}
                 for t, st in self.stories.items() if st["closed"]]
         story_charts = {}
@@ -347,6 +348,7 @@ class RunSession:
         return stages.dropped_line(reg, p, quiet) if quiet else ""
 
     def _record(self, t: str, check: Check) -> str:
+        check = stages.credit_rule(self._reg(), self.p, t, check)  # within its normal range: no driver is credited
         self.checks.setdefault(t, {})[check.driver] = check
         if self.follow_up:
             return self._out(f"{q.name(t)}. {check.text}")
@@ -406,7 +408,9 @@ class RunSession:
                     + (f", candidate drivers: {lead}" if level != "Low" else ", no driver supported yet")
                     + (f". Not tested yet: {', '.join(missing)}." if missing else ". Every driver is tested.")
                     + " Close the story with story_confidence.")
-        if level == "Low":
+        if level == "Low" and stages.in_range(done.values()):
+            text = f"Confidence for {q.name(t)}: Low. No driver is named: {q.name(t)} moved within its normal range, so there is no change to explain."
+        elif level == "Low":
             text = (f"Confidence for {q.name(t)}: Low. Unresolved, investigate next. No driver is named. "
                     f"Next: split {q.name(t)} by plan and specialty, and ask sales leadership for local context.")
         else:

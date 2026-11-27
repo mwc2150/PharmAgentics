@@ -17,7 +17,7 @@ from . import checks
 from . import queries as q
 from . import stages
 from .checks import DECISION, OWNER, confidence, launch_date
-from .lag_checks import LAG_LABELS
+from .lag_checks import LAG_LABELS, effect_words
 from .projection import Projection, _label, method_lines
 from .registry import Registry
 from . import definition, splits
@@ -565,6 +565,9 @@ def next_checks(p, stories: list[dict], competitor: bool) -> list[str]:
     for a continuing competitor story, and a re-read line when the question asks when more will be known."""
     lines = []
     for s in stories:
+        if not s.get("drivers") and (s.get("in_range") or stages.in_range(s.get("checks") or [])):
+            continue  # a cause was found but the change is within its normal range: context, nothing to investigate
+            # (review H-1, REV-1). A change nothing explains (P2-Q3) still gets its next check.
         name = q.name(s["territory"])
         drivers = [d for d in s.get("drivers", []) if d in OWNER]
         if s["confidence"] == "Low" or not drivers:
@@ -865,7 +868,7 @@ def promotion_lines(checks) -> list[str]:
     if e:
         lines.append(f"- Comparison: {e['territories']} other territories held their promotion level (no channel moved by {e['threshold']} or more at this lag) "
                      "and are the comparison. Each gives one implied effect: this territory's TRx a week in the period, less its TRx in the comparison weeks "
-                     f"scaled by that territory's own change. The range, {e['low']} to {e['high']} extra TRx a week, runs from the lowest to the highest of them.")
+                     f"scaled by that territory's own change. The range, {effect_words(e)}, runs from the lowest to the highest of them.")
     if d["verdict"] == "not_separable":
         lines.append(f"- Not separable from: {', '.join(DRIVER_NAMES.get(x, x) for x in d.get('separable_from') or [])}, supported in the same weeks.")
     lines.append(f"- Lags tested: {', '.join(d['tested'][:-1])} and {d['tested'][-1]}. A fuller read is possible after {d['recheck']}.")
@@ -926,8 +929,8 @@ def cut_checks(reg: Registry, p, territory: str, plan: str, checks=None) -> list
                                                     use_selected_baseline=p.comparison is not None)
     with reg.under(measure="trx"):  # the access check reads TRx whatever the primary measure
         access = check_access(reg, territory, p.weeks, p.baseline, plan=plan, brand_id=p.brand_id)
-    by = {c.driver: c for c in own}
-    by["access"] = access
+    by = {c.driver: stages.credit_rule(reg, p, territory, c) for c in own}  # the territory's verdicts, under its range
+    by["access"] = access  # checked on the plan's own TRx
     return [by[d] for d in _DRIVER_ORDER if d in by]
 
 
@@ -966,7 +969,8 @@ def cut_block(reg: Registry, p, cut: dict, checks=None) -> StoryBlock:
         lead = f"{name} in {where}: {p.brand_id} {m['label']}" if i == 0 else m["label"][:1].upper() + m["label"][1:]
         lines.append(f"{lead} averaged {m['after']} a week on the comparison weeks against {m['before']} before ({m['word']} {m['pct']}).")
     level, lead = confidence(done)
-    lines.append(f"Confidence: {level}. Unresolved, investigate next. No driver is named." if level == "Low" else
+    lines.append(stages.in_range_closing(territory) if stages.in_range(done) and level == "Low" else
+                 f"Confidence: {level}. Unresolved, investigate next. No driver is named." if level == "Low" else
                  f"Confidence: {level}. {'Leading driver' if level == 'High' else 'Candidate drivers'}: {lead}.")
     detail = ["Checked for this plan, in this order:"] + [f"- {c.text}" for c in done]
     detail.append(f"Data, promotion, supply and competitor have no plan-level test, so they carry the {where} verdicts.")

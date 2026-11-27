@@ -5,6 +5,8 @@ No model is called. The agent's model turns are stubbed; its tool calls go throu
 """
 from __future__ import annotations
 
+import re
+
 import json
 import shutil
 import sys
@@ -100,7 +102,9 @@ def test_a_lapse_in_the_comparison_is_named_for_bxc(planted_db):
     from briefing_baseline.pipeline import answer
 
     text = answer("Week of 2026-10-05 in Pacific: What moved?", db=planted_db, brand_id="BXC")["answer"]  # TRx up, calls back up
-    assert "recovery after the promotion lapse of 2026-08-03 to 2026-09-14" in text
+    # Recovery is named either way: as the verdict, or, when Pacific moved within its normal range and nothing is
+    # credited (brief-011 I6), as the context the calls came back from.
+    assert re.search(r"(recovery|came back) after the promotion lapse of 2026-08-03 to 2026-09-14", text)
     assert "BXA" not in text
 
 

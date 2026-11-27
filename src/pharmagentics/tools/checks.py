@@ -28,7 +28,7 @@ DECISION = {  # what a next check unlocks (brief-003 §5 Next checks)
 @dataclass
 class Check:
     driver: str
-    verdict: str  # supported | ruled_out | insufficient | not_separable | not_testable (promotion only; neither is a call on the card)
+    verdict: str  # supported | ruled_out | insufficient | not_separable | not_testable (promotion only) | within_range (none is a call on the card)
     text: str  # template with claim tokens
     detail: dict | None = None
 

@@ -70,6 +70,22 @@ def unstated(envelope: dict) -> dict[str, set[str]]:
     return out
 
 
+def credited_in_range(envelope: dict) -> dict[tuple, list[str]]:
+    """Invariant I6 (Michael, 2026-11-27: assumptions apply to every question and brand): a territory the brief says moved
+    within its normal range, on its stated comparison weeks, has no territory-level driver credited on its card or its
+    plan cards. Access is a plan's own evidence and stays. Returns (territory, cut) -> drivers credited anyway."""
+    from eval.harness.scorers import _cards
+    from pharmagentics.tools.queries import TERRITORY_NAMES
+    within = {t for t, name in TERRITORY_NAMES.items() if f"{name} moved within its normal range" in envelope["answer"]}
+    out: dict[tuple, list[str]] = {}
+    for card in _cards(envelope):
+        if card.get("territory") in within:
+            credited = [d for d in card.get("drivers_supported") or [] if d != "access"]
+            if credited:
+                out[(card["territory"], card.get("cut"))] = credited
+    return out
+
+
 def _cases():
     sys.path.insert(0, str(ROOT))
     from eval.harness.cases import load_cases
@@ -90,6 +106,7 @@ def test_claims_read_only_stated_weeks(case, scripted):
     options = {"comparison": inputs["comparison"]} if inputs.get("comparison") else {}
     out = scripted.predict(sent, **options, **definition_option(scripted.predict, inputs.get("definition")), brand_id=case.brand)
     assert not unstated(out), f"{case.story} reads weeks the brief does not state: {unstated(out)}"
+    assert not credited_in_range(out), f"{case.story} credits a driver inside a normal range: {credited_in_range(out)}"
 
 
 def test_the_mentor_southeast_week():
@@ -108,7 +125,11 @@ def test_the_mentor_southeast_week():
             for d in DAY.findall(e.get("query") or "") if d > "2020-01-01"}
     assert read and read <= allowed, sorted(read - allowed)
     assert "reference weeks" not in text
-    assert "recovery after the promotion lapse of 2026-08-03 to 2026-08-31" in text
+    # REV-1: within its normal range, so promotion is not credited; the lapse it recovered from is named as context.
+    assert "Promotion: not credited. Southeast moved within its normal range" in text
+    assert "Calls came back after the promotion lapse of 2026-08-03 to 2026-08-31." in text
+    assert "no change to explain" in text and "Compared with territories without a promotion change" not in text
+    assert not credited_in_range(out)
     assert "within its normal range; reported because the question asks about it" in text
     assert "Metacora's local share: 2026-07-06 to 2026-09-28." in text  # the competitor check's weeks, stated
     # Review C-13: Metacora's direction reads the stated comparison weeks, like the chart, not a window eight weeks back.

@@ -26,7 +26,7 @@ when: the brief investigates.
 then: the story names access as the leading driver and lists each alternative with its verdict and evidence link.
 reference_answer: |-
   Access, supported. Plan SYN_MID_ATLANTIC_MEDICARE_PART_D_1 moved BXA to tier 3 with prior authorization and step therapy from 2025-08-01 to 2025-10-31. On that plan BXA TRx fell 8.0% (158 to 145 a week) against the four weeks before (2025-07-07 to 2025-07-28), while competitors Lipidara gained 35.6% and Vascriva 36.3%.
-  Promotion, ruled out. Mid-Atlantic BXA rep calls held at 50 a week against 51.5 before.
+  Promotion, not testable. Mid-Atlantic BXA rep calls held at 50 a week against 51.5 before, and no promotion channel moved, so its effect cannot be measured in these weeks.
   Supply, ruled out. BXA inventory fill in Mid-Atlantic averaged 0.98.
   Competitor launch, ruled out. Metacora did not launch until 2026-03-02.
   Data artifact, ruled out. Every Mid-Atlantic cut in those weeks passes the feed gate.
@@ -113,7 +113,7 @@ findings:
   territory: MID_ATLANTIC
   direction: down
   drivers_supported: [access]
-  drivers_ruled_out: [promotion, supply, competitor, data]
+  drivers_ruled_out: [supply, competitor, data]
   withheld: false
   reviewed: true
   cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1

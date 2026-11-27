@@ -7,6 +7,7 @@ restatements and competitor status. Every number in returned text is a claim tok
 """
 from __future__ import annotations
 
+import re
 import statistics
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -644,6 +645,43 @@ def within_normal_range(reg: Registry, p: Period, t: str) -> bool:
     if t not in p.material:
         screen(reg, p)
     return p.material.get(t) is False
+
+
+IN_RANGE = "within_range"
+
+
+def credit_rule(reg: Registry, p: Period, t: str, check):
+    """Assumptions first, for every question and brand (Michael, 2026-11-27; mentor review 2.1, REV-1): a territory
+    whose change is inside its normal range on the brief's stated comparison weeks has no change to explain, so no
+    territory-level driver (promotion, competitor, supply, data) is credited for it, on its story or on its plan cards.
+    Access keeps its verdict: its evidence is always a plan's own TRx on the plan whose coverage changed, not the
+    territory's change. A credited check becomes `within_range`; its evidence stays, the lapse it recovers from is
+    named, and the effect range (a credit) is dropped."""
+    if check.driver == "access" or check.verdict != "supported" or not within_normal_range(reg, p, t):
+        return check
+    from dataclasses import replace
+
+    label, _, rest = check.text.partition(": ")
+    _first, _, rest = rest.partition(". ")
+    kept = [s for s in re.split(r"(?<=\.) ", rest) if s and not s.startswith(("Compared with territories", "No other territory held"))]
+    detail = dict(check.detail or {})
+    lapse = detail.get("lapse")
+    back = ("" if not lapse else f" The period falls inside the promotion lapse of {lapse[0]} to {lapse[1]}."
+            if detail.get("lapse_kind") == "during" else f" Calls came back after the promotion lapse of {lapse[0]} to {lapse[1]}.")
+    if isinstance(detail.get("promotion"), dict):
+        detail["promotion"] = {**detail["promotion"], "verdict": IN_RANGE, "effect": None}
+    text = (f"{label}: not credited. {q.name(t)} moved within its normal range, so no driver is credited for its change."
+            f"{back} {' '.join(kept)}").rstrip()
+    return replace(check, verdict=IN_RANGE, text=text, detail=detail)
+
+
+def in_range_closing(t: str) -> str:
+    """A story's closing line when its territory moved within its normal range: nothing to investigate (review H-1)."""
+    return f"Confidence: Low. No driver is named: {q.name(t)} moved within its normal range, so there is no change to explain."
+
+
+def in_range(checks) -> bool:
+    return any(c.verdict == IN_RANGE for c in checks)
 
 
 def asked_note(reg: Registry, p: Period, t: str) -> str:

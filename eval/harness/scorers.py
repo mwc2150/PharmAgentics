@@ -346,8 +346,11 @@ def leader_words(sections: list[dict]) -> int:
 # Re-measured 2026-11-27 (v2 promotion verdict): the Drivers line gains "Promotion: controls first, then comparable
 # territories." (every anchor +6 leader view, and +6 analyst view where the cards are shrunk); P3-Q5's unshrunk territory
 # cards state the promotion line with new patients, TRx and the comparison with other territories (analyst +34 more).
+# Re-measured 2026-11-27 (UAT review C-13, H-3): Metacora's direction reads the comparison weeks ("share flat on the
+# comparison weeks" for "still growing": P1-Q2, P1-Q6 and P3-Q5 +4 in both views); P3-Q5's Southeast promotion line
+# names the lapse its period falls in (analyst +8 more).
 MEASURED_ANCHORS: dict[str, tuple[int, int]] = {
-    "P1-Q2": (633, 595), "P1-Q3": (409, 376), "P1-Q6": (618, 584), "P3-Q5": (776, 613), "P4-Q1": (868, 834)}
+    "P1-Q2": (637, 599), "P1-Q3": (409, 376), "P1-Q6": (622, 588), "P3-Q5": (788, 617), "P4-Q1": (868, 834)}
 WORD_BUDGET: dict[str, int] = {"analyst": 836, "leader": 705}  # print-verified longest anchor (P4-Q1 in brief-008 I2)
 
 

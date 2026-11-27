@@ -5048,11 +5048,11 @@
     "evidence_id": "e49"
    },
    {
-    "value": "-259",
+    "value": "80",
     "evidence_id": "e65"
    },
    {
-    "value": "-80",
+    "value": "259",
     "evidence_id": "e66"
    },
    {
@@ -5842,8 +5842,8 @@
      "territory": "GREAT_LAKES",
      "scope": "comparison territories"
     },
-    "query": "with m as (select territory_id, sum(trx) filter (where week_start in (DATE '2026-04-06')) / 1.0 as w, sum(trx) filter (where week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26')) / 4.0 as b from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26',DATE '2026-04-06') and territory_id in ('GREAT_LAKES','MOUNTAIN','NEW_ENGLAND','NORTHWEST','PACIFIC','SOUTHEAST','SOUTH_CENTRAL') group by territory_id), d as (select (select w from m where territory_id = 'GREAT_LAKES') - (select b from m where territory_id = 'GREAT_LAKES') * w / nullif(b, 0) as x from m where territory_id <> 'GREAT_LAKES') select min(case when abs(x) < 0.5 then 0 else x end) from d",
-    "result": -258.86506746626685,
+    "query": "select abs((with m as (select territory_id, sum(trx) filter (where week_start in (DATE '2026-04-06')) / 1.0 as w, sum(trx) filter (where week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26')) / 4.0 as b from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26',DATE '2026-04-06') and territory_id in ('GREAT_LAKES','MOUNTAIN','NEW_ENGLAND','NORTHWEST','PACIFIC','SOUTHEAST','SOUTH_CENTRAL') group by territory_id), d as (select (select w from m where territory_id = 'GREAT_LAKES') - (select b from m where territory_id = 'GREAT_LAKES') * w / nullif(b, 0) as x from m where territory_id <> 'GREAT_LAKES') select max(case when abs(x) < 0.5 then 0 else x end) from d))",
+    "result": 79.93984108967084,
     "data_version": "<DATA_VERSION>"
    },
    {
@@ -5853,8 +5853,8 @@
      "territory": "GREAT_LAKES",
      "scope": "comparison territories"
     },
-    "query": "with m as (select territory_id, sum(trx) filter (where week_start in (DATE '2026-04-06')) / 1.0 as w, sum(trx) filter (where week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26')) / 4.0 as b from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26',DATE '2026-04-06') and territory_id in ('GREAT_LAKES','MOUNTAIN','NEW_ENGLAND','NORTHWEST','PACIFIC','SOUTHEAST','SOUTH_CENTRAL') group by territory_id), d as (select (select w from m where territory_id = 'GREAT_LAKES') - (select b from m where territory_id = 'GREAT_LAKES') * w / nullif(b, 0) as x from m where territory_id <> 'GREAT_LAKES') select max(case when abs(x) < 0.5 then 0 else x end) from d",
-    "result": -79.93984108967084,
+    "query": "select abs((with m as (select territory_id, sum(trx) filter (where week_start in (DATE '2026-04-06')) / 1.0 as w, sum(trx) filter (where week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26')) / 4.0 as b from reporting.v_reportable_rx where product_id = 'BXA' and week_start in (DATE '2026-01-05',DATE '2026-01-12',DATE '2026-01-19',DATE '2026-01-26',DATE '2026-04-06') and territory_id in ('GREAT_LAKES','MOUNTAIN','NEW_ENGLAND','NORTHWEST','PACIFIC','SOUTHEAST','SOUTH_CENTRAL') group by territory_id), d as (select (select w from m where territory_id = 'GREAT_LAKES') - (select b from m where territory_id = 'GREAT_LAKES') * w / nullif(b, 0) as x from m where territory_id <> 'GREAT_LAKES') select min(case when abs(x) < 0.5 then 0 else x end) from d))",
+    "result": 258.86506746626685,
     "data_version": "<DATA_VERSION>"
    },
    {

@@ -30,7 +30,7 @@ definition:
 story_text: As Magdalena, I want lifts tested against access, competitors and season, so that I never claim credit for a formulary win.
 given: a lift on one plan that is bigger than the season explains, with steady promotion and unchanged access.
 when: the Lipidara (BXC) brief tests promotion.
-then: promotion is "ruled out," access is ruled out, the seasonal share is noted, and the rest is left unexplained rather than credited.
+then: promotion is "not testable" (its activity held level), access is ruled out, the seasonal share is noted, and the rest is left unexplained rather than credited.
 reference_answer: 'Lipidara on the Mid-Atlantic Medicare Part D plan rose 37.2% (162 to 223 TRx a week, Thanksgiving week left out) against the summer (2025-06-02 to 2025-07-28). Part of the lift is seasonal: national BXC TRx rose 19.3% over the same weeks and the territory''s other plans 20.9%. The plan rose 16.3 points more than those other plans, and no driver in the data explains that. It is not promotion: Mid-Atlantic rep calls averaged 30 a week against 31 in the summer. It is not Lipidara''s access: its tier on the plan stayed at 3. Nor is it the competitor''s move: Cardiovela''s tier on the plan went back to 2 on 2025-11-01, which would pull Lipidara down, not up.'
 must_not_say:
   text: '"Q4 promotion lifted Mid-Atlantic."'
@@ -111,7 +111,6 @@ findings:
   direction: up
   drivers_supported: []
   drivers_ruled_out:
-  - promotion
   - access
   - supply
   withheld: false

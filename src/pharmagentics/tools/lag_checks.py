@@ -193,13 +193,26 @@ def _effect(reg: Registry, terr: str, W, B, current, baseline, brand_id: str) ->
     peers = _held_level(reg, terr, W, B, current, baseline, brand_id)
     if not peers:
         return None
+    lowest, highest = (_effect_sql(terr, peers, W, B, brand_id, agg) for agg in ("min", "max"))
+    fewer = (reg.scalar(highest) or 0) < 0  # every comparison implies a fall: said as fewer TRx, in positive figures
+    if fewer:
+        lowest, highest = f"select abs(({highest}))", f"select abs(({lowest}))"
+    word = "fewer" if fewer else "extra" if (reg.scalar(lowest) or 0) >= 0 else "change"
     with reg.under(measure="trx"):
-        low = reg.claim("get_metric", _effect_sql(terr, peers, W, B, brand_id, "min"), "int", territory=terr, scope="comparison territories")
-        high = reg.claim("get_metric", _effect_sql(terr, peers, W, B, brand_id, "max"), "int", territory=terr, scope="comparison territories")
+        low = reg.claim("get_metric", lowest, "int", territory=terr, scope="comparison territories")
+        high = reg.claim("get_metric", highest, "int", territory=terr, scope="comparison territories")
     n = reg.claim("get_metric", f"select count(distinct territory_id) from {q.RX} where week_start in {q._dates(W)} "
                   f"and product_id = '{brand_id}' and {q._in('territory_id', peers)}", "int", scope="comparison territories")
     threshold = reg.claim("lookup_promo", f"select {PROMOTION_CHANGE_PCT} from raw.calendar limit 1", "pct", scope="promotion moved")
-    return {"low": low, "high": high, "territories": n, "threshold": threshold, "held_level": peers}
+    return {"low": low, "high": high, "word": word, "territories": n, "threshold": threshold, "held_level": peers}
+
+
+def effect_words(e: dict) -> str:
+    """The effect range in words: "34 to 221 extra TRx a week", "152 to 199 fewer TRx a week", or, when the comparison
+    territories disagree on the sign, "a change of -20 to 35 TRx a week"."""
+    if e.get("word") == "change":
+        return f"a change of {e['low']} to {e['high']} TRx a week"
+    return f"{e['low']} to {e['high']} {e.get('word', 'extra')} TRx a week"
 
 
 def _controls(reg: Registry, terr: str, W, B, brand_id: str, use_selected_baseline: bool) -> list[str]:
@@ -267,16 +280,22 @@ def check_promotion(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, us
     direction = "lower" if avg < prior else "higher"
     lapse = _lapse_in(reg, terr, baseline, brand_id) if avg > prior else None
     lapse = lapse if lapse and lapse[1] < current[-1] else None  # calls came back inside the period: recovery
+    # Calls fell with the period inside a lapse: the line names the episode (review H-3: the Forecast lane named it,
+    # the Briefing did not), and says when the comparison weeks hold lapse weeks too, which lowers the comparison.
+    during = _lapse_in(reg, terr, current, brand_id) if avg < prior else None
+    held = " Those comparison weeks include lapse weeks too." if during and _lapse_in(reg, terr, baseline, brand_id) else ""
     calls_line = f"Aggregated calls averaged {a} a week against {b} in the comparison weeks{_lag_note(lag)}"
+    episode = f", during the promotion lapse of {during[0]} to {during[1]}" if during else ""
     separable = _controls(reg, terr, W, B, brand_id, use_selected_baseline)
     if separable:  # a control moved in the same weeks: the TRx change cannot be credited to promotion
         names = _names([CONTROL_NAMES[c] for c in separable])
         recovery = f" This is recovery after the promotion lapse of {lapse[0]} to {lapse[1]}, not a push." if lapse else ""
-        return Check("promotion", "not_separable", f"Promotion: cannot be separated from {names} in these weeks. {outcome} "
-                     f"{calls_line} ({pct} {direction}), {LAG_LABELS[lag]}.{recovery} {tail}",
-                     {"promotion": {**base, "verdict": "not_separable", "separable_from": separable, "effect": None}})
+        return Check("promotion", "not_separable", f"Promotion: cannot be separated from {names} in these weeks{episode}. {outcome} "
+                     f"{calls_line} ({pct} {direction}), {LAG_LABELS[lag]}.{held}{recovery} {tail}",
+                     {"promotion": {**base, "verdict": "not_separable", "separable_from": separable, "effect": None},
+                      **({"lapse": during, "lapse_kind": "during"} if during else {})})
     effect = _effect(reg, terr, W, B, current, baseline, brand_id)
-    against = (f"Compared with territories without a promotion change, this implies {effect['low']} to {effect['high']} extra TRx a week."
+    against = (f"Compared with territories without a promotion change, this implies {effect_words(effect)}."
                if effect else "No other territory held its promotion level in these weeks, so no comparison with other territories is given.")
     structure = {**base, "verdict": "supported", "effect": effect and {
         **effect, "method": "the lowest to the highest implied extra weekly TRx across the comparison territories"}}
@@ -284,8 +303,9 @@ def check_promotion(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, us
         return Check("promotion", "supported", f"Promotion: supported as recovery after the promotion lapse of {lapse[0]} to "
                      f"{lapse[1]}, {LAG_LABELS[lag]}. {outcome} {calls_line}, which include lapse weeks ({pct} {direction}). {against} {tail}",
                      {"lag": lag, "lapse": lapse, "promotion": structure})
-    return Check("promotion", "supported", f"Promotion: supported as an association, {LAG_LABELS[lag]}. {outcome} "
-                 f"{calls_line} ({pct} {direction}). {against} {tail}", {"lag": lag, "promotion": structure})
+    return Check("promotion", "supported", f"Promotion: supported as an association, {LAG_LABELS[lag]}{episode}. {outcome} "
+                 f"{calls_line} ({pct} {direction}).{held} {against} {tail}",
+                 {"lag": lag, "promotion": structure, **({"lapse": during, "lapse_kind": "during"} if during else {})})
 
 
 def _lapse_in(reg: Registry, terr: str, weeks, brand_id: str = "BXA") -> tuple[str, str] | None:
