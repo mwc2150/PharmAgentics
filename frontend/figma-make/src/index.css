@@ -137,6 +137,17 @@
   .glass {
     background: rgb(27 29 39 / 0.96);
   }
+  /* The workspace band (Weekly briefing, Forecast explanation, Evaluation): the page shows through it, blurred */
+  .pa-frost {
+    background: var(--color-paper);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .pa-frost {
+      background: color-mix(in srgb, var(--color-paper) 68%, transparent);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      backdrop-filter: blur(14px) saturate(140%);
+    }
+  }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .glass {
       background: rgb(27 29 39 / 0.8);

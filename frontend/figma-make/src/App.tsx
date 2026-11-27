@@ -720,8 +720,9 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
       <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
     </aside>
     {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
-    <main className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
+    <main className="relative flex min-w-0 flex-1 flex-col">
+      {/* The workspace band floats over the content, frosted: the page scrolls under it and shows through, blurred (2026-11-27) */}
+      <header className="pa-frost absolute inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <button type="button" onClick={toggleNav} aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
             className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="panel" className="h-5 w-5"/></button>
@@ -729,7 +730,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 overflow-y-auto"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={!forecast || telemetry}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 scroll-pt-20 overflow-y-auto pt-16 print:pt-0"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={!forecast || telemetry}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
     <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
