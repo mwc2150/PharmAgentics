@@ -7,7 +7,7 @@ scenario: null
 split: dev
 status: draft
 question: 'Week of 2026-10-05, Southeast: How did BXA TRx move, and why?'
-review_note: From the mentor's review of 2026-11-20 (item 2.1). Drafted 2026-11-27 for Michael's review.
+review_note: From the mentor's review of 2026-11-20 (item 2.1). Drafted 2026-11-27; expected answer approved by Michael 2026-11-27.
 period: week of 2026-10-05
 anchor: Southeast recovery after the August rep-coverage lapse
 definition:
@@ -44,47 +44,47 @@ facts:
   value: 793
   sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-10-05'
   role: must
-  reviewed: false
+  reviewed: true
 - id: se_change_pct
   value: 19.6
   sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-10-05') / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28') / 4.0) - 1)
   role: must
-  reviewed: false
+  reviewed: true
 - id: se_comparison_mean
   value: 663
   sql: select sum(trx) / 4.0 from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28'
   role: context
-  reviewed: false
+  reviewed: true
 - id: se_band_low
   value: 529
   sql: select min(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28' group by 1)
   role: context
-  reviewed: false
+  reviewed: true
 - id: se_band_high
   value: 799
   sql: select max(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28' group by 1)
   role: context
-  reviewed: false
+  reviewed: true
 - id: se_calls_week
   value: 61
   sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-10-05'
   role: context
-  reviewed: false
+  reviewed: true
 - id: se_calls_comparison
   value: 52
   sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28'
   role: context
-  reviewed: false
+  reviewed: true
 - id: se_lapse_calls_low
   value: 15
   sql: select min(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-08-03' and DATE '2026-08-31'
   role: context
-  reviewed: false
+  reviewed: true
 - id: se_lapse_calls_high
   value: 26
   sql: select max(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-08-03' and DATE '2026-08-31'
   role: context
-  reviewed: false
+  reviewed: true
 findings:
 - id: southeast_within_range_recovery
   territory: SOUTHEAST
@@ -92,5 +92,5 @@ findings:
   drivers_supported: []
   drivers_ruled_out: []
   withheld: false
-  reviewed: false
+  reviewed: true
 source: docs/reviews/2026-11-27-uat-review-v1.md#H-1

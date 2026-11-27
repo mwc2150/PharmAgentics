@@ -126,9 +126,10 @@ def test_usage_endpoint_shows_only_the_signed_in_lanes_and_no_person():
 
 
 @pytest.mark.parametrize("user,code", [("dev-analyst", 200), ("dev-insights", 200), ("dev-forecast-analyst", 200), ("dev-tester", 200),
-                                       ("dev-director", 403), ("dev-marketer", 403), ("dev-forecast-manager", 403), ("dev-norole", 403)])
-def test_the_evaluation_page_is_for_analysts_the_insights_manager_and_the_tester(user, code):
-    """Michael, 2026-11-27 (Q17): not the Director, the Marketer or the Forecast Brand Manager; the server refuses, not just the nav."""
+                                       ("dev-forecast-manager", 200), ("dev-director", 403), ("dev-marketer", 403), ("dev-norole", 403)])
+def test_the_evaluation_page_is_closed_to_the_briefing_leaders_only(user, code):
+    """Michael, 2026-11-27 (Q17): not the Director or the Marketer; the server refuses, not just the nav. The Forecast
+    lane's access is unchanged (BM keeps the page; Forecast is Alvin and Sienna's)."""
     c = signed_in(user)
     assert c.get("/api/telemetry").status_code == code and c.get("/api/telemetry/usage").status_code == code
     if user != "dev-norole":

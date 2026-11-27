@@ -9,3 +9,5 @@
 **REV-1 (new, draft).** The week the mentor reviewed: Southeast, week of 2026-10-05, against the stated four weeks before (2026-09-07 to 2026-09-28). The change (up 19.6%) is inside those weeks' range, so it is within Southeast's normal range; calls (61 against 52) are under the promotion bar on the stated weeks. The finding supports no driver; the lapse and recovery are context the answer must name (`must_say`). Facts are from SQL, all `reviewed: false`.
 
 `uv run python -m eval check` recomputes every fact.
+
+**REV-1 reviewed (same day).** Michael approved the expected answer: its facts and its finding are now `reviewed: true`. He also set the rule it tests as general: a territory whose change is within its normal range under the brief's stated comparison weeks supports no driver, in every question and for every brand, not only in this case.

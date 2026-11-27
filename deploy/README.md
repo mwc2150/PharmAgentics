@@ -34,7 +34,7 @@ Open http://localhost:8080 and sign in with one of the seven shared logins below
 
 Brand grants (core-010): the four Briefing logins and `uat-tester` hold `brand-bxa` and `brand-bxc`; the two Forecast logins hold `brand-bxa` only (Forecast is BXA-only). The dev stand-ins mirror this: `dev-analyst`, `dev-insights`, `dev-director`, `dev-marketer`, `dev-forecast-analyst`, `dev-forecast-manager`, `dev-tester`.
 
-**Two-step sign-off (brief-005).** P1 reviews and clicks **Send for sign-off**; P2 **signs off** or **returns** the brief with a comment (and flags on single claims); only a signed-off brief reaches P3 and P4, and a signed-off brief is frozen. A brief approved before sign-off existed counts as signed off, so no list empties; stored records are never rewritten. The sign-off queue is `GET /api/briefing/queue`; the decisions are `POST /api/briefing/{id}/review` (P1: `sent` or `rejected`) and `POST /api/briefing/{id}/signoff` (P2: `signed_off` or `returned`). The **Evaluation page** is for P1, CA, P2 and the tester login; the server answers 403 to P3, P4 and BM.
+**Two-step sign-off (brief-005).** P1 reviews and clicks **Send for sign-off**; P2 **signs off** or **returns** the brief with a comment (and flags on single claims); only a signed-off brief reaches P3 and P4, and a signed-off brief is frozen. A brief approved before sign-off existed counts as signed off, so no list empties; stored records are never rewritten. The sign-off queue is `GET /api/briefing/queue`; the decisions are `POST /api/briefing/{id}/review` (P1: `sent` or `rejected`) and `POST /api/briefing/{id}/signoff` (P2: `signed_off` or `returned`). The **Evaluation page** is closed to P3 and P4 (the server answers 403); the Forecast lane keeps it for CA and BM as before.
 
 Without Keycloak: `docker run --rm -p 8080:8080 -e PHARMAGENTICS_AUTH=dev pharmagentics:uat` gives a page of stand-in identities, one per role. Dev sign-in refuses to start on Cloud Run.
 
@@ -109,7 +109,7 @@ The token comes from `PHARMAGENTICS_WORKER_TOKEN` in `deploy/.env.uat` (also a s
 
 ## Evaluation page and MLflow
 
-The app's **Evaluation** page (the analyst, Insights Manager, Forecast analyst and tester logins, each seeing only their own lanes; not the Director, the Marketer or the Forecast Brand Manager) shows two things, as aggregates only:
+The app's **Evaluation** page (every login except the Brand Director and the Marketer, each seeing only their own lanes; leader roles get no per-case table) shows two things, as aggregates only:
 
 - **In use:** requests per week, scripted response time and agent time to result (median, p95), review decisions, answer votes, session ratings, the usability score (SUS from the first questionnaire, UMUX-Lite's SUS-equivalent from the current one) and the cloud agent budget. Computed from the bucket's events, jobs and feedback, refreshed every 5 minutes. The test login is left out and only counted.
 - **Golden-set scores:** the latest run of each system and control, from the local MLflow store. The image never holds `eval/`, so the scores travel as a snapshot.

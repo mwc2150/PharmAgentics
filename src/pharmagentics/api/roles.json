@@ -1,5 +1,5 @@
 {
-  "_comment": "Role-to-permission map (core-007 FR-001). One role per persona that has a login: P1, P2, P3 and P4 in Briefing, CA and BM in Forecast. Role names match the Keycloak realm roles. `states` are the review states of a brief the role may list and open (brief-005 two-step sign-off); `evaluation` opens the Evaluation page. Forecast roles: Alvin and Sienna confirm.",
+  "_comment": "Role-to-permission map (core-007 FR-001). One role per persona that has a login: P1, P2, P3 and P4 in Briefing, CA and BM in Forecast. Role names match the Keycloak realm roles. `states` are the review states of a brief the role may list and open (brief-005 two-step sign-off); `evaluation` opens the Evaluation page (the Forecast lane keeps it for CA and BM as before v2). Forecast roles: Alvin and Sienna confirm.",
   "version": "2026-11-27",
   "roles": {
     "briefing-analyst": {
@@ -46,7 +46,7 @@
       "persona": "BM",
       "label": "Brand Manager",
       "views": ["leadership"],
-      "actions": ["read", "review"]
+      "actions": ["read", "review", "evaluation"]
     }
   },
   "test_role": {

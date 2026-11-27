@@ -213,7 +213,7 @@ def _signed_in(p: rbac.Principal) -> set[str]:
     if not p.lanes:
         raise HTTPException(status_code=403, detail="Your account has no PharmAgentics role.")
     if not rbac.can_evaluate(p):
-        raise HTTPException(status_code=403, detail="The Evaluation page is for analysts and the Insights Manager.")
+        raise HTTPException(status_code=403, detail="The Evaluation page is not part of this role.")
     return {r.lane for r in p.lanes}
 
 
