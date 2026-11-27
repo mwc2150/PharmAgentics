@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useEffect, useState, type CSSProperties } from "react"
 import { getAgentsInfo, type AgentCard, type AgentComparison, type AgentsInfo, type CompareRow } from "./agent/briefingApi"
 import { KIND_NAME, KIND_STYLE } from "./Timeline"
 import { InView, Notice, RollIn, modelName } from "./agent/primitives"
 import { fmtDate } from "./userSettings"
+import { useDrawOnView } from "./motion"
 
 // brief-009 FR-006: how the briefing is made. The flow from question to brief, the four actors the architecture names
 // (Manager, Data Forensics, Driver Investigator, and the Writer, which is an LLM step and not an agent), what each
@@ -23,12 +24,13 @@ function show(row: CompareRow, v: number | null): string {
 }
 
 function Heading({ title, note }: { title: string, note?: string }) {
-  return <div className="pt-2"><h3 className="text-xs uppercase tracking-[0.06em] text-muted">{title}</h3>{note && <p className="mt-1 text-sm text-muted">{note}</p>}</div>
+  return <div className="pt-2"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">{title}</span></h3>{note && <p className="mt-1 text-sm text-muted">{note}</p>}</div>
 }
 
 function Flow({ steps }: { steps: AgentsInfo["flow"] }) {
-  return <ol className={`${PANEL} divide-y divide-rule`}>
-    {steps.map(s => <li key={s.n} className="grid gap-x-4 gap-y-1 px-5 py-4 sm:grid-cols-[28px_190px_1fr]">
+  const ref = useDrawOnView<HTMLOListElement>(0.05)
+  return <ol ref={ref} className={`${PANEL} pa-reveal divide-y divide-rule`}>
+    {steps.map((s, i) => <li key={s.n} style={{"--i": i} as CSSProperties} className="grid gap-x-4 gap-y-1 px-5 py-4 sm:grid-cols-[28px_190px_1fr]">
       <span className="font-mono text-xs text-muted">{s.n}</span>
       <span className="flex flex-wrap items-start gap-1.5"><span className={`${chip} ${KIND_STYLE[s.kind]}`}>{s.actor}</span></span>
       <div><p className="text-sm font-medium">{s.title}</p><p className="mt-0.5 text-sm text-muted">{s.note}</p></div>
@@ -36,8 +38,8 @@ function Flow({ steps }: { steps: AgentsInfo["flow"] }) {
   </ol>
 }
 
-function Actor({ a, promptsShown }: { a: AgentCard, promptsShown: boolean }) {
-  return <article className={`${PANEL} p-5`}>
+function Actor({ a, promptsShown, at }: { a: AgentCard, promptsShown: boolean, at: number }) {
+  return <article style={{"--i": at} as CSSProperties} className={`${PANEL} p-5`}>
     <div className="flex flex-wrap items-baseline justify-between gap-2">
       <h4 className="text-base font-semibold">{a.name}</h4>
       <span className={`${chip} ${KIND_STYLE[a.kind]}`}>{a.kind === "agent" ? KIND_NAME.agent : "LLM step, not an agent"}</span>
@@ -107,7 +109,7 @@ export function HowItWorks() {
   if (error) return <Notice tone="error" role="alert">{error}<button type="button" className="ml-2 underline" onClick={() => setAttempt(n => n + 1)}>Try again</button></Notice>
   if (!info) return <div role="status" className={`${PANEL} space-y-3 p-6`}><span className="sr-only">Loading how it works…</span><div className="pa-skeleton h-5 w-2/5"/><div className="pa-skeleton h-3 w-full"/><div className="pa-skeleton h-3 w-4/5"/></div>
   const lim = info.limits
-  return <div className="space-y-5">
+  return <div className="pa-sequence space-y-5">
     <section className={`${PANEL} p-6`}>
       <h2 className="text-xl">How the briefing is made</h2>
       <p className="mt-2 max-w-[68ch] text-sm">{modelLine(info.model)}</p>
@@ -118,15 +120,15 @@ export function HowItWorks() {
     <Flow steps={info.flow}/>
 
     <Heading title="Two engines" note="You choose one when you generate a briefing."/>
-    <div className="grid gap-4 sm:grid-cols-2">
+    <InView className="pa-reveal grid gap-4 sm:grid-cols-2">
       <section className={`${PANEL} p-5`}><h4 className="text-base font-semibold">Scripted</h4><p className="mt-2 text-sm text-muted">{info.engines.scripted}</p></section>
-      <section className={`${PANEL} p-5`}><h4 className="text-base font-semibold">Agent team <span className="text-xs font-normal text-muted">· experimental</span></h4>
+      <section style={{"--i": 1} as CSSProperties} className={`${PANEL} p-5`}><h4 className="text-base font-semibold">Agent team <span className="text-xs font-normal text-muted">· experimental</span></h4>
         <p className="mt-2 text-sm text-muted">{info.engines.agent}</p>
         {lim && <p className="mt-2 text-xs text-muted">Caps: at most {lim.rounds_a_story} rounds and {lim.seconds_a_story} seconds on a story, and {lim.seconds_a_run} seconds on a run. A story left unfinished closes as unresolved.</p>}</section>
-    </div>
+    </InView>
 
     <Heading title="The four actors" note="Three agents and one writing step. Each card shows its job, its tools and where its output lands in the memo."/>
-    <div className="grid gap-4 lg:grid-cols-2">{info.actors.map(a => <Actor key={a.id} a={a} promptsShown={info.prompts_shown}/>)}</div>
+    <InView className="pa-reveal grid gap-4 lg:grid-cols-2">{info.actors.map((a, i) => <Actor key={a.id} a={a} at={i} promptsShown={info.prompts_shown}/>)}</InView>
 
     <Heading title="What the agent team adds" note="The latest scripted and agent runs, scored on the same golden questions."/>
     <Comparison c={info.comparison}/>

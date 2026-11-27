@@ -70,9 +70,8 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
         {pts.map((p, i) => {
           const assumed = p.basis && p.basis !== "observed"
           return <circle key={i} className="pa-dot" cx={x(p.week)} cy={sc.y(p.value as number)} r={assumed || p.restated ? 4.5 : 3}
-            fill={assumed ? "var(--color-sheet)" : s.color} stroke={s.color} strokeWidth={1.5} strokeDasharray={p.restated ? "2 2" : undefined}>
-            <title>{`${s.name}, week of ${p.week}: ${fmt(p.value as number, unit)}${assumed ? ` (${p.basis}, an assumption)` : ""}${p.restated ? " (restated)" : ""}`}</title>
-          </circle>
+            fill={assumed ? "var(--color-sheet)" : s.color} stroke={s.color} strokeWidth={1.5} strokeDasharray={p.restated ? "2 2" : undefined}
+            data-tip={`${s.name}, week of ${p.week}: ${fmt(p.value as number, unit)}${assumed ? ` (${p.basis}, an assumption)` : ""}${p.restated ? " (restated)" : ""}`}/>
         })}
       </g>
     })}
@@ -95,13 +94,12 @@ function CoverageStrip({chart}: {chart: ChartSpec}) {
       <text x={left - 6} y={top + ri * cell + 10} textAnchor="end" className="fill-muted text-[9px]">{r.territory}</text>
       {r.cells.map(c => {
         const cx = left + chart.weeks.indexOf(c.week) * cell, cy = top + ri * cell
-        return <g key={c.week}>
+        return <g key={c.week} data-tip={`${r.territory}, week of ${c.week}: ${c.basis}${c.basis !== "observed" ? ", an assumption" : ""}${c.restated ? ", restated" : ""}`}>
           <rect x={cx + 1} y={cy + 1} width={cell - 2} height={cell - 2} rx={2}
             fill={c.basis === "observed" ? "var(--color-primary)" : "var(--color-sheet)"} opacity={c.basis === "observed" ? 0.35 : 1}
             stroke={c.basis === "observed" ? "none" : "var(--color-amber)"} strokeWidth={1.2}/>
           {c.basis === "estimated" && <path d={`M${cx + 3} ${cy + 3}L${cx + cell - 3} ${cy + cell - 3}M${cx + cell - 3} ${cy + 3}L${cx + 3} ${cy + cell - 3}`} stroke="var(--color-amber)" strokeWidth={1.2}/>}
           {c.restated && <circle cx={cx + cell / 2} cy={cy + cell / 2} r={cell / 2 - 0.5} fill="none" stroke="var(--color-human)" strokeWidth={1.2}/>}
-          <title>{`${r.territory}, week of ${c.week}: ${c.basis}${c.basis !== "observed" ? ", an assumption" : ""}${c.restated ? ", restated" : ""}`}</title>
         </g>
       })}
     </g>)}

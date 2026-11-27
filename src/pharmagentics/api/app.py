@@ -281,8 +281,9 @@ async def queue(response: Response, who=Briefing) -> list[dict]:
 @app.get("/api/briefing/mine", tags=["briefing"])
 async def mine(response: Response, who=Briefing) -> list[dict]:
     """The briefs this login generated on the current data version, in every review state, newest first: the analyst's
-    Your briefings, so a brief made and left is still there to open. Only a role that runs briefs has them. Rows carry
-    no evidence and name no person (a brief records a pseudonym of who made it)."""
+    Your briefings, so a brief made and left is still there to open, and the questions under New briefing (each row's
+    question as asked, without its scope prefix). Only a role that runs briefs has them. Rows carry no evidence and
+    name no person (a brief records a pseudonym of who made it)."""
     p, role = who
     rbac.allow(role, "run")
     _no_store(response)
@@ -295,7 +296,9 @@ async def mine(response: Response, who=Briefing) -> list[dict]:
         note = signoff.returned_note(r)
         state = signoff.state_of(r)
         rows.append({**{k: r["result"].get(k) for k in ("brand_id", "week_start", "week_end", "territory_id", "engine", "abstained")},
-                     "brief_id": r["brief_id"], "review_status": state, "created_at": r.get("created_at"),
+                     "brief_id": r["brief_id"], "question": service.typed_question(r["result"].get("question")),
+                     "promotion_review": service.is_promotion_question(r["result"].get("question")),
+                     "review_status": state, "created_at": r.get("created_at"),
                      "sent_at": r.get("reviewed_at") if state in (signoff.SENT, signoff.SIGNED_OFF) else None,
                      "signed_off_at": r.get("signed_off_at"), "returned_at": note["at"] if note else None,
                      "rejected_at": r.get("reviewed_at") if state == signoff.REJECTED else None})

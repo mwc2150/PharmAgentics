@@ -139,11 +139,12 @@ type MainProps<T extends string> = Shared & {
   onChange: (value: T[]) => void
 }
 
-/** An option's description, out of the way until it is wanted (Michael, 2026-11-27): shown in gray under the option
- *  while it is hovered or focused (keyboard, or a tap on a phone). It stays the input's accessible description
+/** An option's description, out of the way until it is wanted (Michael, 2026-11-27): with a mouse it follows the
+ *  pointer (the label's data-tip, HoverTips.tsx); shown in gray under the option while it has keyboard focus, or after
+ *  a tap on a phone. It stays the input's accessible description
  *  (aria-describedby), so a screen reader reads it whether or not it is on screen. */
 function OptionNote({ id, text }: { id: string; text: string }) {
-  return <span id={id} role="tooltip" className="pointer-events-none invisible absolute left-6 top-full z-30 mt-1 w-max max-w-64 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs text-muted opacity-0 shadow-lg transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 motion-reduce:transition-none">{text}</span>
+  return <span id={id} role="tooltip" className="pointer-events-none invisible absolute left-6 top-full z-30 mt-1 w-max max-w-64 rounded-lg border border-rule bg-paper px-2.5 py-1.5 text-xs text-muted opacity-0 shadow-lg transition-opacity duration-150 group-has-[:focus-visible]:visible group-has-[:focus-visible]:opacity-100 pointer-coarse:group-focus-within:visible pointer-coarse:group-focus-within:opacity-100 motion-reduce:transition-none">{text}</span>
 }
 
 /** One main choice (radios, each with what it does) and, under "Also show beside it", the others as checkboxes. A new
@@ -156,7 +157,7 @@ function MainChoice<T extends string>({ label, options, notes, value, onChange, 
     <legend className="text-xs font-medium text-muted">{label}<Proposed show={proposed}/></legend>
     <fieldset className="space-y-1.5">
       <legend className="mb-1 text-xs text-muted">Main</legend>
-      {options.map(([opt, name]) => <label key={opt} className="group relative flex w-fit items-center gap-2">
+      {options.map(([opt, name]) => <label key={opt} data-tip={notes[opt]} className="group relative flex w-fit items-center gap-2">
         <input type="radio" name={`${id}-main`} checked={main === opt} aria-describedby={`${id}-${opt}-note`}
           onChange={() => onChange([opt, ...extras.filter(v => v !== opt)])}/>
         <span className="text-sm text-ink">{name}</span><OptionNote id={`${id}-${opt}-note`} text={notes[opt]}/>
@@ -165,7 +166,7 @@ function MainChoice<T extends string>({ label, options, notes, value, onChange, 
     {main !== undefined && others.length > 0 && <fieldset className="space-y-1.5">
       <legend className="mb-1 text-xs text-muted">Also show beside it</legend>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-        {others.map(([opt, name]) => <label key={opt} className="group relative flex items-center gap-2 text-sm text-ink">
+        {others.map(([opt, name]) => <label key={opt} data-tip={notes[opt]} className="group relative flex items-center gap-2 text-sm text-ink">
           <input type="checkbox" checked={extras.includes(opt)} aria-describedby={`${id}-${opt}-extra-note`}
             onChange={() => onChange(extras.includes(opt) ? [main, ...extras.filter(v => v !== opt)] : [main, ...extras, opt])}/>{name}
           <OptionNote id={`${id}-${opt}-extra-note`} text={notes[opt]}/></label>)}
@@ -179,7 +180,7 @@ function MainChoice<T extends string>({ label, options, notes, value, onChange, 
 function GrainChoice({ value, onChange, label, proposed, disabled, error, id }: Shared & { value: GrainLevel[]; onChange: (value: GrainLevel[]) => void }) {
   return <fieldset className="min-w-0 space-y-1.5" disabled={disabled} aria-describedby={error ? `${id}-error` : undefined}>
     <legend className="mb-1 text-xs font-medium text-muted">{label}<Proposed show={proposed}/></legend>
-    {GRAIN_LEVELS.map(([level, name]) => <label key={level} className="group relative flex w-fit items-center gap-2">
+    {GRAIN_LEVELS.map(([level, name]) => <label key={level} data-tip={GRAIN_NOTES[level]} className="group relative flex w-fit items-center gap-2">
       <input type="checkbox" checked={value.includes(level)} aria-describedby={`${id}-${level}-note`}
         onChange={() => onChange(value.includes(level) ? value.filter(v => v !== level) : [...value, level])}/>
       <span className="text-sm text-ink">{name}</span><OptionNote id={`${id}-${level}-note`} text={GRAIN_NOTES[level]}/>

@@ -105,6 +105,19 @@ def normalize_question(request: BriefingQuery) -> str:
     return f"Week of {request.week_start.isoformat()} in {label}: {request.question.strip()}"
 
 
+_SCOPE_PREFIX = re.compile(r"^(?:Weeks? of \S+(?: to \S+)?|Promotion review) in [^:]+: ")
+
+
+def typed_question(question: str | None) -> str | None:
+    """The question as the analyst asked it: the scope prefix normalize_question adds, taken off."""
+    return (_SCOPE_PREFIX.sub("", question, count=1).strip() or None) if question else None
+
+
+def is_promotion_question(question: str | None) -> bool:
+    """A release-wide Promotion review: normalize_question names it in its prefix (its week is only the latest one)."""
+    return bool(question) and question.startswith("Promotion review in ")
+
+
 def period_weeks(request: BriefingQuery) -> list[str]:
     """The reporting weeks of the request, first to last, as ISO dates (one week unless week_end is later)."""
     last = request.week_end or request.week_start

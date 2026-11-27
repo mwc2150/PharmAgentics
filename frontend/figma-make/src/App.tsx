@@ -4,7 +4,7 @@ import { Avatar, BrandMark, Icon, InView, Notice, RollIn, longDates, modelName, 
 import { TelemetryWorkspace } from "./Telemetry"
 import { BRIEF_TITLE, RUN_TITLE, openInTransition, pageChange } from "./motion"
 import { SettingsWorkspace } from "./Settings"
-import { fmtDate, fmtIsoDate, fmtTime, getSettings, useResolvedTheme, useSettings } from "./userSettings"
+import { fmtDate, fmtIsoDate, fmtTime, getSettings, motionReduced, useResolvedTheme, useSettings } from "./userSettings"
 import { getUsage } from "./agent/telemetryApi"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
@@ -182,8 +182,10 @@ function AccountMenu({me}: {me: Me}) {
   </DropdownMenu>
 }
 
-// Data classification of a tab or view (core-009): a quiet text label from classification.json, the way a
-// document carries its marking. Only Sensitive, the highest level, takes a colour. No enforcement here.
+// Data classification of a tab or view (core-009), from classification.json. A quiet marking, not a warning (Michael,
+// 2026-11-27: the bare upper-case word read as shouting): a hairline chip with a shield, the level in sentence case and
+// a four-step meter that shows where it sits from Public to Sensitive; hover gives the level's meaning. Only Sensitive,
+// the highest level, takes a colour. No enforcement here.
 let classificationCache: Promise<Classification | null> | null = null
 function useClassification(): Classification | null {
   const [c,setC] = useState<Classification | null>(null)
@@ -213,8 +215,12 @@ function ClassLabel({tab, header=false}: {tab: string, header?: boolean}) {
     return ()=>{ artifactLabels--; artifactListeners.forEach(fn=>fn()) }
   },[shown])
   if (!level || (header && others > 0)) return null
-  return <span title={`${level.label}: ${level.description}`} className={`whitespace-nowrap font-sans text-[11px] font-medium uppercase tracking-[0.06em] ${level.id === "sensitive" ? "text-neg" : "text-muted"}`}>
-    <span className="sr-only">Data classification: </span>{level.label}
+  const rank = c!.levels.indexOf(level), steps = c!.levels.length
+  return <span data-tip={`Data classification: ${level.label}, level ${rank + 1} of ${steps}. ${level.description}`}
+    className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-[3px] font-sans text-[11px] leading-none ${level.id === "sensitive" ? "border-neg/40 text-neg" : "border-rule text-muted"}`}>
+    <Icon name="shield" className="h-3 w-3"/>
+    <span><span className="sr-only">Data classification: </span>{level.label}<span className="sr-only">, level {rank + 1} of {steps}</span></span>
+    <span aria-hidden="true" className="flex items-end gap-[2px]">{c!.levels.map((l,i)=><span key={l.id} className={`w-[3px] rounded-[1px] bg-current ${i <= rank ? "" : "opacity-25"}`} style={{height: 3 + i * 2}}/>)}</span>
   </span>
 }
 
@@ -830,19 +836,22 @@ function Centered({children}: {children: ReactNode}) {
 // `introId` lets the page send focus to the intro (tabIndex -1) after "Start a new briefing".
 function IntroWithHow({introId, children}: {introId?: string, children: ReactNode}) {
   const [open,setOpen] = useState(false)
+  const [shown,setShown] = useState(false)  // in the page: from the first open until a close has finished shrinking it
   const panel = useId()
   const button = useRef<HTMLButtonElement>(null)
-  const close = () => { setOpen(false); button.current?.focus() }
+  const close = () => { setOpen(false); if (motionReduced()) setShown(false); button.current?.focus() }
+  const show = () => { setShown(true); requestAnimationFrame(()=>requestAnimationFrame(()=>setOpen(true))) }  // in the page first, then grown
   // Escape closes the panel from the button as well as from inside it.
-  return <div className="space-y-3" onKeyDown={e=>{ if (e.key==="Escape" && open) { e.stopPropagation(); close() } }}>
+  return <div onKeyDown={e=>{ if (e.key==="Escape" && open) { e.stopPropagation(); close() } }}>
     <div className="flex items-start justify-between gap-3">
       <p id={introId} tabIndex={introId ? -1 : undefined} className="min-w-0 text-sm text-muted outline-none">{children}</p>
-      <button ref={button} type="button" aria-expanded={open} aria-controls={open ? panel : undefined} onClick={()=>open ? close() : setOpen(true)} className="flex min-h-6 min-w-6 shrink-0 items-center justify-center gap-1.5 rounded-lg text-sm text-primaryink hover:underline"><Icon name="help" className="h-4 w-4"/><span className="max-sm:sr-only">How it works</span><Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/></button>
+      <button ref={button} type="button" aria-expanded={open} aria-controls={open ? panel : undefined} onClick={()=>open ? close() : show()} className="flex min-h-6 min-w-6 shrink-0 items-center justify-center gap-1.5 rounded-lg text-sm text-primaryink hover:underline"><Icon name="help" className="h-4 w-4"/><span className="max-sm:sr-only">How it works</span><Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/></button>
     </div>
-    {open && <section id={panel} aria-label="How it works" className="pa-rise space-y-3 border-y border-rule py-4">
+    {shown && <div className="pa-expand" data-open={open || undefined} inert={!open} onTransitionEnd={e=>{ if (e.target===e.currentTarget && e.propertyName==="grid-template-rows" && !open) setShown(false) }}><div>
+    <section id={panel} aria-label="How it works" className="mt-3 space-y-3 border-y border-rule py-4">
       <div className="flex items-center justify-between gap-3"><ClassLabel tab="briefing.how"/><button type="button" onClick={close} aria-label="Close How it works" className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-4 w-4"/></button></div>
       <HowItWorks/>
-    </section>}
+    </section></div></div>}
   </div>
 }
 
@@ -1058,7 +1067,53 @@ function QueueList({mode, onOpen}: {mode: "analyst" | "insights", onOpen: (id: s
 // Your briefings (Michael, 2026-11-27), laid out as Forecast's Your reports: what leadership sees on top, then what
 // needs you (returned with a comment, drafts, and a run still going), then what is with the reviewer; rejected briefs
 // fold away. A brief made and left stays here to open, so nothing is run twice.
-function YourBriefings({onOpen, running}: {onOpen: (id: string, from?: Element | null) => void, running?: {title: string, note: string, go: () => void} | null}) {
+type RunningRow = {title: string, note: string, go: () => void}
+const mineLine = (r: MineRow) => r.review_status === "returned" ? `Returned ${labelTime(r.returned_at)} · open it to read the comment`
+  : r.review_status === "draft" ? `Draft · made ${labelTime(r.created_at)}` : r.review_status === "sent" ? `Sent for sign-off ${labelTime(r.sent_at)}`
+  : r.review_status === "rejected" ? `Rejected ${labelTime(r.rejected_at)}` : `Signed off ${labelTime(r.signed_off_at)}`
+// A release-wide Promotion review covers every week of the release, so its row names that, not its latest week.
+const mineScope = (r: MineRow) => `${r.brand_id} · ${labelTerritory(r.territory_id)}, ${r.promotion_review ? "release-wide Promotion review" : periodLabel(r.week_start, r.week_end)}`
+function MineList({rows, live, onOpen, byQuestion=false}: {rows: MineRow[], live?: RunningRow | null, onOpen: (id: string, from?: Element | null) => void, byQuestion?: boolean}) {
+  const chevron = <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/>
+  const rowClass = "group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"
+  return <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>
+    {live && <li><button type="button" onClick={live.go} className={rowClass}><span className="min-w-0"><span className="block text-sm">{live.title}</span><span className="mt-0.5 block text-xs text-muted">{live.note}</span></span>{chevron}</button></li>}
+    {rows.map(r=><li key={r.brief_id}><button onClick={e=>onOpen(r.brief_id, e.currentTarget.querySelector("[data-title]"))} className={rowClass}>
+      <span className="min-w-0"><span data-title className="block w-fit text-sm">{byQuestion ? r.question : `${mineScope(r)}`}</span><span className="mt-0.5 block text-xs text-muted">{byQuestion && `${mineScope(r)} · `}{mineLine(r)}{r.abstained ? " · unresolved findings" : ""}</span></span>{chevron}</button></li>)}</ul>
+}
+
+// Under the New briefing form, as Forecast lists its questions under New explanation (Michael, 2026-11-27): each brief
+// this login started from a question (typed in the bar, or an example), newest first, the question as its title. A
+// brief made from the form alone carries the form's own wording and is listed only under Your briefings.
+const FORM_QUESTION = "Generate the weekly brand-performance briefing.", PROMOTION_QUESTION = "Review promotion across the release."
+const asked = (q?: string | null): q is string => !!q && ![FORM_QUESTION, PROMOTION_QUESTION, "What changed this week?"].includes(q)
+function BriefingQuestions({onOpen, running}: {onOpen: (id: string, from?: Element | null) => void, running?: RunningRow | null}) {
+  const [rows,setRows] = useState<MineRow[] | null>(null)
+  const [error,setError] = useState<string | null>(null)
+  useEffect(()=>{
+    let live = true
+    listMine().then(r=>{ if (live) setRows(r.filter(x=>asked(x.question))) }).catch(e=>{ if (live) setError(message(e)) })
+    return ()=>{ live = false }
+  },[])
+  return <section><h3 className="text-sm font-semibold">Your briefing questions</h3>
+    {error ? <div className="mt-2"><Notice tone="error" role="alert">{error}</Notice></div> : rows === null ? <div className="mt-2"><ListSkeleton/></div>
+      : rows.length || running ? <MineList rows={rows} live={running} onOpen={onOpen} byQuestion/>
+      : <p className="mt-2 text-sm text-muted">No briefing questions yet. Ask one in the bar at the bottom, or start from an example above.</p>}
+  </section>
+}
+
+// Example questions for the New briefing form, as Forecast has under its question box. Each reads into the form like a
+// typed question (the brand stays the form's); nothing runs until Generate.
+const BRIEF_EXAMPLES = [
+  "Latest week: How did the brand do, and what drove it?",
+  "Week of Aug 24, 2026, Southeast: What drove the change?",
+  "Jun to Aug 2026, Pacific: How did new patients (NBRx) trend?",
+  "Sep 2026, New England: Compare with the same weeks last year",
+  "Latest week, Mountain: Compare with the previous 8 weeks",
+  "Did the promotion lift TRx across the release?",
+]
+
+function YourBriefings({onOpen, running}: {onOpen: (id: string, from?: Element | null) => void, running?: RunningRow | null}) {
   const [rows,setRows] = useState<MineRow[] | null>(null)
   const [error,setError] = useState<string | null>(null)
   useEffect(()=>{
@@ -1068,15 +1123,7 @@ function YourBriefings({onOpen, running}: {onOpen: (id: string, from?: Element |
   },[])
   const of = (...states: MineRow["review_status"][]) => (rows ?? []).filter(r=>states.includes(r.review_status))
   const needs = [...of("returned"), ...of("draft")], waiting = of("sent"), rejected = of("rejected")
-  const line = (r: MineRow) => r.review_status === "returned" ? `Returned ${labelTime(r.returned_at)} · open it to read the comment`
-    : r.review_status === "draft" ? `Draft · made ${labelTime(r.created_at)}` : r.review_status === "sent" ? `Sent for sign-off ${labelTime(r.sent_at)}`
-    : r.review_status === "rejected" ? `Rejected ${labelTime(r.rejected_at)}` : `Signed off ${labelTime(r.signed_off_at)}`
-  const chevron = <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/>
-  const rowClass = "group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60"
-  const list = (xs: MineRow[], live?: typeof running) => <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>
-    {live && <li><button type="button" onClick={live.go} className={rowClass}><span className="min-w-0"><span className="block text-sm">{live.title}</span><span className="mt-0.5 block text-xs text-muted">{live.note}</span></span>{chevron}</button></li>}
-    {xs.map(r=><li key={r.brief_id}><button onClick={e=>onOpen(r.brief_id, e.currentTarget.querySelector("[data-title]"))} className={rowClass}>
-      <span className="min-w-0"><span data-title className="block w-fit text-sm">{r.brand_id} · {labelTerritory(r.territory_id)}, {periodLabel(r.week_start, r.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{line(r)}{r.abstained ? " · unresolved findings" : ""}</span></span>{chevron}</button></li>)}</ul>
+  const list = (xs: MineRow[], live?: typeof running) => <MineList rows={xs} live={live} onOpen={onOpen}/>
   return <div className="space-y-8">
     <section><h3 className="text-sm font-semibold">Approved</h3><p className="mt-0.5 text-xs text-muted">What the Brand Director and the Marketer can open: briefings the Insights Manager signed off, on the current data release.</p><div className="mt-2"><PublishedList onOpen={onOpen}/></div></section>
     {error ? <Notice tone="error" role="alert">{error}</Notice> : rows === null ? <ListSkeleton/> : <>
@@ -1352,7 +1399,7 @@ function AnalystApp({me}: {me: Me}) {
     if(pending || invalidComparison || invalidChoices || !context || !context.product_ids.includes(brand) || !context.territory_ids.includes(territory) || !context.available_weeks.includes(week)) return
     const selected={brand,territory,week:reviewPromotion ? context.latest_week : week,weekEnd:reviewPromotion ? context.latest_week : weekEnd,promotion:reviewPromotion,comparison:reviewPromotion ? null : comparisons[0] ?? null,
       definition:{...choices,first_week:reviewPromotion ? null : week,last_week:reviewPromotion ? null : weekEnd,comparison:reviewPromotion || !comparisons.length ? null : comparisons},
-      question:ask.trim().length>=3 ? ask.trim().slice(0,300) : reviewPromotion ? "Review promotion across the release." : "Generate the weekly brand-performance briefing."}
+      question:ask.trim().length>=3 ? ask.trim().slice(0,300) : reviewPromotion ? PROMOTION_QUESTION : FORM_QUESTION}
     // Plan review is always on in UAT (brief-002 FR-019): stages 1 to 3 and the code triage first.
     const token=++generation.current
     const active=()=>token===generation.current
@@ -1395,13 +1442,17 @@ function AnalystApp({me}: {me: Me}) {
     finally {if(active()){setPending(false);setJobNote(null);setJobState(null);setLiveEvents([])}}
   }
   // A brief that loads fast opens in one page transition, its list title moving into the heading (motion.ts).
-  const openApproved = async (id: string, from?: Element | null) => {
+  // A brief opened from the New briefing list returns there; one opened from Your briefings returns to that list.
+  const [openedFrom,setOpenedFrom] = useState<"home" | "approved">("approved")
+  const openApproved = async (id: string, from?: Element | null, origin: "home" | "approved" = "approved") => {
     const token=++openedToken.current, active=()=>token===openedToken.current
     await openInTransition(openBrief(id, "analyst"),
-      ()=>{ setOpened(null);setOpenedError(null);setOpenedLoading(true);setView("approved");setChip(null);setBarEvidence(null) },
+      ()=>{ setOpened(null);setOpenedError(null);setOpenedLoading(true);setOpenedFrom(origin);setView("approved");setChip(null);setBarEvidence(null) },
       r=>{ if (!active()) return; if (r.ok) setOpened(r.value); else setOpenedError(message(r.error)); setOpenedLoading(false) }, from)
   }
-  const closeOpened = () => pageChange(() => { openedToken.current++; setOpened(null);setOpenedError(null);setOpenedLoading(false);setChip(null);setBarEvidence(null) })
+  const letGoOpened = () => { openedToken.current++; setOpened(null);setOpenedError(null);setOpenedLoading(false);setChip(null);setBarEvidence(null) }
+  const closeOpened = () => pageChange(letGoOpened)
+  const backFromOpened = () => pageChange(() => { letGoOpened(); if (openedFrom==="home") setView("home") })
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
   const tab = view==="approved" ? "approved" : "new"
   const scopeText = (s: NonNullable<typeof requestScope>) => `${s.brand} · ${labelTerritory(s.territory)} · ${s.promotion ? "release-wide Promotion review" : s.weekEnd > s.week ? `weeks ${labelWeek(s.week)} to ${labelWeek(s.weekEnd)}` : `week of ${labelWeek(s.week)}`}`
@@ -1418,6 +1469,8 @@ function AnalystApp({me}: {me: Me}) {
     : runView==="result" && result && !looked ? {text: `Your briefing is ready${requestScope ? ` · ${scopeText(requestScope)}` : ""}`, go: "Open it"}
     : runError && !looked ? {text: "Your briefing could not be generated", go: "See why"}
     : null
+  const running: RunningRow | null = runView && runLine ? {title: requestScope ? scopeText(requestScope) : "Your briefing", go: ()=>setView(runView),
+    note: pending ? "Generating…" : runView==="triage" && plan ? "Its plan is ready for review" : runError ? "It could not be generated" : "Ready to open"} : null
   const openedShown = !!(opened || openedLoading || openedError)
   // "Start a new briefing": the form again, from a brief just read. The analyst's choices stay; the read question and
   // the message bar's chip go. A run that is still held (see above) stays in the status line.
@@ -1445,6 +1498,8 @@ function AnalystApp({me}: {me: Me}) {
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
         <h2 className="sr-only">New briefing</h2>
+        <div><p className="text-xs font-medium text-muted">Start from an example question, or type your own in the bar at the bottom</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">{BRIEF_EXAMPLES.map(q=><button key={q} type="button" disabled={!selectable || reader.busy} onClick={()=>void reader.run(q)} className="rounded-lg border border-edge px-3 py-1.5 text-xs text-muted transition-colors hover:bg-paper hover:text-ink disabled:opacity-60">{q}</button>)}</div></div>
         {/* The always-present region is announced when the question has been read. */}
         <div role="status" className="empty:hidden">{reader.read && ask && <div className="space-y-1.5 rounded-lg border border-rule px-4 py-3">
           <p className="text-sm text-ink">“{ask}”</p>
@@ -1475,15 +1530,15 @@ function AnalystApp({me}: {me: Me}) {
           <button type="submit" disabled={!selectable || !!invalidComparison || !!invalidPeriod || !!invalidChoices} className={BTN}>Generate briefing</button>
         </div>
       </form>
+      <BriefingQuestions running={running && requestScope && asked(requestScope.question) ? {...running, title: requestScope.question} : null} onOpen={(id, from)=>void openApproved(id, from, "home")}/>
     </div> : view==="approved" ? <div key="approved" className="workspace-content pa-fade space-y-4 py-8">{openedShown ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={closeOpened}><Icon name="back" className="h-4 w-4"/>All your briefings</button>
+        <button ref={openedBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={backFromOpened}><Icon name="back" className="h-4 w-4"/>{openedFrom==="home" ? "Back to New briefing" : "All your briefings"}</button>
       </div>
       {openedLoading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
       {openedError && <Notice tone="error" role="alert">{openedError}</Notice>}
       {opened && <AnalystBrief stepsFolded onStartNew={startNew} result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
-    </> : <YourBriefings onOpen={(id, from)=>void openApproved(id, from)} running={runView && runLine ? {title: requestScope ? scopeText(requestScope) : "Your briefing", go: ()=>setView(runView),
-      note: pending ? "Generating…" : runView==="triage" && plan ? "Its plan is ready for review" : runError ? "It could not be generated" : "Ready to open"} : null}/>}</div>
+    </> : <YourBriefings onOpen={(id, from)=>void openApproved(id, from)} running={running}/>}</div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>{ setView("home"); if (!pending) setRunView(null) }}><Icon name="back"/>Change scope</button>

@@ -248,6 +248,10 @@
   .pa-drawready.pa-inview .pa-bar { animation: pa-grow-x 650ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
   .pa-drawready.pa-inview .pa-bar.pa-col { animation-name: pa-grow-y; }
   .pa-drawready.pa-inview .pa-dot { animation: pa-fade 300ms 650ms both; }
+  /* A list whose items arrive one after another the first time it is seen (How it works: the steps, the actors);
+     --i is the item's place. Like the charts, nothing waits until script marks the list ready. */
+  .pa-drawready.pa-reveal > * { opacity: 0; }
+  .pa-drawready.pa-inview.pa-reveal > * { animation: pa-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
   /* A status that changes while the brief is open (sent, signed off, returned) pops once, with a ring; its check draws in. */
   .pa-pop { animation: pa-pop 560ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   /* A tile you can click lifts toward you on hover, its edge showing below like the logo tile, and presses down on click. */
@@ -392,6 +396,7 @@
   .pa-dot { opacity: 1 !important; }
   .pa-bar { transform: none !important; animation: none !important; }
   .pa-reel-strip { animation: none !important; }  /* every wheel at its figure on paper */
+  .pa-reveal > * { opacity: 1 !important; }
   /* the memo */
   .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pa-memo > * { break-inside: auto; }
@@ -433,3 +438,12 @@ html[data-motion="on"] details::details-content { transition: none; }
 /* Page changes (motion.ts): a short crossfade; a brief's title moves from the list row into its heading. */
 ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
 ::view-transition-group(pa-brief-title), ::view-transition-group(pa-run-title) { animation-duration: 380ms; }
+
+/* A panel that opens and closes by growing and shrinking its height (How it works under an intro): a grid row going
+   from 0fr to 1fr, which every current browser animates. Reduced motion opens it at once. */
+.pa-expand { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 340ms cubic-bezier(0.16, 1, 0.3, 1), opacity 260ms ease; opacity: 0; }
+.pa-expand[data-open] { grid-template-rows: 1fr; opacity: 1; }
+.pa-expand > * { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { html:not([data-motion="off"]) .pa-expand { transition: none; } }
+html[data-motion="on"] .pa-expand { transition: none; }
+@media print { .pa-expand { display: none !important; } }

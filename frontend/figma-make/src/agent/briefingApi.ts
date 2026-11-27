@@ -469,7 +469,7 @@ export async function listQueue(): Promise<QueueRow[]> {
 }
 
 // The analyst's own briefs on the current data release, in every state, newest first (Your briefings).
-export type MineRow = { brief_id: string; brand_id: string; week_start: string; week_end?: string | null; territory_id: string; engine: string; abstained: boolean
+export type MineRow = { brief_id: string; question?: string | null; promotion_review?: boolean; brand_id: string; week_start: string; week_end?: string | null; territory_id: string; engine: string; abstained: boolean
   review_status: "draft" | "sent" | "returned" | "signed_off" | "rejected"; created_at: string | null; sent_at: string | null; signed_off_at: string | null
   returned_at: string | null; rejected_at: string | null }
 export async function listMine(): Promise<MineRow[]> {

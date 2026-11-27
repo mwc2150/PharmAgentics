@@ -1,7 +1,7 @@
 ---
 branch: feature/overview-workspace
 lane: shared
-next: Michael reviews on the preview and merges after PR #36 (this branch is stacked on it); then a note to Alvin and Sienna on the Forecast changes below
+next: Michael reviews on the preview; the later commits are local, not pushed (Michael, 2026-11-27: leave the PR for now); merge after PR #36 (stacked on it); then a note to Alvin and Sienna on the Forecast changes below
 ---
 
 # The Overview workspace, Your briefings and Your reports (2026-11-27)
@@ -17,6 +17,16 @@ Stacked on `feature/settings-light-mode` (PR #36), which now carries `main` (v2 
 - Every workspace starts 24 px below the header (20 px on phones), as the Weekly briefing's tab row does.
 - The Evaluation page names each Briefing run's brand ("Briefing agent · Lipidara", "· Cardiovela").
 
+## Later the same day (local commits, not pushed)
+
+- New briefing: **Your briefing questions** under the form (spec I11), the counterpart of Forecast's "Your forecast questions", which stays as it is. Six example questions above the form read into it like a typed question. `/api/briefing/mine` rows carry `question` (as asked, scope prefix off) and `promotion_review`; a Promotion review's row says "release-wide Promotion review" instead of its latest week, in both lists. A brief opened from the questions returns to New briefing ("Back to New briefing").
+- On the preview, six questions were asked through the bar and the examples, read by Haiku and generated with the scripted engine, so the list has entries.
+- Hover text follows the pointer: `HoverTips.tsx`, one layer mounted in `main.tsx`, shows an element's `title` (held off the element while hovered, so the browser's own tooltip does not open under the cursor, and put back after) or `data-tip`. Chart marks (`Memo.tsx`, `ForecastCharts.tsx`) moved their SVG `<title>` to `data-tip` (each chart is `role="img"` with its own label). Definition option notes follow the pointer for a mouse and stay anchored for the keyboard and touch.
+- The data classification is a quiet chip (shield, the level in sentence case, a four-step meter from Public to Sensitive; hover gives the meaning) instead of a bare upper-case word.
+- How it works opens and closes by growing and shrinking (`.pa-expand`), its section headings are tiles, its sections arrive in sequence, and the steps and actor cards arrive one by one when seen (`.pa-reveal`). Reduced motion: no transition.
+- Overview: the count line became a call to action naming what the role can start ("Pick a territory to brief its week, or any figure to see its query."; the Insights Manager: "…to see how its week went…").
+- Checks on the preview: a scratch check (27 items: the list, the examples, the tips, the chip, How it works, reduced motion, phone width) passed; `check_workspace_split.py` 11 of 11, `check_settings.py` 51 of 51 (0 contrast failures), the site-wide motion check 24 of 24; `tests/test_signoff.py` 27 passed.
+
 ## What changed
 
 - API: `GET /api/briefing/mine` (this login's briefs in every state on the current release, newest first; no evidence; a pseudonym, never a person); `/api/briefing/overview` allows the `overview` action instead of `run`. `deploy/README.md` role table updated.
@@ -30,9 +40,10 @@ Stacked on `feature/settings-light-mode` (PR #36), which now carries `main` (v2 
 
 ## Notes for Alvin and Sienna (Forecast lane)
 
-Forecast's tabs became New explanation and Your reports (the Brand Manager: Reports), with the sections above; question runs are listed there too, so the Brand Manager reaches runs waiting for review from Reports (back returns there). The greeting left the Forecast workspace and its date moved into the intro. The Overview can open the Forecast form with a question filled in, for roles that already have Forecast access. No Forecast access, login or engine behaviour changed.
+Forecast's tabs became New explanation and Your reports (the Brand Manager: Reports), with the sections above; question runs are listed there too, so the Brand Manager reaches runs waiting for review from Reports (back returns there). The greeting left the Forecast workspace and its date moved into the intro. The Overview can open the Forecast form with a question filled in, for roles that already have Forecast access. Later the same day: hover text across the app, the Forecast charts' bars included, sits beside the pointer instead of under it (`HoverTips.tsx`). No Forecast access, login or engine behaviour changed.
 
 ## Open
 
-- Should New explanation keep its own "Your forecast questions" list now that Your reports shows the runs? Kept for now.
+- New explanation keeps its "Your forecast questions" list (Michael: keep it; Briefing now has the same).
+- Proposed, not built: a Recents / View all block in the sidebar (as in Claude's web app) for quick access to Your briefings and Your reports.
 - Held-out results: none yet. The Evaluation page shows the golden (development) runs; the held-out run reads the private store and is a separate step Michael asks for (due Dec 4).
