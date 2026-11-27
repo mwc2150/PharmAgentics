@@ -232,7 +232,7 @@ function SuggestModal({ onClose, onSurvey, surveyDone }: { onClose: () => void; 
     catch (e) { setError(message(e)) }
     finally { setBusy(false) }
   }
-  return <div className="pa-fade fixed inset-0 z-50 grid place-items-center overscroll-contain bg-black/60 px-4">
+  return <div className="pa-scrim pa-fade fixed inset-0 z-50 grid place-items-center overscroll-contain px-4">
     <div role="dialog" aria-modal="true" aria-labelledby="suggest-title" className="pa-rise pa-panel w-full max-w-lg rounded-xl border border-rule bg-sheet">
       <div className="flex items-start justify-between gap-3 border-b border-rule px-6 py-4">
         <div><h2 id="suggest-title" className="text-lg">Suggest an improvement</h2><p className="mt-1 text-sm text-muted">What should we work on next? Anything goes, big or small.</p></div>
@@ -326,7 +326,7 @@ function SurveyModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitte
     finally { setBusy(false) }
   }
 
-  return <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain bg-black/60 px-3 py-6">
+  return <div className="pa-scrim pa-fade fixed inset-0 z-50 flex justify-center overflow-y-auto overscroll-contain px-3 py-6">
     <div role="dialog" aria-modal="true" aria-labelledby="survey-title" className="pa-panel pa-rise h-fit w-full max-w-2xl rounded-xl border border-rule bg-sheet">
       <div className="flex items-start justify-between gap-3 border-b border-rule px-6 py-4">
         <div><h2 id="survey-title" className="text-lg font-semibold">{q?.title ?? "Platform questionnaire"}</h2>{q && <p className="mt-1 text-sm text-muted">{q.intro}</p>}</div>

@@ -120,7 +120,7 @@ export function Timeline({ events, claims, live = false, titles, onOpenSource, c
       {last ? `Now: ${last.actor}, ${last.step.toLowerCase()}` : "Waiting for the first step…"}
     </p>}
     {!shut && !events.length && !live && <p className="mt-3 text-sm text-muted">No steps were recorded for this brief.</p>}
-    <div id="timeline-steps" hidden={shut} className="mt-2 divide-y divide-rule">
+    <div id="timeline-steps" hidden={shut} className="pa-rise mt-2 divide-y divide-rule">
       {groups.map(g => {
         const seen: Record<string, number> = {}
         const hidden: Record<string, number> = {}

@@ -83,9 +83,13 @@ export function applySettings(s: Settings = current): void {
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
+  const before = resolvedTheme(current.theme)
   current = clean({ ...current, ...patch })
   try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(current)) } catch { /* the choice lasts for this page view only */ }
-  applySettings(current)
+  // A theme change crossfades (a view transition) unless motion is reduced; everything else applies at once.
+  const d = typeof document === "undefined" ? null : document as Document & { startViewTransition?: (cb: () => void) => unknown }
+  if (d?.startViewTransition && resolvedTheme(current.theme) !== before && !motionReduced(current)) d.startViewTransition(() => applySettings(current))
+  else applySettings(current)
   listeners.forEach(fn => fn())
 }
 

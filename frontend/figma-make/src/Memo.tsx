@@ -1,10 +1,11 @@
 // brief-003: the weekly brief as a memo. Sections, charts and the data behind them come from the server;
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
-import { useState, type ReactNode } from "react"
+import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
 import { longDates } from "./agent/primitives"
 import { fmtShortDay } from "./userSettings"
 import { BudgetNote, PromotionPanel } from "./Promotion"
+import { useDrawOnView } from "./motion"
 import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
 const COLORS = ["var(--color-primary)", "var(--color-human)"]
@@ -47,12 +48,13 @@ function scale(values: number[], lo?: number, hi?: number) {
 }
 
 function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[], series: {name: string, points: ChartPoint[], color: string, dash?: string}[], band?: ChartSpec["band"], unit?: string, label: string}) {
+  const draw = useDrawOnView<SVGSVGElement>()
   const values = series.flatMap(s => s.points.map(p => p.value).filter((v): v is number => v !== null))
   if (!values.length) return null
   const sc = scale(values, band?.low, band?.high)
   const x = (w: string) => PAD.l + (W - PAD.l - PAD.r) * (weeks.length < 2 ? 0.5 : weeks.indexOf(w) / (weeks.length - 1))
   const ticks = [weeks[0], weeks[Math.floor((weeks.length - 1) / 2)], weeks[weeks.length - 1]]
-  return <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
+  return <svg ref={draw} viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={label}>
     {band && <g><rect x={PAD.l} width={W - PAD.l - PAD.r} y={sc.y(band.high)} height={Math.max(1, sc.y(band.low) - sc.y(band.high))} fill="var(--color-primary)" opacity={0.1}/>
       <text x={W - PAD.r} y={sc.y(band.high) - 3} textAnchor="end" className="fill-muted text-[10px]">baseline band</text></g>}
     {[sc.min, (sc.min + sc.max) / 2, sc.max].map((v, i) => <g key={i}>
@@ -62,10 +64,10 @@ function LineChart({weeks, series, band, unit = "count", label}: {weeks: string[
     {series.map((s, si) => {
       const pts = s.points.filter(p => p.value !== null)
       return <g key={si}>
-        <polyline fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
+        <polyline fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dash} pathLength={s.dash ? undefined : 1} className={s.dash ? "pa-dot" : "pa-line"} points={pts.map(p => `${x(p.week)},${sc.y(p.value as number)}`).join(" ")}/>
         {pts.map((p, i) => {
           const assumed = p.basis && p.basis !== "observed"
-          return <circle key={i} cx={x(p.week)} cy={sc.y(p.value as number)} r={assumed || p.restated ? 4.5 : 3}
+          return <circle key={i} className="pa-dot" cx={x(p.week)} cy={sc.y(p.value as number)} r={assumed || p.restated ? 4.5 : 3}
             fill={assumed ? "var(--color-sheet)" : s.color} stroke={s.color} strokeWidth={1.5} strokeDasharray={p.restated ? "2 2" : undefined}>
             <title>{`${s.name}, week of ${p.week}: ${fmt(p.value as number, unit)}${assumed ? ` (${p.basis}, an assumption)` : ""}${p.restated ? " (restated)" : ""}`}</title>
           </circle>
@@ -231,7 +233,12 @@ function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], on
   return <dl aria-label="Key figures" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
     {kpis.map((k, i) => {
       const dir = k.direction ? DIRECTION[k.direction] : null
-      return <div key={i} className="break-inside-avoid rounded-lg border border-rule bg-sheet/60 px-3.5 py-3">
+      const first = [...(k.value_citation ?? [])].sort((a, b) => a.start - b.start)[0]
+      const main = first && claims ? claims[first.claim] : undefined
+      // A click anywhere on the tile opens its number's source; the number stays the button a keyboard reaches.
+      const openMain = main && onOpen ? (e: ReactMouseEvent) => { if (!(e.target as Element).closest("button")) onOpen(main.evidence_id) } : undefined
+      return <div key={i} onClick={openMain} title={main && openMain ? `Open the query behind ${main.value}` : undefined}
+        className={`break-inside-avoid rounded-lg border border-rule bg-sheet/60 px-3.5 py-3 ${openMain ? "pa-lift cursor-pointer" : ""}`}>
         <dt className="font-sans text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</dt>
         <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-display text-[28px] font-bold leading-none tabular-nums text-ink">
           <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
@@ -340,7 +347,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
   // The Assumptions block lives in §6; a memo without a §6 shows the definition under its last section.
   const topLevel = sections.filter(s => !s.number.includes("."))
   const assumptionsAt = topLevel.some(s => s.number === "6") ? "6" : topLevel[topLevel.length - 1]?.number
-  return <div className="pa-memo space-y-7" data-view={analyst ? "analyst" : "leader"}>
+  return <div className="pa-memo pa-sequence space-y-7" data-view={analyst ? "analyst" : "leader"}>
     {sections.filter(s => !s.number.includes(".")).map(s => {
       const children = sections.filter(c => c.number.startsWith(`${s.number}.`))
       return <section key={s.number} aria-labelledby={`memo-${briefId}-${s.number}`}>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
 import { Icon, Notice, plainValue } from "./agent/primitives"
 import { fmtDate } from "./userSettings"
+import { useDrawOnView } from "./motion"
 
 // These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
@@ -23,7 +24,7 @@ function Drawer({ title, kicker, onClose, children }: { title: string, kicker: s
     return () => { document.removeEventListener("keydown", esc); opener?.focus() }
   }, [onClose])
   return <div className="fixed inset-0 z-40 flex justify-end">
-    <button className="absolute inset-0 bg-black/60" aria-label="Close panel" tabIndex={-1} onClick={onClose}/>
+    <button className="pa-scrim pa-fade absolute inset-0" aria-label="Close panel" tabIndex={-1} onClick={onClose}/>
     <aside role="dialog" aria-modal="true" aria-labelledby="overview-drawer-title" className="pa-slide relative z-10 flex h-full w-full max-w-lg flex-col border-l border-rule bg-sheet">
       <div className="flex items-start justify-between gap-3 border-b border-rule p-5">
         <div><div className="text-xs uppercase tracking-[0.06em] text-muted">{kicker}</div><h2 id="overview-drawer-title" className="mt-1 text-xl">{title}</h2></div>
@@ -43,13 +44,14 @@ function Query({ ev }: { ev: Evidence }) {
 }
 
 function Sparkline({ points, label }: { points: number[], label: string }) {
+  const draw = useDrawOnView<SVGSVGElement>()
   if (points.length < 2) return <span className="text-xs text-muted">–</span>
   const lo = Math.min(...points), hi = Math.max(...points), w = 96, h = 28, pad = 3
   const x = (i: number) => pad + (i * (w - 2 * pad)) / (points.length - 1)
   const y = (v: number) => (hi === lo ? h / 2 : h - pad - ((v - lo) * (h - 2 * pad)) / (hi - lo))
-  return <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={label} className="shrink-0 text-muted">
-    <polyline points={points.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
-    <circle cx={x(points.length - 1)} cy={y(points[points.length - 1])} r="2.5" className="fill-ink"/>
+  return <svg ref={draw} width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={label} className="shrink-0 text-muted">
+    <polyline className="pa-line" pathLength={1} points={points.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
+    <circle cx={x(points.length - 1)} cy={y(points[points.length - 1])} r="2.5" className="pa-dot fill-ink"/>
   </svg>
 }
 
@@ -121,7 +123,7 @@ function TerritoryPanel({ t, o, onClose, onGenerate }: { t: TerritoryRow, o: O, 
 function StatBar({ stats, onOpen }: { stats: Stat[], onOpen: (s: Stat) => void }) {
   return <section aria-label="This week" className={`${PANEL} grid grid-cols-2 lg:grid-cols-4`}>
     {stats.map((s, i) => <button key={s.key} onClick={() => onOpen(s)}
-      className={`group p-5 text-left transition-colors hover:bg-paper/60 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
+      className={`group pa-lift relative p-5 text-left hover:z-[1] hover:rounded-xl hover:bg-sheet ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
       <div className="text-xs text-muted">{s.label}</div>
       <div className="mt-2 font-display text-3xl font-bold tabular-nums">{s.value}</div>
       <div className={`mt-1.5 text-xs tabular-nums ${s.adverse ? "text-amber" : "text-muted"}`}>

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, u
 import { Toaster, toast } from "sonner"
 import { BrandMark, Icon, Notice, longDates, modelName, plainModels, plainValue, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
+import { BRIEF_TITLE, openInTransition, pageChange } from "./motion"
 import { SettingsWorkspace } from "./Settings"
 import { fmtDate, fmtIsoDate, fmtTime, getSettings, useResolvedTheme, useSettings } from "./userSettings"
 import { getUsage } from "./agent/telemetryApi"
@@ -90,7 +91,7 @@ function EvidenceDrawer({result, selectedId, onClose, flagged = [], marking}: {r
   const here = result.claims.flatMap((c, i) => c.evidence_id===id ? [{c, i}] : [])
   const selected = result.evidence.find(e=>e.id===id)
   return <div className="fixed inset-0 z-40 flex justify-end">
-    <button className="absolute inset-0 bg-black/60" aria-label="Close evidence" onClick={onClose}/>
+    <button className="pa-scrim pa-fade absolute inset-0" aria-label="Close evidence" onClick={onClose}/>
     <aside ref={drawer} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Source evidence" className="relative z-10 flex h-full w-full max-w-xl flex-col border-l border-rule bg-sheet pa-slide">
       <div className="flex items-start justify-between border-b border-rule p-5">
         <div><div className="text-xs uppercase tracking-widest text-muted">Governed evidence</div><h2 className="mt-1 text-lg font-semibold">Source records</h2><p className="mt-1 text-xs text-muted">{result.evidence.length} evidence records · pinned version {result.data_version ?? "unavailable"}</p></div>
@@ -687,7 +688,7 @@ function SideNav({me, expanded, forecast, telemetry, settings, briefingBusy, for
 function MobileNav({onClose, children}: {onClose: () => void, children: ReactNode}) {
   const drawer = useRef<HTMLDivElement>(null)
   useModalFocus(drawer, onClose)
-  return <div className="fixed inset-0 z-40 flex md:hidden"><button tabIndex={-1} aria-label="Close navigation" className="pa-fade absolute inset-0 bg-black/60" onClick={onClose}/>
+  return <div className="fixed inset-0 z-40 flex md:hidden"><button tabIndex={-1} aria-label="Close navigation" className="pa-scrim pa-fade absolute inset-0" onClick={onClose}/>
     <div ref={drawer} role="dialog" aria-modal="true" aria-label="Navigation" tabIndex={-1} className="glass relative w-[280px] max-w-[85vw] overscroll-contain border-r border-rule pa-slide">{children}</div></div>
 }
 
@@ -759,7 +760,7 @@ function IntroWithHow({introId, children}: {introId?: string, children: ReactNod
       <p id={introId} tabIndex={introId ? -1 : undefined} className="min-w-0 text-sm text-muted outline-none">{children}</p>
       <button ref={button} type="button" aria-expanded={open} aria-controls={open ? panel : undefined} onClick={()=>open ? close() : setOpen(true)} className="flex min-h-6 min-w-6 shrink-0 items-center justify-center gap-1.5 rounded-lg text-sm text-primaryink hover:underline"><Icon name="help" className="h-4 w-4"/><span className="max-sm:sr-only">How it works</span><Icon name="chevronRight" className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-90" : ""}`}/></button>
     </div>
-    {open && <section id={panel} aria-label="How it works" className="space-y-3 border-y border-rule py-4">
+    {open && <section id={panel} aria-label="How it works" className="pa-rise space-y-3 border-y border-rule py-4">
       <div className="flex items-center justify-between gap-3"><ClassLabel tab="briefing.how"/><button type="button" onClick={close} aria-label="Close How it works" className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="close" className="h-4 w-4"/></button></div>
       <HowItWorks/>
     </section>}
@@ -831,13 +832,13 @@ function ListSkeleton({rows=3}: {rows?: number}) {
   return <div role="status" className={`${PANEL} divide-y divide-rule`}><span className="sr-only">Loading…</span>{Array.from({length: rows}, (_, i) => <div key={i} className="space-y-2 px-5 py-4"><div className="pa-skeleton h-3.5 w-1/2"/><div className="pa-skeleton h-3 w-1/3"/></div>)}</div>
 }
 
-function PublishedList({onOpen}: {onOpen: (id: string) => void}) {
+function PublishedList({onOpen}: {onOpen: (id: string, from?: Element | null) => void}) {
   const {items, error, isNew} = useApprovedList<PublishedBrief>("briefing", true, listPublished, b=>b.reviewed_at)
   if (error) return <Notice tone="error" role="alert">{error}</Notice>
   if (!items) return <ListSkeleton/>
   if (!items.length) return <p className="text-sm text-muted">No signed-off briefings yet. A briefing appears here once the Insights Manager signs it off.</p>
-  return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={()=>onOpen(b.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
-    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{isNew(b) && <><span className="font-semibold text-primaryink">New</span> · </>}Signed off {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
+  return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={e=>onOpen(b.brief_id, e.currentTarget.querySelector("[data-title]"))} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
+    <span className="min-w-0"><span data-title className="block w-fit text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{isNew(b) && <><span className="font-semibold text-primaryink">New</span> · </>}Signed off {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
     <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul>
 }
 
@@ -950,7 +951,7 @@ function SignoffPanel({result, flags, onChange}: {result: BriefingResult, flags:
 
 // The sign-off queue: for the Insights Manager the briefs waiting for them, returned and signed off; for the analyst the
 // ones out for sign-off and the ones returned to them (nothing is shown when there are none).
-function QueueList({mode, onOpen}: {mode: "analyst" | "insights", onOpen: (id: string) => void}) {
+function QueueList({mode, onOpen}: {mode: "analyst" | "insights", onOpen: (id: string, from?: Element | null) => void}) {
   const [rows,setRows] = useState<QueueRow[] | null>(null)
   const [error,setError] = useState<string | null>(null)
   useEffect(()=>{
@@ -968,8 +969,8 @@ function QueueList({mode, onOpen}: {mode: "analyst" | "insights", onOpen: (id: s
   if (!shown.length) return null
   return <div className="space-y-6">{shown.map(([k, title, empty]) => { const list = rows.filter(r=>r.review_status===k)
     return <section key={k}><h3 className="text-sm font-semibold">{title}</h3>
-      {list.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{list.map(r=><li key={r.brief_id}><button onClick={()=>onOpen(r.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
-        <span className="min-w-0"><span className="block text-sm">{r.brand_id} · {labelTerritory(r.territory_id)}, {periodLabel(r.week_start, r.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{when(r)}{r.abstained ? " · unresolved findings" : ""}</span></span>
+      {list.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{list.map(r=><li key={r.brief_id}><button onClick={e=>onOpen(r.brief_id, e.currentTarget.querySelector("[data-title]"))} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
+        <span className="min-w-0"><span data-title className="block w-fit text-sm">{r.brand_id} · {labelTerritory(r.territory_id)}, {periodLabel(r.week_start, r.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{when(r)}{r.abstained ? " · unresolved findings" : ""}</span></span>
         <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul>
         : <p className="mt-2 text-sm text-muted">{empty}</p>}
     </section> })}</div>
@@ -1074,6 +1075,9 @@ const storyTitles = (r: BriefingResult): Record<string, string> => Object.fromEn
 // `reviewer`: who is reading. "analyst" (P1) reviews and sends; "insights" (P2) reads the same view read-only and signs off or returns.
 function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = true, onStartNew, reviewer = "analyst"}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null, stepsFolded?: boolean, onStartNew?: () => void, reviewer?: "analyst" | "insights"}) {
   const [evidenceId,setEvidenceId] = useState<string | null>(null)
+  const seenStatus = useRef({id: result.brief_id, status: result.review_status})
+  if (seenStatus.current.id !== result.brief_id) seenStatus.current = {id: result.brief_id, status: result.review_status}
+  const statusMoment = seenStatus.current.status !== result.review_status  // sent, signed off or returned while open
   const [flags,setFlags] = useState<Record<number, string>>({})  // P2's marks on single numbers, by claim index; sent with a return
   useEffect(()=>setFlags({}),[result.brief_id, result.review_status])
   const marking: Marking | undefined = reviewer === "insights" && result.review_status === "sent"
@@ -1094,9 +1098,9 @@ function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = true
     <article className={`${PANEL} overflow-hidden`}>
       <div className="border-b border-rule px-6 py-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted"><span>{result.engine==="agent" ? "Agent team · experimental" : "Scripted"}</span><ClassLabel tab="briefing.view.analyst"/></div>
-        <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : result.week_end && result.week_end > result.week_start ? `weeks ${labelWeek(result.week_start)} to ${labelWeek(result.week_end)}` : `week of ${labelWeek(result.week_start)}`}</h2>
+        <h2 className="mt-2 w-fit text-2xl" style={{viewTransitionName: BRIEF_TITLE}}>{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : result.week_end && result.week_end > result.week_start ? `weeks ${labelWeek(result.week_start)} to ${labelWeek(result.week_end)}` : `week of ${labelWeek(result.week_start)}`}</h2>
         <p className="mt-1.5 text-sm text-muted">{result.brand_id}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="signed_off" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <Flag>Unresolved findings</Flag>}</div>
+        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 ${statusMoment ? "pa-pop" : ""}`}>{result.review_status==="signed_off" && <svg viewBox="0 0 24 24" className={`${statusMoment ? "pa-draw" : ""} h-3.5 w-3.5`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <Flag>Unresolved findings</Flag>}</div>
       </div>
       <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk} definition={result.definition} labelWeek={labelWeek}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
         <p className="mt-4 text-[11px] text-muted">Each underlined number is a claim: click it, or its source number, to open the query and record behind it.</p></div>
@@ -1286,15 +1290,14 @@ function AnalystApp({me}: {me: Me}) {
     } catch(e) {if(active()) setRunError(message(e))}
     finally {if(active()){setPending(false);setJobNote(null);setJobState(null);setLiveEvents([])}}
   }
-  const openApproved = async (id: string) => {
+  // A brief that loads fast opens in one page transition, its list title moving into the heading (motion.ts).
+  const openApproved = async (id: string, from?: Element | null) => {
     const token=++openedToken.current, active=()=>token===openedToken.current
-    setOpened(null);setOpenedError(null);setOpenedLoading(true);setView("approved");setChip(null);setBarEvidence(null)
-    try {
-      const next=await openBrief(id, "analyst")
-      if (active()) setOpened(next)
-    } catch(e) {if(active()) setOpenedError(message(e))} finally {if(active()) setOpenedLoading(false)}
+    await openInTransition(openBrief(id, "analyst"),
+      ()=>{ setOpened(null);setOpenedError(null);setOpenedLoading(true);setView("approved");setChip(null);setBarEvidence(null) },
+      r=>{ if (!active()) return; if (r.ok) setOpened(r.value); else setOpenedError(message(r.error)); setOpenedLoading(false) }, from)
   }
-  const closeOpened = () => { openedToken.current++; setOpened(null);setOpenedError(null);setOpenedLoading(false);setChip(null);setBarEvidence(null) }
+  const closeOpened = () => pageChange(() => { openedToken.current++; setOpened(null);setOpenedError(null);setOpenedLoading(false);setChip(null);setBarEvidence(null) })
   const selectable = !!context && context.product_ids.includes(brand) && !loadingContext && !pending
   const tab = view==="approved" ? "approved" : view==="overview" ? "overview" : "new"
   const scopeText = (s: NonNullable<typeof requestScope>) => `${s.brand} · ${labelTerritory(s.territory)} · ${s.promotion ? "release-wide Promotion review" : s.weekEnd > s.week ? `weeks ${labelWeek(s.week)} to ${labelWeek(s.weekEnd)}` : `week of ${labelWeek(s.week)}`}`
@@ -1331,7 +1334,7 @@ function AnalystApp({me}: {me: Me}) {
     <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets with the data line under it, as the Forecast lane does; other tabs start at the tab row */}{view==="overview" && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<SubTabs aside={view==="overview" ? <label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
       <select className={`${FIELD} w-auto`} value={overviewBrand} onChange={e=>setOverviewBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label> : undefined} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>
+      </select></label> : undefined} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>pageChange(()=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") })} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? overviewBrand && <><h2 className="sr-only">Overview</h2><Overview key={overviewBrand} brand={overviewBrand} week={overviewWeek} onWeek={setOverviewWeek} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();chooseBrand(overviewBrand);setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
@@ -1376,7 +1379,7 @@ function AnalystApp({me}: {me: Me}) {
       {openedLoading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
       {openedError && <Notice tone="error" role="alert">{openedError}</Notice>}
       {opened && <AnalystBrief stepsFolded onStartNew={startNew} result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
-    </> : <><QueueList mode="analyst" onOpen={id=>void openApproved(id)}/><p className="text-sm text-muted">What the Brand Director and the Marketer can open: briefings the Insights Manager has signed off, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></>}</div>
+    </> : <><QueueList mode="analyst" onOpen={(id, from)=>void openApproved(id, from)}/><p className="text-sm text-muted">What the Brand Director and the Marketer can open: briefings the Insights Manager has signed off, on the current data release.</p><PublishedList onOpen={(id, from)=>void openApproved(id, from)}/></>}</div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>{ setView("home"); if (!pending) setRunView(null) }}><Icon name="back"/>Change scope</button>
@@ -1393,9 +1396,9 @@ function AnalystApp({me}: {me: Me}) {
       {view==="triage" && plan && !pending && <TriageReview plan={plan} busy={pending} onApprove={d=>void approvePlan(d)}/>}
       {view==="result" && result && <AnalystBrief onStartNew={pending ? undefined : startNew} result={result} onChange={r=>setResult(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
     </div>}</div>
-    {brand && (view==="home" || (view==="result" && (!!result || agentSupported)) || (view==="triage" && agentSupported) || (view==="approved" && !!opened)) && <div className="pa-bars workspace-content sticky bottom-0 z-20"><div ref={setDock} className="pa-dock"/>{/* the feedback card on the open answer sits here, on top of the bar */}<MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : view==="approved" && opened ? opened.brief_id : null} pending={view==="approved" ? false : pending} chip={chip} onClearChip={()=>setChip(null)}
+    {brand && (view==="home" || (view==="result" && (!!result || agentSupported)) || (view==="triage" && agentSupported) || (view==="approved" && !!opened)) && <div className="pa-bars pa-frostbar sticky bottom-0 z-20"><div className="workspace-content"><div ref={setDock} className="pa-dock"/>{/* the feedback card on the open answer sits here, on top of the bar */}<MessageBar key={brand} briefId={view==="result" && result ? result.brief_id : view==="approved" && opened ? opened.brief_id : null} pending={view==="approved" ? false : pending} chip={chip} onClearChip={()=>setChip(null)}
       onRead={view==="home" ? reader.run : undefined} readBusy={reader.busy} readError={view==="home" ? reader.error : null}
-      onOfferScope={o=>{ clearQuestion(); if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})}/></div>}
+      onOfferScope={o=>{ clearQuestion(); if(o.brand && o.brand!==brand){if(!context?.product_ids.includes(o.brand)){setRunError("Your account has no access to that brand.");return}changeBrand(o.brand)} if(o.territory) setTerritory(o.territory); if(o.week){ setWeek(o.week); setWeekEnd(o.week) } setPromotion(false); setComparisons(o.comparison ? [o.comparison] : []); setView("home") }} onOpenEvidence={id=>setBarEvidence({id})}/></div></div>}
   </FeedbackDock></Shell>
 }
 
@@ -1425,11 +1428,10 @@ function InsightsApp({me}: {me: Me}) {
   const [loading,setLoading] = useState(false)
   const [error,setError] = useState<string | null>(null)
   const token = useRef(0)
-  const open = async (id: string) => {
+  const open = async (id: string, from?: Element | null) => {
     const t = ++token.current
-    setOpened(null); setError(null); setLoading(true)
-    try { const b = await openBrief(id, "analyst"); if (t === token.current) setOpened(b) }
-    catch(e) { if (t === token.current) setError(message(e)) } finally { if (t === token.current) setLoading(false) }
+    await openInTransition(openBrief(id, "analyst"), () => { setOpened(null); setError(null); setLoading(true) },
+      r => { if (t !== token.current) return; if (r.ok) setOpened(r.value); else setError(message(r.error)); setLoading(false) }, from)
   }
   const close = () => { token.current++; setOpened(null); setError(null); setLoading(false); setChip(null) }
   // Follow-ups (Michael, 2026-11-27): P2 asks about the brief being signed off, in P2's own thread, as the analyst does.
@@ -1446,10 +1448,10 @@ function InsightsApp({me}: {me: Me}) {
         {opened && <AnalystBrief reviewer="insights" stepsFolded result={opened} onChange={setOpened} onAsk={setChip} openEvidence={barEvidence}/>}
       </> : <><Greeting/><IntroWithHow>Briefings the Commercial Analyst has sent you. Read the evidence, then sign a briefing off for the Brand Director and the Marketer, or return it with a comment.</IntroWithHow>
         <div className="flex justify-end"><ClassLabel tab="briefing.signoff"/></div>
-        <QueueList mode="insights" onOpen={id=>void open(id)}/></>}
+        <QueueList mode="insights" onOpen={(id, from)=>void open(id, from)}/></>}
     </div>
-    {opened && <div className="pa-bars workspace-content sticky bottom-0 z-20"><div ref={setDock} className="pa-dock"/>
-      <MessageBar key={opened.brief_id} briefId={opened.brief_id} pending={false} chip={chip} onClearChip={()=>setChip(null)} onOpenEvidence={id=>setBarEvidence({id})}/></div>}
+    {opened && <div className="pa-bars pa-frostbar sticky bottom-0 z-20"><div className="workspace-content"><div ref={setDock} className="pa-dock"/>
+      <MessageBar key={opened.brief_id} briefId={opened.brief_id} pending={false} chip={chip} onClearChip={()=>setChip(null)} onOpenEvidence={id=>setBarEvidence({id})}/></div></div>}
   </FeedbackDock></Shell>
 }
 

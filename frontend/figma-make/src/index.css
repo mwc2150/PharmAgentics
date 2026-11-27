@@ -116,12 +116,30 @@
 @layer base {
   /* Briefing only (the Forecast lane's screens are Alvin and Sienna's): a 24 px target for native checkboxes and radios on phones */
   @media (max-width: 639px) { #briefing-panel :is(input[type="checkbox"], input[type="radio"]) { width: 1.5rem; height: 1.5rem; flex-shrink: 0; } }
-  /* Answer feedback docked on the question bar: the card, the suggestions and the bar read as one solid stack, so the
-     page never shows through the gaps between them. */
+  /* The foot of a brief (the vote card, the suggested questions, the question bar) floats over a frosted strip, like the
+     workspace band at the top; the strip's top edge fades in, so it has no hard line (Michael, 2026-11-27). Without
+     backdrop-filter it is the solid page colour, as before. */
+  .pa-frostbar::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: var(--color-paper);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 1.75rem); mask-image: linear-gradient(to bottom, transparent, #000 1.75rem);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .pa-frostbar::before { background: color-mix(in srgb, var(--color-paper) 40%, transparent); -webkit-backdrop-filter: blur(6px) saturate(170%); backdrop-filter: blur(6px) saturate(170%); }
+  }
   /* A reason or comment box is open on the brief (see useParkedBars in App.tsx): the bars sit in the flow at the end of the page. */
   html[data-bars-parked] .pa-bars { position: static !important; }
-  .pa-dock:not(:empty) { margin-top: 2rem; padding-top: 1.25rem; background: linear-gradient(to top, var(--color-paper) 75%, transparent); }
-  .pa-dock:not(:empty) + * { margin-top: 0 !important; padding-top: 0 !important; background: var(--color-paper) !important; }  /* over the bar's own spacing utilities */
+  html[data-bars-parked] .pa-frostbar::before { display: none; }
+  .pa-dock:not(:empty) { margin-top: 2rem; padding-top: 1.25rem; }
+  .pa-dock:not(:empty) + * { margin-top: 0 !important; padding-top: 0 !important; }  /* over the bar's own spacing utilities */
+  /* Behind an open drawer or dialog the page dims and blurs, so the eye goes to what opened. */
+  .pa-scrim { background: rgb(0 0 0 / 0.55); }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .pa-scrim { background: rgb(0 0 0 / 0.4); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); }
+    :root[data-theme="light"] .pa-scrim { background: rgb(20 22 31 / 0.25); }
+  }
+  /* Folds open and close smoothly: the content eases to its height (where the browser supports it; elsewhere it snaps). */
+  details { interpolate-size: allow-keywords; }
   body {
     background: var(--color-paper);
     color: var(--color-ink);
@@ -194,6 +212,26 @@
     border-radius: 0.375rem;
   }
   .pa-draw path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: pa-draw 420ms 80ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  /* A finished brief arrives in sequence: its sections rise in one after another. */
+  .pa-sequence > * { animation: pa-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .pa-sequence > :nth-child(2) { animation-delay: 70ms; }
+  .pa-sequence > :nth-child(3) { animation-delay: 140ms; }
+  .pa-sequence > :nth-child(4) { animation-delay: 210ms; }
+  .pa-sequence > :nth-child(5) { animation-delay: 280ms; }
+  .pa-sequence > :nth-child(6) { animation-delay: 350ms; }
+  .pa-sequence > :nth-child(n+7) { animation-delay: 420ms; }
+  /* A chart draws its lines the first time it scrolls into view (motion.ts useDrawOnView); points follow. Nothing is
+     hidden until script marks the chart ready. */
+  .pa-drawready .pa-line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .pa-drawready.pa-inview .pa-line { animation: pa-draw 900ms cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+  .pa-drawready .pa-dot { opacity: 0; }
+  .pa-drawready.pa-inview .pa-dot { animation: pa-fade 300ms 650ms both; }
+  /* A status that changes while the brief is open (sent, signed off, returned) pops once, with a ring; its check draws in. */
+  .pa-pop { animation: pa-pop 560ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  /* A tile you can click lifts toward you on hover, its edge showing below like the logo tile, and presses down on click. */
+  .pa-lift { transition: translate 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms; }
+  @media (hover: hover) { .pa-lift:hover { translate: 0 -3px; box-shadow: 0 3px 0 var(--color-slab); } }
+  .pa-lift:active { translate: 0 0; box-shadow: 0 0 0 var(--color-slab); }
   /* Frosted glass only where something floats over the page: the sidebar while it hovers open, menus,
      the phone drawer and toasts. Without backdrop-filter the 92%-opaque fill still reads. */
   .glass {
@@ -231,7 +269,8 @@
      State still shows: the button's shadow flattens on press, the tab keeps its pill, the sidebar snaps. */
   @media (prefers-reduced-motion: reduce) {
     html:not([data-motion="off"]) :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
-    html:not([data-motion="off"]) .pa-stagger > * { animation: none; }
+    html:not([data-motion="off"]) :is(.pa-stagger, .pa-sequence) > *, html:not([data-motion="off"]) :is(.pa-pop, .pa-dot) { animation: none; }
+    html:not([data-motion="off"]) .pa-lift { translate: none !important; }
     html:not([data-motion="off"]) .pa-draw path { animation: none; stroke-dashoffset: 0; }
     html:not([data-motion="off"]) :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
     html:not([data-motion="off"]) *, html:not([data-motion="off"]) ::before, html:not([data-motion="off"]) ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
@@ -239,7 +278,8 @@
   }
   /* Settings > Reduce motion "On": the same, whatever the system says. "Off" lifts the rules above; "Follow system" sets nothing. */
   html[data-motion="on"] :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
-  html[data-motion="on"] .pa-stagger > * { animation: none; }
+  html[data-motion="on"] :is(.pa-stagger, .pa-sequence) > *, html[data-motion="on"] :is(.pa-pop, .pa-dot) { animation: none; }
+  html[data-motion="on"] .pa-lift { translate: none !important; }
   html[data-motion="on"] .pa-draw path { animation: none; stroke-dashoffset: 0; }
   html[data-motion="on"] :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
   html[data-motion="on"] *, html[data-motion="on"] ::before, html[data-motion="on"] ::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
@@ -285,6 +325,11 @@
   from { transform: translateX(-12px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+@keyframes pa-pop {
+  0% { transform: scale(0.8); opacity: 0; box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent); }
+  45% { transform: scale(1.08); opacity: 1; }
+  100% { transform: none; opacity: 1; box-shadow: 0 0 0 10px transparent; }
+}
 @keyframes pa-pulse {
   0%, 100% { opacity: 0.35; }
   50% { opacity: 1; }
@@ -307,7 +352,9 @@
   .h-dvh, main, main > section { display: block !important; height: auto !important; overflow: visible !important; }
   /* app chrome and anything you press */
   aside, header, footer, nav, form, textarea, select, dialog, [role="dialog"], [data-sonner-toaster],
-  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]), summary::before { display: none !important; }
+  button:not(.pa-cite), .pa-noprint, .pa-memo details.pa-fold:not([open]), summary::before, .pa-frostbar::before { display: none !important; }
+  .pa-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+  .pa-dot { opacity: 1 !important; }
   /* the memo */
   .pa-memo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .pa-memo > * { break-inside: auto; }
@@ -336,3 +383,16 @@
   .pa-cite { text-decoration: none; }
   .pa-cite sup { display: none; }
 }
+
+/* Folds (see details above): separate rules, so a browser without ::details-content drops only these. */
+details::details-content {
+  block-size: 0; overflow: clip; overflow-clip-margin: 0.5rem;
+  transition: block-size 280ms cubic-bezier(0.16, 1, 0.3, 1), content-visibility 280ms allow-discrete;
+}
+details[open]::details-content { block-size: auto; }
+@media (prefers-reduced-motion: reduce) { html:not([data-motion="off"]) details::details-content { transition: none; } }
+html[data-motion="on"] details::details-content { transition: none; }
+
+/* Page changes (motion.ts): a short crossfade; a brief's title moves from the list row into its heading. */
+::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+::view-transition-group(pa-brief-title) { animation-duration: 380ms; }
