@@ -128,12 +128,16 @@ def test_multibrand_scripted_request_passes_its_brand_and_window():
     ):
         result = service.run_briefing(request)
         assert result.brand_id == "BXC" and result.comparison == request.comparison
-        analyst = TestClient(app)
-        analyst.post("/auth/dev-login", data={"username": "dev-analyst-multibrand"}, follow_redirects=False)
-        response = analyst.post("/api/briefing/query",
-                                json={**VALID, "brand_id": "BXC", "intent": "promotion_review"})
-        assert response.status_code == 400
-        assert "available for BXA" in response.json()["detail"]
+
+
+def test_the_release_wide_promotion_review_is_open_to_lipidara():
+    """core-010 v2: the Promotion review runs for BXC like BXA, so the scope check no longer turns it away."""
+    request = BriefingQuery.model_validate({**VALID, "brand_id": "BXC", "intent": "promotion_review"})
+    choices = [date(2026, 6, 1), date(2026, 6, 8)]
+    context = ReleaseContext(first_week=choices[0], latest_week=choices[-1], territory_ids=["PACIFIC"],
+                             available_weeks=choices, product_ids=["BXA", "BXC"])
+    with patch.object(service, "release_context", return_value=context):
+        service._check_scope(request)
 
 
 def test_a_changed_window_gets_a_new_saved_brief_for_each_brand():

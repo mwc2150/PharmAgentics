@@ -423,7 +423,7 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
         facts["share"] = share
         lines.append(f"{p.brand_id} held {share} of the four-brand market basket.")
         launched = launch_date(reg)
-        if launched is not None and launched <= W[-1] and p.brand_id == "BXA":
+        if launched is not None and launched <= W[-1]:
             pre = [q.shift(launched, -i) for i in range(4, 0, -1)]
             facts["pre"] = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct", product=p.brand_id, weeks="before launch")
             facts["share_word"] = stages.word((reg.scalar(q.share(W, p.brand_id)) or 0) - (reg.scalar(q.share(pre, p.brand_id)) or 0))
@@ -502,12 +502,9 @@ def assumptions(p, proj: Projection | None, restated: bool = False, *, reg: Regi
     exact = p.comparison is not None
     context = p.baseline if exact else checks.context_baseline(p.weeks, p.baseline) if p.weeks else []
     rival = checks.competitor_assumption(reg, p.weeks, context, exact=exact) if reg is not None else None
-    if p.brand_id == "BXA":
-        lines.append("- Drivers: the checks evaluate the same week and delays of one and two weeks. "
-                     "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag."
-                     + (f" {rival}" if rival else ""))
-    elif rival:
-        lines.append(f"- Drivers: {rival}")
+    lines.append("- Drivers: the checks evaluate the same week and delays of one and two weeks. "
+                 "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag."
+                 + (f" {rival}" if rival else ""))
     return lines
 
 
@@ -852,7 +849,7 @@ def cut_checks(reg: Registry, p, territory: str, plan: str, checks=None) -> list
     own = list(checks) if complete else run_checks(reg, territory, p.weeks, p.baseline, brand_id=p.brand_id,
                                                     use_selected_baseline=p.comparison is not None)
     with reg.under(measure="trx"):  # the access check reads TRx whatever the primary measure
-        access = check_access(reg, territory, p.weeks, p.baseline, plan=plan)
+        access = check_access(reg, territory, p.weeks, p.baseline, plan=plan, brand_id=p.brand_id)
     by = {c.driver: c for c in own}
     by["access"] = access
     return [by[d] for d in _DRIVER_ORDER if d in by]

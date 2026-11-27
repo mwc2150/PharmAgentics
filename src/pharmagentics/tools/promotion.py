@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass, replace
 
 from . import memo, queries as q, splits, stages
+from .brands import product_id
 from .registry import Registry, digits_outside_tokens
 
 PUSH_RATIO = 1.5
@@ -31,19 +32,19 @@ class Lapse:
     resumed: str | None
 
 
-def _territories(reg: Registry, focus: str | None) -> list[str]:
-    return [r[0] for r in reg.rows(f"select distinct territory_id from {PROMO} where product_id = 'BXA' order by 1")
+def _territories(reg: Registry, focus: str | None, brand_id: str = "BXA") -> list[str]:
+    return [r[0] for r in reg.rows(f"select distinct territory_id from {PROMO} where product_id = '{product_id(brand_id)}' order by 1")
             if focus in (None, "NATIONAL", r[0])]
 
 
-def _cells(territory: str) -> str:
-    return f"from {PROMO} where product_id = 'BXA' and territory_id = '{territory}'"
+def _cells(territory: str, brand_id: str = "BXA") -> str:
+    return f"from {PROMO} where product_id = '{product_id(brand_id)}' and territory_id = '{territory}'"
 
 
-def lapses(reg: Registry, focus: str | None) -> list[Lapse]:
+def lapses(reg: Registry, focus: str | None, brand_id: str = "BXA") -> list[Lapse]:
     found = []
-    for territory in _territories(reg, focus):
-        cells = _cells(territory)
+    for territory in _territories(reg, focus, brand_id):
+        cells = _cells(territory, brand_id)
         rows = reg.rows(f"""
             with low as (
                 select week_start, date_diff('week', date '2000-01-03', week_start)
@@ -67,13 +68,13 @@ def _scope_sql(focus: str | None) -> str:
     return f" and territory_id = '{focus}'" if focus not in (None, "NATIONAL") else ""
 
 
-def _runs_sql(focus: str | None) -> str:
+def _runs_sql(focus: str | None, brand_id: str = "BXA") -> str:
     """Every lapse as a row (territory_id, first_week, last_week, n), the same rule as `lapses`, over all territories."""
     return f"""
         with cells as (
             select territory_id, week_start, rep_calls_aggregated,
                 median(rep_calls_aggregated) over (partition by territory_id) as med
-            from {PROMO} where product_id = 'BXA'{_scope_sql(focus)}
+            from {PROMO} where product_id = '{product_id(brand_id)}'{_scope_sql(focus)}
         ), low as (
             select territory_id, week_start, date_diff('week', date '2000-01-03', week_start)
                 - row_number() over (partition by territory_id order by week_start) as run
@@ -98,12 +99,12 @@ def _count_word(n: int) -> str:
     return _NUMBER_WORDS.get(n, "several")
 
 
-def _push_rows(reg: Registry, focus: str | None) -> list[dict]:
+def _push_rows(reg: Registry, focus: str | None, brand_id: str = "BXA") -> list[dict]:
     """One row a territory: the highest week as a multiple of the median for calls and impressions, and the longest
     run above the push line for calls or impressions, samples and speaker programs. Claims, with the values."""
     out = []
-    for territory in _territories(reg, focus):
-        cells, row = _cells(territory), {"territory": territory}
+    for territory in _territories(reg, focus, brand_id):
+        cells, row = _cells(territory, brand_id), {"territory": territory}
         longest = {}
         for key, column in (("calls", "rep_calls_aggregated"), ("digital", "digital_impressions"),
                             ("samples", "samples_units"), ("speakers", "speaker_programs")):
@@ -193,10 +194,10 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
     W = q.mondays(lapse.start, lapse.end)
     B = [q.shift(lapse.start, -i) for i in range(stages.BASELINE_WEEKS, 0, -1)]
     fields = {"territory": t, "lapse_start": lapse.start, "lapse_end": lapse.end}
-    before = reg.claim("lookup_promo", q.context_mean("promo_activity", "rep_calls_aggregated", B, t), "int", **fields)
-    during = reg.claim("lookup_promo", q.context_mean("promo_activity", "rep_calls_aggregated", W, t), "int", **fields)
-    digital = reg.claim("lookup_promo", q.context_mean("promo_activity", "digital_impressions", W, t), "int", **fields)
-    median = reg.claim("lookup_promo", f"select median(digital_impressions) {_cells(t)}", "int", **fields)
+    before = reg.claim("lookup_promo", q.context_mean("promo_activity", "rep_calls_aggregated", B, t, product=brand), "int", **fields)
+    during = reg.claim("lookup_promo", q.context_mean("promo_activity", "rep_calls_aggregated", W, t, product=brand), "int", **fields)
+    digital = reg.claim("lookup_promo", q.context_mean("promo_activity", "digital_impressions", W, t, product=brand), "int", **fields)
+    median = reg.claim("lookup_promo", f"select median(digital_impressions) {_cells(t, brand)}", "int", **fields)
     lines = [f"From {lapse.start} to {lapse.end}, aggregated calls in {name} averaged {during} a week against {before} before. "
              f"Digital impressions averaged {digital} against a release median of {median}."]
     card = {"headline": f"{name}: aggregated calls fell from {before} to {during} a week.", "confidence": "Low",
@@ -238,11 +239,11 @@ def _lapse_story(reg: Registry, p: stages.Period, lapse: Lapse, gaps: list[tuple
         weeks = [lapse.end, lapse.resumed]
         ok = _reportable(reg, weeks)
         if t in ok:
-            first, last = [reg.claim("get_metric", q.trx_sum([w], terrs=[t]), "int", week=w, territory=t) for w in weeks]
+            first, last = [reg.claim("get_metric", q.trx_sum([w], terrs=[t], product=brand), "int", week=w, territory=t) for w in weeks]
             line = f"When aggregated calls returned on {lapse.resumed}, {brand} TRx went from {first} to {last}"
             peers = [other for other in ok if other != t]
             if peers:
-                change_sql = q.pct_change(q.trx_sum([weeks[1]], terrs=peers), q.trx_sum([weeks[0]], terrs=peers))
+                change_sql = q.pct_change(q.trx_sum([weeks[1]], terrs=peers, product=brand), q.trx_sum([weeks[0]], terrs=peers, product=brand))
                 move = reg.claim("get_metric", change_sql, "pct", scope="other territories", weeks=weeks)
                 line += f", while the other territories were {stages.word(reg.scalar(change_sql))} {move}"
             lines.append(line + ".")
@@ -253,7 +254,7 @@ def _stories(reg: Registry, p: stages.Period) -> tuple[list[memo.StoryBlock], li
     gaps: list[tuple[str, float]] = []
     if not p.promotion or (not p.promotion_review and p.focus in (None, "NATIONAL")):
         return [], gaps
-    events = [lapse for lapse in lapses(reg, p.focus) if p.promotion_review or (
+    events = [lapse for lapse in lapses(reg, p.focus, p.brand_id) if p.promotion_review or (
         lapse.start <= p.requested[-1] and (lapse.resumed or lapse.end) >= p.requested[0])]
     blocks = [_lapse_story(reg, p, lapse, gaps) for lapse in events]
     if not blocks and not p.promotion_review:
@@ -266,12 +267,12 @@ def story_blocks(reg: Registry, p: stages.Period) -> list[memo.StoryBlock]:
     return _stories(reg, p)[0]
 
 
-def _lapse_kpis(reg: Registry, focus: str | None, events: list[Lapse], threshold: str) -> tuple[list[dict], dict]:
+def _lapse_kpis(reg: Registry, focus: str | None, events: list[Lapse], threshold: str, brand_id: str = "BXA") -> tuple[list[dict], dict]:
     """The strip: territories with a lapse, the longest lapse in weeks, the push threshold. Counts come from the
     same rule as `lapses`, written as one query, so each tile is a claim."""
-    runs, scope = _runs_sql(focus), _scope_sql(focus)
+    runs, scope = _runs_sql(focus, brand_id), _scope_sql(focus)
     count, _ = _claim(reg, runs + "select count(distinct territory_id) from runs", "int", scope=focus or "release", kind="territories with a lapse")
-    total, total_n = _claim(reg, f"select count(distinct territory_id) from {PROMO} where product_id = 'BXA'{scope}", "int",
+    total, total_n = _claim(reg, f"select count(distinct territory_id) from {PROMO} where product_id = '{product_id(brand_id)}'{scope}", "int",
                             scope=focus or "release")
     weeks, w = _claim(reg, runs + "select coalesce(max(n), 0) from runs", "int", scope=focus or "release", kind="longest lapse in weeks")
     longest = max(events, key=lambda e: len(q.mondays(e.start, e.end))) if events else None
@@ -333,13 +334,13 @@ def _appendix(reg: Registry, p: stages.Period, threshold: str) -> list[str]:
 
 def render_review(reg: Registry, p: stages.Period) -> dict:
     threshold = reg.claim("lookup_promo", f"select {PUSH_RATIO} from {PROMO} limit 1", "dec2", rule="push threshold")
-    rows = _push_rows(reg, p.focus)
+    rows = _push_rows(reg, p.focus, p.brand_id)
     stories, gaps = _stories(reg, p)
     corr = reg.claim("lookup_promo", f"select corr(rep_calls_aggregated, digital_impressions) from {PROMO} "
-                     f"where product_id = 'BXA'{_scope_sql(p.focus)}", "dec2", scope=p.focus or "release")
-    tiles, k = _lapse_kpis(reg, p.focus, lapses(reg, p.focus), threshold)
+                     f"where product_id = '{p.brand_id}'{_scope_sql(p.focus)}", "dec2", scope=p.focus or "release")
+    tiles, k = _lapse_kpis(reg, p.focus, lapses(reg, p.focus, p.brand_id), threshold, p.brand_id)
     parts = memo.MemoParts(
-        title=["# BXA Promotion review", f"Scope: {stages.describe(p)}. {q.name(p.focus or 'NATIONAL')}."],
+        title=[f"# {p.brand_id} Promotion review", f"Scope: {stages.describe(p)}. {q.name(p.focus or 'NATIONAL')}."],
         bottom_line=_bottom_line(is_dollar_question(p.question), k, rows, threshold, corr, gaps),
         numbers=_push_text(rows, threshold),
         limits=[f"The release has no spend data, so a dollar return and a channel ranking cannot be given. Aggregated calls and "

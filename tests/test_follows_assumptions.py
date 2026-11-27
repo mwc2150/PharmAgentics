@@ -73,7 +73,7 @@ def unstated(envelope: dict) -> dict[str, set[str]]:
 def _cases():
     sys.path.insert(0, str(ROOT))
     from eval.harness.cases import load_cases
-    return [c for c in load_cases(lane="briefing") if getattr(c, "brand", "BXA") == "BXA"]
+    return load_cases(lane="briefing", brand="all")  # Cardiovela's cases and Lipidara's (core-010)
 
 
 @pytest.fixture(scope="module")
@@ -82,13 +82,13 @@ def scripted():
     return BriefingScripted([])
 
 
-@pytest.mark.parametrize("case", _cases(), ids=lambda c: c.story)
+@pytest.mark.parametrize("case", _cases(), ids=lambda c: f"{c.brand}-{c.story}")
 def test_claims_read_only_stated_weeks(case, scripted):
     from eval.harness.systems import briefing_question, definition_option
     inputs = case.inputs()
     sent = briefing_question(inputs["question"], inputs.get("intent") or "brief")
     options = {"comparison": inputs["comparison"]} if inputs.get("comparison") else {}
-    out = scripted.predict(sent, **options, **definition_option(scripted.predict, inputs.get("definition")))
+    out = scripted.predict(sent, **options, **definition_option(scripted.predict, inputs.get("definition")), brand_id=case.brand)
     assert not unstated(out), f"{case.story} reads weeks the brief does not state: {unstated(out)}"
 
 

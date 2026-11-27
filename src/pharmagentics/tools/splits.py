@@ -142,8 +142,8 @@ def screen_cuts(reg: Registry, p: Period, territories: list[str]) -> list[dict]:
     territory's, or when the access check supports an access change on that plan in or just before the period (the
     access driver sits there; the check reads the months of the period and the two weeks before it). A plan whose
     TRx a week is below SMALL_CELL on either side is never quoted, so it gets no card. Makes no claim: the card's own
-    figures do (`cut_figures`). Only for BXA, the brand whose plans the access data covers."""
-    if not (p.has("plan") and p.weeks and p.baseline) or p.calendar or p.brand_id != "BXA":
+    figures do (`cut_figures`)."""
+    if not (p.has("plan") and p.weeks and p.baseline) or p.calendar:
         return []
     found = []
     for t in dict.fromkeys(territories):
@@ -161,7 +161,7 @@ def screen_cuts(reg: Registry, p: Period, territories: list[str]) -> list[dict]:
                 continue
             change = 100 * (now / then - 1)
             against = (word(change) != "flat" and direction != "flat" and word(change) != direction and abs(change) >= CUT_FLOOR)
-            access = plan in events and check_access(scratch, t, p.weeks, p.baseline, plan=plan).verdict == "supported"
+            access = plan in events and check_access(scratch, t, p.weeks, p.baseline, plan=plan, brand_id=p.brand_id).verdict == "supported"
             if against or access:
                 found.append({"territory": t, "plan": plan, "cut": f"plan:{plan}", "against": against,
                               "access": access, "direction": word(change), "impact": abs(now - then)})
