@@ -290,9 +290,11 @@ class Review:
         self.shot(page, "account-menu")
         page.keyboard.press("Escape")
 
-    def generate_brief(self, page: Page, territory: str, shot_prefix: str = "") -> None:
+    def generate_brief(self, page: Page, territory: str, shot_prefix: str = "", brand: str | None = None) -> None:
         page.get_by_role("tab", name="New briefing").click()
         page.wait_for_timeout(800)
+        if brand:  # the brief's brand is a form field, separate from the Overview's toggle (2026-11-27)
+            page.locator("form label", has_text="Brand").locator("select").first.select_option(label=brand)
         page.get_by_role("combobox", name="Territory").select_option(label=territory)
         page.get_by_role("button", name="Generate briefing").click()
         page.get_by_role("heading", name="What should this brief investigate?").wait_for(timeout=30000)
@@ -520,10 +522,10 @@ def tester_desktop(r: Review, page: Page) -> None:
     r.step("account-menu", lambda: r.account_menu(page))
 
     def second_brand():
-        page.get_by_role("combobox", name="Brand").select_option(label="Lipidara (BXC)")
+        page.get_by_role("combobox", name="Brand").select_option(label="Lipidara (BXC)")  # the Overview's toggle
         page.wait_for_timeout(2500)
         r.shot(page, "bxc-overview", full=True)
-        r.generate_brief(page, "Pacific", "bxc-")
+        r.generate_brief(page, "Pacific", "bxc-", brand="Lipidara (BXC)")
         r.shot(page, "bxc-brief-analyst-view", full=True)
     r.step("second-brand-bxc", second_brand)
 

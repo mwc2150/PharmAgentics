@@ -1112,7 +1112,10 @@ function AnalystApp({me}: {me: Me}) {
   const [context,setContext] = useState<ReleaseContext | null>(null)
   const [contextError,setContextError] = useState<string | null>(null)
   const [loadingContext,setLoadingContext] = useState(true)
-  const [brand,setBrand] = useState("")
+  const [brand,setBrand] = useState("")  // the New briefing's brand: one of the brief's own choices, set on the form
+  // The Overview's brand, for inspection only (Michael, 2026-11-27): switching it never changes the next brief's brand.
+  // "Generate a briefing" from the Overview carries it to the form on purpose, with the territory and week.
+  const [overviewBrand,setOverviewBrand] = useState("")
   const [territory,setTerritory] = useState("")
   const [week,setWeek] = useState("")
   const [weekEnd,setWeekEnd] = useState("")  // brief-008: the last week of the period; equal to `week` for one week
@@ -1178,6 +1181,13 @@ function AnalystApp({me}: {me: Me}) {
     setChip(null); setBarEvidence(null); clearQuestion(); setPromotion(false); setComparisons([]); setChoices(DEFAULT_CHOICES); setProposed([])
     setView(v=>v==="triage" || v==="result" ? "home" : v); setRunView(null)
   }
+  // The form's Brand field: only the brand (and an engine it supports) changes; the period and choices stay as set.
+  const chooseBrand = (id: string) => {
+    if (!context?.product_ids.includes(id) || id === brand) return
+    setBrand(id)
+    const supported = context.brands.find(b=>b.id===id)?.engines ?? []
+    setEngine(e=>supported.includes(e) ? e : "scripted")
+  }
 
   useEffect(()=>{
     let live = true
@@ -1206,6 +1216,7 @@ function AnalystApp({me}: {me: Me}) {
       const c=await getContext()
       setContext(c)
       setBrand(b=>c.product_ids.includes(b)?b:(c.product_ids[0] ?? ""))
+      setOverviewBrand(b=>c.product_ids.includes(b)?b:(c.product_ids[0] ?? ""))
       setTerritory(t=>c.territory_ids.includes(t)?t:c.territory_ids[0])
       setWeek(w=>c.available_weeks.includes(w)?w:c.latest_week)
       setWeekEnd(w=>c.available_weeks.includes(w)?w:c.latest_week)
@@ -1305,13 +1316,13 @@ function AnalystApp({me}: {me: Me}) {
   const scopeBack = useRef<HTMLButtonElement>(null)
   useEffect(()=>{ if (view==="triage" || view==="result") scopeBack.current?.focus() },[view])
   return <Shell me={me} onBriefingHome={()=>setView("overview")} briefingBusy={pending}><FeedbackDock slot={dock}>
-    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets with the data line under it, as the Forecast lane does; other tabs start at the tab row */}{view==="overview" && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<SubTabs aside={<label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
-      <select className={`${FIELD} w-auto`} value={brand} onChange={e=>changeBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
+    <div className={`${view==="overview" ? "workspace-wide" : "workspace-content"} pt-5 sm:pt-6`}>{/* The Overview greets with the data line under it, as the Forecast lane does; other tabs start at the tab row */}{view==="overview" && <Greeting detail={context ? `Data through ${labelWeek(context.latest_week)}, across ${context.territory_ids.length} territories.` : undefined}/>}<SubTabs aside={view==="overview" ? <label className="pa-noprint flex items-center gap-2 text-xs text-muted">Brand
+      <select className={`${FIELD} w-auto`} value={overviewBrand} onChange={e=>setOverviewBrand(e.target.value)} disabled={loadingContext || !context?.brands.length}>
         {context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}
-      </select></label>} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>
+      </select></label> : undefined} label="Weekly briefing" panelId="briefing-panel" dots={{approved: news.has("briefing") && tab !== "approved"}} value={tab} onChange={t=>{ if (t==="approved" || t==="overview") setView(t); else if (tab!=="new") setView(runView && held ? runView : "home") }} options={[["overview","Overview","briefing.overview"],["new","New briefing","briefing.new"],["approved","Approved briefings","briefing.approved","Approved"]] as const}/></div>
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
-    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
+    <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? overviewBrand && <><h2 className="sr-only">Overview</h2><Overview key={overviewBrand} brand={overviewBrand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();chooseBrand(overviewBrand);setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
       <IntroWithHow introId="new-briefing-intro">Generate the week's brand-performance briefing, check its evidence, and send it to the Insights Manager for sign-off.</IntroWithHow>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
@@ -1323,6 +1334,9 @@ function AnalystApp({me}: {me: Me}) {
           {!!reader.read.notes.length && <ul className="list-disc space-y-0.5 pl-5 text-xs text-muted">{reader.read.notes.map(n=><li key={n}>{n}</li>)}</ul>}
           <button type="button" onClick={clearQuestion} className="text-xs text-primaryink hover:underline">Clear</button>
         </div>}</div>
+        <label className={LABEL}>Brand
+          <select className={FIELD} value={brand} onChange={e=>chooseBrand(e.target.value)} disabled={!selectable}>{context?.brands.map(b=><option key={b.id} value={b.id}>{b.name} ({b.id})</option>)}</select>
+        </label>
         <fieldset className="space-y-4" aria-label="Brief definition">
           <div><h3 className="text-sm font-semibold">What the brief counts</h3><p className="mt-1 text-xs text-muted">Six choices, each pre-selected. The brief states them in its Assumptions, and the numbers follow them.</p></div>
           <PeriodPicker first={week} last={weekEnd} weeks={releaseWeeks} disabled={!selectable || reviewPromotion} onFirst={w=>{ if(weekEnd===week) setWeekEnd(w); setWeek(w) }} onLast={setWeekEnd} labelWeek={labelWeek}/>
