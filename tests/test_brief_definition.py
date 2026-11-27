@@ -472,7 +472,7 @@ def test_a_brief_is_stored_and_returned_with_its_definition_and_leaders_see_it_i
     assert analyst.post("/api/briefing/query", json=body).json()["brief_id"] == brief_["brief_id"]
     plain = analyst.post("/api/briefing/query", json=QUERY).json()
     assert plain["brief_id"] != brief_["brief_id"] and plain["definition"]["measure"] == ["trx"]
-    assert plain["definition"]["grain"] == GRAINS and "new patients" not in plain["answer"].lower()
+    assert plain["definition"]["grain"] == GRAINS and "new patients" not in re.sub(r"new patients \(nbrx\)", "", plain["answer"].lower())  # only beside NBRx, as the promotion line states it
     stored = analyst.get(f"/api/briefing/{brief_['brief_id']}").json()
     assert stored["definition"] == d
     # the leader sees it in words in the Assumptions block, and never the claims, args or SQL

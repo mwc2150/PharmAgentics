@@ -1,5 +1,6 @@
 """The fixed catalog of driver checks both lanes share. Each check computes a verdict by code:
-supported, ruled_out or insufficient, with a sentence whose numbers are claim tokens."""
+supported, ruled_out or insufficient (and, for promotion, not_separable or not_testable), with a sentence whose numbers
+are claim tokens."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,7 +28,7 @@ DECISION = {  # what a next check unlocks (brief-003 §5 Next checks)
 @dataclass
 class Check:
     driver: str
-    verdict: str  # supported | ruled_out | insufficient
+    verdict: str  # supported | ruled_out | insufficient | not_separable | not_testable (promotion only; neither is a call on the card)
     text: str  # template with claim tokens
     detail: dict | None = None
 
@@ -164,15 +165,23 @@ def check_data(reg: Registry, terr: str, W, B, brand_id: str = "BXA") -> Check:
 
 def confidence(checks: list[Check]) -> tuple[str, str]:
     """High: one supported, every other ruled out. Medium: one supported with others open, or several
-    supported. Low: none supported, so the agent abstains. Promotion alone is an association: Medium at most."""
+    supported. Low: none supported, so the agent abstains. Promotion alone is an association: Medium at most.
+    A promotion that cannot be separated from a supported driver is an open alternative: that driver stays a candidate,
+    never the sole leader, and the lead says so. A promotion that did not move (not_testable) is no competing explanation
+    of the change, so it does not hold a story below High, though it is never called ruled out."""
     supported = [c for c in checks if c.verdict == "supported"]
     if not supported:
         return "Low", "unresolved, investigate next"
-    if len(supported) == 1 and all(c.verdict == "ruled_out" for c in checks if c is not supported[0]):
+    if len(supported) == 1 and all(c.verdict in ("ruled_out", "not_testable") for c in checks if c is not supported[0]):
         level = "Medium" if supported[0].driver == "promotion" else "High"
     else:
         level = "Medium"
-    return level, " and ".join(c.driver for c in supported)
+    lead = " and ".join(c.driver for c in supported)
+    tangled = next((c for c in checks if c.driver == "promotion" and c.verdict == "not_separable"), None)
+    if tangled is not None:
+        lead += "; promotion cannot be separated from " + " and ".join(
+            dict.fromkeys(d for d in ((tangled.detail or {}).get("promotion") or {}).get("separable_from") or [c.driver for c in supported]))
+    return level, lead
 
 
 def context_baseline(W, B) -> list[str]:

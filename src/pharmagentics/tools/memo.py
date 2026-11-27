@@ -9,6 +9,7 @@ skeleton. Headings carry no digits (research R6): section numbers live in the st
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field, replace
 
@@ -184,6 +185,17 @@ def _compose(parts: MemoParts) -> tuple[str, list[dict]]:
     return "\n".join(out), sections
 
 
+def _filled(value, fill):
+    """A card's structured data with every claim token in its strings filled."""
+    if isinstance(value, str):
+        return fill(value)[0]
+    if isinstance(value, list):
+        return [_filled(v, fill) for v in value]
+    if isinstance(value, dict):
+        return {k: _filled(v, fill) for k, v in value.items()}
+    return value
+
+
 def render_sections(sections: list[dict], claims: list[dict], index: dict[int, int] | None = None) -> list[dict]:
     """Fill each section's tokens, with where each claim sits (inline citations). `claims` are the claims the
     tokens number; `index` maps a token number to its position in the envelope's claims when the envelope keeps
@@ -205,6 +217,7 @@ def render_sections(sections: list[dict], claims: list[dict], index: dict[int, i
             blocks += [c for r in table["rows"] for c in r["cells"]] + [table.get("note") or ""]
         if card:
             blocks.append(card["headline"])
+            blocks.append(json.dumps(card.get("promotion") or {}))
         used = list(dict.fromkeys(int(n) for n in TOKEN.findall("\n".join([text, prose, extra] + blocks))))
         refs = [index[n] if index is not None else n - 1 for n in used
                 if 0 < n <= len(claims) and (index is None or n in index)]
@@ -231,6 +244,8 @@ def render_sections(sections: list[dict], claims: list[dict], index: dict[int, i
         if card:
             headline, h_spans = fill(card["headline"])
             item["card"] = {**card, "headline": headline, "headline_citations": h_spans}
+            if card.get("promotion"):
+                item["card"]["promotion"] = _filled(card["promotion"], fill)
         out.append(item)
     return out
 
@@ -518,7 +533,8 @@ def assumptions(p, proj: Projection | None, restated: bool = False, *, reg: Regi
     context = p.baseline if exact else checks.context_baseline(p.weeks, p.baseline) if p.weeks else []
     rival = checks.competitor_assumption(reg, p.weeks, context, exact=exact) if reg is not None else None
     lines.append("- Drivers: the checks evaluate the same week and delays of one and two weeks. "
-                 "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag."
+                 "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag. "
+                 "Promotion: controls first, then comparable territories."
                  + (f" {rival}" if rival else ""))
     return lines
 
@@ -806,9 +822,54 @@ def story_card(name: str, facts: dict, confidence: str, drivers: list[str], *, t
     if facts.get("xm"):
         x = facts["xm"]
         headline += f" {x['label'][:1].upper()}{x['label'][1:]} {_verb(x['word'], x['pct'])}."
-    return {"headline": headline,
+    card = {"headline": headline,
             "confidence": confidence, "drivers_checked": [DRIVER_NAMES.get(d, d) for d in drivers],
             "territory": territory, "direction": facts["word"], "drivers_supported": supported, "drivers_ruled_out": ruled_out, "cut": None}
+    if (promo := promotion_card(checks)) is not None:
+        card["promotion"] = promo
+    return card
+
+
+def _promotion_detail(checks) -> dict | None:
+    """The promotion check's structure (lag_checks.check_promotion), when it ran and was not inconclusive."""
+    check = next((c for c in checks if c.driver == "promotion"), None)
+    return ((check.detail or {}).get("promotion") if check is not None else None) or None
+
+
+def promotion_card(checks) -> dict | None:
+    """The promotion verdict as structured data for a story card (analysts' view): new patients first and TRx as the
+    follow-through, then all four channels at the verdict's lag, the effect against territories without a promotion change
+    and the re-check date. Every figure is a claim token; `verdict` is one of supported, ruled_out, not_separable or
+    not_testable (the last two are never in the card's drivers_supported or drivers_ruled_out). No rep-level data."""
+    d = _promotion_detail(checks)
+    if d is None:
+        return None
+    keys = ("verdict", "lag", "lag_label", "tested", "new_patients", "trx", "channels", "effect", "separable_from", "recheck")
+    return {k: d[k] for k in keys if d.get(k) is not None or k == "effect"}
+
+
+def promotion_lines(checks) -> list[str]:
+    """The promotion detail for the story's folded part: the lag read, new patients then TRx, the four channels, how the
+    comparison range is built, and when a fuller read is possible. Built from the card's own structure, so the two agree."""
+    d = _promotion_detail(checks)
+    if d is None:
+        return []
+    lines = [f"Promotion detail, read at the {d['lag_label']} (the period against the comparison weeks, aggregated activity, weekly averages):"]
+    for m in (d["new_patients"], d["trx"]):
+        what = "New patients (NBRx)" if m["measure"] == "NBRx" else "TRx"
+        lines.append(f"- {what}: {m['before']} to {m['after']} ({m['direction']} {m['change']}).")
+    for ch in d["channels"]:
+        change = f" ({ch['direction']} {ch['change']})" if ch["change"] else f" ({ch['direction']})"
+        lines.append(f"- {ch['channel'][:1].upper()}{ch['channel'][1:]}: {ch['before']} to {ch['after']}{change}.")
+    e = d.get("effect")
+    if e:
+        lines.append(f"- Comparison: {e['territories']} other territories held their promotion level (no channel moved by {e['threshold']} or more at this lag) "
+                     "and are the comparison. Each gives one implied effect: this territory's TRx a week in the period, less its TRx in the comparison weeks "
+                     f"scaled by that territory's own change. The range, {e['low']} to {e['high']} extra TRx a week, runs from the lowest to the highest of them.")
+    if d["verdict"] == "not_separable":
+        lines.append(f"- Not separable from: {', '.join(DRIVER_NAMES.get(x, x) for x in d.get('separable_from') or [])}, supported in the same weeks.")
+    lines.append(f"- Lags tested: {', '.join(d['tested'][:-1])} and {d['tested'][-1]}. A fuller read is possible after {d['recheck']}.")
+    return lines
 
 
 def competitor_card(p, facts: dict) -> dict:
@@ -912,9 +973,9 @@ def cut_block(reg: Registry, p, cut: dict, checks=None) -> StoryBlock:
     return StoryBlock(f"cut:{plan}", f"{name} in {where}", lines, card=card, detail=detail)
 
 
-def story_detail(reg: Registry, p, territory: str) -> list[str]:
-    """The splits, readable and rounded, for the story's folded detail."""
-    return splits.readable_lines(reg, p, territory)
+def story_detail(reg: Registry, p, territory: str, checks=()) -> list[str]:
+    """The splits, readable and rounded, then the promotion detail of the story's checks, for the folded detail."""
+    return splits.readable_lines(reg, p, territory) + promotion_lines(checks)
 
 
 def restatement_block(restated: list[dict]) -> StoryBlock | None:

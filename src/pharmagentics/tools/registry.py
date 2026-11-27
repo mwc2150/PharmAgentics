@@ -40,7 +40,7 @@ def _half_up(value: float, decimals: int, percent: bool = False) -> str:
 def _pct(value: float) -> str:
     """The Briefing percentage (brief-008 FR-016): a whole number from 10% up, one decimal below. The cut is made
     on the rounded value, so 9.96 prints as 10%, not 10.0%."""
-    return _half_up(value, 0, percent=True) if abs(float(_half_up(value, 1, percent=True)[:-1])) >= 10 else _half_up(value, 1, percent=True)
+    return _half_up(value, 0, percent=True) if abs(float(_half_up(value, 1, percent=True)[:-1].replace(",", ""))) >= 10 else _half_up(value, 1, percent=True)
 
 
 FORMATS = {

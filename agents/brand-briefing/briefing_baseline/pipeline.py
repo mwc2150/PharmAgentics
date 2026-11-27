@@ -139,7 +139,8 @@ def _note(events: EventLog | None, step: str, *, tool: str | None = None, args: 
         events.emit("Code", "code", step, tool=tool, args=args, verdict=verdict, summary=summary or text.split("\n")[0], text=text)
 
 
-_VERDICT = {"supported": "supported", "ruled_out": "ruled out", "insufficient": "inconclusive"}
+_VERDICT = {"supported": "supported", "ruled_out": "ruled out", "insufficient": "inconclusive",
+            "not_separable": "inconclusive", "not_testable": "inconclusive"}
 
 
 def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None,
@@ -343,7 +344,7 @@ def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBloc
     _note(events, "Close the story", tool="story_confidence", args={"territory": t}, verdict="done", summary=lines[-1])
     plan = next((c.detail["plan"] for c in checks if c.driver == "access" and c.detail), None)
     chart = charts.story(reg, p, t, supported if level != "Low" else [], plan)
-    detail = memo.story_detail(reg, p, t)
+    detail = memo.story_detail(reg, p, t, checks)
     block = memo.StoryBlock(story_id(s), name(t), lines, chart=chart, detail=detail,
                             card=memo.story_card(name(t), facts, level, [c.driver for c in checks], territory=t, checks=checks, measure=p.col))
     return block, {
