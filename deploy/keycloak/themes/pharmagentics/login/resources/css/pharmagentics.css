@@ -24,19 +24,20 @@ html, body, #keycloak-bg, .login-pf body {
 .pf-v5-c-login { background: none !important; }
 .pf-v5-c-login__container { max-width: 440px !important; padding-inline: 16px; grid-template-columns: 1fr !important; row-gap: 0 !important; }
 
-/* Header: the tile mark beside the wordmark, left-aligned with the panel. */
+/* Header: the tile mark beside the wordmark, left-aligned with the panel. One line of inline content, so the version
+   sits on the wordmark's baseline (as in the app's sidebar) and the tile is centred on the text. */
 .pf-v5-c-login__header { padding: 0 0 24px !important; text-align: left; }
 #kc-header-wrapper.pf-v5-c-brand {
-  display: flex; align-items: center; gap: 14px; padding: 0;
-  font: 700 22px/1.2 "Space Grotesk", system-ui, sans-serif; letter-spacing: -0.01em;
+  display: block; padding: 0; white-space: nowrap;
+  font: 700 22px/48px "Space Grotesk", system-ui, sans-serif; letter-spacing: -0.01em;
   text-transform: none; color: var(--pa-ink);
 }
 #kc-header-wrapper.pf-v5-c-brand::before {
-  content: ""; flex: none; width: 48px; height: 48px;
+  content: ""; display: inline-block; vertical-align: middle; width: 48px; height: 48px; margin: -4px 14px 0 0;
   background: url("../img/pa-mark.svg") center / contain no-repeat;
 }
 #kc-header-wrapper.pf-v5-c-brand::after {
-  content: "v1"; margin-left: -8px; align-self: flex-end; padding-bottom: 3px;
+  content: "v2"; display: inline; vertical-align: baseline; margin-left: 6px;
   font: 500 12px/1 "IBM Plex Sans", system-ui, sans-serif; letter-spacing: 0; color: var(--pa-muted);
 }
 
