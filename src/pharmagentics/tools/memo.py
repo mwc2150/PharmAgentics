@@ -393,6 +393,19 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
     return None
 
 
+def _territory_lead(reg: Registry, p) -> str | None:
+    """§1's opening line when the question names one territory (UAT review 3.7): that territory's change on the
+    comparison weeks, before the national figures. None when the question names no territory, the territory has no
+    like-for-like change (a withheld week) or there are no comparison weeks. Every number is a claim."""
+    t = p.focus
+    if not t or t == "NATIONAL" or t not in p.ok or not p.baseline or not p.has("territory"):
+        return None
+    sql = q.pct_change(q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id, col=p.col),
+                       q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id, col=p.col))
+    pct = reg.claim("get_metric", sql, "pct", territory=t, scope="against the comparison weeks")
+    return f"{q.name(t)}: {p.brand_id} {p.measure_label} is {stages.word(reg.scalar(sql) or 0)} {pct} against {comparison_text(p)}."
+
+
 def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restated: bool, facts: dict | None = None) -> list[str]:
     """§1 in FR-021 order, after a data warning or restatement note when there is one. `stories` are the
     territory stories in brief order: {territory, confidence}. `facts` receives the claims the KPI strip reuses."""
@@ -400,6 +413,8 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
     lines = [x for x in [_warning(p, proj)] if x]
     if restated:
         lines.append("Data note: an earlier week was restated. The new value and the reason are in The numbers.")
+    if (lead := _territory_lead(reg, p)):
+        lines.append(lead)
     W = proj.weeks
     facts["brand"] = p.brand_id
     if not p.has("national"):

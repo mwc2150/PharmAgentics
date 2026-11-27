@@ -84,6 +84,29 @@ def test_usage_counts_the_shared_tester_login_and_says_how_much_came_from_it():
     assert "participants" not in u and u["tester_records"] == 4 and u["sessions"]["bad"] == 1
 
 
+def test_review_outcomes_count_briefs_not_approval_events():
+    """UAT review 6.2: three approval events on one brief are one brief, and under ten briefs there is no rate."""
+    ev = [event("reviewed", f"2026-11-18T11:0{i}:00+00:00", "u-p1", decision="approved", brief_id="b1") for i in range(3)]
+    one = telemetry.review_outcomes(ev)
+    assert one == {"briefs": 1, "approved": 1, "rejected": 0, "min_briefs": 10, "enough": False, "approved_pct": None, "label": "too few to rate"}
+    ev += [event("reviewed", "2026-11-18T12:00:00+00:00", "u-p1", decision="rejected", brief_id="b1")]  # a later change of mind stands
+    assert telemetry.review_outcomes(ev)["approved"] == 0 and telemetry.review_outcomes(ev)["rejected"] == 1
+    many = [event("reviewed", f"2026-11-19T10:{i:02d}:00+00:00", "u-p1", decision="approved" if i < 7 else "rejected", brief_id=f"b{i}")
+            for i in range(10)]
+    ten = telemetry.review_outcomes(many)
+    assert (ten["briefs"], ten["approved"], ten["rejected"], ten["enough"], ten["approved_pct"], ten["label"]) == (10, 7, 3, True, 70, None)
+    assert telemetry.review_outcomes([event("reviewed", "2026-11-19T10:00:00+00:00", "u-p1", decision="approved")])["briefs"] == 0
+
+
+def test_usage_carries_the_review_outcomes_for_the_briefing_lane_only():
+    ev = [event("reviewed", "2026-11-18T11:00:00+00:00", "u-p1", decision="approved", brief_id="b1"),
+          event("reviewed", "2026-11-18T11:05:00+00:00", "u-p1", decision="approved", brief_id="b1")]
+    lanes = telemetry.summarize_usage(ev, [], [], [], [], feedback.questionnaire())["lanes"]
+    assert lanes["briefing"]["decisions"] == {"approved": 2}  # event counts stay as they were
+    assert lanes["briefing"]["review"]["briefs"] == 1 and lanes["briefing"]["review"]["label"] == "too few to rate"
+    assert "review" not in lanes["forecast"]
+
+
 def test_usage_endpoint_shows_only_the_signed_in_lanes_and_no_person():
     p1 = rbac.pseudonym("dev-analyst")
     store.record_event("requested", user=p1, role="briefing-analyst", persona="P1", engine="scripted", latency_ms=800)

@@ -28,7 +28,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import agent_host, auth, brand_access, classification, cloud, feedback, forecast, jobs, overview, rbac, service, store, telemetry, views
+from . import agent_host, auth, security_headers, brand_access, classification, cloud, feedback, forecast, jobs, overview, rbac, service, store, telemetry, views
 from .schemas import (AgentJobRequest, BriefingQuery, BriefingScope, BriefingScopeRequest, InsightMark, ReleaseContext, ReviewRequest, ViewAs, WorkerPoll,
                       WorkerProgress, WorkerResult)
 from pharmagentics.tools import events as events_mod
@@ -93,6 +93,15 @@ async def _ui_cache(request: Request, call_next):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         elif not request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    """Security headers on every response, API and static files (UAT review 5.1); see security_headers.py."""
+    response = await call_next(request)
+    for name, value in security_headers.headers_for(request).items():
+        response.headers[name] = value
     return response
 app.include_router(auth.router)
 app.include_router(feedback.router)  # UAT feedback (core-008)

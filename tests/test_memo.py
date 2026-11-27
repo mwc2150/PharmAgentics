@@ -173,7 +173,9 @@ def test_a_multi_week_window_compares_with_the_four_weeks_before():
 
     text = answer(SOUTHEAST_GAP)["answer"]
     assert "Southeast. BXA TRx averaged 481 a week against 639 before (down 25%)" in text
-    assert "against the four weeks before (2026-07-06 to 2026-07-27)." in section(text, "Bottom line")[1]
+    bottom = section(text, "Bottom line")
+    assert bottom[0].startswith("Southeast: BXA TRx is down 25% against the four weeks before (2026-07-06 to 2026-07-27).")  # 3.7
+    assert "against the four weeks before (2026-07-06 to 2026-07-27)." in bottom[2]
 
 
 @needs_db
