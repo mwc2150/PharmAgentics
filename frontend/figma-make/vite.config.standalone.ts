@@ -13,6 +13,8 @@ function standaloneHtml(): Plugin {
       return html
         .replace("<!-- figma:lang -->", "en")
         .replace("<!-- figma:title -->", "PharmAgentics")
+        // The design tool's scaffold markers (figma:head-start, body-end ...) are not served (UAT review 5.7).
+        .replace(/[ \t]*<!-- figma:[\w-]+ -->[ \t]*\r?\n?/g, "")
     },
   }
 }
