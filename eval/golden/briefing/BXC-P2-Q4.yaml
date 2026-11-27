@@ -1,0 +1,102 @@
+id: C-042
+lane: briefing
+brand: BXC
+story: BXC-P2-Q4
+persona: P2 Insights Manager (Marcus)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27: Where is the change concentrated?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27
+anchor: Mid-Atlantic plan, Aug to Oct 2025 (Lipidara)
+definition:
+  first_week: '2025-08-04'
+  last_week: '2025-10-27'
+  comparison:
+    kind: custom
+    start: '2025-06-02'
+    end: '2025-07-28'
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Marcus, I want a national number broken down to where it actually happens, so that the right team acts.
+given: a plan-level rise inside a broader national rise.
+when: the Lipidara (BXC) brief runs.
+then: concentration names territory, channel, plan and specialty, and the segment contributions sum to the territory change.
+reference_answer: 'Nationally the rise is broad: like for like, BXC TRx rose 12.4% against June and July (Labor Day week left out). Mid-Atlantic rose 13.9%. Inside Mid-Atlantic, one Medicare Part D plan with 25.0% of the territory''s BXC TRx rose 21.1% (about 34 TRx a week), while the territory''s other plans rose 11.5%. Among specialties on that plan, internal medicine gained most, 40.0 to 55.4 TRx a week.'
+must_not_say:
+  text: '"Mid-Atlantic Medicare is up" without the plan, or "Mid-Atlantic grew evenly."'
+  phrases:
+  - Mid-Atlantic grew evenly
+  semantic:
+  - Mid-Atlantic Medicare is up
+action: Marcus routes the story to market access with the plan named.
+eval_items:
+- EV-4.3
+- EV-3.1
+facts:
+- id: national_change_pct
+  role: must
+  value: 12.4
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2025-06-02' and DATE '2025-07-28' or week_start between DATE '2025-08-04' and DATE '2025-10-27') group by 1 having count(*) = 22 and count(*) filter (where health_status = 'PASS') = 22) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01' and territory_id in (select territory_id from ok)) / 12.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-06-02' and DATE '2025-07-28' and territory_id in (select territory_id from ok)) / 9.0) - 1)
+  reviewed: false
+- id: ma_change_pct
+  role: must
+  value: 13.9
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2025-06-02' and DATE '2025-07-28' or week_start between DATE '2025-08-04' and DATE '2025-10-27') group by 1 having count(*) = 22 and count(*) filter (where health_status = 'PASS') = 22) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01' and territory_id = 'MID_ATLANTIC' and territory_id in (select territory_id from ok)) / 12.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-06-02' and DATE '2025-07-28' and territory_id = 'MID_ATLANTIC' and territory_id in (select territory_id from ok)) / 9.0) - 1)
+  reviewed: false
+- id: plan_change_pct
+  role: must
+  value: 21.1
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+  needs: plan_cut
+- id: ma_other_plans_change_pct
+  role: context
+  value: 11.5
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+- id: plan_trx_gain_per_week
+  role: context
+  value: 34
+  sql: select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') - (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28')
+  reviewed: false
+  needs: plan_cut
+- id: plan_share_of_ma_bxc_trx_pct
+  role: context
+  value: 25.0
+  sql: select 100.0 * (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and week_start between DATE '2025-06-02' and DATE '2025-07-28')
+  reviewed: false
+  needs: plan_cut
+- id: plan_internal_medicine_trx_before
+  role: context
+  value: 40.0
+  sql: select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28' and hcp_specialty = 'INTERNAL_MEDICINE')
+  reviewed: false
+  needs: plan_cut
+- id: plan_internal_medicine_trx_after
+  role: context
+  value: 55.4
+  sql: select (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01' and hcp_specialty = 'INTERNAL_MEDICINE')
+  reviewed: false
+  needs: plan_cut
+findings:
+- id: mid_atlantic_plan_competitor_access
+  territory: MID_ATLANTIC
+  direction: up
+  drivers_supported:
+  - competitor
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+  cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1
+  needs: plan_cut
+source: docs/planning/user-stories-lipidara.md#BXC-P2-Q4

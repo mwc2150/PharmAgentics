@@ -1,0 +1,95 @@
+id: C-037
+lane: briefing
+brand: BXC
+story: BXC-P1-Q5
+persona: P1 Commercial Analyst (Ace)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-06-08: Am I confident nothing material was left out?'
+review_note: null
+period: week of 2026-06-08
+anchor: Metacora, with Pacific checked, 2026-06-08 (Lipidara)
+definition:
+  first_week: '2026-06-08'
+  last_week: '2026-06-08'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Ace, I want every material change surfaced and ranked, so that the brief is not judged on what it missed.
+given: a week with one live competitor story and one territory that looks worth checking.
+when: the Lipidara (BXC) brief runs.
+then: the Metacora story appears, and the "considered and dropped" list shows Pacific supply as checked and not a Lipidara driver.
+reference_answer: 'National BXC TRx was 3,894, 6.4% below its average for the four weeks before (2026-05-11 to 2026-06-01), on all 8 territories. One story was live: competitor Metacora (BXE), launched 2026-03-02, held 12.5% of the basket and was still climbing, while Lipidara''s share was 31.4%, against 35.4% in the four weeks before launch. The one territory worth checking, Pacific, is not a Lipidara story: Pacific BXC TRx was 626, 3.7% below its previous four weeks, with BXC inventory fill 0.975.'
+must_not_say:
+  text: '"BXC fell 6% nationally" with no mention of Metacora.'
+  phrases: []
+  semantic:
+  - BXC fell 6% nationally
+action: Ace scans the dropped list to confirm nothing large is missing, then signs off the draft for P2.
+eval_items:
+- EV-3.1
+- EV-3.3
+facts:
+- id: national_bxc_trx
+  role: context
+  value: 3894
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2026-06-08'
+  reviewed: false
+- id: national_vs_4wk_avg_pct
+  role: must
+  value: -6.4
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-06-08' and DATE '2026-06-08' or week_start between DATE '2026-05-11' and DATE '2026-06-01') group by 1 having count(*) = 5 and count(*) filter (where health_status = 'PASS') = 5) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-06-08' and DATE '2026-06-08' and territory_id in (select territory_id from ok)) / 1.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-05-11' and DATE '2026-06-01' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: bxc_share_pct
+  role: must
+  value: 31.4
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-06-08' and DATE '2026-06-08'
+  reviewed: false
+- id: metacora_share_pct
+  role: must
+  value: 12.5
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-06-08' and DATE '2026-06-08'
+  reviewed: false
+- id: bxc_share_pre_launch_pct
+  role: context
+  value: 35.4
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-02-02' and DATE '2026-02-23'
+  reviewed: false
+- id: pacific_bxc_trx
+  role: context
+  value: 626
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'PACIFIC' and week_start = DATE '2026-06-08'
+  reviewed: false
+- id: pacific_bxc_vs_4wk_pct
+  role: context
+  value: -3.7
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-06-08' and DATE '2026-06-08' or week_start between DATE '2026-05-11' and DATE '2026-06-01') group by 1 having count(*) = 5 and count(*) filter (where health_status = 'PASS') = 5) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-06-08' and DATE '2026-06-08' and territory_id = 'PACIFIC' and territory_id in (select territory_id from ok)) / 1.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-05-11' and DATE '2026-06-01' and territory_id = 'PACIFIC' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: pacific_bxc_fill_rate
+  role: context
+  value: 0.975
+  sql: select inventory_fill_rate from raw.inventory_weekly where week_start = DATE '2026-06-08' and territory_id = 'PACIFIC' and product_id = 'BXC'
+  reviewed: false
+findings:
+- id: national_metacora_competitor
+  territory: NATIONAL
+  direction: null
+  drivers_supported:
+  - competitor
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+  needs: national_card
+  measure: competitor_share
+source: docs/planning/user-stories-lipidara.md#BXC-P1-Q5

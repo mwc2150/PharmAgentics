@@ -1,0 +1,149 @@
+id: C-052
+lane: briefing
+brand: BXC
+story: BXC-P4-Q2
+persona: P4 Marketer (Magdalena)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-09-14 to 2026-10-05: Which geographies, segments and channels responded, and which did not?'
+review_note: null
+period: weeks of 2026-09-14 to 2026-10-05
+anchor: Metacora era split by territory, channel, specialty (Lipidara)
+definition:
+  first_week: '2026-09-14'
+  last_week: '2026-10-05'
+  comparison:
+    kind: pre_launch
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Magdalena, I want the effect broken down by geography and channel, so that I can compare a campaign's area with the rest.
+given: a brand-wide share loss with no territory lapse in promotion.
+when: the Lipidara (BXC) brief reports it.
+then: it shows each territory, channel and specialty against the pre-launch weeks, says the loss is broad, and flags small cells (cash) as noisy.
+reference_answer: 'Over the latest four weeks (2026-09-14 to 2026-10-05), Lipidara TRx was 9.8% below the four weeks before Metacora launched (2026-02-02 to 2026-02-23), like for like on all 8 territories. The change is broad, not local. By territory: Mountain up 2.0%, Pacific down 4.9%, Northwest down 9.1%, Great Lakes down 9.3%, New England down 11.3%, Southeast down 11.7%, Mid-Atlantic down 13.7% and South Central down 15.4%. By channel: Medicaid down 6.0%, commercial down 10.4%, Medicare Part D down 10.7% and cash down 11.7%. By specialty: endocrinology down 7.1%, cardiology down 8.8%, primary care down 10.0% and internal medicine down 11.4%. Cash is a small cell (265 TRx a week nationally, as few as 18 a week in the smallest territory), so its figure is noisy.'
+must_not_say:
+  text: '"cash patients are leaving Lipidara fastest" from a base of a few dozen prescriptions a week.'
+  phrases:
+  - cash patients are leaving Lipidara fastest
+  semantic: []
+action: Magdalena notes that the loss is broad, so she plans by brand, not by territory or channel.
+eval_items:
+- EV-4.3
+- EV-7.5
+facts:
+- id: national_change_pct
+  role: must
+  value: -9.8
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: great_lakes_change_pct
+  role: context
+  value: -9.3
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'GREAT_LAKES' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'GREAT_LAKES' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: mid_atlantic_change_pct
+  role: context
+  value: -13.7
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'MID_ATLANTIC' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'MID_ATLANTIC' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: mountain_change_pct
+  role: context
+  value: 2.0
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'MOUNTAIN' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'MOUNTAIN' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: new_england_change_pct
+  role: context
+  value: -11.3
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'NEW_ENGLAND' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'NEW_ENGLAND' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: northwest_change_pct
+  role: context
+  value: -9.1
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'NORTHWEST' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'NORTHWEST' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: pacific_change_pct
+  role: context
+  value: -4.9
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'PACIFIC' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'PACIFIC' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: southeast_change_pct
+  role: context
+  value: -11.7
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: south_central_change_pct
+  role: must
+  value: -15.4
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id = 'SOUTH_CENTRAL' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: commercial_change_pct
+  role: context
+  value: -10.4
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and payer_channel = 'COMMERCIAL') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and payer_channel = 'COMMERCIAL') / 4.0) - 1)
+  reviewed: false
+- id: medicare_part_d_change_pct
+  role: context
+  value: -10.7
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and payer_channel = 'MEDICARE_PART_D') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and payer_channel = 'MEDICARE_PART_D') / 4.0) - 1)
+  reviewed: false
+- id: medicaid_change_pct
+  role: context
+  value: -6.0
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and payer_channel = 'MEDICAID') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and payer_channel = 'MEDICAID') / 4.0) - 1)
+  reviewed: false
+- id: cash_change_pct
+  role: context
+  value: -11.7
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and payer_channel = 'CASH') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and payer_channel = 'CASH') / 4.0) - 1)
+  reviewed: false
+- id: primary_care_change_pct
+  role: context
+  value: -10.0
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and hcp_specialty = 'PRIMARY_CARE') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and hcp_specialty = 'PRIMARY_CARE') / 4.0) - 1)
+  reviewed: false
+- id: cardiology_change_pct
+  role: context
+  value: -8.8
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and hcp_specialty = 'CARDIOLOGY') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and hcp_specialty = 'CARDIOLOGY') / 4.0) - 1)
+  reviewed: false
+- id: endocrinology_change_pct
+  role: context
+  value: -7.1
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and hcp_specialty = 'ENDOCRINOLOGY') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and hcp_specialty = 'ENDOCRINOLOGY') / 4.0) - 1)
+  reviewed: false
+- id: internal_medicine_change_pct
+  role: context
+  value: -11.4
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select 100.0 * (((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and hcp_specialty = 'INTERNAL_MEDICINE') / 4.0) / ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok) and hcp_specialty = 'INTERNAL_MEDICINE') / 4.0) - 1)
+  reviewed: false
+- id: cash_trx_per_week_period
+  role: context
+  value: 265
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-09-14' and DATE '2026-10-05' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 8 and count(*) filter (where health_status = 'PASS') = 8) select ((select sum(trx) from reporting.v_reportable_rx where product_id = 'BXC' and week_start between DATE '2026-09-14' and DATE '2026-10-05' and territory_id in (select territory_id from ok) and payer_channel = 'CASH') / 4.0)
+  reviewed: false
+- id: smallest_territory_cash_trx_per_week
+  role: context
+  value: 18
+  sql: select min(m) from (select territory_id, sum(trx) * 1.0 / 4 m from reporting.v_reportable_rx where product_id = 'BXC' and payer_channel = 'CASH' and week_start between DATE '2026-09-14' and DATE '2026-10-05' group by 1)
+  reviewed: false
+findings:
+- id: national_bxc_share_loss
+  territory: NATIONAL
+  direction: down
+  drivers_supported:
+  - competitor
+  drivers_ruled_out:
+  - promotion
+  withheld: false
+  reviewed: false
+  measure: bxa_share
+source: docs/planning/user-stories-lipidara.md#BXC-P4-Q2

@@ -11,8 +11,11 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m eval", description="PharmAgentics golden-set evaluation.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    imp = sub.add_parser("import-stories", help="draft missing case files from docs/planning/user-stories.md")
+    imp = sub.add_parser("import-stories", help="draft missing case files from the user stories (docs/planning/user-stories.md; "
+                                               "--brand BXC reads docs/planning/user-stories-lipidara.md)")
     imp.add_argument("--force", action="store_true", help="overwrite existing case files (loses hand edits)")
+    imp.add_argument("--brand", default="BXA", choices=["BXA", "BXC"],
+                     help="BXC drafts the Lipidara cases (brand: BXC, story BXC-P1-Q1, ids continuing after the highest C-NNN); default BXA")
 
     sub.add_parser("check", help="validate the golden set and recompute every fact from the data")
 
@@ -22,7 +25,11 @@ def main(argv=None) -> int:
                                                           "forecast_investigator"])
     run.add_argument("--lane", default="all", choices=["all", "briefing", "forecast"])
     run.add_argument("--reruns", type=int, default=1)
-    run.add_argument("--stories", help="comma-separated story IDs, e.g. P1-Q2,CA-Q1")
+    run.add_argument("--stories", help="comma-separated story IDs, e.g. P1-Q2,CA-Q1 (BXC-P1-Q2 for Lipidara, with --brand BXC)")
+    run.add_argument("--brand", default="BXA", choices=["BXA", "BXC", "all"],
+                     help="which brand's cases to run (default BXA, so a run is what it was before Lipidara). A system that does "
+                          "not support a brand skips those cases: recorded, never run, never scored. A BXC or mixed run is logged "
+                          "as system@BXC / system@BXA+BXC; a mixed run adds per-brand pooled metrics (suffix _bxa, _bxc)")
     run.add_argument("--judge", nargs="?", const="default", default=None,
                      help="add LLM judges; optional model URI (default ollama:/gemma3:4b)")
     run.add_argument("--model", help="model for agent systems: ollama:<model> or gemini:<model> "
@@ -69,19 +76,21 @@ def main(argv=None) -> int:
 
     if args.cmd == "import-stories":
         from .harness import importer
-        written = importer.run(force=args.force)
+        written = importer.run(force=args.force, brand=args.brand)
         print(f"wrote {len(written)} case file(s): {', '.join(written) or 'none (all exist)'}")
         return 0
 
     if args.cmd == "check":
         from .harness.cases import load_cases
         from .harness.integrity import check_facts, id_problems
-        cases = load_cases()
+        cases = load_cases(brand="all")  # every brand: the check recomputes the Lipidara facts too
         problems = id_problems(cases)
         results = check_facts(cases)
         bad = [r for r in results if not r.ok]
         lanes = {lane: sum(c.lane == lane for c in cases) for lane in ("briefing", "forecast")}
-        print(f"cases: {lanes['briefing']} briefing, {lanes['forecast']} forecast; "
+        lipidara = sum(c.brand == "BXC" for c in cases)
+        print(f"cases: {lanes['briefing']} briefing, {lanes['forecast']} forecast"
+              + (f" ({lipidara} of them Lipidara, BXC)" if lipidara else "") + "; "
               f"draft {sum(c.status == 'draft' for c in cases)}, frozen {sum(c.status == 'frozen' for c in cases)}")
         print(f"facts: {len(results) - len(bad)} of {len(results)} recompute; "
               f"{sum(not c.facts for c in cases)} cases have no facts yet")
@@ -96,7 +105,7 @@ def main(argv=None) -> int:
         from .harness.run import run_suite
         judge = DEFAULT_JUDGE if args.judge == "default" else args.judge
         stories = [s.strip() for s in args.stories.split(",")] if args.stories else None
-        run_suite(args.system, args.lane, args.reruns, judge, stories, model=args.model)
+        run_suite(args.system, args.lane, args.reruns, judge, stories, model=args.model, brand=args.brand)
         return 0
 
     if args.cmd == "improve":

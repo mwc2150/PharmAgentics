@@ -1,0 +1,78 @@
+id: C-044
+lane: briefing
+brand: BXC
+story: BXC-P2-Q6
+persona: P2 Insights Manager (Marcus)
+category: stress
+scenario: null
+split: dev
+status: draft
+question: Is this freeing my team's time without risking our credibility?
+review_note: The story states no period; add the weeks to the question before freezing.
+period: null
+anchor: Held-out stretch with artifacts and holidays (Lipidara)
+definition:
+  first_week: null
+  last_week: null
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Marcus, I want time saved and errors counted side by side, so that I adopt the agent on evidence.
+given: a held-out stretch of weeks that includes artifacts and holidays.
+when: every version of the Lipidara (BXC) brief runs on it.
+then: the scorecard reports run time, reviewer minutes, cost, critical errors and run-to-run spread for each version against the manual baseline.
+reference_answer: 'Time cannot be read from the data; the run measures it. What the data sets is the risk test: the release has three feed artifacts and holiday weeks that drop national BXC TRx against the 4-week average, by 14.3% to 21.1% in the Thanksgiving, Christmas and New Year weeks of 2024 and 2025 and by 8.8% to 18.8% in the feed-artifact weeks. Reading any of them as a business event is a critical error.'
+must_not_say:
+  text: '"saves X hours" without the critical-error rate beside it.'
+  phrases: []
+  semantic:
+  - saves X hours
+action: Marcus decides on adoption from the scorecard.
+eval_items:
+- EV-8.2
+- EV-8.3
+- EV-8.4
+- EV-8.5
+facts:
+- id: holiday_weeks_smallest_drop_pct
+  role: context
+  value: -14.3
+  sql: with n as (select week_start, sum(trx) nat from reporting.v_weekly_rx_kpis where product_id = 'BXC' group by 1), a as (select week_start, nat, avg(nat) over (order by week_start rows between 4 preceding and 1 preceding) a4 from n) select max(100.0 * (nat / a4 - 1)) from a where week_start in (DATE '2024-11-25', DATE '2024-12-23', DATE '2024-12-30', DATE '2025-11-24', DATE '2025-12-22', DATE '2025-12-29')
+  reviewed: false
+- id: holiday_weeks_largest_drop_pct
+  role: context
+  value: -21.1
+  sql: with n as (select week_start, sum(trx) nat from reporting.v_weekly_rx_kpis where product_id = 'BXC' group by 1), a as (select week_start, nat, avg(nat) over (order by week_start rows between 4 preceding and 1 preceding) a4 from n) select min(100.0 * (nat / a4 - 1)) from a where week_start in (DATE '2024-11-25', DATE '2024-12-23', DATE '2024-12-30', DATE '2025-11-24', DATE '2025-12-22', DATE '2025-12-29')
+  reviewed: false
+- id: artifact_weeks_smallest_drop_pct
+  role: context
+  value: -8.8
+  sql: with n as (select week_start, sum(trx) nat from reporting.v_weekly_rx_kpis where product_id = 'BXC' group by 1), a as (select week_start, nat, avg(nat) over (order by week_start rows between 4 preceding and 1 preceding) a4 from n) select max(100.0 * (nat / a4 - 1)) from a where week_start in (DATE '2026-04-06', DATE '2026-05-04', DATE '2026-07-06')
+  reviewed: false
+- id: artifact_weeks_largest_drop_pct
+  role: context
+  value: -18.8
+  sql: with n as (select week_start, sum(trx) nat from reporting.v_weekly_rx_kpis where product_id = 'BXC' group by 1), a as (select week_start, nat, avg(nat) over (order by week_start rows between 4 preceding and 1 preceding) a4 from n) select min(100.0 * (nat / a4 - 1)) from a where week_start in (DATE '2026-04-06', DATE '2026-05-04', DATE '2026-07-06')
+  reviewed: false
+- id: feed_artifact_weeks
+  role: context
+  value: 3
+  sql: select count(distinct week_start) from reporting.v_feed_health where health_status <> 'PASS'
+  reviewed: false
+findings: []
+must_say:
+  phrases:
+  - the run measures it|run measures it
+  - feed artifacts
+  - critical error
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P2-Q6

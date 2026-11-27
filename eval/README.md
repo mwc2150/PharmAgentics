@@ -10,17 +10,18 @@ All from the repository root, after `uv sync` and building the database (`uv run
 
 | Command | Does |
 | :- | :- |
-| `uv run python -m eval check` | Validates the 50 cases and recomputes every fact from the data |
+| `uv run python -m eval check` | Validates every case (50 Cardiovela, 24 Lipidara) and recomputes every fact from the data |
 | `uv run python -m eval run --system reference` | Scores the golden answers (positive control) |
 | `uv run python -m eval run --system naive_llm` | Scores a local model with no data (negative control); needs Ollama |
 | `uv run python -m eval run --system briefing_scripted --lane briefing` | The Briefing scripted baseline (`agents/brand-briefing/briefing_baseline/`) |
 | `uv run python -m eval run --system briefing_lowcode --lane briefing` | The Briefing low-code build (`agents/brand-briefing/briefing_lowcode/`): Magentic-One over the MCP server, local model; `--model gemini:` for Gemini |
 | `uv run python -m eval run --system forecast_scripted --lane forecast` | The Forecast scripted baseline BL-0 (`agents/forecast-explanation/forecast_baseline/`), a draft for Alvin and Sienna |
 | `... --lane briefing` / `--stories P1-Q2,CA-Q1` / `--reruns 3` | Narrows the cases or repeats them; reruns report mean and spread |
+| `... --brand BXA` / `--brand BXC` / `--brand all` | Picks the brand's cases (default `BXA`, so a run is what it was before Lipidara). Lipidara cases are `BXC-P1-Q1` to `BXC-P4-Q6` (`brand: BXC`, 24 drafts from `docs/planning/user-stories-lipidara.md`). A system declares the brands it supports; only `reference` and `briefing_scripted` support BXC, and a case for any other brand is skipped: listed on the run (param `skipped_cases`, metric `cases_skipped`), never run, never scored, never a run error. A BXC or mixed run is its own system row (`briefing_scripted@BXC`, `@BXA+BXC`) so it never replaces Cardiovela's latest scores; a mixed run adds the pooled metrics per brand (`key_fact_recall_pooled_bxa`, `..._bxc`). Gate BXA-only runs |
 | `... --judge` | Adds the LLM judge on `ollama:/gemma3:4b`; `--judge gemini:/<model>` switches provider |
 | `uv run python -m eval gate <candidate> <baseline>` | Exits 1 if a gated check scores lower than on the baseline run |
 | `uv run python -m eval ui` | MLflow dashboard at http://127.0.0.1:5000 |
-| `uv run python -m eval import-stories` | Drafts case files for new user stories; never overwrites an existing case |
+| `uv run python -m eval import-stories` | Drafts case files for new user stories; never overwrites an existing case. `--brand BXC` reads the Lipidara stories and numbers the new cases after the highest `C-NNN` |
 | `uv run python -m eval candidates` | Drafts a candidate case per answer that UAT participants voted on (core-008), into `candidates/`. Download the votes first with `deploy/gcp.py feedback`. A person reviews each draft, writes its facts and moves it into `golden/` |
 | `uv run python -m eval improve [--baseline RUN]` | The feedback loop (core-008 FR-019, FR-020): turns new downvotes with comments into number-free draft lessons (Haiku), checks them by code, reruns the flagged question with each, asks an agent reviewer whether the problem is gone, and with `--baseline` gates one golden-set run with the candidate lessons; upvotes and saved threads become draft cases. Writes proposals to `review/proposals/` in the state folder; nothing is confident without the gate |
 | `uv run python -m eval promote` | Writes the proposals the tester admin approved on the Feedback review panel: lessons into `agents/brand-briefing/knowledge/lessons.yaml`, cases into `candidates/`, and prints the git steps for the pull request (core-008 FR-021) |

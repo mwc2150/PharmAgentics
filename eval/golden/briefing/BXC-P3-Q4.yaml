@@ -1,0 +1,149 @@
+id: C-048
+lane: briefing
+brand: BXC
+story: BXC-P3-Q4
+persona: P3 Brand Director (Diana)
+category: multi_week
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-09-28: Is this new or the same issue as last week, and is it getting better or worse?'
+review_note: null
+period: week of 2026-09-28
+anchor: Metacora at 31 weeks, 2026-09-28 (Lipidara)
+definition:
+  first_week: '2026-09-28'
+  last_week: '2026-09-28'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Diana, I want continuing stories marked with their trend, so that repeated alarms don't erode attention.
+given: a story that has run for months.
+when: the Lipidara (BXC) brief runs.
+then: it is marked "continuing," states the direction (worse, now flat), and is not rediscovered as new.
+reference_answer: The Metacora story is in its 31st week. Its share of the basket, averaged over 4-week blocks, went 2.2%, 6.7%, 9.8%, 12.0%, 13.1%, 13.8%, 15.3% and 15.2%. Lipidara's share over the same blocks went 34.7%, 33.2%, 31.5%, 31.1%, 30.4%, 30.9%, 29.8% and 29.7%. It is worse than at launch but has flattened for the last 8 weeks. That week Lipidara held 29.4% and Metacora 15.2%.
+must_not_say:
+  text: '"New: competitor gaining share."'
+  phrases:
+  - 'New: competitor gaining share'
+  semantic: []
+action: Diana moves from alarm to monitoring. The brief tells her to ask marketing for its defense plan.
+eval_items:
+- EV-7.2
+facts:
+- id: bxc_share_pct
+  role: must
+  value: 29.4
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-09-28' and DATE '2026-09-28'
+  reviewed: false
+- id: metacora_share_pct
+  role: must
+  value: 15.2
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-09-28' and DATE '2026-09-28'
+  reviewed: false
+- id: bxc_block1_share_pct
+  role: context
+  value: 34.7
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-03-02' and DATE '2026-03-29'
+  reviewed: false
+- id: bxc_block2_share_pct
+  role: context
+  value: 33.2
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-03-30' and DATE '2026-04-26'
+  reviewed: false
+- id: bxc_block3_share_pct
+  role: context
+  value: 31.5
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-04-27' and DATE '2026-05-24'
+  reviewed: false
+- id: bxc_block4_share_pct
+  role: context
+  value: 31.1
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-05-25' and DATE '2026-06-21'
+  reviewed: false
+- id: bxc_block5_share_pct
+  role: context
+  value: 30.4
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-06-22' and DATE '2026-07-19'
+  reviewed: false
+- id: bxc_block6_share_pct
+  role: context
+  value: 30.9
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-07-20' and DATE '2026-08-16'
+  reviewed: false
+- id: bxc_block7_share_pct
+  role: context
+  value: 29.8
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-08-17' and DATE '2026-09-13'
+  reviewed: false
+- id: bxc_block8_share_pct
+  role: context
+  value: 29.7
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-09-14' and DATE '2026-10-05'
+  reviewed: false
+- id: metacora_weeks_since_launch
+  role: context
+  value: 31
+  sql: select (date_diff('day', DATE '2026-03-02', DATE '2026-09-28') / 7) + 1
+  reviewed: false
+- id: metacora_block1_share_pct
+  role: context
+  value: 2.2
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-03-02' and DATE '2026-03-29'
+  reviewed: false
+- id: metacora_block2_share_pct
+  role: context
+  value: 6.7
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-03-30' and DATE '2026-04-26'
+  reviewed: false
+- id: metacora_block3_share_pct
+  role: context
+  value: 9.8
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-04-27' and DATE '2026-05-24'
+  reviewed: false
+- id: metacora_block4_share_pct
+  role: context
+  value: 12.0
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-05-25' and DATE '2026-06-21'
+  reviewed: false
+- id: metacora_block5_share_pct
+  role: context
+  value: 13.1
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-06-22' and DATE '2026-07-19'
+  reviewed: false
+- id: metacora_block6_share_pct
+  role: context
+  value: 13.8
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-07-20' and DATE '2026-08-16'
+  reviewed: false
+- id: metacora_block7_share_pct
+  role: context
+  value: 15.3
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-08-17' and DATE '2026-09-13'
+  reviewed: false
+- id: metacora_block8_share_pct
+  role: context
+  value: 15.2
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-09-14' and DATE '2026-10-05'
+  reviewed: false
+findings:
+- id: national_metacora_continuing
+  territory: NATIONAL
+  direction: flat
+  drivers_supported:
+  - competitor
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+  needs: national_card
+  measure: competitor_share
+source: docs/planning/user-stories-lipidara.md#BXC-P3-Q4
