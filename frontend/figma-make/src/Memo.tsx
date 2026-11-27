@@ -2,7 +2,7 @@
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
 import { useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
-import { longDates } from "./agent/primitives"
+import { RollIn, longDates } from "./agent/primitives"
 import { fmtShortDay } from "./userSettings"
 import { BudgetNote, PromotionPanel } from "./Promotion"
 import { useDrawOnView } from "./motion"
@@ -11,7 +11,8 @@ import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence
 const COLORS = ["var(--color-primary)", "var(--color-human)"]
 const PANEL_COLOR = "var(--color-amber)"
 
-function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
+// `roll`: the cited figures roll in (a headline number tile), `roll` ms after the brief opens.
+function Cited({text, spans, claims, onOpen, roll}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void, roll?: number}) {
   const sorted = [...(spans ?? [])].sort((a, b) => a.start - b.start)
   if (!sorted.length || !claims || !onOpen) return <>{longDates(text)}</>
   const parts: ReactNode[] = []
@@ -22,7 +23,7 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     parts.push(longDates(text.slice(pos, sp.start)))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
       aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="pa-fn ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{roll === undefined ? claim.value : <RollIn key={claim.value} text={claim.value} delay={roll}/>}<span className="sr-only"> </span><sup aria-hidden="true" className="pa-fn ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(longDates(text.slice(pos)))
@@ -241,7 +242,7 @@ function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], on
         className={`break-inside-avoid rounded-lg border border-rule bg-sheet/60 px-3.5 py-3 ${openMain ? "pa-lift cursor-pointer" : ""}`}>
         <dt className="font-sans text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</dt>
         <dd className="pa-kpi-value mt-1 flex items-center gap-1.5 font-display text-[28px] font-bold leading-none tabular-nums text-ink">
-          <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
+          <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen} roll={200 + i * 90}/></span>
           {dir && <><svg viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 ${dir.color}`} fill="currentColor" aria-hidden="true"><path d={dir.d}/></svg><span className="sr-only">, {dir.word}</span></>}
         </dd>
         {k.detail && <dd className="mt-1.5 font-sans text-[12px] leading-snug text-muted">{longDates(k.detail)}</dd>}

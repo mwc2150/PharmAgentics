@@ -212,6 +212,10 @@
     border-radius: 0.375rem;
   }
   .pa-draw path { stroke-dasharray: 24; stroke-dashoffset: 24; animation: pa-draw 420ms 80ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  /* Headline numbers roll in (primitives.tsx RollIn): the final characters slide up into place one after another. --d
+     delays a whole number, --i each character. Never a count-up, so no figure on screen is ever wrong. */
+  .pa-roll { user-select: none; }  /* copying takes the whole number from the screen-reader copy beside it, once */
+  .pa-roll > span { display: inline-block; white-space: pre; animation: pa-roll 560ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--d, 0ms) + var(--i, 0) * 45ms); }
   /* A finished brief arrives in sequence: its sections rise in one after another. */
   .pa-sequence > * { animation: pa-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-sequence > :nth-child(2) { animation-delay: 70ms; }
@@ -269,7 +273,7 @@
      State still shows: the button's shadow flattens on press, the tab keeps its pill, the sidebar snaps. */
   @media (prefers-reduced-motion: reduce) {
     html:not([data-motion="off"]) :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
-    html:not([data-motion="off"]) :is(.pa-stagger, .pa-sequence) > *, html:not([data-motion="off"]) :is(.pa-pop, .pa-dot) { animation: none; }
+    html:not([data-motion="off"]) :is(.pa-stagger, .pa-sequence, .pa-roll) > *, html:not([data-motion="off"]) :is(.pa-pop, .pa-dot) { animation: none; }
     html:not([data-motion="off"]) .pa-lift { translate: none !important; }
     html:not([data-motion="off"]) .pa-draw path { animation: none; stroke-dashoffset: 0; }
     html:not([data-motion="off"]) :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
@@ -278,7 +282,7 @@
   }
   /* Settings > Reduce motion "On": the same, whatever the system says. "Off" lifts the rules above; "Follow system" sets nothing. */
   html[data-motion="on"] :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
-  html[data-motion="on"] :is(.pa-stagger, .pa-sequence) > *, html[data-motion="on"] :is(.pa-pop, .pa-dot) { animation: none; }
+  html[data-motion="on"] :is(.pa-stagger, .pa-sequence, .pa-roll) > *, html[data-motion="on"] :is(.pa-pop, .pa-dot) { animation: none; }
   html[data-motion="on"] .pa-lift { translate: none !important; }
   html[data-motion="on"] .pa-draw path { animation: none; stroke-dashoffset: 0; }
   html[data-motion="on"] :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
@@ -324,6 +328,11 @@
 @keyframes pa-slide {
   from { transform: translateX(-12px); opacity: 0; }
   to { transform: none; opacity: 1; }
+}
+@keyframes pa-roll {
+  /* every digit is faintly there from the first frame, so a half-rolled number never reads as a shorter one */
+  from { opacity: 0.25; transform: translateY(0.4em); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
 }
 @keyframes pa-pop {
   0% { transform: scale(0.8); opacity: 0; box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent); }

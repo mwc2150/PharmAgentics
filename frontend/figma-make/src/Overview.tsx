@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
-import { Icon, Notice, plainValue } from "./agent/primitives"
+import { Icon, Notice, RollIn, plainValue } from "./agent/primitives"
 import { fmtDate } from "./userSettings"
 import { useDrawOnView } from "./motion"
 
@@ -125,7 +125,7 @@ function StatBar({ stats, onOpen }: { stats: Stat[], onOpen: (s: Stat) => void }
     {stats.map((s, i) => <button key={s.key} onClick={() => onOpen(s)}
       className={`group pa-lift relative p-5 text-left hover:z-[1] hover:rounded-xl hover:bg-sheet ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
       <div className="text-xs text-muted">{s.label}</div>
-      <div className="mt-2 font-display text-3xl font-bold tabular-nums">{s.value}</div>
+      <div className="mt-2 font-display text-3xl font-bold tabular-nums"><RollIn key={s.value} text={s.value} delay={150 + i * 90}/></div>
       <div className={`mt-1.5 text-xs tabular-nums ${s.adverse ? "text-amber" : "text-muted"}`}>
         {s.key === "material" ? `of ${s.change?.value ?? "–"} like-for-like territories`
           : s.key === "health" ? (s.raw ? "flagged feeds this week" : "every feed passed")
@@ -176,15 +176,15 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
       <span className="hidden text-right md:block">TRx</span><span className="text-right">Change</span>
     </div>
     <ul className="divide-y divide-rule">
-      {o.territories.map(t => <li key={t.id} className={`${cols} px-5 py-3`}>
+      {o.territories.map((t, i) => <li key={t.id} className={`${cols} px-5 py-3`}>
         <button onClick={() => onOpen(t)} className="min-w-0 text-left">
           <span className="block truncate text-sm font-medium hover:underline">{t.label}</span>
           <span className={`block text-xs ${t.status === "material" ? "text-ink" : "text-muted"}`}>{STATUS[t.status]}</span>
         </button>
         <span className="hidden md:block"><Sparkline points={t.series.map(p => p.trx)} label={`${t.label} TRx over ${t.series.length} weeks`}/></span>
         <span className="col-span-2 row-start-2 mt-2 md:col-span-1 md:row-start-auto md:mt-0"><Strip t={t} domain={domain} onOpen={() => onOpen(t)}/></span>
-        <span className="hidden text-right text-sm tabular-nums md:block">{int(t.trx)}</span>
-        <span className="col-start-2 row-start-1 text-right text-sm tabular-nums md:col-start-auto md:row-start-auto">{pct(t.change)}</span>
+        <span className="hidden text-right text-sm tabular-nums md:block"><RollIn key={int(t.trx)} text={int(t.trx)} delay={300 + i * 50}/></span>
+        <span className="col-start-2 row-start-1 text-right text-sm tabular-nums md:col-start-auto md:row-start-auto"><RollIn key={pct(t.change)} text={pct(t.change)} delay={340 + i * 50}/></span>
       </li>)}
     </ul>
   </section>
