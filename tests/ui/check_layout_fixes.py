@@ -112,14 +112,15 @@ def shot(page: Page, out: Path, name: str) -> None:
 
 def analyst_pass(r: Review, c: Checks, ctx, vp: str, out: Path, territory: str) -> None:
     page = r.sign_in(ctx, "analyst")
-    # U-5 / U-6 on the landing and the form (header first: the Overview is the landing)
+    # U-5 / U-6 on the Weekly briefing and the form (the Overview, its own workspace since 2026-11-27, is the landing)
+    r.to_nav(page, "Weekly briefing")
     h = page.evaluate(HEADER_JS)
     first = "Ace"
     c.check(vp, "account button shows the first name", first in h["nameShown"], f"visible text '{h['nameShown']}', label '{h['account']}'")
-    approved = [t for t in h["tabs"] if t["name"].startswith("Approved")]
-    others = [t for t in h["tabs"] if not t["name"].startswith("Approved")]
+    approved = [t for t in h["tabs"] if t["name"].startswith("Your")]
+    others = [t for t in h["tabs"] if not t["name"].startswith("Your")]
     one_line = bool(approved) and all(t["h"] == approved[0]["h"] for t in others) and all(t["top"] == approved[0]["top"] for t in others)
-    c.check(vp, "Approved tab on one line, in the row of its sibling tabs", one_line, f"tabs {[(t['name'], t['top'], t['h']) for t in h['tabs']]}")
+    c.check(vp, "Your briefings tab on one line, in the row of its sibling tabs", one_line, f"tabs {[(t['name'], t['top'], t['h']) for t in h['tabs']]}")
     c.check(vp, "no horizontal page overflow on the landing", not h["pageOverflow"])
     small = page.evaluate(SMALL_JS)
     if vp == "390": c.check(vp, "landing: every control at least 24x24", not small, "; ".join(small))

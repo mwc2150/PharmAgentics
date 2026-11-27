@@ -71,7 +71,7 @@ export function SettingsWorkspace({ me }: { me: Me }) {
   const agentOffered = !!brand?.engines.includes("agent")
   const engine = agentOffered ? s.defaultEngine : "scripted"
   const dated = (iso: string) => fmtIsoDate(iso)
-  return <div className="workspace-content pa-stagger space-y-6 pb-12 pt-8 sm:pt-10">
+  return <div className="workspace-content pa-stagger space-y-6 pb-12 pt-5 sm:pt-6">
     <p className="text-sm text-muted">These choices are saved in this browser only, not on your account, so a teammate who shares your sign-in keeps their own.</p>
 
     <Section title="Appearance">

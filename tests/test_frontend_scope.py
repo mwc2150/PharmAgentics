@@ -18,6 +18,7 @@ def test_frontend_contains_only_supported_feature_modules():
         "FeedbackReview.tsx",
         "ForecastCharts.tsx",
         "ForecastDrivers.tsx",
+        "HoverTips.tsx",
         "HowItWorks.tsx",
         "Memo.tsx",
         "MessageBar.tsx",

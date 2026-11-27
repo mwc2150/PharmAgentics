@@ -31,7 +31,7 @@ DEV_USERS = {
     "dev-insights": ("Marcus", ["briefing-insights", "brand-bxa", "brand-bxc"]),
     "dev-director": ("Diana", ["briefing-director", "brand-bxa", "brand-bxc"]),
     "dev-marketer": ("Magdalena", ["briefing-marketer", "brand-bxa", "brand-bxc"]),
-    "dev-analyst-no-brands": ("Ace", ["briefing-analyst"]),
+    "dev-analyst-no-brands": ("No brands", ["briefing-analyst"]),  # a fixture: the analyst role with no brand grant (tests, "No brand access")
     "dev-forecast-analyst": ("Ace", ["forecast-analyst", "brand-bxa"]),
     "dev-forecast-manager": ("Miranda", ["forecast-manager", "brand-bxa"]),
     # Like uat-tester in the Keycloak realm: both lanes, switching between the four Briefing personas (and CA, BM in Forecast).

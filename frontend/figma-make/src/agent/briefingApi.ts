@@ -468,6 +468,16 @@ export async function listQueue(): Promise<QueueRow[]> {
   return v as QueueRow[]
 }
 
+// The analyst's own briefs on the current data release, in every state, newest first (Your briefings).
+export type MineRow = { brief_id: string; question?: string | null; promotion_review?: boolean; brand_id: string; week_start: string; week_end?: string | null; territory_id: string; engine: string; abstained: boolean
+  review_status: "draft" | "sent" | "returned" | "signed_off" | "rejected"; created_at: string | null; sent_at: string | null; signed_off_at: string | null
+  returned_at: string | null; rejected_at: string | null }
+export async function listMine(): Promise<MineRow[]> {
+  const v: unknown = await api("/api/briefing/mine")
+  if (!Array.isArray(v)) throw new Error("The backend's list of your briefings is incompatible with this frontend.")
+  return v as MineRow[]
+}
+
 // Agent jobs (core-007 FR-028/FR-031): run by teammate or cloud CPU hosts; the app only queues and checks them.
 export async function getAgentStatus(): Promise<AgentStatus> {
   return await api("/api/agent/status") as AgentStatus

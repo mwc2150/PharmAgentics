@@ -1,10 +1,11 @@
-"""The Briefing workspace keeps the Overview and New briefing apart (brief-015, Michael 2026-11-27).
+"""The Overview is its own workspace, apart from the Weekly briefing (brief-015, Michael 2026-11-27).
 
-The Overview is for exploring; New briefing does the work. Changing the Overview's brand or week never changes the
-form, the form never changes the Overview, the brand is a field of the form, the Overview's brand selector sits beside its week (no
-tab-row toggle), and the Overview's "Generate brief for <territory>" is the one link: it carries its brand, territory and
-week to the form. Every fold on an approved brief shows a chevron that turns down when open. Drives the LOCAL app (dev sign-in, a built frontend) with Playwright and prints PASS/FAIL per check;
-exit code 1 if any fails. No model and no secret are needed.
+The Overview is for exploring; the Weekly briefing does the work, in two tabs: New briefing and Your briefings.
+Changing the Overview's brand or week never changes the form, the form never changes the Overview, the brand is a
+field of the form, and the Overview's "Brief this week" on a territory is the one link: it carries its brand,
+territory and week to the form. Your briefings lists Approved, then Needs you, then With the reviewer. Every fold on
+an approved brief shows a chevron that turns down when open. Drives the LOCAL app (dev sign-in, a built frontend)
+with Playwright and prints PASS/FAIL per check; exit code 1 if any fails. No model and no secret are needed.
 
   uv run python tests/ui/check_workspace_split.py [--base http://127.0.0.1:8765]
 """
@@ -33,26 +34,34 @@ def run(page: Page, base: str) -> None:
     page.request.post(base + "/auth/dev-login", form={"username": "dev-analyst"})
     page.goto(base + "/")
     page.wait_for_load_state("networkidle")
+    workspace = lambda name: page.get_by_role("navigation", name="Workspaces").get_by_role("button", name=name)  # noqa: E731
     toggle = lambda: page.get_by_role("tablist", name="Weekly briefing").locator("xpath=..").get_by_label("Brand")  # noqa: E731
-    overview_brand = lambda: page.locator("#briefing-panel label", has_text=re.compile(r"^Brand")).locator("select").first  # noqa: E731
-    overview_week = lambda: page.locator("label", has_text=re.compile(r"^Week")).locator("select").first  # noqa: E731
+    overview_brand = lambda: page.locator("main label:visible", has_text=re.compile(r"^Brand")).locator("select").first  # noqa: E731
+    overview_week = lambda: page.locator("main label:visible", has_text=re.compile(r"^Week")).locator("select").first  # noqa: E731
     form = lambda: page.locator("form").first  # noqa: E731
     brand_field = lambda: form().locator("label", has_text="Brand").locator("select").first  # noqa: E731
 
+    def go(name: str) -> None:
+        workspace(name).click()
+        page.wait_for_timeout(700)
+
     def form_state() -> tuple[str, str, str, str]:
+        go("Weekly briefing")
         page.get_by_role("tab", name="New briefing").click()
         page.wait_for_timeout(500)
         territory = form().locator("label", has_text="Territory").locator("select").first
         return (brand_field().input_value(), form().get_by_label("First week", exact=True).input_value(),
                 form().get_by_label("Last week", exact=True).input_value(), territory.input_value())
 
-    check(toggle().count() == 0 and overview_brand().count() == 1, "Overview: the brand selector sits beside the week, not in the tab row")
+    check(page.locator("header h1").inner_text() == "Overview" and workspace("Overview").get_attribute("aria-current") == "page",
+          "The analyst opens on the Overview, the first workspace in the sidebar")
+    check(overview_brand().count() == 1 and overview_week().count() == 1, "Overview: its own brand and week selectors")
     start = form_state()
-    check(toggle().count() == 0, "New briefing: no tab-row brand toggle; the brand is a form field")
-    check(brand_field().count() == 1, "New briefing: the form has a Brand field")
+    tabs = [t.splitlines()[0].strip() for t in page.get_by_role("tab").all_inner_texts()]
+    check(tabs == ["New briefing", "Your briefings"], f"Weekly briefing: two tabs, New briefing and Your briefings {tabs}")
+    check(toggle().count() == 0 and brand_field().count() == 1, "New briefing: no tab-row brand toggle; the brand is a form field")
 
-    page.get_by_role("tab", name="Overview").click()
-    page.wait_for_timeout(500)
+    go("Overview")
     other = "BXC" if start[0] == "BXA" else "BXA"
     overview_brand().select_option(other)
     page.wait_for_timeout(800)
@@ -62,32 +71,33 @@ def run(page: Page, base: str) -> None:
 
     form().get_by_label("First week", exact=True).select_option("2026-06-01")
     page.wait_for_timeout(300)
-    page.get_by_role("tab", name="Overview").click()
-    page.wait_for_timeout(800)
+    go("Overview")
     check((overview_brand().input_value(), overview_week().input_value()) == (other, "2026-08-24"),
           "Changing the form's first week leaves the Overview's brand and week as they were")
 
-    page.get_by_role("button", name=re.compile("Pacific")).first.click()
+    page.locator("main button:visible", has_text="Pacific").first.click()
     page.wait_for_timeout(800)
-    page.get_by_role("button", name=re.compile(r"Generate brief for Pacific")).click()
-    page.wait_for_timeout(800)
+    page.get_by_role("dialog").get_by_role("button", name="Brief this week").click()
+    page.wait_for_timeout(900)
     territory = form().locator("label", has_text="Territory").locator("select").first
     got = (brand_field().input_value(), form().get_by_label("First week", exact=True).input_value(),
            form().get_by_label("Last week", exact=True).input_value(), territory.input_value())
-    check(got == (other, "2026-08-24", "2026-08-24", "PACIFIC"),
-          f"The Overview's 'Generate brief for Pacific' carries its brand, week and territory to the form {got}")
+    check(page.locator("header h1").inner_text() == "Weekly briefing" and got == (other, "2026-08-24", "2026-08-24", "PACIFIC"),
+          f"The Overview's 'Brief this week' on Pacific opens the form with its brand, week and territory {got}")
 
-    page.get_by_role("tab", name="Approved").click()
-    page.wait_for_timeout(400)
-    check(toggle().count() == 0, "Approved briefings: no brand toggle (the lists show every brand)")
+    page.get_by_role("tab", name="Your briefings").click()
+    page.locator("#briefing-panel h3", has_text="With the reviewer").wait_for(timeout=10000)  # the lists load
+    heads = [h.strip() for h in page.locator("#briefing-panel h3").all_inner_texts()]
+    check(heads[:3] == ["Approved", "Needs you", "With the reviewer"], f"Your briefings: Approved, then Needs you, then With the reviewer {heads}")
+    check(toggle().count() == 0, "Your briefings: no brand toggle (the lists show every brand)")
 
     # Every fold shows that it folds (Michael, 2026-11-27): a chevron before each summary, turned down when open.
-    page.locator("main li button").first.click()
+    page.locator("#briefing-panel li button").first.click()
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1500)
     folds = page.evaluate(FOLDS_JS)
     check(bool(folds) and all(f["chevron"] for f in folds), f"An approved brief: every fold shows a chevron ({len(folds)} folds)")
-    page.locator("summary").first.click()
+    page.locator("summary:visible").first.click()
     page.wait_for_timeout(400)
     turned = page.evaluate(FOLDS_JS)[0]["turned"]
     check(turned and not folds[0]["turned"], "Opening a fold turns its chevron down")

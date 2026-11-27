@@ -341,3 +341,35 @@ def test_the_two_new_logins_have_both_brands_and_their_own_roles():
         me = signed_in(user).get("/api/me").json()
         assert me["brand_ids"] == ["BXA", "BXC"] and me["lanes"]["briefing"]["role"] == role and me["lanes"]["briefing"]["persona"] == persona
         assert list(me["lanes"]) == ["briefing"]
+
+
+def test_your_briefings_lists_this_logins_briefs_in_every_state_and_nobody_elses():
+    """GET /api/briefing/mine (Michael, 2026-11-27): a brief made and left is still there to open, whatever its state."""
+    p1 = signed_in("dev-analyst")
+    with patch.object(service, "current_data_version", return_value="vtest"):
+        assert p1.get("/api/briefing/mine").json() == []
+        bid = run(p1)["brief_id"]
+        other = store.save_brief(dict(result(), territory_id="SOUTHEAST"), by="someone-else")["brief_id"]  # another scope, another login
+        rows = p1.get("/api/briefing/mine").json()
+        assert [(r["brief_id"], r["review_status"]) for r in rows] == [(bid, "draft")] and other not in json.dumps(rows)
+        assert rows[0]["created_at"] and not leaks(rows)
+        assert rows[0]["question"] == VALID["question"] and rows[0]["promotion_review"] is False  # as asked: no scope prefix
+        p1.post(f"/api/briefing/{bid}/review", json={"decision": "sent"})
+        assert [r["review_status"] for r in p1.get("/api/briefing/mine").json()] == ["sent"]
+        signed_in("dev-insights").post(f"/api/briefing/{bid}/signoff", json={"decision": "returned", "comment": "Check the supply driver."})
+        row = p1.get("/api/briefing/mine").json()[0]
+        assert row["review_status"] == "returned" and row["returned_at"]
+        for user in ("dev-insights", "dev-director", "dev-marketer", "dev-forecast-analyst"):
+            assert signed_in(user).get("/api/briefing/mine").status_code == 403
+
+
+def test_a_briefs_question_is_listed_as_the_analyst_asked_it():
+    """New briefing lists the questions briefs were started from (Michael, 2026-11-27): the scope prefix the service
+    adds for the parser is taken off; a question without one is left as it is."""
+    assert service.typed_question("Week of 2026-08-24 in Southeast: What drove the change?") == "What drove the change?"
+    assert service.typed_question("Weeks of 2026-06-01 to 2026-08-31 in Pacific: How did NBRx trend?") == "How did NBRx trend?"
+    assert service.typed_question("Promotion review in Pacific: Did the promotion lift TRx?") == "Did the promotion lift TRx?"
+    assert service.typed_question("Why did we miss: the Southeast?") == "Why did we miss: the Southeast?"
+    assert service.typed_question(None) is None
+    assert service.is_promotion_question("Promotion review in Pacific: Did the promotion lift TRx?")
+    assert not service.is_promotion_question("Week of 2026-08-24 in Southeast: Did the promotion lift TRx?")

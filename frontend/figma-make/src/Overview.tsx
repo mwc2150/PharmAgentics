@@ -7,6 +7,7 @@ import { useDrawOnView } from "./motion"
 // These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
 const BTN = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-onprimary shadow-[0_4px_0_var(--color-primarydeep)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-primaryhover active:translate-y-[3px] active:shadow-[0_1px_0_var(--color-primarydeep)] disabled:cursor-not-allowed disabled:bg-rule disabled:text-muted disabled:shadow-none"
+const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border border-edge px-5 py-2.5 text-sm font-medium text-ink shadow-[0_3px_0_var(--color-slab)] transition-[background-color,transform,box-shadow] duration-150 hover:bg-paper active:translate-y-[2px] active:shadow-[0_1px_0_var(--color-slab)]"
 const FIELD = "rounded-lg border border-edge bg-paper px-3 py-1.5 text-sm text-ink"
 const int = (v: number | null | undefined) => (v == null ? "–" : Math.round(v).toLocaleString())
 const pct = (v: number | null | undefined, signed = true) =>
@@ -88,7 +89,9 @@ function WeekChart({ series, field, label, baseline }: { series: WeekPoint[], fi
   </figure>
 }
 
-function TerritoryPanel({ t, o, onClose, onGenerate }: { t: TerritoryRow, o: O, onClose: () => void, onGenerate: () => void }) {
+// From a territory, the use cases this role can start (Michael, 2026-11-27): a brief of the week, or an explanation of
+// the forecast miss. A role that can start neither only inspects.
+function TerritoryPanel({ t, o, onClose, onBrief, onForecast }: { t: TerritoryRow, o: O, onClose: () => void, onBrief?: () => void, onForecast?: () => void }) {
   const sentence = t.status === "no_baseline"
     ? "Not judged: this is the first week of the release, so there are no earlier weeks to compare it with."
     : t.status === "held_back"
@@ -98,7 +101,10 @@ function TerritoryPanel({ t, o, onClose, onGenerate }: { t: TerritoryRow, o: O, 
   const evidence = o.evidence.filter(e => t.evidence_ids.includes(e.id))
   return <Drawer kicker={`${STATUS[t.status]} · week of ${day(o.week)}`} title={t.label} onClose={onClose}>
     <p className="text-sm leading-relaxed">{sentence}</p>
-    <button className={BTN} onClick={onGenerate}>Generate brief for {t.label}</button>
+    {(onBrief || onForecast) && <div className="flex flex-wrap gap-2">
+      {onBrief && <button className={BTN} onClick={onBrief}>Brief this week</button>}
+      {onForecast && <button className={BTN2} onClick={onForecast}>Explain the forecast miss</button>}
+    </div>}
     <section className="space-y-5">
       <WeekChart series={t.series} field="trx" label="TRx" baseline={o.baseline}/>
       <WeekChart series={t.series} field="nrx" label="NRx" baseline={o.baseline}/>
@@ -191,9 +197,8 @@ function Territories({ o, onOpen }: { o: O, onOpen: (t: TerritoryRow) => void })
 }
 
 // The Overview's own brand and week, side by side above the figures (Michael, 2026-11-27); neither touches the New briefing form.
-export function Overview({ weeks, brand, brands, onBrand, week, onWeek, onGenerate }: { weeks: string[], brand: string, brands: { id: string, name: string }[], onBrand: (brand: string) => void, week: string, onWeek: (week: string) => void, onGenerate: (territory: string, week: string) => void }) {
+export function Overview({ weeks, brand, brands, onBrand, week, onWeek, onBrief, onForecast }: { weeks: string[], brand: string, brands: { id: string, name: string }[], onBrand: (brand: string) => void, week: string, onWeek: (week: string) => void, onBrief?: (territory: string, week: string) => void, onForecast?: (territory: string, week: string) => void }) {
   const [o, setO] = useState<O | null>(null)
-  const latest = weeks.reduce((a, w) => (w > a ? w : a), week)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState<{ kind: "territory", t: TerritoryRow } | { kind: "stat", s: Stat } | null>(null)
   useEffect(() => {
@@ -204,10 +209,10 @@ export function Overview({ weeks, brand, brands, onBrand, week, onWeek, onGenera
   }, [week, brand])
   const stat = open?.kind === "stat" ? open.s : null
   const statEvidence = stat && o ? o.evidence.filter(e => e.id === stat.evidence_id || e.id === stat.change?.evidence_id) : []
-  return <><div className="workspace-wide pa-stagger space-y-6 py-8">
+  return <><div className="pa-stagger space-y-6">
     <div className="flex flex-wrap items-end justify-between gap-4">
-      {/* The selectors name the brand and week; the line says only what they do not: how many territories, and how far the data runs */}
-      <p className="text-sm text-muted">{o ? `${o.territories.length} territories${o.week === latest ? ", the latest week of data" : `; the data runs through ${day(latest)}`}. Select any figure to see its query.` : "Loading the week…"}</p>
+      {/* One line that says what to do here (Michael, 2026-11-27), naming only what this role can start from a territory */}
+      <p className="text-sm text-ink">{!o ? "Loading the week…" : `Pick a territory to ${onBrief && onForecast ? "brief its week or explain its forecast miss" : onBrief ? "brief its week" : "see how its week went"}, or any figure to see its query.`}</p>
       <div className="pa-noprint flex flex-wrap items-center gap-x-4 gap-y-2">
         <label className="flex items-center gap-2 text-xs text-muted">Brand
           <select value={brand} onChange={e => onBrand(e.target.value)} disabled={!brands.length} className={FIELD}>
@@ -227,7 +232,7 @@ export function Overview({ weeks, brand, brands, onBrand, week, onWeek, onGenera
     {o && <StatBar stats={o.stats} onOpen={s => setOpen({ kind: "stat", s })}/>}
     {o && <Territories o={o} onOpen={t => setOpen({ kind: "territory", t })}/>}
   </div>
-    {o && open?.kind === "territory" && <TerritoryPanel t={open.t} o={o} onClose={() => setOpen(null)} onGenerate={() => onGenerate(open.t.id, o.week)}/>}
+    {o && open?.kind === "territory" && <TerritoryPanel t={open.t} o={o} onClose={() => setOpen(null)} onBrief={onBrief ? () => onBrief(open.t.id, o.week) : undefined} onForecast={onForecast ? () => onForecast(open.t.id, o.week) : undefined}/>}
     {o && stat && <Drawer kicker={`Week of ${day(o.week)}`} title={`${stat.label}: ${stat.value}`} onClose={() => setOpen(null)}>
       <p className="text-sm text-muted">Pinned data version {o.data_version}</p>
       <ul className="divide-y divide-rule">{statEvidence.map(e => <Query key={e.id} ev={e}/>)}</ul>

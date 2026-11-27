@@ -32,7 +32,13 @@ const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toF
 const fmt = (v: number, unit?: "share" | "count" | "flag") =>
   unit === "count" ? String(Math.round(v)) : unit === "flag" ? (v >= 0.5 ? "Yes" : "No") : pct(v)
 // Exported: Forecast driver recovery prints its dates the same way.
-const name = (r: TelemetryRun) => NAMES[r.system] ?? r.system
+// A Briefing run names its brand: "@BXC" is a Lipidara run, no suffix a Cardiovela one (the harness's default brand).
+const BRANDS: Record<string, string> = { BXA: "Cardiovela", BXC: "Lipidara", "BXA+BXC": "Cardiovela and Lipidara" }
+const name = (r: TelemetryRun) => {
+  const [base, brand] = r.system.split("@")
+  const n = NAMES[base] ?? base
+  return base.startsWith("briefing") ? `${n} · ${BRANDS[brand ?? "BXA"] ?? brand}` : n
+}
 // "briefing_agent:anthropic:claude-haiku-5-5" -> "Briefing agent · Haiku"
 const baseOf = (system: string) => system.split(":")[0]
 const tableName = (t: CaseTable) => { const base = baseOf(t.system); return [NAMES[base] ?? base, modelName(t.system.slice(base.length + 1))].filter(Boolean).join(" · ") }
@@ -249,7 +255,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
   const total = parts.reduce((a, x) => a + x.n, 0)
   const usability = total ? {n: total, mean: Math.round(parts.reduce((a, x) => a + x.n * x.mean, 0) / total * 10) / 10} : null
   const goldenBrief = t?.latest.find(r => !r.control && r.system === "briefing_scripted")?.metrics.latency_brief_p50
-  return <div className="workspace-wide pa-stagger space-y-6 pb-12 pt-8 sm:pt-10">
+  return <div className="workspace-wide pa-stagger space-y-6 pb-12 pt-5 sm:pt-6">
     <header className="flex items-baseline justify-between gap-4"><h2 className="sr-only">Evaluation</h2>
       <p className="text-sm text-muted">How PharmAgentics is used, and how each version scored on the golden questions.</p>{label}</header>
     {err.map(e => <Notice key={e} tone="error" role="alert">{e}</Notice>)}

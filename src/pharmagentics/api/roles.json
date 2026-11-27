@@ -7,7 +7,7 @@
       "persona": "P1",
       "label": "Commercial Analyst",
       "views": ["analyst", "leadership"],
-      "actions": ["run", "review", "read", "evaluation"],
+      "actions": ["run", "review", "read", "evaluation", "overview"],
       "states": ["draft", "sent", "returned", "rejected", "signed_off"]
     },
     "briefing-insights": {
@@ -15,7 +15,7 @@
       "persona": "P2",
       "label": "Insights Manager",
       "views": ["analyst", "leadership"],
-      "actions": ["read", "signoff", "evaluation"],
+      "actions": ["read", "signoff", "evaluation", "overview"],
       "states": ["sent", "returned", "signed_off"]
     },
     "briefing-director": {

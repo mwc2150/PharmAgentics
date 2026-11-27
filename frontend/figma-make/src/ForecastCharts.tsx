@@ -73,8 +73,7 @@ function WeekColumns({ rows, unit }: { rows: { label: string; a: number; flag?: 
       const hgt = Math.max(1, Math.abs(r.a) * scale), x = left + i * step + (step - bw) / 2, y = r.a < 0 ? zero : zero - hgt
       const c = r.a < 0 ? RED : LIME
       return <g key={r.label}>
-        <rect className="pa-bar pa-col" style={{"--o": r.a < 0 ? "center top" : "center bottom", "--i": i} as CSSProperties} x={x} y={y} width={bw} height={hgt} rx={2} fill={r.flag ? "none" : c} pointerEvents="all" stroke={r.flag ? c : "none"} strokeWidth={1.5} strokeDasharray={r.flag ? "3 2" : undefined}>
-          <title>{`${r.label}: ${fmt(r.a)} ${unit}${r.flag ? " (provisional actual)" : ""}`}</title></rect>
+        <rect className="pa-bar pa-col" style={{"--o": r.a < 0 ? "center top" : "center bottom", "--i": i} as CSSProperties} x={x} y={y} width={bw} height={hgt} rx={2} fill={r.flag ? "none" : c} pointerEvents="all" stroke={r.flag ? c : "none"} strokeWidth={1.5} strokeDasharray={r.flag ? "3 2" : undefined} data-tip={`${r.label}: ${fmt(r.a)} ${unit}${r.flag ? " (provisional actual)" : ""}`}/>
         {i % every === 0 && <text x={x + bw / 2} y={H - 10} textAnchor="middle" className="fill-muted text-[11px]">{r.label.slice(5)}</text>}
       </g>
     })}
