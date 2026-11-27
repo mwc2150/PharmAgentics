@@ -19,7 +19,7 @@
     root.setAttribute("data-motion", saved.motion === "on" || saved.motion === "off" ? saved.motion : "system")
     root.setAttribute("data-footnotes", saved.footnotes === "hide" ? "hide" : "show")
     var tc = document.querySelector('meta[name="theme-color"]')
-    if (tc) tc.setAttribute("content", theme === "light" ? "#f4f5f8" : "#0c0d12")
+    if (tc) tc.setAttribute("content", theme === "light" ? "#f4f5f8" : "#111113")
   } catch (e) {
     root.setAttribute("data-theme", "dark")
   }

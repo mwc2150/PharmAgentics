@@ -15,21 +15,23 @@
   --radius-lg: 0.875rem;               /* controls */
   --radius-xl: 1.375rem;               /* panels */
   --radius-2xl: 1.75rem;
-  /* Direction B, "Positivus dark", with a seafoam accent since 2026-11-23 (was lime). Near-black page, panels one
-     step lighter, one accent: seafoam #3ecfb2. It is the
+  /* Direction B, "Positivus dark", with a seafoam accent since 2026-11-23 (was lime). Neutral greys since 2026-11-27
+     (Michael: the blue-grey sidebar and outlines read muddy): a near-black page, panels one step lighter, the sidebar
+     true black (the theme's extreme, as it is white in light), quiet hairlines. One accent: seafoam #3ecfb2. It is the
      primary action fill (near-black text), the current selection, the focus ring and the highlight block behind
      section headings; nothing else is seafoam. Panels and buttons carry a hard offset shadow (no blur). */
-  --color-paper: #0c0d12;      /* the page, input wells */
-  --color-sheet: #17181f;      /* panels and the sidebar: one flat, solid layer */
+  --color-paper: #111113;      /* the page, input wells */
+  --color-sheet: #1b1b1e;      /* panels: one flat, solid layer */
+  --color-rail: #000000;       /* the sidebar: true black, a crisp edge against the page (white in light) */
   --color-ink: #f3f3f3;        /* body text (Positivus grey) */
-  --color-muted: #a6aabf;      /* secondary text */
-  --color-rule: #373a52;       /* panel borders and dividers */
-  --color-edge: #8a8ea6;       /* borders of controls (fields, secondary buttons): 6.0:1 on paper, 5.5:1 on sheet, 4.8:1 on primarybg (3:1 is the floor for UI boundaries) */
-  --color-slab: #3a3e58;       /* the hard offset shadow under panels and secondary buttons */
-  --color-warn: #c9ccd8;
-  --color-warnbg: #23253a;
+  --color-muted: #a3a3ab;      /* secondary text: 7.5:1 on paper, 6.9:1 on sheet */
+  --color-rule: #2e2e33;       /* panel borders and dividers: a quiet hairline */
+  --color-edge: #86868f;       /* borders of controls (fields, secondary buttons): 5.2:1 on paper, 4.8:1 on sheet, 4.4:1 on primarybg (3:1 is the floor for UI boundaries) */
+  --color-slab: #28282d;       /* the hard offset shadow under panels and secondary buttons: toned down, neutral */
+  --color-warn: #cbcbd2;
+  --color-warnbg: #222226;
   /* Primary: solid seafoam with near-black text (10.0:1). One accent for the primary action, selection, focus and
-     accent text: 10.0:1 on paper, 9.1:1 on sheet, so links and citations use the same shade (primaryink). */
+     accent text: 9.7:1 on paper, 8.8:1 on sheet, so links and citations use the same shade (primaryink). */
   --color-primary: #3ecfb2;
   --color-primaryhover: #62dbc3;
   --color-primarydeep: #1f7a68;   /* the hard shadow under a seafoam button */
@@ -67,7 +69,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   /* Values that are not Tailwind tokens but still change with the theme. Dark is the product's default look. */
-  --pa-glass: 27 29 39;                 /* rgb of the floating glass (sidebar drawer, menus, toasts) */
+  --pa-glass: 27 27 30;                  /* rgb of the floating glass (sidebar drawer, menus, toasts) */
   --pa-highlight: #3ecfb2;              /* the block behind a section heading: a fill, never text colour */
   --pa-onhighlight: #0b0c10;
   --pa-mark-face: #3ecfb2;              /* the logo tile: a 3D-printed face and edge, "Pa" on it */
@@ -84,6 +86,7 @@
   color-scheme: light;
   --color-paper: #f4f5f8;
   --color-sheet: #ffffff;
+  --color-rail: #ffffff;
   --color-ink: #14161f;
   --color-muted: #4d5368;
   --color-rule: #d5d9e4;

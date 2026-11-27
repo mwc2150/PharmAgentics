@@ -1,6 +1,6 @@
 """Settings and light theme check (2026-11-27): drives the LOCAL app (dev sign-in, a built frontend) with Playwright.
 
-  uv run python tests/ui/check_settings.py [--base http://127.0.0.1:8773] [--out local/settings-check]
+  uv run python tests/ui/check_settings.py [--base http://127.0.0.1:8765] [--out local/settings-check]
 
 Start the app first (dev sign-in, PHARMAGENTICS_STATIC_DIR pointing at the build). It asserts what the Settings workspace
 promises (the gear, the theme and its persistence, no flash, the New briefing defaults for the analyst only, the date
@@ -398,7 +398,7 @@ def screens(browser, base: str, out: Path) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default="http://127.0.0.1:8773")
+    ap.add_argument("--base", default="http://127.0.0.1:8765")
     ap.add_argument("--out", default=str(ROOT / "local" / "settings-check"))
     ap.add_argument("--skip-screens", action="store_true")
     ap.add_argument("--skip-asserts", action="store_true")
