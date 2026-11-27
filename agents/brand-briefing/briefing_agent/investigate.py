@@ -59,7 +59,7 @@ def story_task(card: dict, hypotheses: list[str], definition: dict | None = None
 
 async def _team(cfg: dict, spec: str, mcp, task: str, log: RunLog, wall: float, brand_id: str = "BXA") -> str | None:
     """Run one story's team; return why it stopped early, or None."""
-    chat, opts = chat_client(spec), chat_options(spec)
+    chat, opts = chat_client(spec), chat_options(spec, cache=True)  # the team loops over tool calls: cache the prompt
     async with AsyncExitStack() as stack:
         participants = []
         for p in cfg["participants"]:

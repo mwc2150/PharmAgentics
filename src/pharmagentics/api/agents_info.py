@@ -154,8 +154,12 @@ def comparison(snap: dict) -> dict:
         return {k: r.get(k) for k in ("run_id", "started", "cases", "model")}
     rows = [{"group": g, "label": label, "unit": unit, "scripted": scripted.get("metrics", {}).get(m),
              "agent": agent.get("metrics", {}).get(m)} for g, label, m, unit in COMPARE]
-    rows.append({"group": "Time and effort", "label": "Cost a brief", "unit": "cost", "scripted": None, "agent": None,
-                 "note": "Not recorded in the evaluation runs yet."})
+    # The agent's estimated model cost an answer (eval/harness/cost.py, from its token counts); the scripted engine
+    # calls no model, so it costs nothing.
+    cost = agent.get("metrics", {}).get("cost_usd_brief")
+    rows.append({"group": "Time and effort", "label": "Cost a brief", "unit": "cost", "scripted": 0.0, "agent": cost,
+                 "note": "Estimated from the tokens the model read and wrote, at list prices." if cost is not None
+                 else "Not recorded in this agent run."})
     return {"available": True, "scripted": run(scripted), "agent": run(agent), "rows": rows,
             "note": "Scores on the same golden questions. Run-level figures only."}
 

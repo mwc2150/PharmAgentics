@@ -9,6 +9,7 @@ from pathlib import Path
 import mlflow
 
 from .cases import golden_fingerprint, load_cases
+from .cost import usage_metrics
 from .paths import EXPERIMENT, MLFLOW_DIR, tracking_uri
 from .scorers import (DETERMINISTIC, EVIDENCE, REPORT_ONLY, TARGETS, TRAJECTORY, WORD_BUDGET, count_words, finding_counts,
                       judge_scorers, key_fact_counts, leader_words)
@@ -132,6 +133,9 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
                         metrics[f"latency_{kind}_p95/mean"] = ordered[min(len(ordered) - 1, round(0.95 * (len(ordered) - 1)))]
                         mlflow.log_metric(f"latency_{kind}_p50/mean", metrics[f"latency_{kind}_p50/mean"])
                         mlflow.log_metric(f"latency_{kind}_p95/mean", metrics[f"latency_{kind}_p95/mean"])
+                for key, value in usage_metrics(answered.values()).items():  # tokens and estimated dollars, report only
+                    metrics[key] = value
+                    mlflow.log_metric(key, value)
                 for key, value in pooled_by_brand(cases, answered, input_key).items():
                     metrics[key] = value  # report-only (core-011 FR-019); `<scorer>/mean` stays per case
                     mlflow.log_metric(key, value)
@@ -147,7 +151,12 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
             mlflow.log_metric(key, statistics.fmean(values))
             if len(values) > 1:
                 mlflow.log_metric(key.replace("/mean", "") + "/rerun_std", statistics.pstdev(values))
+        spent = [m["cost_usd_rerun"] for m in per_rerun if "cost_usd_rerun" in m]
+        if spent:
+            mlflow.log_metric("cost_usd_run", sum(spent))  # every rerun together: what the run cost (estimated)
     print(f"\nRun {parent.info.run_id} ({label}, {lane}, {len(cases)} cases, {reruns} rerun(s))")
+    if spent:
+        print(f"  Model cost, estimated: ${sum(spent):.4f} for the run, ${sum(spent) / len(spent):.4f} a rerun")
     for key in keys:
         values = [m[key] for m in per_rerun if key in m]
         print(f"  {key:<40} {statistics.fmean(values):.3f}")
