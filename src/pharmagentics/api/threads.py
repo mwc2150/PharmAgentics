@@ -14,17 +14,19 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 
-from typing import Literal
-
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from pharmagentics.tools import followup
+from pharmagentics.tools.brands import BRIEFING_ENGINES
 
 from . import agent_host, brand_access, rbac, store
 
 router = APIRouter(prefix="/api/briefing/{brief_id}/thread", tags=["threads"])
-MAX_TURNS = 20  # FR-008
+MAX_TURNS = 20  # FR-008: free-text (agent) turns only; suggested-question (chip) turns do not count (2026-11-27)
+MAX_STORED = 100  # a safety cap on every turn kept in one thread, so repeated chips cannot grow it without bound
+NO_FREE_TEXT = "Free-text questions need the agent, which is not configured here. Pick a suggested question."
+NO_FREE_TEXT_BRAND = "Free-text questions need the agent, which this brand does not support. Pick a suggested question."
 KEEP_DAYS = 30
 _purged = False
 
@@ -32,7 +34,20 @@ _purged = False
 class Ask(BaseModel):
     question: str = Field(min_length=1, max_length=500)
     section: str | None = Field(default=None, pattern=r"^\d(\.\d+)?$")
-    engine: Literal["scripted", "agent"] = "scripted"  # agent: Claude Haiku in the app (slice 4, core-007 FR-032)
+    # The server picks the engine: a suggested question is scripted, free text goes to the agent (Claude Haiku in the
+    # app, core-007 FR-032) when a model is configured. The client does not choose, so it cannot dodge the quota.
+
+
+def free_text_refusal(result: dict) -> str | None:
+    """Why free text cannot be answered here, or None when the agent can answer it."""
+    if "agent" not in BRIEFING_ENGINES.get(result.get("brand_id", "BXA"), ()):
+        return NO_FREE_TEXT_BRAND
+    return None if agent_host.model() else NO_FREE_TEXT
+
+
+def agent_turns(thread: dict | None) -> int:
+    """Turns that count toward the 20: free-text questions answered by the agent."""
+    return sum(1 for t in (thread or {}).get("turns", []) if t.get("engine") == "agent")
 
 
 def _agent_answer(result: dict, question: str, section: str | None) -> dict:
@@ -40,7 +55,7 @@ def _agent_answer(result: dict, question: str, section: str | None) -> dict:
     brand_access.require_engine(result.get("brand_id", "BXA"), "agent")
     spec = agent_host.model()
     if not spec:
-        raise HTTPException(status_code=409, detail="The agent is not available here; ask the scripted engine.")
+        raise HTTPException(status_code=409, detail=NO_FREE_TEXT)
     if str(agent_host.AGENTS_DIR) not in sys.path:
         sys.path.insert(0, str(agent_host.AGENTS_DIR))
     from briefing_agent import followup as agent_followup
@@ -102,6 +117,8 @@ def _public(thread: dict | None, record: dict, owner: str, mine: bool) -> dict:
     thread = thread or {"brief_id": record["brief_id"], "owner": owner, "saved": False, "turns": []}
     return {"brief_id": record["brief_id"], "owner": thread["owner"], "mine": mine, "saved": thread.get("saved", False),
             "shared_from": thread.get("shared_from"), "turns": thread.get("turns", []), "max_turns": MAX_TURNS,
+            "used_turns": agent_turns(thread), "free_text": free_text_refusal(record["result"]) is None,
+            "free_text_reason": free_text_refusal(record["result"]),
             "share_path": f"/api/briefing/{record['brief_id']}/thread/shared/{thread['owner']}" if thread.get("saved") else None,
             "suggestions": followup.suggestions(record["result"].get("sections") or [])}
 
@@ -124,10 +141,13 @@ def ask(brief_id: str, body: Ask, response: Response, who=Depends(analyst)) -> d
     _no_store(response)
     owner = owner_of(p)
     thread = read(brief_id, owner) or {"brief_id": brief_id, "owner": owner, "saved": False, "created_at": store.now(), "turns": []}
-    if len(thread["turns"]) >= MAX_TURNS:
+    free_text = not followup.is_suggested(body.question)
+    if free_text and (why := free_text_refusal(record["result"])):
+        raise HTTPException(status_code=409, detail=why)
+    if (free_text and agent_turns(thread) >= MAX_TURNS) or len(thread["turns"]) >= MAX_STORED:
         raise HTTPException(status_code=409, detail=f"This thread is full ({MAX_TURNS} follow-ups). Start a new thread.")
     started = time.perf_counter()
-    if body.engine == "agent":
+    if free_text:
         turn = _agent_answer(record["result"], body.question, body.section)
         if turn.get("error") == "timeout":  # FR-010: shown and logged, no answer text kept
             store.record_event("follow_up", **p.tag(), brief_id=brief_id, rule="timeout", engine="agent",
@@ -176,7 +196,7 @@ def continue_thread(brief_id: str, owner: str, response: Response, who=Depends(a
         raise HTTPException(status_code=404, detail="No such thread.")
     mine = owner_of(p)
     thread = {"brief_id": brief_id, "owner": mine, "saved": False, "created_at": store.now(),
-              "shared_from": owner, "turns": [dict(t) for t in source["turns"]][:MAX_TURNS]}
+              "shared_from": owner, "turns": [dict(t) for t in source["turns"]][:MAX_STORED]}
     write(thread)
     return _public(thread, record, mine, mine=True)
 
