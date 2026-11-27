@@ -23,6 +23,7 @@ def test_frontend_contains_only_supported_feature_modules():
         "MessageBar.tsx",
         "Overview.tsx",
         "Promotion.tsx",
+        "Settings.tsx",
         "Telemetry.tsx",
         "Timeline.tsx",
         "agent/briefingApi.ts",
@@ -34,7 +35,7 @@ def test_frontend_contains_only_supported_feature_modules():
         "agent/telemetryApi.ts",
         "agent/threadApi.ts",
         "components/ui/dropdown-menu.tsx",
-        "index.css", "main.tsx", "vite-env.d.ts"
+        "index.css", "main.tsx", "userSettings.ts", "vite-env.d.ts"
     ]
 
 

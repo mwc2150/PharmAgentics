@@ -54,6 +54,7 @@ def release_context() -> ReleaseContext:
         product_rows = reg.rows(
             "SELECT DISTINCT product_id FROM raw.dim_product ORDER BY 1"
         )
+        version = reg.data_version
     finally:
         reg.close()
     if not week_rows:
@@ -72,6 +73,7 @@ def release_context() -> ReleaseContext:
         territory_ids=available_territories,
         available_weeks=weeks, product_ids=supported_products,
         brands=[{"id": b, "name": PRODUCTS[b], "engines": list(BRIEFING_ENGINES[b])} for b in supported_products],
+        data_version=version,
     )
 
 

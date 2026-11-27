@@ -66,6 +66,50 @@
   scrollbar-color: var(--color-edge) transparent;   /* thumb 5.8:1 on the page; the old rule colour was 1.7:1 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Values that are not Tailwind tokens but still change with the theme. Dark is the product's default look. */
+  --pa-glass: 27 29 39;                 /* rgb of the floating glass (sidebar drawer, menus, toasts) */
+  --pa-highlight: #3ecfb2;              /* the block behind a section heading: a fill, never text colour */
+  --pa-onhighlight: #0b0c10;
+  --pa-mark-face: #3ecfb2;              /* the logo tile: a 3D-printed face and edge, "Pa" on it */
+  --pa-mark-edge: #00857c;
+  --pa-mark-ink: #0b0c10;
+}
+
+/* Light theme (Settings > Theme; public/theme-init.js sets data-theme on <html> before first paint). Every token above is
+   redefined here, and :root keeps the dark values. Contrast, by pair (WCAG AA: 4.5:1 for text, 3:1 for control edges):
+   ink 16.5:1 on paper and 18.0:1 on sheet; muted 7.0:1 on paper, 7.6:1 on sheet, 6.6:1 on primarybg; primaryink 4.8:1 on paper,
+   5.2:1 on sheet, 4.5:1 on primarybg; amber 5.4:1 on paper; neg 6.0:1 on paper; human 6.5:1 on paper; edge 3.9:1 on paper,
+   4.3:1 on sheet; white on the primary fill 4.5:1. Seafoam (#3ecfb2) is a fill or a decoration here, never text on a light page. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-paper: #f4f5f8;
+  --color-sheet: #ffffff;
+  --color-ink: #14161f;
+  --color-muted: #4d5368;
+  --color-rule: #d5d9e4;
+  --color-edge: #737a91;
+  --color-slab: #cdd1de;
+  --color-warn: #3d4256;
+  --color-warnbg: #eceef4;
+  --color-primary: #00857c;        /* fills, the focus ring, borders and chart lines; text on it is white */
+  --color-primaryhover: #006d66;
+  --color-primarydeep: #00564f;
+  --color-primaryink: #007a72;     /* accent text and links: a shade under the fill so it clears 4.5:1 on the grey page too */
+  --color-onprimary: #ffffff;
+  --color-human: #5b3fc4;
+  --color-humanbg: #efeafc;
+  --color-primarybg: #e0f3f0;
+  --color-ok: var(--color-primaryink);
+  --color-okbg: var(--color-primarybg);
+  --color-amber: #8a5a00;
+  --color-amberbg: #fbf2de;
+  --color-amberline: #b08540;
+  --color-neg: #b42318;
+  --color-negline: #c9726a;
+  --pa-glass: 255 255 255;
+  --pa-mark-face: #00857c;
+  --pa-mark-edge: #3ecfb2;
+  --pa-mark-ink: #ffffff;
 }
 
 @layer base {
@@ -152,7 +196,7 @@
   /* Frosted glass only where something floats over the page: the sidebar while it hovers open, menus,
      the phone drawer and toasts. Without backdrop-filter the 92%-opaque fill still reads. */
   .glass {
-    background: rgb(27 29 39 / 0.96);
+    background: rgb(var(--pa-glass) / 0.96);
   }
   /* The workspace band (Weekly briefing, Forecast explanation, Evaluation): the page shows through it, blurred. A light
      veil and a soft blur with a colour lift, so what scrolls under keeps its colour and a chart line stays visible as
@@ -169,7 +213,7 @@
   }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .glass {
-      background: rgb(27 29 39 / 0.8);
+      background: rgb(var(--pa-glass) / 0.8);
       -webkit-backdrop-filter: blur(16px) saturate(130%);
       backdrop-filter: blur(16px) saturate(130%);
     }
@@ -177,18 +221,38 @@
   /* Hard offset shadow, no blur: a flat slab under a panel. */
   .pa-panel { box-shadow: 0 5px 0 var(--color-slab); }
   /* The Positivus highlight: a seafoam block behind a section heading, dark text. */
-  .pa-mark { background: var(--color-primary); color: var(--color-onprimary); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .pa-mark { background: var(--pa-highlight); color: var(--pa-onhighlight); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .pa-rise { animation: pa-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-slide { animation: pa-slide 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-pulse { animation: pa-pulse 1.2s ease-in-out infinite; }
   /* Reduced motion (WCAG 2.3.3): no slides, rises, travelling underline, sidebar width glide or press-down.
      State still shows: the button's shadow flattens on press, the tab keeps its pill, the sidebar snaps. */
   @media (prefers-reduced-motion: reduce) {
-    .pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-stagger > *, .pa-skeleton { animation: none; }
-    .pa-draw path { animation: none; stroke-dashoffset: 0; }
-    .workspace-content, .workspace-wide, .pa-tabbar { transition: none; }
-    *, ::before, ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
-    [class*="active:translate"]:active { translate: none !important; }
+    html:not([data-motion="off"]) :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
+    html:not([data-motion="off"]) .pa-stagger > * { animation: none; }
+    html:not([data-motion="off"]) .pa-draw path { animation: none; stroke-dashoffset: 0; }
+    html:not([data-motion="off"]) :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
+    html:not([data-motion="off"]) *, html:not([data-motion="off"]) ::before, html:not([data-motion="off"]) ::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    html:not([data-motion="off"]) [class*="active:translate"]:active { translate: none !important; }
+  }
+  /* Settings > Reduce motion "On": the same, whatever the system says. "Off" lifts the rules above; "Follow system" sets nothing. */
+  html[data-motion="on"] :is(.pa-rise, .pa-slide, .pa-pulse, .pa-fade, .pa-skeleton, .animate-pulse),
+  html[data-motion="on"] .pa-stagger > * { animation: none; }
+  html[data-motion="on"] .pa-draw path { animation: none; stroke-dashoffset: 0; }
+  html[data-motion="on"] :is(.workspace-content, .workspace-wide, .pa-tabbar) { transition: none; }
+  html[data-motion="on"] *, html[data-motion="on"] ::before, html[data-motion="on"] ::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  html[data-motion="on"] [class*="active:translate"]:active { translate: none !important; }
+  /* Settings > Evidence footnote numbers "Hide": the superscript goes; the figure stays a button named "value, evidence N". */
+  html[data-footnotes="hide"] .pa-fn { display: none; }
+  /* Settings > Density "Compact": tighter padding in panels, list rows and table cells; spacing utilities are overridden here, not in the components. */
+  @media screen {
+    html[data-density="compact"] :is(.p-6, .p-5) { padding: 0.875rem; }
+    html[data-density="compact"] :is(.px-6, .px-5) { padding-inline: 0.875rem; }
+    html[data-density="compact"] :is(.py-6, .py-5) { padding-block: 0.75rem; }
+    html[data-density="compact"] li > button:is(.py-3\.5, .py-3) { padding-block: 0.5rem; }
+    html[data-density="compact"] summary:is(.py-3, .py-3\.5) { padding-block: 0.5rem; }
+    html[data-density="compact"] :is(td, th):not([class*="p-0"]) { padding-block: 0.25rem; }
+    html[data-density="compact"] :is(.pa-panel, .pa-card) :is(.mt-4, .mt-5, .mt-6) { margin-top: 0.625rem; }
   }
   /* Forced colours (Windows High Contrast): the seafoam block behind a heading drops away, so the heading keeps a
      rule under it, and buttons that rely on a fill or a shadow for their edge get a border. */
@@ -228,11 +292,11 @@
    details stay folded, and tiles, table rows, figures and story cards are not split across pages. */
 @media print {
   @page { size: A4; margin: 12mm 14mm 13mm; }
-  :root {
+  :root, :root[data-theme] {
     color-scheme: light;
     --color-paper: #ffffff; --color-sheet: #ffffff; --color-ink: #151a18; --color-muted: #4b5652;
     --color-rule: #c8cfcc; --color-warn: #444444; --color-warnbg: #f3f4f4;
-    --color-primary: #1f6055; --color-edge: #6b7280; --color-slab: #c8cfcc; --color-primarybg: #edf4f2;
+    --color-primary: #1f6055; --color-primaryink: var(--color-primary); --color-edge: #6b7280; --color-slab: #c8cfcc; --color-primarybg: #edf4f2;
     --color-ok: #1f6055; --color-okbg: #edf4f2; --color-amber: #85540a; --color-amberbg: #fbf2de;
     --color-amberline: #d9b36a; --color-neg: #b02323; --color-negline: #e3a5a5; --color-human: #5a3fb0; --color-humanbg: #efeafa;
   }

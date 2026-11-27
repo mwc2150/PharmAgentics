@@ -9,6 +9,7 @@ export type ReleaseContext = {
   brands: { id: string; name: string; engines: ("scripted" | "agent")[] }[]
   supported_intents: string[]
   engine: "scripted"
+  data_version?: string | null  // the loaded release's pinned version; shown under Settings > About
 }
 export type Evidence = {
   id: string

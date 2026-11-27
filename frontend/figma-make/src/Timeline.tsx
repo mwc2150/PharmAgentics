@@ -1,3 +1,4 @@
+import { motionReduced } from "./userSettings"
 import { useMemo, useState } from "react"
 import type { Claim, RunEvent } from "./agent/briefingApi"
 import { Icon } from "./agent/primitives"
@@ -62,7 +63,7 @@ export function jumpToClaim(claim: Claim | undefined, openSource?: (evidenceId: 
   const title = `Source ${claim.evidence_id}: open the query behind ${claim.value}`
   const el = Array.from(document.querySelectorAll<HTMLElement>(".pa-cite")).find(b => b.title === title && b.getClientRects().length > 0)
   if (!el) { openSource?.(claim.evidence_id); return }
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  const reduce = motionReduced()
   el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" })
   el.focus({ preventScroll: true })
   el.classList.add("bg-primarybg", "ring-2", "ring-primary")

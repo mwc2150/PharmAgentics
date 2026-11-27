@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
 import { Icon, Notice, plainValue } from "./agent/primitives"
+import { fmtDate } from "./userSettings"
 
 // These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
@@ -9,7 +10,7 @@ const FIELD = "rounded-lg border border-edge bg-paper px-3 py-1.5 text-sm text-i
 const int = (v: number | null | undefined) => (v == null ? "–" : Math.round(v).toLocaleString())
 const pct = (v: number | null | undefined, signed = true) =>
   v == null ? "–" : `${signed && v > 0 ? "+" : ""}${(v * 100).toFixed(1)}%`
-const day = (iso: string) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+const day = fmtDate
 const STATUS = { material: "Material change", normal: "Within normal range", no_baseline: "No comparison weeks", held_back: "Held back" } as const
 
 function Drawer({ title, kicker, onClose, children }: { title: string, kicker: string, onClose: () => void, children: ReactNode }) {

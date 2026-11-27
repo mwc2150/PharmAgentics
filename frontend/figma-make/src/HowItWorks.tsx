@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react"
 import { getAgentsInfo, type AgentCard, type AgentComparison, type AgentsInfo, type CompareRow } from "./agent/briefingApi"
 import { KIND_NAME, KIND_STYLE } from "./Timeline"
 import { Notice, modelName } from "./agent/primitives"
+import { fmtDate } from "./userSettings"
 
 // brief-009 FR-006: how the briefing is made. The flow from question to brief, the four actors the architecture names
 // (Manager, Data Forensics, Driver Investigator, and the Writer, which is an LLM step and not an agent), what each
@@ -11,7 +12,7 @@ import { Notice, modelName } from "./agent/primitives"
 const PANEL = "rounded-xl border border-rule bg-sheet"
 // An outlined word, never a filled pill (DESIGN.md).
 const chip = "rounded-md border px-2 py-0.5 text-xs font-medium"
-const when = (iso: string) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso}T00:00` : iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+const when = fmtDate
 
 function show(row: CompareRow, v: number | null): string {
   if (v === null || v === undefined) return "—"

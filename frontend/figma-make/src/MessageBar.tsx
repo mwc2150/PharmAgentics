@@ -3,6 +3,7 @@
 // starts a brief. While a brief is written it holds the message; on a brief it asks a follow-up in the analyst's
 // own thread. Answers come from the server only. The suggested questions are scripted and free; free text goes to the
 // agent when the app has a model (it counts toward the thread's 20) and is disabled, with the reason, when it has none.
+import { motionReduced } from "./userSettings"
 import { useEffect, useRef, useState } from "react"
 import { AnswerFeedback } from "./Feedback"
 import { Icon, Notice } from "./agent/primitives"
@@ -83,7 +84,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
     if (!briefId) { setError("The brief is not ready yet. Ask once it is written."); return }
     void ask(question)
   }
-  const cite = (n: string) => document.getElementById(`memo-${briefId}-${n}`)?.scrollIntoView({behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start"})
+  const cite = (n: string) => document.getElementById(`memo-${briefId}-${n}`)?.scrollIntoView({behavior: motionReduced() ? "auto" : "smooth", block: "start"})
   const tips = !briefId ? [] : (thread?.suggestions[chip?.number ?? "1"] ?? []).slice(0, 3)
   const readOnly = thread && !thread.mine
   const full = thread ? thread.used_turns >= thread.max_turns : false  // free-text turns only; the chips never fill it

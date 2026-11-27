@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, u
 import { Toaster, toast } from "sonner"
 import { BrandMark, Icon, Notice, longDates, modelName, plainModels, plainValue, useModalFocus, type IconName } from "./agent/primitives"
 import { TelemetryWorkspace } from "./Telemetry"
+import { SettingsWorkspace } from "./Settings"
+import { fmtDate, fmtIsoDate, fmtTime, getSettings, useResolvedTheme, useSettings } from "./userSettings"
 import { getUsage } from "./agent/telemetryApi"
 import { ForecastChart, type ChartSpec } from "./ForecastCharts"
 import { Overview } from "./Overview"
@@ -37,22 +39,19 @@ import {
 function labelTerritory(id: string): string {
   return id.toLowerCase().split("_").map(s => s[0].toUpperCase() + s.slice(1)).join(" ").replace("Mid Atlantic", "Mid-Atlantic")
 }
-function labelWeek(iso: string): string {
-  const [y,m,d] = iso.split("-").map(Number)
-  return new Date(Date.UTC(y,m-1,d)).toLocaleDateString("en-US", {year:"numeric",month:"short",day:"numeric",timeZone:"UTC"})
-}
+const labelWeek = fmtIsoDate  // "Oct 5, 2026", or the ISO date when the reader chose that style (Settings)
 function periodLabel(start: string, end?: string | null): string {
   return end && end > start ? `weeks ${labelWeek(start)} to ${labelWeek(end)}` : `week of ${labelWeek(start)}`
 }
 function labelTime(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZoneName:"short"}) : "—"
+  return iso ? fmtTime(iso) : "—"
 }
 // The server's one-line process summary ends "; reviewed by the analyst." (or "...and signed off by the Insights Manager.") with
 // no date (a UTC date reads a day late in the evening); the date is added here from reviewed_at, in the viewer's own time zone.
 function processLine(line: string, reviewedAt: string | null): string {
   const d = reviewedAt ? new Date(reviewedAt) : null
   if (!d || Number.isNaN(d.getTime())) return line
-  return line.replace(/(; reviewed by the analyst)( and signed off by the Insights Manager)?\.$/, (_m, a: string, b?: string) => `${a}${b ?? ""} on ${d.toLocaleDateString("en-US", {month:"short",day:"numeric",year:"numeric"})}.`)
+  return line.replace(/(; reviewed by the analyst)( and signed off by the Insights Manager)?\.$/, (_m, a: string, b?: string) => `${a}${b ?? ""} on ${fmtDate(reviewedAt!)}.`)
 }
 function dataText(input: unknown): string {
   return input === null || input === undefined ? "—" : typeof input === "string" ? input : JSON.stringify(input, null, 2)
@@ -653,7 +652,7 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
 const OPEN_KEY = "pa_sidebar_open"
 const readOpen = () => { try { return window.localStorage.getItem(OPEN_KEY) === "1" } catch { return false } }
 
-function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy, onBriefing, onForecast, onTelemetry, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, briefingBusy: boolean, forecastBusy: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onAnyClick?: () => void}) {
+function SideNav({me, expanded, forecast, telemetry, settings, briefingBusy, forecastBusy, onBriefing, onForecast, onTelemetry, onSettings, onAnyClick}: {me: Me, expanded: boolean, forecast: boolean, telemetry: boolean, settings: boolean, briefingBusy: boolean, forecastBusy: boolean, onBriefing?: () => void, onForecast: () => void, onTelemetry: () => void, onSettings: () => void, onAnyClick?: () => void}) {
   const row = (active: boolean) => `group flex w-full items-center gap-3 rounded-lg px-[10px] py-2.5 text-left text-sm transition-colors duration-150 ${active ? "bg-primarybg font-semibold text-ink" : "text-muted hover:bg-paper hover:text-ink"}`
   const label = (text: string) => <span className={expanded ? "truncate whitespace-nowrap pa-fade" : "sr-only"}>{text}</span>
   // A run still going shows a small dot (on the icon in the rail, at the row's end when open); the words are for screen readers.
@@ -671,12 +670,14 @@ function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy,
       {expanded ? <span className="pa-fade flex min-w-0 flex-1 items-baseline gap-1.5 whitespace-nowrap"><span className="truncate font-display text-[18px] font-bold tracking-tight">PharmAgentics</span><span className="text-xs font-medium text-muted">v2</span></span> : <span className="sr-only">PharmAgentics v2</span>}
     </div>
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
-      {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy, news.has("briefing"))}
-      {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast, forecastBusy, news.has("forecast"))}
+      {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry && !settings, onBriefing, briefingBusy, news.has("briefing"))}
+      {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry && !settings, onForecast, forecastBusy, news.has("forecast"))}
       {me.evaluation && item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
     <div className="mt-auto space-y-2 px-3 pb-4">
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
+      {/* Settings sits at the bottom of the rail, below the workspaces: the same row in the narrow rail, the open sidebar and the phone drawer */}
+      <div className="border-t border-rule pt-2">{item("gear", "Settings", settings, onSettings)}</div>
     </div>
   </div>
 }
@@ -696,6 +697,7 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
   const [forecastVisited,setForecastVisited] = useState(startInForecast)  // once opened, the workspace stays mounted so a running investigation survives lane switches
   const [forecastBusy,setForecastBusy] = useState(false)
   const [telemetry,setTelemetry] = useState(false)
+  const [settings,setSettings] = useState(false)  // the Settings workspace (per-browser display choices); like Evaluation it sits over the lanes, which stay mounted
   const forecastHome: ForecastSection = me.lanes.forecast?.actions.includes("run") ? "workbench" : "reports"
   const [forecastSection,setForecastSection] = useState<ForecastSection>(forecastHome)
   const [open,setOpen] = useState(readOpen)
@@ -706,34 +708,36 @@ function Shell({me, onBriefingHome, children, startInForecast=false, briefingBus
     window.addEventListener("keydown", key)
     return () => window.removeEventListener("keydown", key)
   },[])
-  const goBriefing = onBriefingHome ? () => { setTelemetry(false); setForecast(false); onBriefingHome() } : undefined
-  const goForecast = () => { setTelemetry(false); setForecast(true); setForecastVisited(true); setForecastSection(forecastHome) }
-  const goTelemetry = () => setTelemetry(true)
+  const goBriefing = onBriefingHome ? () => { setTelemetry(false); setSettings(false); setForecast(false); onBriefingHome() } : undefined
+  const goForecast = () => { setTelemetry(false); setSettings(false); setForecast(true); setForecastVisited(true); setForecastSection(forecastHome) }
+  const goTelemetry = () => { setSettings(false); setTelemetry(true) }
+  const goSettings = () => { setTelemetry(false); setSettings(true) }
   const leader = !me.lanes.briefing?.views.includes("analyst") && !me.lanes.forecast?.views.includes("analyst")
-  const title = telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"
+  const title = settings ? "Settings" : telemetry ? "Evaluation" : forecast ? "Forecast explanation" : "Weekly briefing"
   useEffect(()=>{ document.title = `${title} · PharmAgentics` },[title])  // 2.4.2: the tab names the workspace that is open
   const content = useRef<HTMLElement>(null)
+  const theme = useResolvedTheme()  // the toasts follow the app's theme
   // --rail is the width the sidebar occupies; .workspace-content uses it to centre on the whole page (0 on phones).
-  return <ActiveWorkspace.Provider value={telemetry ? "evaluation" : forecast ? "forecast" : "briefing"}><SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
+  return <ActiveWorkspace.Provider value={telemetry || settings ? "evaluation" : forecast ? "forecast" : "briefing"}><SignedInName.Provider value={me.name}><FeedbackProvider where={forecast ? "forecast" : "briefing"}><div className={`flex h-dvh overflow-hidden text-ink max-md:[--shift:0px] ${open ? "[--shift:0px]" : "[--shift:64px]"}`}>
     <a href="#main-content" onClick={e=>{ e.preventDefault(); content.current?.focus() }} className="sr-only rounded-lg bg-primary text-sm font-semibold text-onprimary focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:px-4 focus:py-2">Skip to content</a>
     <aside aria-label="Sidebar" className={`hidden shrink-0 overflow-hidden border-r border-rule bg-sheet transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] md:block ${open ? "w-[248px]" : "w-16"}`}>
-      <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry}/>
+      <SideNav me={me} expanded={open} forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings}/>
     </aside>
-    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
+    {mobileNav && <MobileNav onClose={()=>setMobileNav(false)}><SideNav me={me} expanded forecast={forecast} telemetry={telemetry} settings={settings} briefingBusy={briefingBusy} forecastBusy={forecastBusy} onBriefing={goBriefing} onForecast={goForecast} onTelemetry={goTelemetry} onSettings={goSettings} onAnyClick={()=>setMobileNav(false)}/></MobileNav>}
     <main className="relative flex min-w-0 flex-1 flex-col">
       {/* The workspace band floats over the content, frosted: the page scrolls under it and shows through, blurred (2026-11-27) */}
       <header className="pa-frost absolute inset-x-0 top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-rule px-4 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <button type="button" onClick={toggleNav} aria-expanded={open} aria-label={open ? "Collapse the sidebar" : "Expand the sidebar"} title={`${open ? "Collapse" : "Expand"} the sidebar (Ctrl+B)`}
             className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="panel" className="h-5 w-5"/></button>
-          <h1 key={telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{title}</h1>
+          <h1 key={settings ? "s" : telemetry ? "t" : forecast ? "f" : "b"} className="pa-fade truncate text-lg font-bold sm:text-xl">{title}</h1>
         </div>
         <AccountMenu me={me}/>
       </header>
-      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 scroll-pt-20 overflow-y-auto pt-16 print:pt-0"><div hidden={forecast || telemetry}>{children}</div>{telemetry && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={!forecast || telemetry}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
+      <section ref={content} id="main-content" tabIndex={-1} aria-label={title} className="min-h-0 flex-1 scroll-pb-44 scroll-pt-20 overflow-y-auto pt-16 print:pt-0"><div hidden={forecast || telemetry || settings}>{children}</div>{settings && <SettingsWorkspace me={me}/>}{telemetry && !settings && <TelemetryWorkspace label={<ClassLabel tab="evaluation.overview"/>} tester={me.tester}/>}{forecastVisited && <div hidden={!forecast || telemetry || settings}><ForecastWorkspace me={me} section={forecastSection} onSection={setForecastSection} onBusy={setForecastBusy}/></div>}</section>
       <footer className="shrink-0 border-t border-rule px-5 py-2 text-center text-[11px] text-muted">PharmAgentics can make mistakes. Check important figures {leader ? "with the Commercial Analyst" : "against the evidence"}.</footer>
     </main>
-    <Toaster theme="dark" position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
+    <Toaster theme={theme} position="bottom-right" closeButton toastOptions={{className: "glass !bg-transparent !text-ink !border !border-rule !font-sans !rounded-xl"}}/>
   </div></FeedbackProvider></SignedInName.Provider></ActiveWorkspace.Provider>
 }
 
@@ -1057,7 +1061,7 @@ function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceI
     if (!claim || sp.start < pos || result.answer.slice(sp.start, sp.end) !== claim.value) return
     parts.push(longDates(result.answer.slice(pos, sp.start)))
     parts.push(<button key={i} type="button" onClick={()=>onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`} aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="ml-px select-none font-mono text-[9px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="pa-fn ml-px select-none font-mono text-[9px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(longDates(result.answer.slice(pos)))
@@ -1152,6 +1156,7 @@ function AnalystApp({me}: {me: Me}) {
   const [plan,setPlan] = useState<TriagePlan | null>(null)
   // Agent engine (core-007 FR-028/FR-031): jobs run on teammate or cloud CPU hosts; the app only queues them.
   const [engine,setEngine] = useState<"scripted" | "agent">("scripted")
+  const engineSeeded = useRef(false)  // the saved default engine is applied once, on the first load of the release context
   const [ask,setAsk] = useState("")
   const [agent,setAgent] = useState<AgentStatus | null>(null)
   const [triageJob,setTriageJob] = useState<string | null>(null)
@@ -1218,7 +1223,10 @@ function AnalystApp({me}: {me: Me}) {
     try {
       const c=await getContext()
       setContext(c)
-      setBrand(b=>c.product_ids.includes(b)?b:(c.product_ids[0] ?? ""))
+      // The New briefing form starts on the brand and engine chosen in Settings (this browser's), when the API still offers them.
+      const wanted = getSettings(), firstBrand = c.product_ids.includes(wanted.defaultBrand) ? wanted.defaultBrand : (c.product_ids[0] ?? "")
+      setBrand(b=>c.product_ids.includes(b)?b:firstBrand)
+      if (!engineSeeded.current) { engineSeeded.current = true; if (wanted.defaultEngine === "agent" && c.brands.find(b=>b.id===firstBrand)?.engines.includes("agent")) setEngine("agent") }
       setOverviewBrand(b=>c.product_ids.includes(b)?b:(c.product_ids[0] ?? ""))
       setTerritory(t=>c.territory_ids.includes(t)?t:c.territory_ids[0])
       setWeek(w=>c.available_weeks.includes(w)?w:c.latest_week)
@@ -1446,6 +1454,7 @@ function InsightsApp({me}: {me: Me}) {
 }
 
 export default function App() {
+  useSettings()  // a change in Settings re-renders everything below, so dates and labels follow it at once
   const [me,setMe] = useState<Me | null>(null)
   const [error,setError] = useState<string | null>(null)
   useEffect(()=>{

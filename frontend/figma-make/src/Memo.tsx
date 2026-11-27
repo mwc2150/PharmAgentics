@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
 import { longDates } from "./agent/primitives"
+import { fmtShortDay } from "./userSettings"
 import { BudgetNote, PromotionPanel } from "./Promotion"
 import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
@@ -20,17 +21,14 @@ function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], cla
     parts.push(longDates(text.slice(pos, sp.start)))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
       aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="pa-fn ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
   parts.push(longDates(text.slice(pos)))
   return <>{parts}</>
 }
 
-function shortWeek(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`)
-  return d.toLocaleDateString(undefined, {month: "short", day: "numeric"})
-}
+const shortWeek = fmtShortDay
 
 function fmt(v: number, unit = "count"): string {
   if (unit === "rate") return v.toFixed(2)
