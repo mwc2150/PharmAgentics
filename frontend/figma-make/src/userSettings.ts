@@ -78,7 +78,7 @@ export function applySettings(s: Settings = current): void {
     root.setAttribute("data-density", s.density)
     root.setAttribute("data-motion", s.motion)
     root.setAttribute("data-footnotes", s.footnotes)
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f4f5f8" : "#111113")
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f4f5f8" : "#0e0e10")
   } catch { /* no document (tests): nothing to reflect */ }
 }
 

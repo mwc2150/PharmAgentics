@@ -20,18 +20,18 @@
      true black (the theme's extreme, as it is white in light), quiet hairlines. One accent: seafoam #3ecfb2. It is the
      primary action fill (near-black text), the current selection, the focus ring and the highlight block behind
      section headings; nothing else is seafoam. Panels and buttons carry a hard offset shadow (no blur). */
-  --color-paper: #111113;      /* the page, input wells */
-  --color-sheet: #1b1b1e;      /* panels: one flat, solid layer */
+  --color-paper: #0e0e10;      /* the page, input wells */
+  --color-sheet: #161619;      /* panels: one flat, solid layer, a step above the page */
   --color-rail: #000000;       /* the sidebar: true black, a crisp edge against the page (white in light) */
   --color-ink: #f3f3f3;        /* body text (Positivus grey) */
-  --color-muted: #a3a3ab;      /* secondary text: 7.5:1 on paper, 6.9:1 on sheet */
+  --color-muted: #a3a3ab;      /* secondary text: 7.7:1 on paper, 7.2:1 on sheet */
   --color-rule: #2e2e33;       /* panel borders and dividers: a quiet hairline */
-  --color-edge: #86868f;       /* borders of controls (fields, secondary buttons): 5.2:1 on paper, 4.8:1 on sheet, 4.4:1 on primarybg (3:1 is the floor for UI boundaries) */
+  --color-edge: #86868f;       /* borders of controls (fields, secondary buttons): 5.3:1 on paper, 5.0:1 on sheet, 4.4:1 on primarybg (3:1 is the floor for UI boundaries) */
   --color-slab: #28282d;       /* the hard offset shadow under panels and secondary buttons: toned down, neutral */
   --color-warn: #cbcbd2;
   --color-warnbg: #222226;
   /* Primary: solid seafoam with near-black text (10.0:1). One accent for the primary action, selection, focus and
-     accent text: 9.7:1 on paper, 8.8:1 on sheet, so links and citations use the same shade (primaryink). */
+     accent text: 9.9:1 on paper, 9.3:1 on sheet, so links and citations use the same shade (primaryink). */
   --color-primary: #3ecfb2;
   --color-primaryhover: #62dbc3;
   --color-primarydeep: #1f7a68;   /* the hard shadow under a seafoam button */
@@ -70,9 +70,7 @@
   -moz-osx-font-smoothing: grayscale;
   /* Values that are not Tailwind tokens but still change with the theme. Dark is the product's default look. */
   --pa-glass: 27 27 30;                  /* rgb of the floating glass (sidebar drawer, menus, toasts) */
-  --pa-highlight: #3ecfb2;              /* the block behind a section heading: a fill, never text colour */
-  --pa-onhighlight: #0b0c10;
-  --pa-mark-face: #3ecfb2;              /* the logo tile: a 3D-printed face and edge, "Pa" on it */
+  --pa-mark-face: #3ecfb2;              /* the logo tile, and the block behind a section heading: a 3D-printed face */
   --pa-mark-edge: #00857c;
   --pa-mark-ink: #0b0c10;
 }
@@ -224,7 +222,8 @@
   /* Hard offset shadow, no blur: a flat slab under a panel. */
   .pa-panel { box-shadow: 0 5px 0 var(--color-slab); }
   /* The Positivus highlight: a seafoam block behind a section heading, dark text. */
-  .pa-mark { background: var(--pa-highlight); color: var(--pa-onhighlight); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  /* The section-heading block is a tile like the logo: its face, and its edge showing below and to the right (Michael, 2026-11-27) */
+  .pa-mark { background: var(--pa-mark-face); color: var(--pa-mark-ink); box-shadow: 3px 4px 0 var(--pa-mark-edge); padding: 0.05em 0.5em 0.1em; border-radius: 0.5rem; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .pa-rise { animation: pa-rise 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-slide { animation: pa-slide 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .pa-pulse { animation: pa-pulse 1.2s ease-in-out infinite; }
