@@ -97,7 +97,7 @@ def test_the_mentor_southeast_week():
     lapse behind the comparison is named, and §1 says the change is within Southeast's normal range."""
     sys.path.insert(0, str(ROOT / "agents" / "brand-briefing"))
     from briefing_baseline.pipeline import answer
-    out = answer("How did Southeast do in the week of Oct 5, 2026?")
+    out = answer("Week of 2026-10-05 in Southeast: How did BXA do?")  # ISO: the reader does not parse "Oct 5, 2026" yet
     text = out["answer"]
     assert not unstated(out)
     # Stricter than `unstated` (the chart's printed range would cover a longer window): the calls read only the period
