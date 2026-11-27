@@ -154,15 +154,17 @@
   .glass {
     background: rgb(27 29 39 / 0.96);
   }
-  /* The workspace band (Weekly briefing, Forecast explanation, Evaluation): the page shows through it, blurred */
+  /* The workspace band (Weekly briefing, Forecast explanation, Evaluation): the page shows through it, blurred. A light
+     veil and a strong blur with a colour lift, so what scrolls under keeps its colour instead of turning grey (Michael,
+     2026-11-27: the first cut, a 68% veil, muted it too much). */
   .pa-frost {
     background: var(--color-paper);
   }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .pa-frost {
-      background: color-mix(in srgb, var(--color-paper) 68%, transparent);
-      -webkit-backdrop-filter: blur(14px) saturate(140%);
-      backdrop-filter: blur(14px) saturate(140%);
+      background: color-mix(in srgb, var(--color-paper) 50%, transparent);
+      -webkit-backdrop-filter: blur(20px) saturate(170%);
+      backdrop-filter: blur(20px) saturate(170%);
     }
   }
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
