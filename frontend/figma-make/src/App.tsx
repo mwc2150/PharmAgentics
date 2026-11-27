@@ -20,11 +20,11 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "./components/ui/dropdown-menu"
 import {
-  getContext, getBriefing, getMe, getTriage, listPublished, openBrief, reviewBrief, NotSignedIn,
+  getContext, getBriefing, getMe, getTriage, listPublished, listQueue, openBrief, reviewBrief, signoffBrief, NotSignedIn,
   getAgentStatus, submitAgentJob, waitAgentJob, agentPlan, agentBrief, getClassification, setViewAs,
   type AgentStatus, type AgentJob, type Classification,
-  type BriefDefinition, type BriefingResult, type Claim, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type ReleaseContext, type RunEvent,
-  type Stage, type TriageDecision, type TriagePlan, type TriageRecord,
+  type BriefDefinition, type BriefingResult, type Claim, type ClaimFlag, type Comparison, type Evidence, type LeadershipBrief, type Me, type PublishedBrief, type QueueRow, type ReleaseContext, type ReviewStatus, type RunEvent,
+  type Stage, type TrailEntry, type TriageDecision, type TriagePlan, type TriageRecord, type ViewAs,
 } from "./agent/briefingApi"
 import {
   addReportRun, askFollowup, askForecast, forecastContext, createReport, draftReport, listReports, openReport, pinFollowup,
@@ -47,12 +47,12 @@ function periodLabel(start: string, end?: string | null): string {
 function labelTime(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString("en-US", {month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZoneName:"short"}) : "—"
 }
-// The server's one-line process summary ends "; reviewed by the analyst." with no date (a UTC date reads a day late in
-// the evening); the date is added here from reviewed_at, in the viewer's own time zone.
+// The server's one-line process summary ends "; reviewed by the analyst." (or "...and signed off by the Insights Manager.") with
+// no date (a UTC date reads a day late in the evening); the date is added here from reviewed_at, in the viewer's own time zone.
 function processLine(line: string, reviewedAt: string | null): string {
   const d = reviewedAt ? new Date(reviewedAt) : null
   if (!d || Number.isNaN(d.getTime())) return line
-  return line.replace(/; reviewed by the analyst\.$/, `; reviewed by the analyst on ${d.toLocaleDateString("en-US", {month:"short",day:"numeric",year:"numeric"})}.`)
+  return line.replace(/(; reviewed by the analyst)( and signed off by the Insights Manager)?\.$/, (_m, a: string, b?: string) => `${a}${b ?? ""} on ${d.toLocaleDateString("en-US", {month:"short",day:"numeric",year:"numeric"})}.`)
 }
 function dataText(input: unknown): string {
   return input === null || input === undefined ? "—" : typeof input === "string" ? input : JSON.stringify(input, null, 2)
@@ -66,19 +66,29 @@ const BTN2 = "inline-flex items-center justify-center gap-2 rounded-lg border bo
 const FIELD = "w-full min-w-0 rounded-lg border border-edge bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-muted disabled:opacity-60"
 const LABEL = "flex flex-col gap-1.5 text-xs font-medium text-muted"
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
-const REVIEW_CHIP = {
-  pending: [`${chip} border-edge text-ink`, "Draft · Awaiting analyst review"],
-  approved: [`${chip} border-ok text-ok`, "Approved · Visible to the Brand Director"],
-  rejected: [`${chip} border-edge text-warn`, "Rejected · Hidden from the Brand Director"],
-} as const
+// brief-005: the two-step sign-off. P1 sends a brief; P2 signs it off or returns it; only then do P3 and P4 see it.
+const REVIEW_CHIP: Record<ReviewStatus, readonly [string, string]> = {
+  draft: [`${chip} border-edge text-ink`, "Draft · Not yet sent for sign-off"],
+  sent: [`${chip} border-edge text-ink`, "Sent · Waiting for the Insights Manager"],
+  signed_off: [`${chip} border-ok text-ok`, "Signed off · Visible to the Brand Director and the Marketer"],
+  returned: [`${chip} border-edge text-warn`, "Returned · The Insights Manager asked for changes"],
+  rejected: [`${chip} border-edge text-warn`, "Rejected · Hidden from the Insights Manager and the leaders"],
+}
+const PERSONA_NAME: Record<string, string> = {P1: "Commercial Analyst", P2: "Insights Manager"}
+const TRAIL_WORD: Record<string, string> = {sent: "sent it for sign-off", returned: "returned it", signed_off: "signed it off", rejected: "rejected it", rerun: "reran it with changes",
+  approved: "approved it (before sign-off existed)"}
 
-function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, selectedId: string, onClose: () => void}) {
+// `flagged`: claims the Insights Manager marked as wrong (the analyst reads them on a returned brief). `marking`: the Insights
+// Manager's own marks while a brief waits for sign-off, by claim index; they leave with the return.
+type Marking = {flags: Record<number, string>, onToggle: (claim: number) => void, onNote: (claim: number, note: string) => void}
+function EvidenceDrawer({result, selectedId, onClose, flagged = [], marking}: {result: BriefingResult, selectedId: string, onClose: () => void, flagged?: ClaimFlag[], marking?: Marking}) {
   const made = (id: string) => producers(result.events, result.claims, id)
   const [id, setId] = useState(selectedId)
   useEffect(() => setId(selectedId), [selectedId])
   const drawer = useRef<HTMLElement>(null)
   useModalFocus(drawer, onClose)
   const claims = result.claims.filter(c=>c.evidence_id===id)
+  const here = result.claims.flatMap((c, i) => c.evidence_id===id ? [{c, i}] : [])
   const selected = result.evidence.find(e=>e.id===id)
   return <div className="fixed inset-0 z-40 flex justify-end">
     <button className="absolute inset-0 bg-black/60" aria-label="Close evidence" onClick={onClose}/>
@@ -96,6 +106,13 @@ function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, 
         {selected && <div className="space-y-4 p-5">
           <div className="rounded-xl bg-paper p-4"><p className="text-xs text-muted">Claim values linked to this record</p><p className="mt-1 font-mono text-sm">{claims.length?claims.map(c=>c.value).join(" · "):"Context only"}</p>
             {made(id).map(e=><p key={e.seq} className="mt-2 text-xs text-muted">Produced by <span className="font-medium text-ink">{e.actor}</span> ({KIND_NAME[e.kind]}) · {e.step}{e.tool ? ` · ${e.tool}` : ""}</p>)}</div>
+          {here.map(({c, i}) => { const flag = flagged.find(f=>f.claim===i); const mine = marking?.flags[i]
+            return flag || marking ? <div key={i} className="space-y-2 rounded-xl border border-rule p-4 text-sm">
+              <p className="font-mono text-xs">{c.value}</p>
+              {flag && <Flag>Flagged by the Insights Manager{flag.note ? `: ${flag.note}` : ""}</Flag>}
+              {marking && <><button type="button" aria-pressed={mine !== undefined} onClick={()=>marking.onToggle(i)} className={BTN2}>{mine !== undefined ? "Remove the flag" : "Flag this number as wrong"}</button>
+                {mine !== undefined && <label className={LABEL}>Note (optional)<input value={mine} maxLength={300} onChange={e=>marking.onNote(i, e.target.value)} className={FIELD}/></label>}</>}
+            </div> : null })}
           <div className="space-y-3 text-sm">
             <dl className="grid grid-cols-[90px_1fr] gap-3"><dt className="text-muted">Tool</dt><dd className="break-all font-mono text-xs">{selected.tool}</dd>
             <dt className="text-muted">Version</dt><dd className="break-all font-mono text-xs">{selected.data_version ?? "Not supplied"}</dd>
@@ -109,22 +126,24 @@ function EvidenceDrawer({result, selectedId, onClose}: {result: BriefingResult, 
   </div>
 }
 
-// The test login switches between the analyst roles (P1, CA) and the leadership roles (P3, BM) of both lanes.
+// The test login switches between the analyst roles (P1, CA), the Insights Manager (P2), the leadership roles (P3, BM) and the
+// Marketer (P4). P2 and P4 exist in Briefing only, so Forecast drops out in those two views.
 // The page reloads after a switch: which app and which Forecast view to show are decided once, from /api/me.
+const VIEW_CHOICES: readonly (readonly [ViewAs, string])[] = [["analyst", "Analyst"], ["insights", "Insights Manager"], ["leadership", "Leadership"], ["marketer", "Marketer"]]
 function ViewAsSwitch({me}: {me: Me}) {
   const [busy,setBusy] = useState(false)
   const change = async (view: string) => {
-    if (busy || view === me.view_as || (view !== "analyst" && view !== "leadership")) return
+    const next = VIEW_CHOICES.find(([v]) => v === view)
+    if (busy || !next || next[0] === me.view_as) return
     setBusy(true)
-    try { await setViewAs(view); window.location.reload() }
+    try { await setViewAs(next[0]); window.location.reload() }
     catch (e) { toast.error(message(e), {duration: Infinity}); setBusy(false) }  // an error stays until it is dismissed
   }
   return <>
     <DropdownMenuSeparator/>
     <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-[0.05em] text-muted">Test view</DropdownMenuLabel>
     <DropdownMenuRadioGroup value={me.view_as ?? "analyst"} onValueChange={v=>void change(v)}>
-      <DropdownMenuRadioItem value="analyst" disabled={busy}>Analyst</DropdownMenuRadioItem>
-      <DropdownMenuRadioItem value="leadership" disabled={busy}>Leadership</DropdownMenuRadioItem>
+      {VIEW_CHOICES.map(([v, text]) => <DropdownMenuRadioItem key={v} value={v} disabled={busy}>{text}</DropdownMenuRadioItem>)}
     </DropdownMenuRadioGroup>
   </>
 }
@@ -654,7 +673,7 @@ function SideNav({me, expanded, forecast, telemetry, briefingBusy, forecastBusy,
     <nav className="mt-2 space-y-1 px-3" aria-label="Workspaces">
       {onBriefing && item("briefcase", "Weekly briefing", !forecast && !telemetry, onBriefing, briefingBusy, news.has("briefing"))}
       {me.lanes.forecast?.available && item("trend", "Forecast explanation", forecast && !telemetry, onForecast, forecastBusy, news.has("forecast"))}
-      {item("clipboard", "Evaluation", telemetry, onTelemetry)}
+      {me.evaluation && item("clipboard", "Evaluation", telemetry, onTelemetry)}
     </nav>
     <div className="mt-auto space-y-2 px-3 pb-4">
       <ShareFeedbackLink expanded={expanded} onOpen={onAnyClick}/>
@@ -743,7 +762,7 @@ function IntroWithHow({introId, children}: {introId?: string, children: ReactNod
 }
 
 function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: boolean}) {
-  const approved = brief.review_status === "approved"  // the footer and the vote speak only for an approved brief
+  const approved = brief.review_status === "signed_off"  // the footer and the vote speak only for a signed-off brief
   return <><article className={`${PANEL} overflow-hidden pa-rise`}>
     <div className="border-b border-rule px-6 py-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted">
@@ -753,7 +772,7 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
       <h2 className="mt-2 text-2xl">{labelTerritory(brief.territory_id)}, {periodLabel(brief.week_start, brief.week_end)}</h2>
       <p className="mt-1.5 text-sm text-muted">{brief.brand_id} · data version {brief.data_version ?? "unavailable"}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {brief.review_status==="approved" ? <span className={`${TAG} border-ok text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Approved by the Commercial Analyst · {labelTime(brief.reviewed_at)}</span> : <span className={`${TAG} border-edge text-ink`}>{REVIEW_CHIP[brief.review_status][1]}</span>}
+        {brief.review_status==="signed_off" ? <span className={`${TAG} border-ok text-ok`}><Icon name="check" className="h-3.5 w-3.5"/>Signed off · {labelTime(brief.reviewed_at)}</span> : <span className={`${TAG} border-edge text-ink`}>{REVIEW_CHIP[brief.review_status][1]}</span>}
         {brief.abstained && <Flag>Unresolved findings</Flag>}
         {!brief.sections?.length && <span className={`${TAG} border-edge text-muted`} title="Saved before the memo layout, so it appears as plain text.">Earlier format</span>}
       </div>
@@ -761,8 +780,8 @@ function SummaryCard({brief, preview=false}: {brief: LeadershipBrief, preview?: 
     </div>
     <div className="px-6 py-6">{brief.sections?.length ? <Memo sections={brief.sections} briefId={brief.brief_id} definition={brief.definition} labelWeek={labelWeek}/> : <pre className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink">{longDates(brief.summary)}</pre>}</div>
     <div className="border-t border-rule px-6 py-4 text-xs text-muted">{approved
-      ? "Every figure comes from the approved analyst brief. Evidence and source queries stay with the Commercial Analyst."
-      : "This brief is a draft and has not been approved by the Commercial Analyst yet. Its figures can change before it is approved. Evidence and source queries stay with the Commercial Analyst."}</div>
+      ? "Every figure comes from the signed-off brief. Evidence and source queries stay with the analytics team."
+      : "This brief has not been signed off by the Insights Manager yet. Its figures can change before it is. Evidence and source queries stay with the analytics team."}</div>
   </article>
   {approved && <AnswerFeedback lane="briefing" refId={brief.brief_id} view="leadership" agent={brief.engine==="agent"}/>}</>
 }
@@ -811,36 +830,126 @@ function PublishedList({onOpen}: {onOpen: (id: string) => void}) {
   const {items, error, isNew} = useApprovedList<PublishedBrief>("briefing", true, listPublished, b=>b.reviewed_at)
   if (error) return <Notice tone="error" role="alert">{error}</Notice>
   if (!items) return <ListSkeleton/>
-  if (!items.length) return <p className="text-sm text-muted">No approved briefings yet. A briefing appears here once the Commercial Analyst approves it.</p>
+  if (!items.length) return <p className="text-sm text-muted">No signed-off briefings yet. A briefing appears here once the Insights Manager signs it off.</p>
   return <ul className={`${PANEL} pa-stagger divide-y divide-rule`}>{items.map(b=><li key={b.brief_id}><button onClick={()=>onOpen(b.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
-    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{isNew(b) && <><span className="font-semibold text-primaryink">New</span> · </>}Approved {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
+    <span className="min-w-0"><span className="block text-sm">{b.brand_id} · {labelTerritory(b.territory_id)}, {periodLabel(b.week_start, b.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{isNew(b) && <><span className="font-semibold text-primaryink">New</span> · </>}Signed off {labelTime(b.reviewed_at)}{b.abstained ? " · unresolved findings" : ""}</span></span>
     <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul>
 }
 
-function ReviewPanel({result, onChange}: {result: BriefingResult, onChange: (r: BriefingResult) => void}) {
-  const news = useApprovedNews()
+// The audit trail of a brief: every send, return and sign-off, with the comment and the flags kept (brief-005).
+function ReviewHistory({trail}: {trail: TrailEntry[] | undefined}) {
+  if (!trail?.length) return null
+  return <details className="mt-4 text-xs">
+    <summary className="cursor-pointer font-medium text-muted">Review history ({trail.length})</summary>
+    <ol className="mt-2 space-y-2">{trail.map((e, i) => <li key={i} className="border-l border-rule pl-3">
+      <p><span className="font-medium text-ink">{PERSONA_NAME[e.persona] ?? e.persona}</span> {TRAIL_WORD[e.action] ?? e.action} · <span className="text-muted">{labelTime(e.at)}</span></p>
+      {e.comment && <p className="mt-0.5 text-ink">“{e.comment}”</p>}
+      {!!e.flags?.length && <ul className="mt-0.5 list-disc pl-4 text-muted">{e.flags.map(f=><li key={f.claim}><span className="font-mono text-ink">{f.value}</span>{f.note ? ` · ${f.note}` : " · flagged as wrong"}</li>)}</ul>}
+    </li>)}</ol>
+  </details>
+}
+
+// P1: send the brief for sign-off, or reject it. Once the Insights Manager has signed it off it is frozen.
+function ReviewPanel({result, onChange, onOpen}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onOpen: (evidenceId: string) => void}) {
   const [reason,setReason] = useState("")
   const [rejecting,setRejecting] = useState(false)
   const [busy,setBusy] = useState(false)
   const [error,setError] = useState<string | null>(null)
-  const decide = async (decision: "approved" | "rejected") => {
+  const state = result.review_status
+  const decide = async (decision: "sent" | "rejected") => {
     setBusy(true); setError(null)
-    try { const r = await reviewBrief(result.brief_id, decision, reason); if (decision==="approved") news.markOwn("briefing", r.reviewed_at); onChange(r); setRejecting(false); setReason(""); toast.success(decision==="approved" ? "Approved. The Brand Director can now open it." : "Rejected. It stays hidden from the Brand Director.") }
+    try { const r = await reviewBrief(result.brief_id, decision, reason); onChange(r); setRejecting(false); setReason(""); toast.success(decision==="sent" ? "Sent for sign-off. The Insights Manager can now open it." : "Rejected. It stays hidden from everyone but you.") }
     catch(e) { setError(message(e)) } finally { setBusy(false) }
   }
+  const status: Record<ReviewStatus, string> = {
+    draft: "The Insights Manager sees this briefing only after you send it for sign-off; the Brand Director and the Marketer only after they have signed it off.",
+    sent: `Sent for sign-off ${labelTime(result.reviewed_at)}. Waiting for the Insights Manager.`,
+    returned: `Returned by the Insights Manager ${labelTime(result.returned?.at ?? null)}. Read their comment, rerun the briefing if you change it, then send it again.`,
+    signed_off: `Signed off ${labelTime(result.signed_off_at ?? result.reviewed_at)}. It is frozen: the Brand Director and the Marketer read it as it is.`,
+    rejected: `Rejected ${labelTime(result.reviewed_at)}${result.review_reason ? ` · “${result.review_reason}”` : ""}. You can still send it for sign-off.`,
+  }
+  const note = result.returned
   return <section className="border-t border-rule px-6 py-5">
     <h3 className="text-sm font-semibold">Your review</h3>
-    <p className="mt-1 text-xs text-muted">{result.review_status==="pending" ? "The Brand Director sees this briefing only after you approve it." : `${result.review_status==="approved"?"Approved":"Rejected"} ${labelTime(result.reviewed_at)}${result.review_reason?` · “${result.review_reason}”`:""}. You can change your decision.`}</p>
-    {rejecting ? <div className="mt-3 space-y-2">
+    <p className="mt-1 text-xs text-muted">{status[state]}</p>
+    {note && <Notice tone="warn" title="Returned by the Insights Manager" className="mt-3">
+      {note.comment && <p className="mt-1">{note.comment}</p>}
+      {!!note.flags?.length && <ul className="mt-2 space-y-1.5">{note.flags.map(f=><li key={f.claim} className="text-xs"><button type="button" onClick={()=>onOpen(f.evidence_id)} className="font-mono font-medium text-primaryink underline underline-offset-4">{f.value}</button>{f.note ? ` · ${f.note}` : " · flagged as wrong"}</li>)}</ul>}
+    </Notice>}
+    {state !== "signed_off" && (rejecting ? <div className="mt-3 space-y-2">
       <label className="block text-xs font-medium text-muted" htmlFor="reject-reason">Reason for rejecting (required)</label>
       <textarea id="reject-reason" value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} rows={2} className={FIELD}/>
       <div className="flex justify-end gap-2"><button onClick={()=>setRejecting(false)} className={BTN2}>Cancel</button><button disabled={busy || !reason.trim()} onClick={()=>void decide("rejected")} className={`${BTN2} border-neg text-neg! hover:bg-paper`}>Reject briefing</button></div>
     </div> : <div className="mt-3 flex flex-wrap justify-end gap-2">
-      <button disabled={busy || result.review_status==="rejected"} onClick={()=>setRejecting(true)} className={`${BTN2} text-neg!`}>Reject…</button>
-      <button disabled={busy || result.review_status==="approved"} onClick={()=>void decide("approved")} className={BTN}>Approve for the Brand Director</button>
-    </div>}
+      <button disabled={busy || state==="rejected"} onClick={()=>setRejecting(true)} className={`${BTN2} text-neg!`}>Reject…</button>
+      <button disabled={busy || state==="sent"} onClick={()=>void decide("sent")} className={BTN}>{state==="returned" ? "Send for sign-off again" : "Send for sign-off"}</button>
+    </div>)}
     {error && <p role="alert" className="mt-2 text-xs text-neg">{error}</p>}
+    <ReviewHistory trail={result.review_trail}/>
   </section>
+}
+
+// P2: sign a brief off, or return it to the analyst with a comment and, if wanted, flags on single numbers. The flags are
+// picked in the evidence drawer (click a number); they are sent with the return and stay in the brief's trail.
+function SignoffPanel({result, flags, onChange}: {result: BriefingResult, flags: Record<number, string>, onChange: (r: BriefingResult) => void}) {
+  const [comment,setComment] = useState("")
+  const [busy,setBusy] = useState(false)
+  const [error,setError] = useState<string | null>(null)
+  const state = result.review_status
+  const marked = Object.keys(flags).map(Number).sort((a, b) => a - b)
+  const decide = async (decision: "signed_off" | "returned") => {
+    setBusy(true); setError(null)
+    try {
+      const r = await signoffBrief(result.brief_id, decision, comment, decision === "returned" ? marked.map(i => ({claim: i, note: flags[i].trim() || null})) : [])
+      onChange(r); setComment("")
+      toast.success(decision === "signed_off" ? "Signed off. The Brand Director and the Marketer can now open it." : "Returned to the Commercial Analyst with your comment.")
+    } catch(e) { setError(message(e)) } finally { setBusy(false) }
+  }
+  const done: Partial<Record<ReviewStatus, string>> = {
+    signed_off: `Signed off ${labelTime(result.signed_off_at ?? result.reviewed_at)}. It is frozen: the Brand Director and the Marketer read it as it is.`,
+    returned: `Returned ${labelTime(result.returned?.at ?? null)}. The Commercial Analyst reruns it and sends it again.`,
+  }
+  return <section className="border-t border-rule px-6 py-5">
+    <h3 className="text-sm font-semibold">Your sign-off</h3>
+    {state !== "sent" ? <p className="mt-1 text-xs text-muted">{done[state] ?? "This briefing is not waiting for sign-off."}</p> : <>
+      <p className="mt-1 text-xs text-muted">The Brand Director and the Marketer see this briefing only after you sign it off. To mark a number as wrong, click it and choose “Flag this number as wrong”.</p>
+      {!!marked.length && <ul className="mt-3 space-y-1 text-sm" aria-label="Numbers you flagged">{marked.map(i => <li key={i}><Flag><span className="font-mono">{result.claims[i]?.value}</span>{flags[i].trim() ? ` · ${flags[i].trim()}` : " · flagged as wrong"}</Flag></li>)}</ul>}
+      <label className={`${LABEL} mt-3`}>Comment (needed to return it)<textarea value={comment} onChange={e=>setComment(e.target.value)} maxLength={1000} rows={3} className={`${FIELD} mt-0.5`}/></label>
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <button disabled={busy || !comment.trim()} onClick={()=>void decide("returned")} className={BTN2}>Return to the analyst</button>
+        <button disabled={busy} onClick={()=>void decide("signed_off")} className={BTN}>Sign off</button>
+      </div>
+    </>}
+    {error && <p role="alert" className="mt-2 text-xs text-neg">{error}</p>}
+    <ReviewHistory trail={result.review_trail}/>
+  </section>
+}
+
+// The sign-off queue: for the Insights Manager the briefs waiting for them, returned and signed off; for the analyst the
+// ones out for sign-off and the ones returned to them (nothing is shown when there are none).
+function QueueList({mode, onOpen}: {mode: "analyst" | "insights", onOpen: (id: string) => void}) {
+  const [rows,setRows] = useState<QueueRow[] | null>(null)
+  const [error,setError] = useState<string | null>(null)
+  useEffect(()=>{
+    let live = true
+    listQueue().then(r=>{ if (live) setRows(r) }).catch(e=>{ if (live) setError(message(e)) })
+    return ()=>{ live = false }
+  },[])
+  if (error) return <Notice tone="error" role="alert">{error}</Notice>
+  if (!rows) return <ListSkeleton/>
+  const groups: [QueueRow["review_status"], string, string][] = mode === "insights"
+    ? [["sent", "Waiting for your sign-off", "Nothing is waiting for your sign-off."], ["returned", "Returned to the analyst", "Nothing you returned is waiting for a rerun."], ["signed_off", "Signed off", "Nothing signed off yet on this data release."]]
+    : [["returned", "Returned to you", ""], ["sent", "Out for sign-off", ""]]
+  const when = (r: QueueRow) => r.review_status === "signed_off" ? `Signed off ${labelTime(r.signed_off_at)}` : r.review_status === "returned" ? `Returned ${labelTime(r.returned_at)}${mode === "analyst" ? " · open it to read the comment" : ""}` : `Sent ${labelTime(r.sent_at)}`
+  const shown = groups.filter(([k,, empty]) => rows.some(r=>r.review_status===k) || empty)
+  if (!shown.length) return null
+  return <div className="space-y-6">{shown.map(([k, title, empty]) => { const list = rows.filter(r=>r.review_status===k)
+    return <section key={k}><h3 className="text-sm font-semibold">{title}</h3>
+      {list.length ? <ul className={`${PANEL} pa-stagger mt-2 divide-y divide-rule`}>{list.map(r=><li key={r.brief_id}><button onClick={()=>onOpen(r.brief_id)} className="group flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left transition-colors hover:bg-paper/60">
+        <span className="min-w-0"><span className="block text-sm">{r.brand_id} · {labelTerritory(r.territory_id)}, {periodLabel(r.week_start, r.week_end)}</span><span className="mt-0.5 block text-xs text-muted">{when(r)}{r.abstained ? " · unresolved findings" : ""}</span></span>
+        <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primaryink"/></button></li>)}</ul>
+        : <p className="mt-2 text-sm text-muted">{empty}</p>}
+    </section> })}</div>
 }
 
 // brief-002 US8: the code triage plan, reviewed by the analyst before stage 4 runs.
@@ -939,8 +1048,13 @@ function CitedText({result, onOpen}: {result: BriefingResult, onOpen: (evidenceI
 // brief-009: story id to its card title, from the triage record, so the timeline names a story the way the memo does.
 const storyTitles = (r: BriefingResult): Record<string, string> => Object.fromEntries((r.triage?.calls ?? []).map(c=>[c.story, c.title]))
 
-function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = true, onStartNew}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null, stepsFolded?: boolean, onStartNew?: () => void}) {
+// `reviewer`: who is reading. "analyst" (P1) reviews and sends; "insights" (P2) reads the same view read-only and signs off or returns.
+function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = true, onStartNew, reviewer = "analyst"}: {result: BriefingResult, onChange: (r: BriefingResult) => void, onAsk?: (c: Chip) => void, openEvidence?: {id: string} | null, stepsFolded?: boolean, onStartNew?: () => void, reviewer?: "analyst" | "insights"}) {
   const [evidenceId,setEvidenceId] = useState<string | null>(null)
+  const [flags,setFlags] = useState<Record<number, string>>({})  // P2's marks on single numbers, by claim index; sent with a return
+  useEffect(()=>setFlags({}),[result.brief_id, result.review_status])
+  const marking: Marking | undefined = reviewer === "insights" && result.review_status === "sent"
+    ? {flags, onToggle: i=>setFlags(f=>{ const n = {...f}; if (i in n) delete n[i]; else n[i] = ""; return n }), onNote: (i,note)=>setFlags(f=>({...f, [i]: note}))} : undefined
   useEffect(()=>{ if(openEvidence) setEvidenceId(openEvidence.id) },[openEvidence])
   const [mode,setMode] = useState<"analyst" | "leadership">("analyst")
   const [preview,setPreview] = useState<LeadershipBrief | null>(null)
@@ -959,7 +1073,7 @@ function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = true
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs text-muted"><span>{result.engine==="agent" ? "Agent team · experimental" : "Scripted"}</span><ClassLabel tab="briefing.view.analyst"/></div>
         <h2 className="mt-2 text-2xl">{labelTerritory(result.territory_id)} · {result.question.startsWith("Promotion review in ") ? "Promotion review" : result.week_end && result.week_end > result.week_start ? `weeks ${labelWeek(result.week_start)} to ${labelWeek(result.week_end)}` : `week of ${labelWeek(result.week_start)}`}</h2>
         <p className="mt-1.5 text-sm text-muted">{result.brand_id}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="approved" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <Flag>Unresolved findings</Flag>}</div>
+        <div className="mt-3 flex flex-wrap items-center gap-2"><span key={result.review_status} className={`${REVIEW_CHIP[result.review_status][0]} inline-flex items-center gap-1 pa-fade`}>{result.review_status==="signed_off" && <svg viewBox="0 0 24 24" className="pa-draw h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>}{REVIEW_CHIP[result.review_status][1]}</span>{result.abstained && <Flag>Unresolved findings</Flag>}</div>
       </div>
       <div className="px-6 py-6">{result.sections?.length ? <Memo sections={result.sections} briefId={result.brief_id} claims={result.claims} evidence={result.evidence} onOpen={setEvidenceId} onAsk={onAsk} definition={result.definition} labelWeek={labelWeek}/> : <div className="max-w-[68ch] whitespace-pre-wrap break-words font-sans text-[16px] leading-[1.65] text-ink"><CitedText result={result} onOpen={setEvidenceId}/></div>}
         <p className="mt-4 text-[11px] text-muted">Each underlined number is a claim: click it, or its source number, to open the query and record behind it.</p></div>
@@ -967,11 +1081,11 @@ function AnalystBrief({result, onChange, onAsk, openEvidence, stepsFolded = true
         {result.evidence.length>0 ? <button className="flex items-center gap-2 text-xs font-medium text-primaryink underline-offset-4 hover:underline" onClick={()=>setEvidenceId(result.evidence[0].id)}><Icon name="evidence"/>All {result.evidence.length} sources ({result.claims.length} numbers)</button> : <span className="text-xs text-muted">No numeric claims in this brief.</span>}
         <span className="rounded bg-sheet px-2 py-1 font-mono text-[11px] text-muted border border-rule" title="Pinned data version">{result.data_version??"Version unavailable"}</span>
       </section>
-      <ReviewPanel result={result} onChange={onChange}/>
+      {reviewer === "insights" ? <SignoffPanel result={result} flags={flags} onChange={onChange}/> : <ReviewPanel result={result} onChange={onChange} onOpen={setEvidenceId}/>}
     </article>}
     {mode==="analyst" && <AnswerFeedback lane="briefing" refId={result.brief_id} view="analyst" agent={result.engine==="agent"}/>}
     {mode==="analyst" && (result.events?.length ? <Timeline key={result.brief_id} events={result.events} claims={result.claims} titles={storyTitles(result)} onOpenSource={setEvidenceId} collapsed={stepsFolded}/> : result.flow && <FlowPanel flow={result.flow} triage={result.triage}/>)}
-    {evidenceId && <EvidenceDrawer result={result} selectedId={evidenceId} onClose={()=>setEvidenceId(null)}/>}
+    {evidenceId && <EvidenceDrawer result={result} selectedId={evidenceId} onClose={()=>setEvidenceId(null)} flagged={result.returned?.flags ?? []} marking={marking}/>}
   </>
 }
 
@@ -1180,7 +1294,7 @@ function AnalystApp({me}: {me: Me}) {
     {contextError && <div className="workspace-content py-4"><Notice tone="error" role="alert">{contextError}<button className="ml-2 underline" onClick={()=>void refresh()}>Retry connection</button></Notice></div>}
     {runLine && <div role="status" className="workspace-content pa-noprint pb-1 text-sm text-muted">{runLine.text} · <button type="button" className="text-primaryink hover:underline" onClick={()=>setView(runView!)}>{runLine.go}</button></div>}
     <div role="tabpanel" id="briefing-panel" aria-labelledby={`briefing-panel-tab-${tab}`}>{context && !context.product_ids.length ? <div className="workspace-content py-8"><h2 className="text-xl">No brand access</h2><p className="mt-2 text-sm text-muted">Your account has no authorized Briefing brands. Ask the project owner to assign brand access, then sign out and sign in again.</p></div> : view==="overview" ? brand && <><h2 className="sr-only">Overview</h2><Overview key={brand} brand={brand} week={week} onWeek={w=>{setWeek(w);setWeekEnd(w)}} weeks={context?.available_weeks ?? []} onGenerate={(t,w)=>{clearQuestion();setTerritory(t);setWeek(w);setWeekEnd(w);setView("home")}}/></> : view==="home" ? <div key="home" className="workspace-content pa-stagger space-y-5 py-8">
-      <IntroWithHow introId="new-briefing-intro">Generate the week's brand-performance briefing, check its evidence, and approve it for the Brand Director.</IntroWithHow>
+      <IntroWithHow introId="new-briefing-intro">Generate the week's brand-performance briefing, check its evidence, and send it to the Insights Manager for sign-off.</IntroWithHow>
 
       <form onSubmit={submit} className={`${PANEL} space-y-6 p-6`} aria-busy={loadingContext}>
         <h2 className="sr-only">New briefing</h2>
@@ -1219,7 +1333,7 @@ function AnalystApp({me}: {me: Me}) {
       {openedLoading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
       {openedError && <Notice tone="error" role="alert">{openedError}</Notice>}
       {opened && <AnalystBrief stepsFolded onStartNew={startNew} result={opened} onChange={r=>setOpened(cur=>cur?.brief_id===r.brief_id?r:cur)} onAsk={setChip} openEvidence={barEvidence}/>}
-    </> : <><p className="text-sm text-muted">What the Brand Director can open, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></>}</div>
+    </> : <><QueueList mode="analyst" onOpen={id=>void openApproved(id)}/><p className="text-sm text-muted">What the Brand Director and the Marketer can open: briefings the Insights Manager has signed off, on the current data release.</p><PublishedList onOpen={id=>void openApproved(id)}/></>}</div>
     : <div className="workspace-content space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button ref={scopeBack} className="flex items-center gap-1.5 text-sm text-primaryink hover:underline" onClick={()=>{ setView("home"); if (!pending) setRunView(null) }}><Icon name="back"/>Change scope</button>
@@ -1253,11 +1367,38 @@ function LeaderApp({me}: {me: Me}) {
   return <Shell me={me} onBriefingHome={()=>{setBrief(null);setError(null)}}>
     <div className="workspace-content space-y-6 py-8 sm:py-10">
       {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : brief || loading || error ? <>
-        <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All approved briefings</button>
+        <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={()=>{setBrief(null);setError(null)}}><Icon name="back"/>All signed-off briefings</button>
         {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
         {error && <Notice tone="error" role="alert">{error}</Notice>}
         {brief && <SummaryCard brief={brief}/>}
-      </> : <><Greeting/><IntroWithHow>Executive summaries the Commercial Analyst has reviewed and approved.</IntroWithHow><PublishedList onOpen={id=>void open(id)}/></>}
+      </> : <><Greeting/><IntroWithHow>Executive summaries the Commercial Analyst has reviewed and the Insights Manager has signed off.</IntroWithHow><PublishedList onOpen={id=>void open(id)}/></>}
+    </div>
+  </Shell>
+}
+
+// P2 (Insights Manager): the briefs sent for sign-off. Each opens in the analyst's full view, read-only, with a sign-off panel.
+function InsightsApp({me}: {me: Me}) {
+  const [opened,setOpened] = useState<BriefingResult | null>(null)
+  const [loading,setLoading] = useState(false)
+  const [error,setError] = useState<string | null>(null)
+  const token = useRef(0)
+  const open = async (id: string) => {
+    const t = ++token.current
+    setOpened(null); setError(null); setLoading(true)
+    try { const b = await openBrief(id, "analyst"); if (t === token.current) setOpened(b) }
+    catch(e) { if (t === token.current) setError(message(e)) } finally { if (t === token.current) setLoading(false) }
+  }
+  const close = () => { token.current++; setOpened(null); setError(null); setLoading(false) }
+  return <Shell me={me} onBriefingHome={close}>
+    <div className="workspace-content space-y-6 py-8 sm:py-10">
+      {!me.brand_ids.length ? <><h2 className="text-xl">No brand access</h2><p className="text-sm text-muted">Ask the project owner to assign brand access, then sign out and sign in again.</p></> : opened || loading || error ? <>
+        <button className="flex items-center gap-2 text-sm text-primaryink hover:underline" onClick={close}><Icon name="back"/>All briefings</button>
+        {loading && <p role="status" className="text-sm text-muted">Opening the briefing…</p>}
+        {error && <Notice tone="error" role="alert">{error}</Notice>}
+        {opened && <AnalystBrief reviewer="insights" stepsFolded result={opened} onChange={setOpened}/>}
+      </> : <><Greeting/><IntroWithHow>Briefings the Commercial Analyst has sent you. Read the evidence, then sign a briefing off for the Brand Director and the Marketer, or return it with a comment.</IntroWithHow>
+        <div className="flex justify-end"><ClassLabel tab="briefing.signoff"/></div>
+        <QueueList mode="insights" onOpen={id=>void open(id)}/></>}
     </div>
   </Shell>
 }
@@ -1279,5 +1420,5 @@ export default function App() {
       <a className="mt-5 inline-block text-sm font-medium text-primaryink hover:underline" href="/auth/logout">Sign out</a>
     </Centered>
   }
-  return <ApprovedNewsProvider me={me}>{briefing.actions.includes("run") ? <AnalystApp me={me}/> : <LeaderApp me={me}/>}</ApprovedNewsProvider>
+  return <ApprovedNewsProvider me={me}>{briefing.actions.includes("run") ? <AnalystApp me={me}/> : briefing.actions.includes("signoff") ? <InsightsApp me={me}/> : <LeaderApp me={me}/>}</ApprovedNewsProvider>
 }
