@@ -4,8 +4,10 @@ One app image (Meghna's UI and the Briefing API on one origin, scripted engine o
 
 | Role (Keycloak realm role) | Persona | Sees |
 | :- | :- | :- |
-| `briefing-analyst` | P1 Commercial Analyst | Full brief with claims and evidence; approves or rejects; can preview the leadership view |
-| `briefing-director` | P3 Brand Director | Executive summary only, of briefs the analyst approved |
+| `briefing-analyst` | P1 Commercial Analyst | Full brief with claims and evidence; runs briefs, **sends them for sign-off** or rejects them; reads what P2 returned; can preview the leadership view |
+| `briefing-insights` | P2 Insights Manager | The analyst's full view of briefs sent for sign-off, read-only (evidence, SQL, triage plan, agent timeline); **signs off** or **returns** them (a comment is required; single claims can be flagged). Does not run briefs |
+| `briefing-director` | P3 Brand Director | Executive summary only, of signed-off briefs |
+| `briefing-marketer` | P4 Marketer | The same executive summary as P3 for now (no evidence, no SQL), of signed-off briefs; marketer-specific content comes later |
 | `forecast-analyst` | CA Commercial Analytics Analyst | "Not available yet" (reserved; Alvin and Sienna confirm) |
 | `forecast-manager` | BM Brand Manager | "Not available yet" (reserved; Alvin and Sienna confirm) |
 
@@ -18,15 +20,21 @@ uv run python deploy/make_env.py     # once: random service secrets + tracked de
 docker compose up --build            # Keycloak on :8081, app on :8080
 ```
 
-Open http://localhost:8080 and sign in with one of the shared logins below. Their passwords are in [`demo-credentials.env`](demo-credentials.env), which is tracked on purpose (toy project, synthetic data); `make_env.py` copies them into `.env.uat` and prints them, replacing any older local values. `.env.uat` remains git-ignored because it also holds local service secrets. Keycloak's admin console is not used: accounts and roles are configuration, reloaded at every start.
+Open http://localhost:8080 and sign in with one of the seven shared logins below. Their passwords are in [`demo-credentials.env`](demo-credentials.env), which is tracked on purpose (toy project, synthetic data); `make_env.py` copies them into `.env.uat` and prints them, replacing any older local values. `.env.uat` remains git-ignored because it also holds local service secrets. Keycloak's admin console is not used: accounts and roles are configuration, reloaded at every start.
 
 | Sign-in account | Role(s) | Password line in `demo-credentials.env` |
 | :- | :- | :- |
 | `uat-briefing-analyst` | Commercial Analyst (P1) | `UAT_PASSWORD_BRIEFING_ANALYST` |
+| `uat-briefing-insights` | Insights Manager (P2) | `UAT_PASSWORD_BRIEFING_INSIGHTS` |
 | `uat-briefing-director` | Brand Director (P3) | `UAT_PASSWORD_BRIEFING_DIRECTOR` |
+| `uat-briefing-marketer` | Marketer (P4) | `UAT_PASSWORD_BRIEFING_MARKETER` |
 | `uat-forecast-analyst` | Commercial Analytics Analyst (CA) | `UAT_PASSWORD_FORECAST_ANALYST` |
 | `uat-forecast-manager` | Brand Manager (BM) | `UAT_PASSWORD_FORECAST_MANAGER` |
-| `uat-tester` | Test view: realm role `tester`. Switches ("View as") between the analyst roles (P1, CA) and the leadership roles (P3, BM) of both lanes; `dev-tester` in development | `UAT_PASSWORD_TESTER` |
+| `uat-tester` | Test view: realm role `tester`. Switches ("View as") between the analyst roles (P1, CA), the Insights Manager (P2), the leadership roles (P3, BM) and the Marketer (P4); Forecast drops out in the P2 and P4 views; `dev-tester` in development | `UAT_PASSWORD_TESTER` |
+
+Brand grants (core-010): the four Briefing logins and `uat-tester` hold `brand-bxa` and `brand-bxc`; the two Forecast logins hold `brand-bxa` only (Forecast is BXA-only). The dev stand-ins mirror this: `dev-analyst`, `dev-insights`, `dev-director`, `dev-marketer`, `dev-forecast-analyst`, `dev-forecast-manager`, `dev-tester`.
+
+**Two-step sign-off (brief-005).** P1 reviews and clicks **Send for sign-off**; P2 **signs off** or **returns** the brief with a comment (and flags on single claims); only a signed-off brief reaches P3 and P4, and a signed-off brief is frozen. A brief approved before sign-off existed counts as signed off, so no list empties; stored records are never rewritten. The sign-off queue is `GET /api/briefing/queue`; the decisions are `POST /api/briefing/{id}/review` (P1: `sent` or `rejected`) and `POST /api/briefing/{id}/signoff` (P2: `signed_off` or `returned`). The **Evaluation page** is closed to P3 and P4 (the server answers 403); the Forecast lane keeps it for CA and BM as before.
 
 Without Keycloak: `docker run --rm -p 8080:8080 -e PHARMAGENTICS_AUTH=dev pharmagentics:uat` gives a page of stand-in identities, one per role. Dev sign-in refuses to start on Cloud Run.
 
@@ -47,7 +55,7 @@ uv run python deploy/gcp.py status   --project <new-project-id>
 
 **Rollback.** `uv run python deploy/gcp.py rollback --project <id>` puts all traffic on the previous revision (no rebuild). `--service keycloak` does the same for Keycloak.
 
-**Adding a UAT participant.** Add a user to the realm file with `"value": "${UAT_PASSWORD_<NAME>}"` and one realm role, add `UAT_PASSWORD_<NAME>=...` to `deploy/.env.uat`, then run `deploy/gcp.py env-push` and `deploy/gcp.py keycloak`. The deploy refuses a placeholder with no value. Only the five deliberately public toy-project logins in `demo-credentials.env` are versioned; never commit service or administrator secrets.
+**Adding a UAT participant.** Add a user to the realm file with `"value": "${UAT_PASSWORD_<NAME>}"` and one realm role, add `UAT_PASSWORD_<NAME>=...` to `deploy/.env.uat`, then run `deploy/gcp.py env-push` and `deploy/gcp.py keycloak`. The deploy refuses a placeholder with no value. Only the seven deliberately public toy-project logins in `demo-credentials.env` are versioned; never commit service or administrator secrets.
 
 ## Team access (FR-029, FR-030)
 
@@ -101,7 +109,7 @@ The token comes from `PHARMAGENTICS_WORKER_TOKEN` in `deploy/.env.uat` (also a s
 
 ## Evaluation page and MLflow
 
-The app's **Evaluation** page (all five logins, each seeing only their own lanes) shows two things, as aggregates only:
+The app's **Evaluation** page (every login except the Brand Director and the Marketer, each seeing only their own lanes; leader roles get no per-case table) shows two things, as aggregates only:
 
 - **In use:** requests per week, scripted response time and agent time to result (median, p95), review decisions, answer votes, session ratings, the usability score (SUS from the first questionnaire, UMUX-Lite's SUS-equivalent from the current one) and the cloud agent budget. Computed from the bucket's events, jobs and feedback, refreshed every 5 minutes. The test login is left out and only counted.
 - **Golden-set scores:** the latest run of each system and control, from the local MLflow store. The image never holds `eval/`, so the scores travel as a snapshot.

@@ -84,22 +84,75 @@ def test_usage_counts_the_shared_tester_login_and_says_how_much_came_from_it():
     assert "participants" not in u and u["tester_records"] == 4 and u["sessions"]["bad"] == 1
 
 
+def test_review_outcomes_count_briefs_not_approval_events():
+    """UAT review 6.2: three approval events on one brief are one brief, and under ten briefs there is no rate."""
+    ev = [event("reviewed", f"2026-11-18T11:0{i}:00+00:00", "u-p1", decision="approved", brief_id="b1") for i in range(3)]
+    one = telemetry.review_outcomes(ev)
+    assert one == {"briefs": 1, "approved": 1, "rejected": 0, "min_briefs": 10, "enough": False, "approved_pct": None, "label": "too few to rate"}
+    ev += [event("reviewed", "2026-11-18T12:00:00+00:00", "u-p1", decision="rejected", brief_id="b1")]  # a later change of mind stands
+    assert telemetry.review_outcomes(ev)["approved"] == 0 and telemetry.review_outcomes(ev)["rejected"] == 1
+    many = [event("reviewed", f"2026-11-19T10:{i:02d}:00+00:00", "u-p1", decision="approved" if i < 7 else "rejected", brief_id=f"b{i}")
+            for i in range(10)]
+    ten = telemetry.review_outcomes(many)
+    assert (ten["briefs"], ten["approved"], ten["rejected"], ten["enough"], ten["approved_pct"], ten["label"]) == (10, 7, 3, True, 70, None)
+    assert telemetry.review_outcomes([event("reviewed", "2026-11-19T10:00:00+00:00", "u-p1", decision="approved")])["briefs"] == 0
+
+
+def test_usage_carries_the_review_outcomes_for_the_briefing_lane_only():
+    ev = [event("reviewed", "2026-11-18T11:00:00+00:00", "u-p1", decision="approved", brief_id="b1"),
+          event("reviewed", "2026-11-18T11:05:00+00:00", "u-p1", decision="approved", brief_id="b1")]
+    lanes = telemetry.summarize_usage(ev, [], [], [], [], feedback.questionnaire())["lanes"]
+    assert lanes["briefing"]["decisions"] == {"approved": 2}  # event counts stay as they were
+    assert lanes["briefing"]["review"]["briefs"] == 1 and lanes["briefing"]["review"]["label"] == "too few to rate"
+    assert "review" not in lanes["forecast"]
+
+
 def test_usage_endpoint_shows_only_the_signed_in_lanes_and_no_person():
     p1 = rbac.pseudonym("dev-analyst")
     store.record_event("requested", user=p1, role="briefing-analyst", persona="P1", engine="scripted", latency_ms=800)
     store.record_event("forecast_run", user=rbac.pseudonym("dev-forecast-analyst"), role="forecast-analyst", persona="CA")
     assert signed_in("dev-tester").post("/api/feedback/pulse", json={"rating": "bad", "where": "briefing"}).status_code == 200
 
-    director = signed_in("dev-director").get("/api/telemetry/usage")
-    assert director.status_code == 200 and director.headers["cache-control"] == "no-store"
-    body = director.json()
+    insights = signed_in("dev-insights").get("/api/telemetry/usage")
+    assert insights.status_code == 200 and insights.headers["cache-control"] == "no-store"
+    body = insights.json()
     assert set(body["lanes"]) == {"briefing"} and body["lanes"]["briefing"]["requests"] == 1
     assert body["sessions"] == {**{r: 0 for r in feedback.RATINGS}, "bad": 1}  # the shared tester login counts
     assert p1 not in json.dumps(body)
 
-    assert set(signed_in("dev-forecast-manager").get("/api/telemetry/usage").json()["lanes"]) == {"forecast"}
+    assert set(signed_in("dev-forecast-analyst").get("/api/telemetry/usage").json()["lanes"]) == {"forecast"}
     assert signed_in("dev-norole").get("/api/telemetry/usage").status_code == 403
     assert TestClient(app).get("/api/telemetry/usage").status_code == 401
+
+
+@pytest.mark.parametrize("user,code", [("dev-analyst", 200), ("dev-insights", 200), ("dev-forecast-analyst", 200), ("dev-tester", 200),
+                                       ("dev-forecast-manager", 200), ("dev-director", 403), ("dev-marketer", 403), ("dev-norole", 403)])
+def test_the_evaluation_page_is_closed_to_the_briefing_leaders_only(user, code):
+    """Michael, 2026-11-27 (Q17): not the Director or the Marketer; the server refuses, not just the nav. The Forecast
+    lane's access is unchanged (BM keeps the page; Forecast is Alvin and Sienna's)."""
+    c = signed_in(user)
+    assert c.get("/api/telemetry").status_code == code and c.get("/api/telemetry/usage").status_code == code
+    if user != "dev-norole":
+        assert c.get("/api/me").json()["evaluation"] is (code == 200)
+
+
+def test_the_tester_keeps_the_page_in_every_view_and_loses_it_never():
+    c = signed_in("dev-tester")
+    for view in ("analyst", "insights", "leadership", "marketer"):
+        assert c.post("/api/me/view-as", json={"view": view}).json()["evaluation"] is True
+        assert c.get("/api/telemetry").status_code == 200, view
+
+
+def test_review_outcomes_count_a_brief_once_by_its_latest_decision_and_leave_waiting_ones_out():
+    def ev(i, brief, decision):
+        return {"kind": "reviewed", "ts": f"2026-11-27T10:{i:02d}:00+00:00", "brief_id": brief, "decision": decision}
+    events = [ev(0, "b1", "sent"), ev(1, "b1", "returned"), ev(2, "b1", "sent"), ev(3, "b1", "signed_off"),  # returned, then signed off: approved once
+              ev(4, "b2", "sent"), ev(5, "b2", "returned"),                                             # returned: rejected
+              ev(6, "b3", "sent"),                                                                        # waiting: not counted
+              ev(7, "b4", "rejected"),                                                                    # the analyst's own rejection
+              ev(8, "b5", "approved")]                                                                    # approved before sign-off existed
+    out = telemetry.review_outcomes(events)
+    assert (out["briefs"], out["approved"], out["rejected"]) == (4, 2, 2)
 
 
 def test_eval_endpoint_filters_runs_by_lane():

@@ -29,6 +29,8 @@ export type Spread = { n: number; p50: number | null; p95: number | null } | nul
 export type LaneUsage = {
   requests: number; opens: number; reviews: number; insights?: number; submissions?: number
   weekly: Record<string, number>; decisions: Record<string, number>; votes: { up: number; down: number }
+  // Briefing only: the latest decision per brief, with a sample guard (UAT review 6.2)
+  review?: { briefs: number; approved: number; rejected: number; min_briefs: number; enough: boolean; approved_pct: number | null; label: string | null }
   engines?: Record<string, number>; scripted_ms?: Spread; agent_jobs?: Record<string, number>; agent_seconds?: Spread
 }
 export type Usage = {

@@ -37,9 +37,10 @@ TOOL_STEP = {"feed_health": "Check the data", "restatements": "Check the data", 
              "check_competitor": "Test a driver", "competitor_status": "Check the competitor", "split_change": "Split the change",
              "story_confidence": "Close the story"}
 _LABEL = re.compile(r"\b(?:Access|Promotion|Supply|Competitor launch|Data artifact): "
-                    r"(supported|ruled out|inconclusive|insufficient|not ruled out)")
+                    r"(supported|ruled out|inconclusive|insufficient|not ruled out|cannot be separated|not testable|not credited)")
 _VERDICT = {"supported": "supported", "ruled out": "ruled out", "inconclusive": "inconclusive",
-            "insufficient": "inconclusive", "not ruled out": "inconclusive"}
+            "insufficient": "inconclusive", "not ruled out": "inconclusive", "cannot be separated": "inconclusive",
+            "not testable": "inconclusive", "not credited": "inconclusive"}
 _LINE = re.compile(r"^(?:Access|Promotion|Supply|Competitor launch|Data artifact):")
 
 

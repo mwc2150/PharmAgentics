@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { getOverview, type Evidence, type Overview as O, type Stat, type TerritoryRow, type WeekPoint } from "./agent/overviewApi"
-import { Icon, Notice } from "./agent/primitives"
+import { Icon, Notice, plainValue } from "./agent/primitives"
 
 // These three mirror PANEL and BTN in App.tsx (they are not exported from there): keep the strings in step.
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
@@ -36,7 +36,7 @@ function Drawer({ title, kicker, onClose, children }: { title: string, kicker: s
 function Query({ ev }: { ev: Evidence }) {
   const scope = typeof ev.params.scope === "string" ? ev.params.scope : ev.tool
   return <li className="py-3">
-    <div className="flex items-baseline justify-between gap-3 text-sm"><span>{scope}</span><span className="tabular-nums text-muted">{String(ev.result)}</span></div>
+    <div className="flex items-baseline justify-between gap-3 text-sm"><span>{scope}</span><span className="tabular-nums text-muted" title={typeof ev.result === "number" ? String(ev.result) : undefined}>{plainValue(ev.result)}</span></div>
     <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-paper p-3 font-mono text-xs leading-relaxed text-muted">{ev.query}</pre>
   </li>
 }
@@ -143,8 +143,11 @@ function Strip({ t, domain, onOpen }: { t: TerritoryRow, domain: number, onOpen:
     <div className="absolute inset-y-0 left-1/2 w-px bg-muted"/>
     <button onClick={onOpen} aria-label={`${t.label}: ${pct(t.change)} against a normal range of ±${pct(t.threshold, false)}; ${STATUS[t.status]}`}
       title={`${t.label}: ${pct(t.change)} (normal range ±${pct(t.threshold, false)}), ${int(t.trx)} TRx`}
-      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary outline-offset-2 ${t.status === "material" ? "bg-primary" : "bg-sheet"}`}
-      style={{ left: pos(Math.max(-domain, Math.min(domain, t.change))), width: size, height: size }}/>
+      className="absolute top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full outline-offset-2"
+      style={{ left: pos(Math.max(-domain, Math.min(domain, t.change))), width: Math.max(24, size), height: Math.max(24, size) }}>
+      {/* the button is at least 24 px (WCAG 2.2 target size); the drawn dot keeps its own size */}
+      <span aria-hidden="true" className={`block rounded-full border-2 border-primary ${t.status === "material" ? "bg-primary" : "bg-sheet"}`} style={{ width: size, height: size }}/>
+    </button>
   </div>
 }
 

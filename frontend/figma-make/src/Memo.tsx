@@ -2,6 +2,8 @@
 // nothing here computes a number. Charts are plain SVG drawn from the points the server returns.
 import { useState, type ReactNode } from "react"
 import { DefinitionWords } from "./BriefDefinition"
+import { longDates } from "./agent/primitives"
+import { BudgetNote, PromotionPanel } from "./Promotion"
 import type { BriefDefinition, ChartPoint, ChartSpec, Claim, DataTable, Evidence, KpiTile, MemoSection, Span, StoryCardBlock, TerritoryRow, TerritoryTable } from "./agent/briefingApi"
 
 const COLORS = ["var(--color-primary)", "var(--color-human)"]
@@ -9,19 +11,19 @@ const PANEL_COLOR = "var(--color-amber)"
 
 function Cited({text, spans, claims, onOpen}: {text: string, spans?: Span[], claims?: Claim[], onOpen?: (evidenceId: string) => void}) {
   const sorted = [...(spans ?? [])].sort((a, b) => a.start - b.start)
-  if (!sorted.length || !claims || !onOpen) return <>{text}</>
+  if (!sorted.length || !claims || !onOpen) return <>{longDates(text)}</>
   const parts: ReactNode[] = []
   let pos = 0
   sorted.forEach((sp, i) => {
     const claim = claims[sp.claim]
     if (!claim || sp.start < pos || text.slice(sp.start, sp.end) !== claim.value) return
-    parts.push(text.slice(pos, sp.start))
+    parts.push(longDates(text.slice(pos, sp.start)))
     parts.push(<button key={i} type="button" onClick={() => onOpen(claim.evidence_id)} title={`Source ${claim.evidence_id}: open the query behind ${claim.value}`}
       aria-label={`${claim.value}, evidence ${claim.evidence_id.replace(/^e/, "")}`}
-      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<sup aria-hidden="true" className="ml-px font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
+      className="pa-cite rounded-sm font-medium underline decoration-primaryink/40 decoration-dotted underline-offset-4 hover:bg-primarybg focus-visible:bg-primarybg">{claim.value}<span className="sr-only"> </span><sup aria-hidden="true" className="ml-px select-none font-mono text-[10px] font-normal text-primaryink">{claim.evidence_id.replace(/^e/, "")}</sup></button>)
     pos = sp.end
   })
-  parts.push(text.slice(pos))
+  parts.push(longDates(text.slice(pos)))
   return <>{parts}</>
 }
 
@@ -117,7 +119,7 @@ function ChartBlock({chart, onOpen, claims, explanationSpans, bare = false}: {ch
         <LineChart weeks={chart.weeks} series={[{name: chart.panel.name, points: chart.panel.points, color: PANEL_COLOR}]} unit={chart.panel.unit} label={chart.panel.name}/>
       </div>}
     </>}
-    <figcaption className="mt-3 text-[13px] leading-relaxed text-muted">{chart.caption}</figcaption>
+    <figcaption className="mt-3 text-[13px] leading-relaxed text-muted">{longDates(chart.caption)}</figcaption>
     <p className="mt-1 text-[14px] leading-relaxed text-ink"><Cited text={chart.explanation} spans={explanationSpans} claims={claims} onOpen={onOpen}/></p>
   </figure>
 }
@@ -237,7 +239,7 @@ function KpiStrip({kpis, claims, onOpen}: {kpis: KpiTile[], claims?: Claim[], on
           <span><Cited text={k.value} spans={k.value_citation} claims={claims} onOpen={onOpen}/></span>
           {dir && <><svg viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 ${dir.color}`} fill="currentColor" aria-hidden="true"><path d={dir.d}/></svg><span className="sr-only">, {dir.word}</span></>}
         </dd>
-        {k.detail && <dd className="mt-1.5 font-sans text-[12px] leading-snug text-muted">{k.detail}</dd>}
+        {k.detail && <dd className="mt-1.5 font-sans text-[12px] leading-snug text-muted">{longDates(k.detail)}</dd>}
       </div>
     })}
   </dl>
@@ -254,23 +256,23 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
   const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
   return <div className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
-      <caption className="sr-only">Territory figures{table.note ? `. ${table.note}` : ""}</caption>
+      <caption className="sr-only">Territory figures{table.note ? `. ${longDates(table.note)}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
-        <th key={j} scope="col" className={`px-2.5 py-1.5 text-[11px] font-medium text-muted ${align(j)}`}>{c}</th>)}</tr></thead>
+        <th key={j} scope="col" className={`px-1.5 sm:px-2.5 py-1.5 text-[11px] font-medium text-muted ${align(j)}`}>{c}</th>)}</tr></thead>
       <tbody>{table.rows.map((r, i) => {
         const withheld = r.basis === "withheld"
         return <tr key={i} className="break-inside-avoid border-b border-rule/60 align-baseline">
           {table.columns.map((_, j) => {
             const cell = r.cells[j] ?? ""
-            if (j === 0) return <th key={j} scope="row" className="px-2.5 py-1.5 text-left font-medium text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></th>
-            if (withheld && j >= 1 && j <= lastData) return j === 1 ? <td key={j} colSpan={lastData} className="px-2.5 py-1.5 text-right italic text-muted">withheld</td> : null
-            if (j === basisAt) return <td key={j} className="px-2.5 py-1.5 text-left">{withheld ? <span aria-hidden="true" className="text-muted">—</span> : <BasisLabel row={r} text={cell || r.basis}/>}</td>
-            return <td key={j} className="px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></td>
+            if (j === 0) return <th key={j} scope="row" className="px-1.5 sm:px-2.5 py-1.5 text-left font-medium text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></th>
+            if (withheld && j >= 1 && j <= lastData) return j === 1 ? <td key={j} colSpan={lastData} className="px-1.5 sm:px-2.5 py-1.5 text-right italic text-muted">withheld</td> : null
+            if (j === basisAt) return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-left">{withheld ? <span aria-hidden="true" className="text-muted">—</span> : <BasisLabel row={r} text={cell || r.basis}/>}</td>
+            return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></td>
           })}
         </tr>
       })}</tbody>
     </table>
-    {table.note && <p className="mt-2 font-sans text-[12px] leading-snug text-muted">{table.note}</p>}
+    {table.note && <p className="mt-2 font-sans text-[12px] leading-snug text-muted">{longDates(table.note)}</p>}
   </div>
 }
 
@@ -286,7 +288,7 @@ function CardHead({card, claims, onOpen}: {card: StoryCardBlock, claims?: Claim[
       <p className="max-w-[56ch] font-sans text-[16px] font-semibold leading-snug text-ink"><Cited text={card.headline} spans={card.headline_citations} claims={claims} onOpen={onOpen}/></p>
       <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 font-sans text-[11px] font-medium ${CONFIDENCE[card.confidence] ?? "bg-warnbg text-muted"}`}>{card.confidence} confidence</span>
     </div>
-    {card.drivers_checked.length > 0 && <p className="mt-1 font-sans text-[12px] text-muted">Checked: {card.drivers_checked.join(", ")}</p>}
+    {card.drivers_checked.length > 0 && <p className="mt-1 font-sans text-[12px] text-muted">Checked: {longDates(card.drivers_checked.join(", "))}</p>}
   </>
 }
 
@@ -302,7 +304,7 @@ function Detail({text, spans, claims, onOpen}: {text: string, spans?: Span[], cl
 // leaders get the server's cut (no claims, tables or queries) through the same component.
 // brief-010 FR-000b: `definition` is what the brief was built under; it is stated in words in the Assumptions block (§6),
 // in both views. A brief made before brief-010 has none, and nothing extra shows.
-export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, definition, labelWeek}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void, definition?: BriefDefinition | null, labelWeek?: (iso: string) => string}) {
+export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, definition, labelWeek, budgetNote}: {sections: MemoSection[], briefId: string, claims?: Claim[], evidence?: Evidence[], onOpen?: (evidenceId: string) => void, onAsk?: (chip: {number: string, title: string}) => void, definition?: BriefDefinition | null, labelWeek?: (iso: string) => string, budgetNote?: string}) {
   // A brief stored before brief-008 has none of the new fields and renders as it always did: each section's text
   // as one pre-wrapped block. A brief with any of them reads as paragraphs throughout. Only analysts (who get the
   // claims) can unfold `detail`; the leader cut never carries it.
@@ -323,6 +325,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
     ? <div className="pa-card mt-2 break-inside-avoid-page rounded-xl border border-rule bg-sheet/40 p-4 sm:p-5">
         <CardHead card={s.card} claims={claims} onOpen={onOpen}/>
         {text(s)}{rest(s)}
+        {s.promotion && <PromotionPanel promotion={s.promotion} id={`memo-${briefId}-${s.number}-promotion`}/>}
       </div>
     : <>
         {s.kpis && s.kpis.length > 0 && <KpiStrip kpis={s.kpis} claims={claims} onOpen={onOpen}/>}
@@ -333,7 +336,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
   // The page's outline is h1 (the workspace), h2 (the brief), h3 (a section), h4 (a subsection).
   const heading = (s: MemoSection, sub: boolean) => { const Tag = sub ? "h4" : "h3"; return <div className="flex items-baseline justify-between gap-3">
     <Tag id={`memo-${briefId}-${s.number}`} className={`scroll-mt-24 break-after-avoid ${sub ? "text-base font-semibold" : "text-xl font-bold leading-[1.5]"}`}>
-      <span className="mr-2 font-mono text-sm text-muted">§{s.number}</span>{sub ? s.title : <span className="pa-mark">{s.title}</span>}</Tag>
+      <span className="mr-1 font-mono text-sm text-muted">§{s.number}</span>{" "}{sub ? s.title : <span className="pa-mark">{s.title}</span>}</Tag>
     {onAsk && <button type="button" onClick={() => onAsk({number: s.number, title: s.title})} aria-label={`Ask about this: section ${s.number}, ${s.title}`} className="pa-noprint shrink-0 text-xs text-primaryink hover:underline">Ask about this</button>}
   </div> }
   // The Assumptions block lives in §6; a memo without a §6 shows the definition under its last section.
@@ -347,6 +350,7 @@ export function Memo({sections, briefId, claims, evidence, onOpen, onAsk, defini
         {children.length > 0 && <div className="mt-4 space-y-6">{children.map(c =>
           <section key={c.number} aria-labelledby={`memo-${briefId}-${c.number}`} className={c.card ? "" : "border-l-2 border-rule pl-4"}>{heading(c, true)}{body(c)}</section>)}</div>}
         <div className={children.length ? "mt-4" : ""}>{body(s)}</div>
+        {budgetNote && s.number === "3" && <BudgetNote text={budgetNote}/>}
         {definition && s.number === assumptionsAt && <DefinitionWords definition={definition} labelWeek={labelWeek}/>}
       </section>
     })}

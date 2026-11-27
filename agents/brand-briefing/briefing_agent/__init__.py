@@ -55,10 +55,10 @@ def config_version() -> str:
 
 
 def answer(question: str, model: str | None = None, *, comparison: Comparison | None = None,
-           definition: Definition | dict | None = None) -> dict:
+           definition: Definition | dict | None = None, brand_id: str = "BXA") -> dict:
     """Eval entry point: question in, AnswerEnvelope dict out. `definition` (brief-010) is what the brief is built from;
-    None is the pre-selected values and `comparison` maps into it."""
-    return asyncio.run(_answer(question, model, comparison, definition))
+    None is the pre-selected values and `comparison` maps into it. `brand_id` is the brand the brief is about (core-010)."""
+    return asyncio.run(_answer(question, model, comparison, definition, brand_id))
 
 
 def _options(comparison: Comparison | None, definition: Definition | dict | None) -> dict:
@@ -76,10 +76,10 @@ def events_for(*, on_event=None, seed: list[dict] | None = None) -> EventLog:
 
 
 def triage(question: str, model: str | None = None, *, comparison: Comparison | None = None,
-           events: EventLog | None = None, definition: Definition | dict | None = None) -> dict:
-    """UAT: the plan P1 reviews (code plan plus the manager's calls)."""
+           events: EventLog | None = None, definition: Definition | dict | None = None, brand_id: str = "BXA") -> dict:
+    """UAT: the plan P1 reviews (code plan plus the manager's calls). The plan carries its brand."""
     cfg = load_config()
-    return asyncio.run(_triage(question, model_spec(model or cfg.get("model")), RunLog(events), comparison, definition))
+    return asyncio.run(_triage(question, model_spec(model or cfg.get("model")), RunLog(events), comparison, definition, brand_id))
 
 
 def run_with_plan(question: str, decision: dict, plan: dict, model: str | None = None, *,
@@ -101,13 +101,13 @@ async def _ask(spec: str, prompt: str, log: RunLog, name: str) -> str:
 
 
 async def _triage(question: str, spec: str, log: RunLog, comparison: Comparison | None = None,
-                  definition: Definition | dict | None = None) -> dict:
+                  definition: Definition | dict | None = None, brand_id: str = "BXA") -> dict:
     cfg = load_config()
-    code_plan = scripted.triage(question, **_options(comparison, definition))
+    code_plan = scripted.triage(question, brand_id=brand_id, **_options(comparison, definition))
     if code_plan["promotion_review"]:
         await trace.note(log, "Screen territories", summary=trace.screened(code_plan))
         return dict(planmod.apply(code_plan, '{"order": []}', question), model=spec)
-    scope = out_of_scope(question)
+    scope = out_of_scope(question, brand_id)
     if scope:  # no territories were screened for a question outside the release
         return dict(code_plan, engine="agent", state="OUT_OF_SCOPE", scope=scope, stories=[], flagged=False, flags=[],
                     manager_order=[], manager_drop={}, manager_note="", model=spec)
@@ -115,7 +115,8 @@ async def _triage(question: str, spec: str, log: RunLog, comparison: Comparison 
     if code_plan["state"] != "TRIAGE_REVIEW":
         return dict(planmod.apply(code_plan, '{"order": []}', question), model=spec)
     prompt = (HERE / cfg["prompts"]["manager_triage"]).read_text(encoding="utf-8").format(
-        question=question.split(":", 1)[-1].strip(), cards=planmod.cards_text(code_plan), definition=_definition_text(code_plan))
+        question=question.split(":", 1)[-1].strip(), cards=planmod.cards_text(code_plan), definition=_definition_text(code_plan),
+        brand=brand_id)
     with span("4_triage_manager", inputs={"cards": planmod.cards_text(code_plan)}) as sp:
         reply = await _ask(spec, prompt, log, "manager_triage")
         plan = planmod.apply(code_plan, reply, question)
@@ -146,7 +147,8 @@ _NO_CMP_NOTE = "This brief has no comparison (no earlier week). Do not write {cm
 
 
 async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dict, stories: list[dict],
-                 claims: list[dict], evidence: list[dict], log: RunLog, definition: dict | None = None) -> tuple[str, dict, dict, bool, list[str]]:
+                 claims: list[dict], evidence: list[dict], log: RunLog, definition: dict | None = None,
+                 brand_id: str = "BXA") -> tuple[str, dict, dict, bool, list[str]]:
     n_claims = len(claims)
     story_tokens = {s["id"]: write.tokens(s["section"]) for s in stories}
     story_tokens["_sections"] = write.section_tokens(sections, close)
@@ -157,7 +159,7 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
     gloss_text, glosses = write.glossary(shown, claims, evidence, sections.get("comparison_weeks"))  # what each number measures, by code
     prompt = (HERE / cfg["prompts"]["writer"]).read_text(encoding="utf-8").format(
         question=question.split(":", 1)[-1].strip(), sections=shown, glossary=gloss_text or "(no numbers)",
-        definition=prompt_words(Definition.coerce(definition, None)),
+        definition=prompt_words(Definition.coerce(definition, None)), brand=brand_id,
         comparison=_CMP_NOTE if cmp else _NO_CMP_NOTE) \
         + lessons.block("writer")  # approved lessons only (core-008 FR-022); empty adds nothing
     with span("5_writer") as sp:
@@ -204,19 +206,20 @@ async def _write(cfg: dict, spec: str, question: str, sections: dict, close: dic
 async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed: bool, log: RunLog) -> dict:
     cfg = load_config()
     started = time.time()
+    brand_id = plan.get("brand_id", "BXA")  # the plan carries the brand it was triaged for (core-010)
     if plan.get("promotion_review"):
         async with Client(server()) as mcp:
             with span("1_load_and_pin", inputs={"question": question}, model=spec) as sp:
-                pinned = await _call(mcp, "open_run", question=question)
+                pinned = await _call(mcp, "open_run", question=question, brand_id=brand_id)
                 finish(sp, {"run_context": pinned})
             env = json.loads(await _call(mcp, "promotion_review"))
-        env.update(system=f"{NAME}:{spec}", trajectory={"llm_calls": 0, "model": spec, "scope": "promotion_review"})
+        env.update(system=f"{NAME}:{spec}", brand_id=brand_id, trajectory={"llm_calls": 0, "model": spec, "scope": "promotion_review"})
         record = planmod.record(plan, [], reviewed)
         return trace.attach({"envelope": env, "triage": record, "flow": stage_flow(plan, record, verified=True)},
                             log, len(env.get("claims") or []), None)  # the saved brief keeps its timeline
     if plan.get("state") == "OUT_OF_SCOPE":
         choice = Comparison.model_validate(plan["comparison"]) if plan.get("comparison") else None
-        env = scripted.answer(question, **_options(choice, plan.get("definition")))
+        env = scripted.answer(question, brand_id=brand_id, **_options(choice, plan.get("definition")))
         env.update(system=f"{NAME}:{spec}", answer=plan["scope"] + "\n" + env["answer"],
                    comparison=plan.get("comparison"),
                    trajectory={"scope": "out", "tools": [], "llm_calls": 0, "capped": None, "model": spec,
@@ -229,7 +232,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
                 log.events.emit("Person", "person", "Review the plan", story=None, summary=(
                     f"The analyst reviewed the plan and approved {len(order)} stor{'y' if len(order) == 1 else 'ies'}."))
         with span("1_load_and_pin", inputs={"question": question}, model=spec, config_version=config_version()) as sp:
-            args = {"comparison": plan["comparison"]} if plan.get("comparison") else {}
+            args = {"brand_id": brand_id, **({"comparison": plan["comparison"]} if plan.get("comparison") else {})}
             if plan.get("definition"):
                 args["definition"] = plan["definition"]
             pinned = await _call(mcp, "open_run", question=question, **args)
@@ -252,7 +255,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
         run = json.loads(await _call(mcp, "export_run"))
     claims = run["claims"]
     answer_text, sentences, chart_lines, revised, dropped = await _write(cfg, spec, question, sections, close, stories, claims,
-                                                            run["evidence"], log, plan.get("definition"))
+                                                            run["evidence"], log, plan.get("definition"), brand_id)
     template, memo_sections = write.assemble(sections, close, stories, answer_text, sentences,
                                              _left_out(plan, order), dropped_line, chart_lines)
     if (bad := digits_outside_tokens(template)):  # code sections are clean; this guards the assembly itself
@@ -265,7 +268,7 @@ async def _run(question: str, plan: dict, order: list[str], spec: str, reviewed:
     flow = write.flow(stage_flow(plan, flow_record, verified=True), plan, record, log.tools, revised, spec)
     capped = next((n["capped"] for n in notes if n["capped"]), None)
     envelope = {
-        "system": f"{NAME}:{spec}", "answer": text, "claims": used, "comparison": plan.get("comparison"),
+        "system": f"{NAME}:{spec}", "brand_id": brand_id, "answer": text, "claims": used, "comparison": plan.get("comparison"),
         "definition": plan.get("definition"),
         "evidence": [e for e in run["evidence"] if e["id"] in keep],
         "abstained": bool(run["abstained"]), "citations": citations,
@@ -292,32 +295,32 @@ def _release_bounds() -> tuple[str, str, list[str]]:
     return first, latest, [t for t in TERRITORY_NAMES if t != "NATIONAL"]
 
 
-async def _scope_proposal(question: str, spec: str, log: RunLog) -> dict | None:
+async def _scope_proposal(question: str, spec: str, log: RunLog, brand_id: str = "BXA") -> dict | None:
     """The scope the model reads from the question text (brief-008 FR-017), recorded for scoring only: the brief
     has already run on the prefix scope and nothing here changes it. One reader call; any failure records nothing."""
     try:
         first, latest, territories = _release_bounds()
         log.llm_calls += 1  # the reader is one model call, made even when its answer is unusable
         return await asyncio.to_thread(reader.scope_proposal, question, spec=spec, first=first, latest=latest,
-                                       territories=territories)
+                                       territories=territories, brand_id=brand_id)
     except Exception:  # noqa: BLE001 - no usable reading: no scope_proposal, and the scorer says so
         return None
 
 
 async def _answer(question: str, model: str | None, comparison: Comparison | None = None,
-                  definition: Definition | dict | None = None) -> dict:
+                  definition: Definition | dict | None = None, brand_id: str = "BXA") -> dict:
     cfg = load_config()
     spec = model_spec(model or cfg.get("model"))
     log = RunLog()
     try:
-        plan = await _triage(question, spec, log, comparison, definition)
+        plan = await _triage(question, spec, log, comparison, definition, brand_id)
     except ValueError:  # outside the release: the scripted engine says so, with no model
         if comparison is not None or (definition is not None and Definition.coerce(definition, None).primary_comparison is not None):
             raise
-        return dict(scripted.answer(question, **_options(None, definition)), system=f"{NAME}:{spec}")
+        return dict(scripted.answer(question, brand_id=brand_id, **_options(None, definition)), system=f"{NAME}:{spec}")
     result = await _run(question, plan, plan.get("manager_order", []), spec, reviewed=False, log=log)
     envelope = result["envelope"]
-    if load_config().get("scope_proposal", True) and (proposal := await _scope_proposal(question, spec, log)):
+    if load_config().get("scope_proposal", True) and (proposal := await _scope_proposal(question, spec, log, brand_id)):
         envelope["trajectory"]["scope_proposal"] = proposal
     if isinstance(envelope.get("trajectory"), dict):
         envelope["trajectory"]["llm_calls"] = log.llm_calls  # the reader's call is counted

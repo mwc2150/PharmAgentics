@@ -12,7 +12,7 @@ from .cases import golden_fingerprint, load_cases
 from .paths import EXPERIMENT, MLFLOW_DIR, tracking_uri
 from .scorers import (DETERMINISTIC, EVIDENCE, REPORT_ONLY, TARGETS, TRAJECTORY, WORD_BUDGET, count_words, finding_counts,
                       judge_scorers, key_fact_counts, leader_words)
-from .systems import BRIEFING_SYSTEMS, SYSTEMS, briefing_question, definition_option
+from .systems import BRIEFING_SYSTEMS, SYSTEMS, brand_option, briefing_question, definition_option
 from .versions import code_version, data_fingerprint
 
 
@@ -28,11 +28,23 @@ def configure(uri: str | None = None, experiment: str = EXPERIMENT, artifacts: P
 
 def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None = None,
               stories: list[str] | None = None, uri: str | None = None, experiment: str = EXPERIMENT,
-              artifacts: Path | None = None, model: str | None = None) -> str:
-    cases = load_cases(lane, stories)
-    if not cases:
+              artifacts: Path | None = None, model: str | None = None, brand: str = "BXA") -> str:
+    """`brand` picks the cases: "BXA" (the default, so a run is what it was before Lipidara), "BXC", or "all". A case about
+    a brand the system cannot answer for is skipped: listed on the run, never run, never scored, never a run error."""
+    selected = load_cases(lane, stories, brand=brand)
+    if not selected:
         raise SystemExit("No golden cases match; run `python -m eval import-stories` first.")
-    sut = SYSTEMS[system](cases, model=model) if model else SYSTEMS[system](cases)
+    sut = SYSTEMS[system](selected, model=model) if model else SYSTEMS[system](selected)
+    supported = tuple(getattr(sut, "brands", ("BXA",)))
+    cases = [c for c in selected if c.brand in supported]
+    skipped = [c for c in selected if c.brand not in supported]
+    brands = sorted({c.brand for c in selected})
+    label = system if brands == ["BXA"] else f"{system}@{'+'.join(brands)}"  # a Lipidara or mixed run is its own system row
+    if skipped:
+        print(f"  skipping {len(skipped)} case(s) {system} has no {'/'.join(sorted({c.brand for c in skipped}))} support for: "
+              + ", ".join(c.id for c in skipped))
+    if not cases:
+        return _record_skipped(label, lane, skipped, experiment, uri, artifacts)
     scorers = (DETERMINISTIC + REPORT_ONLY + (EVIDENCE if sut.returns_evidence else [])
                + (TRAJECTORY if getattr(sut, "returns_trajectory", False) else []))
     judges = judge_scorers(judge) if judge else []
@@ -54,12 +66,14 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
     errors: list[str] = []
     answered: dict[tuple, dict] = {}  # what the system returned per input, for the pooled key-fact share
 
-    def input_key(question, follow_up=None, section=None, comparison=None) -> tuple:
-        return question, follow_up, section, repr(sorted(comparison.items())) if comparison else None
+    def input_key(question, follow_up=None, section=None, comparison=None, brand=None) -> tuple:
+        key = question, follow_up, section, repr(sorted(comparison.items())) if comparison else None
+        return key + (brand,) if brand and brand != "BXA" else key  # a Cardiovela key is the key it always was
 
     @mlflow.trace(name=f"{system}.predict", span_type="AGENT")
     def predict_fn(question: str, follow_up: str | None = None, section: str | None = None,
-                   comparison: dict | None = None, definition: dict | None = None, intent: str = "brief") -> dict:
+                   comparison: dict | None = None, definition: dict | None = None, intent: str = "brief",
+                   brand: str = "BXA") -> dict:
         try:
             started = time.perf_counter()
             options = {"comparison": comparison} if comparison and system in ("briefing_scripted", "briefing_agent") else {}
@@ -67,14 +81,16 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
             sent = briefing_question(question, intent) if isinstance(sut, BRIEFING_SYSTEMS) else question
             if follow_up and hasattr(sut, "predict_follow_up"):
                 method = sut.predict_follow_up
-                out = method(sent, follow_up, section, **options, **definition_option(method, definition))
+                out = method(sent, follow_up, section, **options, **definition_option(method, definition),
+                             **brand_option(method, brand))
             else:
-                out = sut.predict(sent, **options, **definition_option(sut.predict, definition))
+                out = sut.predict(sent, **options, **definition_option(sut.predict, definition),
+                                  **brand_option(sut.predict, brand))
             timed = (out.get("latency") if isinstance(out, dict) else None) or {"brief": time.perf_counter() - started}
             for kind, secs in timed.items():
                 if kind in latency and secs is not None:
                     latency[kind].append(float(secs))
-            answered[input_key(question, follow_up, section, comparison)] = out
+            answered[input_key(question, follow_up, section, comparison, brand)] = out
             return out
         except Exception as exc:  # MLflow records the failure per row; count it so it is never read as a score
             errors.append(f"{question[:70]}: {type(exc).__name__}: {exc}")
@@ -82,18 +98,23 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
 
     model = getattr(sut, "model", None)
     params = {
-        "system": f"{system}:{model}" if model else system,
+        "system": f"{label}:{model}" if model else label,
         "lane": lane, "cases": len(cases), "reruns": reruns, "judge": judge or "off",
-        "golden_version": golden_fingerprint(None if lane == "all" else lane),
+        "golden_version": golden_fingerprint(None if lane == "all" else lane, brand=brand),
         "data_version": data_fingerprint(), "code_version": code_version(),
         **getattr(sut, "params", {}),  # e.g. an agent's configuration version
+        **({"brand": "+".join(brands)} if brands != ["BXA"] else {}),  # a BXA-only run logs what it always logged
+        **({"skipped_cases": ",".join(c.id for c in skipped)} if skipped else {}),
     }
     per_rerun: list[dict] = []
-    with mlflow.start_run(run_name=f"{system} · {lane}") as parent:
+    with mlflow.start_run(run_name=f"{label} · {lane}") as parent:
         mlflow.log_params(params)
-        mlflow.set_tags({"suite": "golden", "system": system, "lane": lane})
+        mlflow.set_tags({"suite": "golden", "system": label, "lane": lane})
+        if skipped:
+            mlflow.log_text("\n".join(f"{c.id} ({c.brand})" for c in skipped), "skipped_cases.txt")
+            mlflow.log_metric("cases_skipped", float(len(skipped)))
         for i in range(1, reruns + 1):
-            with mlflow.start_run(run_name=f"{system} · {lane} · rerun {i}", nested=True) as child:
+            with mlflow.start_run(run_name=f"{label} · {lane} · rerun {i}", nested=True) as child:
                 mlflow.log_params({**params, "rerun": i})
                 errors.clear()
                 answered.clear()
@@ -111,7 +132,7 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
                         metrics[f"latency_{kind}_p95/mean"] = ordered[min(len(ordered) - 1, round(0.95 * (len(ordered) - 1)))]
                         mlflow.log_metric(f"latency_{kind}_p50/mean", metrics[f"latency_{kind}_p50/mean"])
                         mlflow.log_metric(f"latency_{kind}_p95/mean", metrics[f"latency_{kind}_p95/mean"])
-                for key, value in pooled_metrics(cases, answered, input_key).items():
+                for key, value in pooled_by_brand(cases, answered, input_key).items():
                     metrics[key] = value  # report-only (core-011 FR-019); `<scorer>/mean` stays per case
                     mlflow.log_metric(key, value)
                 metrics["run_errors/mean"] = float(len(errors))  # failure tag "run error" (Evaluation Pack section 8)
@@ -126,7 +147,7 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
             mlflow.log_metric(key, statistics.fmean(values))
             if len(values) > 1:
                 mlflow.log_metric(key.replace("/mean", "") + "/rerun_std", statistics.pstdev(values))
-    print(f"\nRun {parent.info.run_id} ({system}, {lane}, {len(cases)} cases, {reruns} rerun(s))")
+    print(f"\nRun {parent.info.run_id} ({label}, {lane}, {len(cases)} cases, {reruns} rerun(s))")
     for key in keys:
         values = [m[key] for m in per_rerun if key in m]
         print(f"  {key:<40} {statistics.fmean(values):.3f}")
@@ -135,7 +156,8 @@ def run_suite(system: str, lane: str = "all", reruns: int = 1, judge: str | None
 
 def _answer_of(case, answered: dict, input_key) -> dict | None:
     inputs = case.inputs()
-    return answered.get(input_key(inputs["question"], inputs["follow_up"], inputs["section"], inputs.get("comparison")))
+    brand = [inputs["brand"]] if inputs.get("brand") else []  # only a Lipidara input carries a brand
+    return answered.get(input_key(inputs["question"], inputs["follow_up"], inputs["section"], inputs.get("comparison"), *brand))
 
 
 def _pooled_key_facts(cases, answered: dict, input_key) -> float | None:
@@ -185,6 +207,33 @@ def pooled_metrics(cases, answered: dict, input_key) -> dict[str, float]:
                 over += count_words(sections) > WORD_BUDGET["analyst"] or leader_words(sections) > WORD_BUDGET["leader"]
         out["over_word_budget"] = float(over)
     return out
+
+
+def pooled_by_brand(cases, answered: dict, input_key) -> dict[str, float]:
+    """`pooled_metrics` over the whole run, as always. A run that mixes brands adds the same metrics per brand with a
+    lower-case brand suffix (`key_fact_recall_pooled_bxa`, `..._bxc`), so Cardiovela's numbers stay comparable with its
+    BXA-only runs and Lipidara's are read on their own."""
+    out = pooled_metrics(cases, answered, input_key)
+    present = sorted({c.brand for c in cases})
+    if len(present) > 1:
+        for brand in present:
+            for key, value in pooled_metrics([c for c in cases if c.brand == brand], answered, input_key).items():
+                out[f"{key}_{brand.lower()}"] = value
+    return out
+
+
+def _record_skipped(label: str, lane: str, skipped, experiment: str, uri: str | None, artifacts) -> str:
+    """A run where the system supports none of the selected cases: recorded with what was skipped, nothing run."""
+    configure(uri, experiment, artifacts)
+    with mlflow.start_run(run_name=f"{label} · {lane}") as parent:
+        mlflow.log_params({"system": label, "lane": lane, "cases": 0, "skipped_cases": ",".join(c.id for c in skipped)[:500],
+                           "data_version": data_fingerprint(), "code_version": code_version()})
+        mlflow.set_tags({"suite": "golden", "system": label, "lane": lane,
+                         "note": "every selected case is about a brand this system does not support"})
+        mlflow.log_text("\n".join(f"{c.id} ({c.brand})" for c in skipped), "skipped_cases.txt")
+        mlflow.log_metric("cases_skipped", float(len(skipped)))
+    print(f"\nRun {parent.info.run_id} ({label}, {lane}): nothing run, {len(skipped)} case(s) skipped.")
+    return parent.info.run_id
 
 
 def _judge_rerun(run_id: str, judges: list, expected: int) -> dict:

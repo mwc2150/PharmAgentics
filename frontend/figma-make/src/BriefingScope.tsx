@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useId, useRef, useState } from "react"
+import { Icon } from "./agent/primitives"
 import { DEFAULT_COMPARISON_WEEKS } from "./ComparisonPicker"
 import { readBriefingScope, type BriefingScope, type Comparison, type ReleaseContext } from "./agent/briefingApi"
 import { asList, proposedChoices, type DefinitionChoices, type DefinitionField } from "./BriefDefinition"
@@ -68,7 +69,6 @@ export function scopeToForm(scope: BriefingScope, context: ReleaseContext, brand
     if ("error" in named) return named
     comparison = named
   }
-  if (scope.promotion_review && brand !== "BXA") return { error: "The Promotion review is available for BXA only." }
   const proposal = proposedChoices(def)
   if ("error" in proposal) return proposal
   return { values: { territory: scope.territory_id, week: first, weekEnd: last, promotion: scope.promotion_review,
@@ -86,25 +86,74 @@ type PeriodProps = {
   onFirst: (week: string) => void; onLast: (week: string) => void; labelWeek: (week: string) => string
 }
 
+// The words of the period's "i" panel (UAT review 2026-11-27, item 1). Kept in one place so a test can read them.
+export const PERIOD_INFO = "The weeks this brief reports on. Every week from First week to Last week, both included; weeks start on Monday. One week gives that week's numbers; several give weekly averages. Each number is compared with the comparison weeks below (by default, the four weeks just before First week). Holiday and plan-year-reset weeks are left out of the stories unless they make up at least half the period."
+
+// Quick ranges end at the latest available week (weeks run oldest to newest).
+export const QUICK_RANGES = [["This week", 1], ["Last 4 weeks", 4], ["Last 13 weeks", 13]] as const
+export function quickRange(count: number, weeks: string[]): { first: string; last: string } | null {
+  if (!weeks.length) return null
+  return { first: weeks[Math.max(0, weeks.length - count)], last: weeks[weeks.length - 1] }
+}
+
+/** Weeks (newest first) grouped by the month of their Monday, newest month first: "October 2026". */
+export function weeksByMonth(weeksNewestFirst: string[]): { month: string; weeks: string[] }[] {
+  const groups: { month: string; weeks: string[] }[] = []
+  for (const w of weeksNewestFirst) {
+    const [y, m, d] = w.split("-").map(Number)
+    const month = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })
+    const last = groups[groups.length - 1]
+    if (last && last.month === month) last.weeks.push(w)
+    else groups.push({ month, weeks: [w] })
+  }
+  return groups
+}
+
 export function PeriodPicker({ first, last, weeks, disabled, onFirst, onLast, labelWeek }: PeriodProps) {
   const error = periodError(first, last, weeks)
   const newestFirst = [...weeks].reverse()
-  return <div className="grid gap-4 sm:grid-cols-2">
-    <label className={LABEL}>First week
-      <select className={FIELD} value={first} onChange={event => onFirst(event.target.value)} disabled={disabled}
-        aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined}>
-        {newestFirst.map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
-      </select>
-    </label>
-    <div className="space-y-1">
-      <label className={LABEL}>Last week
-        <select className={FIELD} value={last} onChange={event => onLast(event.target.value)} disabled={disabled}
-          aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined}>
-          {newestFirst.filter(w => w >= first).map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}
-        </select>
-      </label>
-      <p id="period-error" role="status" className="text-xs text-neg">{error}</p>
+  const [infoOpen, setInfoOpen] = useState(false)
+  const info = useId(), firstId = useId(), lastId = useId()
+  const infoButton = useRef<HTMLButtonElement>(null)
+  const closeInfo = () => { setInfoOpen(false); infoButton.current?.focus() }
+  const options = (list: string[]) => weeksByMonth(list).map(g =>
+    <optgroup key={g.month} label={g.month}>{g.weeks.map(w => <option key={w} value={w}>{labelWeek(w)}</option>)}</optgroup>)
+  const apply = (count: number) => { const r = quickRange(count, weeks); if (r) { onFirst(r.first); onLast(r.last) } }
+  return <div className="space-y-3" onKeyDown={e => { if (e.key === "Escape" && infoOpen) { e.stopPropagation(); closeInfo() } }}>
+    <div role="group" aria-label="Quick ranges" className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-medium text-muted">Quick ranges</span>
+      {QUICK_RANGES.map(([text, count]) => {
+        const r = quickRange(count, weeks)
+        const active = !!r && r.first === first && r.last === last
+        return <button key={text} type="button" disabled={disabled || !r} aria-pressed={active} onClick={() => apply(count)}
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${active ? "border-primary text-primaryink" : "border-edge text-muted hover:bg-paper hover:text-ink"}`}>{text}</button>
+      })}
     </div>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className={LABEL}>
+        <span className="flex h-6 items-center gap-1.5">
+          <label htmlFor={firstId}>First week</label>
+          <button ref={infoButton} type="button" aria-expanded={infoOpen} aria-controls={infoOpen ? info : undefined} aria-label="What the period means"
+            onClick={() => infoOpen ? closeInfo() : setInfoOpen(true)}
+            className="grid h-6 w-6 place-items-center rounded-full text-muted transition-colors hover:bg-paper hover:text-ink"><Icon name="info" className="h-4 w-4"/></button>
+        </span>
+        <select id={firstId} className={FIELD} value={first} onChange={event => onFirst(event.target.value)} disabled={disabled}
+          aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined}>
+          {options(newestFirst)}
+        </select>
+      </div>
+      <div className="space-y-1">
+        <div className={LABEL}>
+          <span className="flex h-6 items-center"><label htmlFor={lastId}>Last week</label></span>
+          <select id={lastId} className={FIELD} value={last} onChange={event => onLast(event.target.value)} disabled={disabled}
+            aria-invalid={!!error} aria-describedby={error ? "period-error" : undefined}>
+            {options(newestFirst.filter(w => w >= first))}
+          </select>
+        </div>
+        <p id="period-error" role="status" className="text-xs text-neg">{error}</p>
+      </div>
+    </div>
+    {infoOpen && <p id={info} className="max-w-[68ch] rounded-lg border border-rule bg-sheet px-4 py-3 text-xs leading-relaxed text-ink">{PERIOD_INFO}</p>}
   </div>
 }
 

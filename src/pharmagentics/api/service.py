@@ -167,8 +167,6 @@ def _check_scope(request: BriefingQuery) -> None:
         )
     if request.territory_id not in bounds.territory_ids:
         raise OutsideRelease("Territory not present in the supported synthetic data release.")
-    if request.intent == "promotion_review" and request.brand_id != "BXA":
-        raise OutsideRelease("The release-wide Promotion review is available for BXA.")
     if (chosen := effective_definition(request).comparison):
         if request.intent == "promotion_review":
             raise OutsideRelease("The release-wide Promotion review uses its own lapse comparison.")
@@ -393,7 +391,7 @@ def validate_scope(proposal: dict, release: ReleaseContext, brand_id: str) -> di
         notes.append(_shortened_note(fit, weeks[0]))
     count = fit or None
     promotion = proposal.get("promotion_review", False)
-    if not isinstance(promotion, bool) or (promotion and brand_id != "BXA"):
+    if not isinstance(promotion, bool):
         raise ValueError("The proposed promotion flag is not usable.")
     return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": territory or None,
             "comparison_weeks": count, "promotion_review": promotion, "notes": notes,
@@ -462,7 +460,7 @@ def rules_scope(question: str, release: ReleaseContext, brand_id: str) -> dict:
     first, latest = release.first_week.isoformat(), release.latest_week.isoformat()
     got = parse(question.replace(":", " ,"), first, latest, briefing=True)
     notes = [got["note"]] if got["note"] else []
-    promotion = bool(got["promotion"]) and brand_id == "BXA"
+    promotion = bool(got["promotion"])
     weeks = got["weeks"]
     if not weeks or (promotion and not got["explicit_week"]):
         weeks = [latest]
@@ -476,8 +474,6 @@ def rules_scope(question: str, release: ReleaseContext, brand_id: str) -> dict:
         notes.append(f"The comparison is the previous {count} weeks unless you change it.")
     if not got["territory"]:
         notes.append("No territory was named, so the form keeps the territory you chose.")
-    if got["promotion"] and not promotion:
-        notes.append("The Promotion review is available for BXA only.")
     words = _question_words(question)
     return {"week_start": weeks[0], "week_end": weeks[-1], "territory_id": got["territory"],
             "comparison_weeks": count or None, "promotion_review": promotion, "notes": notes,

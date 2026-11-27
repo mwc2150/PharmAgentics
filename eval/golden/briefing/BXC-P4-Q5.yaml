@@ -1,0 +1,94 @@
+id: C-055
+lane: briefing
+brand: BXC
+story: BXC-P4-Q5
+persona: P4 Marketer (Magdalena)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic: How confident is the estimate, and when will we know more?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic
+anchor: Confidence in the Mid-Atlantic plan estimate (Lipidara)
+definition:
+  first_week: '2025-08-04'
+  last_week: '2025-10-27'
+  comparison:
+    kind: custom
+    start: '2025-06-02'
+    end: '2025-07-28'
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Magdalena, I want confidence and timing stated plainly, so that early reads don't mislead the budget.
+given: one plan in one territory, one competitor access change and one reversal.
+when: the Lipidara (BXC) brief reports confidence.
+then: it says Low, names the single plan, says the figure is an association, and states when the next read is due.
+reference_answer: 'Low. The Mid-Atlantic estimate rests on one plan in one territory and is an association. From 2025-08-04 to 2025-10-27 (Labor Day week left out), Lipidara TRx on the plan rose 21.1% against the summer, 9.6 points more than the territory''s other plans (11.5%). At most, that gap is what a competitor''s tier change on 2025-08-01 could account for. The one test the data offers did not confirm it: when Cardiovela''s tier went back to 2 on 2025-11-01, Lipidara''s plan TRx kept rising (13.3% above August to October, against 8.4% for the other plans). In this data a formulary change shows within the first week, so a re-read four weeks after the plan''s next change is enough.'
+must_not_say:
+  text: '"High confidence" from one plan.'
+  phrases: []
+  semantic:
+  - High confidence
+action: Magdalena waits for the four-week re-read before moving budget.
+eval_items:
+- EV-5.1
+- EV-4.4
+- EV-7.2
+facts:
+- id: plan_change_pct
+  role: must
+  value: 21.1
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+  needs: plan_cut
+- id: ma_other_plans_change_pct
+  role: must
+  value: 11.5
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+- id: plan_vs_other_plans_gap_points
+  role: context
+  value: 9.6
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1) - 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+  needs: plan_cut
+- id: plan_nov_dec_vs_aug_oct_pct
+  role: context
+  value: 13.3
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-11-03' and DATE '2025-12-15' and week_start <> DATE '2025-11-24') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') - 1)
+  reviewed: false
+  needs: plan_cut
+- id: ma_other_plans_nov_dec_vs_aug_oct_pct
+  role: context
+  value: 8.4
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-11-03' and DATE '2025-12-15' and week_start <> DATE '2025-11-24') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and plan_id <> 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') - 1)
+  reviewed: false
+- id: bxa_plan_tier_oct_2025
+  role: context
+  value: 3
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-10-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA'
+  reviewed: false
+  needs: plan_cut
+- id: bxa_plan_tier_nov_2025
+  role: context
+  value: 2
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-11-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA'
+  reviewed: false
+  needs: plan_cut
+findings: []
+must_say:
+  phrases:
+  - Low
+  - one plan|single plan
+  - association
+  - four weeks after|re-read four weeks
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P4-Q5

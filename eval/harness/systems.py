@@ -27,10 +27,17 @@ NAIVE_PROMPT = (
 )
 
 
+# Every system declares the brands it can answer for (`brands`). A case about another brand is recorded as skipped when a
+# run starts, never run and never scored (eval/harness/run.py). Only the scripted Briefing baseline implements Lipidara
+# (core-010 `BRIEFING_ENGINES`); the agent and low-code builds raise for BXC, and Forecast has no BXC series.
+BXA_ONLY = ("BXA",)
+
+
 class ReferenceSystem:
     name = "reference"
     uses_llm = False
     returns_evidence = False
+    brands = ("BXA", "BXC")  # the golden answers exist for every brand
 
     def __init__(self, cases: list[Case]):
         self._answers = {c.question: c.reference_answer for c in cases}
@@ -43,6 +50,7 @@ class NaiveLLMSystem:
     name = "naive_llm"
     uses_llm = True
     returns_evidence = False
+    brands = BXA_ONLY  # NAIVE_PROMPT names Cardiovela
 
     def __init__(self, cases: list[Case], model: str | None = None):
         self.model = model or os.environ.get("PHARMAGENTICS_LOCAL_MODEL", DEFAULT_LOCAL_MODEL)
@@ -76,6 +84,7 @@ class _ScriptedLane:
 
     uses_llm = False
     returns_evidence = True
+    brands = BXA_ONLY
     folder = package = name = ""
 
     def __init__(self, cases: list[Case]):
@@ -103,13 +112,15 @@ def transcript(system: str, brief: dict, turn: dict, brief_seconds: float, turn_
 
 class BriefingScripted(_ScriptedLane):
     name, folder, package = "briefing_scripted", "brand-briefing", "briefing_baseline"
+    brands = ("BXA", "BXC")  # core-010: both brands have the scripted engine
 
-    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None) -> dict:
+    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None,
+                brand_id: str = "BXA") -> dict:
         options = {**_comparison_options(comparison), **definition_option(self._answer, definition)}
-        return AnswerEnvelope.model_validate(self._answer(question, **options)).model_dump()
+        return AnswerEnvelope.model_validate(self._answer(question, brand_id=brand_id, **options)).model_dump()
 
     def predict_follow_up(self, question: str, follow_up: str, section: str | None, comparison: dict | None = None,
-                          definition: dict | None = None) -> dict:
+                          definition: dict | None = None, brand_id: str = "BXA") -> dict:
         """The scripted brief, then the rule-based follow-up from that brief alone (brief-006 FR-004)."""
         import time
 
@@ -117,9 +128,9 @@ class BriefingScripted(_ScriptedLane):
         pkg = _lane_package(self.folder, self.package)
         started = time.perf_counter()
         options = _comparison_options(comparison)
-        brief = self._answer(question, **options, **definition_option(self._answer, definition))
+        brief = self._answer(question, brand_id=brand_id, **options, **definition_option(self._answer, definition))
         middle = time.perf_counter()
-        turn = followup.answer({**brief, **pkg.pipeline.scope(question, **options)}, follow_up, section)
+        turn = followup.answer({**brief, **pkg.pipeline.scope(question, brand_id=brand_id, **options)}, follow_up, section)
         return transcript(self.name, brief, turn, middle - started, time.perf_counter() - middle)
 
 
@@ -135,6 +146,7 @@ class BriefingLowCode:
     uses_llm = True
     returns_evidence = True
     returns_trajectory = True
+    brands = BXA_ONLY  # the worker raises for BXC (core-010)
 
     def __init__(self, cases: list[Case], model: str | None = None):
         pkg = _lane_package("brand-briefing", "briefing_lowcode")
@@ -159,6 +171,7 @@ class BriefingAgent(BriefingLowCode):
     plan, a bounded team per story, code-built sections with the writer's answer and story sentences."""
 
     name = "briefing_agent"
+    brands = ("BXA", "BXC")  # core-010: BRIEFING_ENGINES lists the agent for both; the brand reaches the engine as `brand_id`
 
     def __init__(self, cases: list[Case], model: str | None = None):
         _lane_package("brand-briefing", "briefing_lowcode")  # build 3 reuses build 2's middleware
@@ -169,12 +182,13 @@ class BriefingAgent(BriefingLowCode):
         self.model = model_spec(model)
         self.params = {"agent_config_version": pkg.config_version()}
 
-    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None) -> dict:
+    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None,
+                brand_id: str = "BXA") -> dict:
         options = {**_comparison_options(comparison), **definition_option(self._answer, definition)}
-        return AnswerEnvelope.model_validate(self._answer(question, self.model, **options)).model_dump()
+        return AnswerEnvelope.model_validate(self._answer(question, self.model, brand_id=brand_id, **options)).model_dump()
 
     def predict_follow_up(self, question: str, follow_up: str, section: str | None, comparison: dict | None = None,
-                          definition: dict | None = None) -> dict:
+                          definition: dict | None = None, brand_id: str = "BXA") -> dict:
         """The agent's brief, then one agent follow-up on it (brief-006 slice 4). A turn that runs out of time is
         a run error, never a score (FR-010)."""
         import time
@@ -183,9 +197,9 @@ class BriefingAgent(BriefingLowCode):
         from briefing_baseline import pipeline
         started = time.perf_counter()
         options = _comparison_options(comparison)
-        brief = self._answer(question, self.model, **options, **definition_option(self._answer, definition))
+        brief = self._answer(question, self.model, brand_id=brand_id, **options, **definition_option(self._answer, definition))
         middle = time.perf_counter()
-        turn = followup.answer({**brief, **pipeline.scope(question, **options)}, follow_up, section, self.model)
+        turn = followup.answer({**brief, **pipeline.scope(question, brand_id=brand_id, **options)}, follow_up, section, self.model)
         if turn.get("error") == "timeout":
             raise TimeoutError(f"follow-up: {turn['answer']}")
         return transcript(f"{self.name}:{self.model}", brief, turn, middle - started, time.perf_counter() - middle)
@@ -223,6 +237,12 @@ def definition_option(fn, definition: dict | None) -> dict:
     return {"definition": definition} if definition and accepts(fn, "definition") else {}
 
 
+def brand_option(fn, brand: str | None) -> dict:
+    """The brand goes to a system as `brand_id`, and only for a brand other than BXA and a system that takes one, so a
+    Cardiovela call is exactly the call it always was."""
+    return {"brand_id": brand} if brand and brand != "BXA" and accepts(fn, "brand_id") else {}
+
+
 def _comparison_options(comparison: dict | None) -> dict:
     from pharmagentics.tools.window import Comparison
 
@@ -237,6 +257,7 @@ class ForecastRules:
     uses_llm = False
     returns_evidence = True
     returns_trajectory = True
+    brands = BXA_ONLY  # no BXC forecast-versus-actual series exists
 
     def __init__(self, cases: list[Case], model: str | None = None):
         pkg = _lane_package("forecast-explanation", "forecast_agent")

@@ -1,0 +1,100 @@
+id: C-051
+lane: briefing
+brand: BXC
+story: BXC-P4-Q1
+persona: P4 Marketer (Magdalena)
+category: null_week
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-10, Southeast: Did my campaign move brand sales, and by how much?'
+review_note: null
+period: week of 2026-08-10, Southeast
+anchor: Southeast rep-call spike, 2026-08-10 (Lipidara)
+definition:
+  first_week: '2026-08-10'
+  last_week: '2026-08-10'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Magdalena, I want promotion tested with a verdict either way, so that sales gains are not credited to whichever campaign launched last.
+given: a territory where one week of promotion activity stands out from its median.
+when: the Lipidara (BXC) brief tests promotion.
+then: promotion gets a verdict of not supported for that week, with the TRx before, during and after stated and no lift credited to the campaign.
+reference_answer: 'The release has no lasting Lipidara campaign push: in no territory did rep calls stay above 1.25 times their median for more than 3 weeks in a row. The clearest spike is Southeast in the week of 2026-08-10: rep calls were 49 against a median of 33, and digital impressions 1,125 against a median of 1,122.5. Southeast BXC TRx that week was 583, 9.3% below its previous four weeks (2026-07-13 to 2026-08-03, average 643) while the other territories rose 5.3%. The next week it was 649, 0.9% above those four weeks. Promotion is not supported: the spike week did not lift TRx.'
+must_not_say:
+  text: '"promotion caused a lift," or credit promotion in any week where its activity did not change.'
+  phrases:
+  - promotion caused a lift
+  semantic: []
+action: Magdalena does not use the spike week as evidence of a campaign effect.
+eval_items:
+- EV-4.5
+- EV-4.1
+facts:
+- id: se_rep_calls_spike_week
+  role: must
+  value: 49
+  sql: select rep_calls_aggregated from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-08-10'
+  reviewed: false
+- id: se_rep_calls_median
+  role: context
+  value: 33
+  sql: select median(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTHEAST'
+  reviewed: false
+- id: se_digital_spike_week
+  role: context
+  value: 1125
+  sql: select digital_impressions from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-08-10'
+  reviewed: false
+- id: se_digital_median
+  role: context
+  value: 1122.5
+  sql: select median(digital_impressions) from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTHEAST'
+  reviewed: false
+- id: se_bxc_trx_spike_week
+  role: must
+  value: 583
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-08-10'
+  reviewed: false
+- id: se_bxc_trx_prior_4wk_avg
+  role: context
+  value: 643
+  sql: select avg(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-07-13' and DATE '2026-08-03' group by 1)
+  reviewed: false
+- id: se_change_pct
+  role: must
+  value: -9.3
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-07-13' and DATE '2026-08-03' or week_start between DATE '2026-08-10' and DATE '2026-08-10') group by 1 having count(*) = 5 and count(*) filter (where health_status = 'PASS') = 5) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-08-10' and DATE '2026-08-10' and territory_id = 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 1.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-07-13' and DATE '2026-08-03' and territory_id = 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: other_territories_change_pct
+  role: context
+  value: 5.3
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-07-13' and DATE '2026-08-03' or week_start between DATE '2026-08-10' and DATE '2026-08-10') group by 1 having count(*) = 5 and count(*) filter (where health_status = 'PASS') = 5) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-08-10' and DATE '2026-08-10' and territory_id <> 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 1.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-07-13' and DATE '2026-08-03' and territory_id <> 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: se_bxc_trx_next_week
+  role: context
+  value: 649
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-08-17'
+  reviewed: false
+- id: se_next_week_vs_prior_4wk_pct
+  role: context
+  value: 0.9
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-07-13' and DATE '2026-08-03' or week_start between DATE '2026-08-17' and DATE '2026-08-17') group by 1 having count(*) = 5 and count(*) filter (where health_status = 'PASS') = 5) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-08-17' and DATE '2026-08-17' and territory_id = 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 1.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-07-13' and DATE '2026-08-03' and territory_id = 'SOUTHEAST' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: longest_run_calls_above_1_25x_median_weeks
+  role: context
+  value: 3
+  sql: with m as (select territory_id, median(rep_calls_aggregated) mc from raw.promo_activity where product_id = 'BXC' group by 1), f as (select p.territory_id, p.week_start, (p.rep_calls_aggregated * 1.0 / mc > 1.25) hi from raw.promo_activity p join m using (territory_id) where p.product_id = 'BXC'), g as (select *, row_number() over (partition by territory_id order by week_start) rn from f), r as (select territory_id, hi, rn - row_number() over (partition by territory_id, hi order by week_start) grp from g) select max(c) from (select territory_id, grp, count(*) c from r where hi group by all)
+  reviewed: false
+findings: []
+source: docs/planning/user-stories-lipidara.md#BXC-P4-Q1

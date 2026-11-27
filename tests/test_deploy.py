@@ -14,6 +14,7 @@ gcp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gcp)
 
 ENV = {"PHARMAGENTICS_OIDC_CLIENT_SECRET": "s3cret", "UAT_PASSWORD_BRIEFING_ANALYST": "a", "UAT_PASSWORD_BRIEFING_DIRECTOR": "d",
+       "UAT_PASSWORD_BRIEFING_INSIGHTS": "i", "UAT_PASSWORD_BRIEFING_MARKETER": "m",
        "UAT_PASSWORD_FORECAST_ANALYST": "fa", "UAT_PASSWORD_FORECAST_MANAGER": "fm",
        "UAT_PASSWORD_TESTER": "t"}
 
@@ -27,7 +28,8 @@ def test_realm_in_repo_holds_no_secret_values():
     assert realm["registrationAllowed"] is False  # FR-012: no self-registration
 
 
-SHARED_LOGINS = {"uat-briefing-analyst": "UAT_PASSWORD_BRIEFING_ANALYST", "uat-briefing-director": "UAT_PASSWORD_BRIEFING_DIRECTOR",
+SHARED_LOGINS = {"uat-briefing-analyst": "UAT_PASSWORD_BRIEFING_ANALYST", "uat-briefing-insights": "UAT_PASSWORD_BRIEFING_INSIGHTS",
+                 "uat-briefing-director": "UAT_PASSWORD_BRIEFING_DIRECTOR", "uat-briefing-marketer": "UAT_PASSWORD_BRIEFING_MARKETER",
                  "uat-forecast-analyst": "UAT_PASSWORD_FORECAST_ANALYST", "uat-forecast-manager": "UAT_PASSWORD_FORECAST_MANAGER",
                  "uat-tester": "UAT_PASSWORD_TESTER"}
 
@@ -49,11 +51,37 @@ def test_each_shared_password_belongs_to_its_realm_account():
         assert users[account]["credentials"][0]["value"] == "${" + key + "}"
 
 
-def test_the_realm_has_the_uat_logins_and_independent_tester_grants():
+def test_the_realm_has_exactly_the_seven_uat_logins_with_their_roles_and_brand_grants():
+    """Session 2026-11-27: four Briefing logins, two Forecast logins and the tester. Every Briefing login and the tester hold
+    both brands; Forecast logins keep BXA only. The two multibrand logins are gone (per-user grants are tested with fabricated principals)."""
     realm = json.loads((ROOT / "deploy" / "keycloak" / "realm-pharmagentics.json").read_text(encoding="utf-8"))
     users = {u["username"]: u for u in realm["users"]}
-    assert set(users) == set(SHARED_LOGINS) | {"uat-briefing-analyst-multibrand", "uat-briefing-director-multibrand"}
-    assert users["uat-tester"]["realmRoles"] == ["tester", "brand-bxa", "brand-bxc"]
+    assert set(users) == set(SHARED_LOGINS) and len(users) == 7
+    both = ["brand-bxa", "brand-bxc"]
+    assert {n: u["realmRoles"] for n, u in users.items()} == {
+        "uat-briefing-analyst": ["briefing-analyst", *both], "uat-briefing-insights": ["briefing-insights", *both],
+        "uat-briefing-director": ["briefing-director", *both], "uat-briefing-marketer": ["briefing-marketer", *both],
+        "uat-forecast-analyst": ["forecast-analyst", "brand-bxa"], "uat-forecast-manager": ["forecast-manager", "brand-bxa"],
+        "uat-tester": ["tester", *both]}
+
+
+def test_the_stand_in_logins_mirror_the_realm_grants():
+    """Dev sign-in follows the realm (the multibrand and no-brands stand-ins are test fixtures, not UAT logins)."""
+    from pharmagentics.api import auth
+
+    realm = json.loads((ROOT / "deploy" / "keycloak" / "realm-pharmagentics.json").read_text(encoding="utf-8"))
+    for user in realm["users"]:
+        dev = "dev-" + user["username"].removeprefix("uat-").replace("briefing-", "")
+        dev = {"dev-forecast-analyst": "dev-forecast-analyst", "dev-forecast-manager": "dev-forecast-manager"}.get(dev, dev)
+        assert sorted(auth.DEV_USERS[dev][1]) == sorted(user["realmRoles"]), dev
+
+
+def test_make_env_lists_the_same_accounts_as_the_realm():
+    spec = importlib.util.spec_from_file_location("make_env", ROOT / "deploy" / "make_env.py")
+    make_env = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(make_env)
+    assert make_env.DEMO_ACCOUNTS == SHARED_LOGINS
+    assert all(make_env.DEMO_PASSWORDS[k] for k in SHARED_LOGINS.values())
 
 
 def test_realm_roles_match_the_policy():

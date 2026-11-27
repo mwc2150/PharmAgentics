@@ -7,6 +7,7 @@ restatements and competitor status. Every number in returned text is a claim tok
 """
 from __future__ import annotations
 
+import re
 import statistics
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -111,6 +112,7 @@ class Period:
     extra_baselines: list[tuple[Comparison, list[str]]] = field(default_factory=list)  # each extra comparison and its weeks (FR-000e)
     ok_extra: list[list[str]] = field(default_factory=list)  # per extra comparison: reportable in every week of period and extra weeks
     ok_base_extra: list[list[str]] = field(default_factory=list)  # per extra comparison: reportable in every extra comparison week
+    material: dict = field(default_factory=dict)  # territory -> beyond its normal range on the comparison weeks (screen)
 
     @property
     def col(self) -> str:
@@ -146,7 +148,7 @@ def resolve(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: 
     d = Definition.coerce(definition, comparison)
     comparison = d.primary_comparison
     first, latest = reg.rows("select min(week_start)::varchar, max(week_start)::varchar from raw.calendar")[0]
-    ask = parse(question, first, latest, briefing=brand_id == "BXA")
+    ask = parse(question, first, latest, briefing=True)  # briefing_brand() above admits Briefing brands only
     W, explicit, note = ask["weeks"], ask.get("explicit_week", False), ask["note"]
     if d.first_week:  # the analyst chose the weeks: they win over the question's
         chosen = q.mondays(d.first_week, d.last_week or d.first_week)
@@ -558,11 +560,7 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
     if not p.has("territory"):  # the brief's grain leaves territory stories out (brief-010 FR-000c)
         return [], []
     series = _series(reg, p.brand_id)
-    B = p.baseline
-    if p.comparison is None and len(p.requested) > 1:
-        # The materiality screen compares every territory over the same reportable weeks.
-        preceding = (q.shift(p.requested[0], -i) for i in range(min(len(p.requested), 13), 0, -1))
-        B = [w for w in preceding if w >= p.first and all(w in series[t] for t in ok)]
+    B = screen_weeks(reg, p, series)
     flagged_cal = {w for (w,) in reg.rows("select week_start::varchar from raw.calendar where holiday_flag = 1 or plan_year_reset = 1")}
     found, quiet = [], []
     for t in ok:
@@ -577,6 +575,7 @@ def screen(reg: Registry, p: Period, details: dict | None = None):
         sigma = max(statistics.pstdev(devs), 0.04) if len(devs) > 8 else 0.08
         threshold = max(MATERIAL_CHANGE, NOISE_Z * sigma / min(len(W), 3) ** 0.5)
         material = abs(change) >= threshold and abs(gap) >= MATERIAL_GAP
+        p.material[t] = material
         if details is not None:
             details[t] = {"change": change, "gap": gap, "threshold": threshold}
         if material or t == focus:
@@ -627,6 +626,70 @@ def _against(reg: Registry, p: Period, t: str, kind: str, col: str) -> tuple[str
     return word(reg.scalar(sql) or 0), token
 
 
+def screen_weeks(reg: Registry, p: Period, series: dict | None = None) -> list[str]:
+    """The weeks the materiality screen compares with (brief-007 FR-001): the comparison weeks, except a multi-week
+    period on the default comparison, which is screened against as many weeks before it as it is long, up to 13, that
+    every like-for-like territory reports. The Assumptions state these weeks whenever they differ (assumptions first)."""
+    if p.comparison is None and len(p.requested) > 1:
+        series = series if series is not None else _series(reg, p.brand_id)
+        preceding = (q.shift(p.requested[0], -i) for i in range(min(len(p.requested), 13), 0, -1))
+        return [w for w in preceding if w >= p.first and all(w in series[t] for t in p.ok)]
+    return list(p.baseline)
+
+
+def within_normal_range(reg: Registry, p: Period, t: str) -> bool:
+    """True for the territory the question names when the screen finds its change inside its normal range: it has a
+    story only because it was asked about, and the brief says so rather than presenting the change as material."""
+    if t != p.focus:
+        return False
+    if t not in p.material:
+        screen(reg, p)
+    return p.material.get(t) is False
+
+
+IN_RANGE = "within_range"
+
+
+def credit_rule(reg: Registry, p: Period, t: str, check):
+    """Assumptions first, for every question and brand (Michael, 2026-11-27; mentor review 2.1, REV-1): a territory
+    whose change is inside its normal range on the brief's stated comparison weeks has no change to explain, so no
+    territory-level driver (promotion, competitor, supply, data) is credited for it, on its story or on its plan cards.
+    Access keeps its verdict: its evidence is always a plan's own TRx on the plan whose coverage changed, not the
+    territory's change. A credited check becomes `within_range`; its evidence stays, the lapse it recovers from is
+    named, and the effect range (a credit) is dropped."""
+    if check.driver == "access" or check.verdict != "supported" or not within_normal_range(reg, p, t):
+        return check
+    from dataclasses import replace
+
+    label, _, rest = check.text.partition(": ")
+    _first, _, rest = rest.partition(". ")
+    kept = [s for s in re.split(r"(?<=\.) ", rest) if s and not s.startswith(("Compared with territories", "No other territory held"))]
+    detail = dict(check.detail or {})
+    lapse = detail.get("lapse")
+    back = ("" if not lapse else f" The period falls inside the promotion lapse of {lapse[0]} to {lapse[1]}."
+            if detail.get("lapse_kind") == "during" else f" Calls came back after the promotion lapse of {lapse[0]} to {lapse[1]}.")
+    if isinstance(detail.get("promotion"), dict):
+        detail["promotion"] = {**detail["promotion"], "verdict": IN_RANGE, "effect": None}
+    text = (f"{label}: not credited. {q.name(t)} moved within its normal range, so no driver is credited for its change."
+            f"{back} {' '.join(kept)}").rstrip()
+    return replace(check, verdict=IN_RANGE, text=text, detail=detail)
+
+
+def in_range_closing(t: str) -> str:
+    """A story's closing line when its territory moved within its normal range: nothing to investigate (review H-1)."""
+    return f"Confidence: Low. No driver is named: {q.name(t)} moved within its normal range, so there is no change to explain."
+
+
+def in_range(checks) -> bool:
+    return any(c.verdict == IN_RANGE for c in checks)
+
+
+def asked_note(reg: Registry, p: Period, t: str) -> str:
+    """The sentence a story or §1 adds for a territory asked about whose change is inside its normal range."""
+    return (f" {q.name(t)} moved within its normal range; it is reported because the question asks about it."
+            if within_normal_range(reg, p, t) else "")
+
+
 def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None) -> str:
     """A story's head. The primary measure sets the figures and each extra measure adds its own sentence; the primary
     `relative_to` sets what the change is set against (the other territories, the national change, or nothing) and each
@@ -671,7 +734,7 @@ def territory_change(reg: Registry, p: Period, t: str, facts: dict | None = None
         if facts is not None:
             facts["xc"].append({"word": word(reg.scalar(sql) or 0), "pct": tok, "since": since})
         text += f" It is {word(reg.scalar(sql) or 0)} {tok} {since}."
-    return text
+    return text + asked_note(reg, p, t)
 
 
 def _competitor_reading(reg: Registry, p: Period) -> dict:
@@ -754,14 +817,15 @@ def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora
     pre = [q.shift(launched, -i) for i in range(4, 0, -1)]
     since = reg.claim("compare_competitors", f"select datediff('week', DATE '{launched}', week_start) from raw.calendar "
                       f"where week_start = DATE '{W[-1]}'", "int")
-    earlier = [q.shift(w, -8) for w in W]
-    trend = (reg.scalar(share_w) or 0) - (reg.scalar(q.share(earlier, "BXE")) or 0)
-    direction = "still growing" if trend > 1 else "now flat" if trend > -1 else "declining"
+    # The direction reads the brief's stated comparison weeks, as the national card does (assumptions first; UAT review
+    # 2026-11-27, C-13: "still growing" came from an unstated window eight weeks back while the chart was flat).
+    then = reg.scalar(q.share(p.baseline, "BXE")) if p.baseline else None
+    direction = f", share {word((reg.scalar(share_w) or 0) - then)} on the comparison weeks" if then is not None else ""
     bxe = reg.claim("compare_competitors", share_w, "pct", product="BXE")
     bxa = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct", product=p.brand_id)
     bxa_pre = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct", product=p.brand_id, weeks="before launch")
     if facts is not None:
         facts.update(bxe=bxe, bxa=bxa, pre=bxa_pre)
-    return (f"{lead} (launched {launched}). This is a continuing story, week {since} since launch, {direction}. "
+    return (f"{lead} (launched {launched}). This is a continuing story, week {since} since launch{direction}. "
             f"Metacora held {bxe} of the four-brand basket and {p.brand_id} held {bxa}, against {bxa_pre} for {p.brand_id} in the four weeks before launch. "
             f"Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers. Next: involve marketing and sales.")

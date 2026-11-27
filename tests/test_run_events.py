@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "agents" / "brand-briefing"))
 from pharmagentics.api import agent_host, cloud, jobs, service, views  # noqa: E402
 from pharmagentics.api.app import accept_result, app  # noqa: E402
 from pharmagentics.tools import events as ev  # noqa: E402
+from signoff_helpers import approve  # noqa: E402
 
 pytestmark = pytest.mark.skipif(not service.DB.is_file(), reason="Build local/pharmagentics.duckdb first")
 Q = "Week of 2026-07-13 in Mid-Atlantic: Generate the weekly brand-performance briefing."
@@ -92,7 +93,7 @@ def test_events_do_not_change_the_answer_claims_or_evidence(monkeypatch):
             await _chat(log, name, prompt, reply)
             return reply
 
-        async def fake_team(cfg, spec, mcp, task, log, wall):
+        async def fake_team(cfg, spec, mcp, task, log, wall, brand_id="BXA"):
             territory = task.split("territory ID ")[1].split(")")[0]
             await _chat(log, "manager", "Plan the story.", '{"next_speaker": {"answer": "data_forensics"}}')
             await _tool(log, "data_forensics", mcp, "check_data", territory=territory)
@@ -161,7 +162,7 @@ def test_worker_run_job_streams_events_and_the_brief_continues_the_triage_log(mo
         await _chat(log, name, prompt, reply)
         return reply
 
-    async def fake_team(cfg, spec, mcp, task, log, wall):
+    async def fake_team(cfg, spec, mcp, task, log, wall, brand_id="BXA"):
         t = task.split("territory ID ")[1].split(")")[0]
         await _tool(log, "data_forensics", mcp, "check_data", territory=t)
         await _tool(log, "driver_investigator", mcp, "story_confidence", territory=t)
@@ -261,10 +262,10 @@ def test_builtin_worker_appends_progress_and_the_brief_keeps_the_events(monkeypa
     assert brief["events"] and len(brief["claim_events"]) == len(brief["claims"]) and None not in brief["claim_events"]
 
     # the leader cut: a one-line summary, no events, arguments or prompts
-    analyst.post(f"/api/briefing/{brief['brief_id']}/review", json={"decision": "approved"})
+    approve(analyst, brief["brief_id"])
     leader = signed_in("dev-director").get(f"/api/briefing/{brief['brief_id']}").json()
     assert leader["view"] == "leadership" and leader["process_summary"].startswith("Built by the agent team: ")
-    assert "reviewed by the analyst" in leader["process_summary"]
+    assert "reviewed by the analyst and signed off by the Insights Manager" in leader["process_summary"]
     forbidden = {"events", "claim_events", "args", "prompt", "progress", "flow", "triage", "tool", "step", "actor"}
     assert not (_keys(leader) & forbidden), _keys(leader) & forbidden
 
@@ -283,11 +284,11 @@ def test_scripted_brief_stores_events_and_leaders_get_the_summary_only():
     assert got["engine"] == "scripted" and got["events"] and {e["actor"] for e in got["events"]} == {"Code"}
     assert len(got["claim_events"]) == len(got["claims"]) and None not in got["claim_events"]
     assert signed_in("dev-analyst").get(f"/api/briefing/{got['brief_id']}").json()["events"] == got["events"]  # saved with the brief
-    analyst.post(f"/api/briefing/{got['brief_id']}/review", json={"decision": "approved"})
+    approve(analyst, got["brief_id"])
     leader = signed_in("dev-director").get(f"/api/briefing/{got['brief_id']}").json()
     assert leader["process_summary"].startswith("Built by the scripted engine: ") and "events" not in leader
     assert leader["process_summary"] == views.process_summary(
-        {"result": got, "review_status": "approved", "reviewed_at": leader["reviewed_at"]})
+        {"result": got, "review_status": "approved", "reviewed_at": leader["reviewed_at"], "signed_off_at": leader["reviewed_at"]})
 
 
 def test_process_summary_without_events_and_while_unreviewed():

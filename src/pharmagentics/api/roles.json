@@ -1,20 +1,38 @@
 {
-  "_comment": "Role-to-permission map (core-007 FR-001). One analyst and one leader per lane. Role names match the Keycloak realm roles. P2, P4 and FM have no role. Forecast roles: Alvin and Sienna confirm.",
-  "version": "2026-11-11",
+  "_comment": "Role-to-permission map (core-007 FR-001). One role per persona that has a login: P1, P2, P3 and P4 in Briefing, CA and BM in Forecast. Role names match the Keycloak realm roles. `states` are the review states of a brief the role may list and open (brief-005 two-step sign-off); `evaluation` opens the Evaluation page for a Briefing role; the Forecast roles are as before v2 and keep the page (rbac.can_evaluate). Forecast roles: Alvin and Sienna confirm.",
+  "version": "2026-11-27",
   "roles": {
     "briefing-analyst": {
       "lane": "briefing",
       "persona": "P1",
       "label": "Commercial Analyst",
       "views": ["analyst", "leadership"],
-      "actions": ["run", "review", "read"]
+      "actions": ["run", "review", "read", "evaluation"],
+      "states": ["draft", "sent", "returned", "rejected", "signed_off"]
+    },
+    "briefing-insights": {
+      "lane": "briefing",
+      "persona": "P2",
+      "label": "Insights Manager",
+      "views": ["analyst", "leadership"],
+      "actions": ["read", "signoff", "evaluation"],
+      "states": ["sent", "returned", "signed_off"]
     },
     "briefing-director": {
       "lane": "briefing",
       "persona": "P3",
       "label": "Brand Director",
       "views": ["leadership"],
-      "actions": ["read"]
+      "actions": ["read"],
+      "states": ["signed_off"]
+    },
+    "briefing-marketer": {
+      "lane": "briefing",
+      "persona": "P4",
+      "label": "Marketer",
+      "views": ["leadership"],
+      "actions": ["read"],
+      "states": ["signed_off"]
     },
     "forecast-analyst": {
       "lane": "forecast",
@@ -34,7 +52,13 @@
   "test_role": {
     "name": "tester",
     "label": "Test view",
-    "_comment": "One test login (uat-tester) that is not a persona: it switches between the analyst view (P1, CA) and the leadership view (P3, BM) of both lanes, and then has exactly that role's rights. Its UAT events and feedback carry test: true."
+    "_comment": "One test login (uat-tester) that is not a persona. It switches between the analyst view (P1, CA), the Insights Manager view (P2), the leadership view (P3, BM) and the Marketer view (P4), and then has exactly that role's rights. P2 and P4 exist in the Briefing lane only, so the Forecast lane is absent in those two views. It always opens the Evaluation page. Its UAT events and feedback carry test: true.",
+    "views": {
+      "analyst": {"briefing": "P1", "forecast": "CA"},
+      "insights": {"briefing": "P2"},
+      "leadership": {"briefing": "P3", "forecast": "BM"},
+      "marketer": {"briefing": "P4"}
+    }
   },
   "lanes": {
     "briefing": {"available": true},

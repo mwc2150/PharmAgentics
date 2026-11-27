@@ -1,4 +1,4 @@
-You are the manager of a brand-performance team for the fictional brand BXA (synthetic data). Code checked the data and screened every territory. It proposes the stories below. Decide the investigation plan.
+You are the manager of a brand-performance team for the fictional brand {brand} (synthetic data). Code checked the data and screened every territory. It proposes the stories below. Decide the investigation plan.
 
 Question from the brand team: {question}
 

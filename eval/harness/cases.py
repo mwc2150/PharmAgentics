@@ -17,6 +17,8 @@ from .paths import GOLDEN_DIR
 from .truth import exact_value
 
 Lane = Literal["briefing", "forecast"]
+Brand = Literal["BXA", "BXC"]  # the brand a case is about: Cardiovela or Lipidara (core-010); a case with no `brand:` is BXA
+DEFAULT_BRAND: Brand = "BXA"
 # core-011 FR-018: the capability a system must have to state a fact or reach a finding.
 Needs = Literal["plan_cut", "segment_pct", "restatement", "national_card"]
 CUT_KINDS = ("plan", "channel", "segment")  # core-011 FR-017: a cut below the territory, "<kind>:<name>"
@@ -245,6 +247,7 @@ def fact_percent(fact_id: str, value: float, reference: str) -> bool | None:
 class Case(BaseModel):
     id: str
     lane: Lane
+    brand: Brand = DEFAULT_BRAND  # which brand's data the case is about; the systems receive it as `brand_id`
     story: str
     persona: str
     category: str | None = None  # Evaluation Pack §4 taxonomy (Briefing)
@@ -296,6 +299,7 @@ class Case(BaseModel):
         """What the system under test receives: the question, and the follow-up for a two-turn case."""
         return {"question": self.question, "follow_up": self.follow_up.question if self.follow_up else None,
                 "section": self.follow_up.section if self.follow_up else None, "intent": self.intent,
+                **({"brand": self.brand} if self.brand != DEFAULT_BRAND else {}),  # BXA rows stay as they always were
                 **({"comparison": self.comparison.for_engine().model_dump(mode="json", exclude_none=True)} if self.comparison else {}),
                 **({"definition": self.definition.payload(engine=True)} if self.definition else {})}
 
@@ -338,17 +342,30 @@ def case_files(lane: str | None = None):
     return sorted(p for name in lanes for p in (GOLDEN_DIR / name).glob("*.yaml"))
 
 
-def load_cases(lane: str | None = None, stories: list[str] | None = None) -> list[Case]:
-    cases = [Case.model_validate(yaml.safe_load(p.read_text(encoding="utf8"))) for p in case_files(lane)]
+def _brand_of(path) -> str:
+    """The `brand:` a case file states (a top-level line), BXA when it has none. Read as text so a fingerprint never parses YAML."""
+    match = re.search(r"^brand:\s*(\w+)\s*$", path.read_text(encoding="utf8"), flags=re.M)
+    return match.group(1) if match else DEFAULT_BRAND
+
+
+def _brand_files(lane: str | None, brand: str | None):
+    return [p for p in case_files(lane) if brand in (None, "all") or _brand_of(p) == brand]
+
+
+def load_cases(lane: str | None = None, stories: list[str] | None = None, brand: str | None = DEFAULT_BRAND) -> list[Case]:
+    """The golden cases of one lane (default all) and one brand. `brand` defaults to BXA, so every caller written before
+    Lipidara reads exactly the cases it always did; pass "BXC" for Lipidara or "all" (or None) for every brand."""
+    cases = [Case.model_validate(yaml.safe_load(p.read_text(encoding="utf8"))) for p in _brand_files(lane, brand)]
     if stories:
         wanted = {s.upper() for s in stories}
         cases = [c for c in cases if c.story in wanted or c.id in wanted]
     return sorted(cases, key=lambda c: c.id)
 
 
-def golden_fingerprint(lane: str | None = None) -> str:
+def golden_fingerprint(lane: str | None = None, brand: str | None = DEFAULT_BRAND) -> str:
+    """Hash of the case files of one brand (default BXA), so adding Lipidara cases never changes a Cardiovela run's version."""
     digest = hashlib.sha256()
-    for path in case_files(lane):
+    for path in _brand_files(lane, brand):
         digest.update(path.name.encode())
         digest.update(path.read_bytes())
     return digest.hexdigest()[:12]

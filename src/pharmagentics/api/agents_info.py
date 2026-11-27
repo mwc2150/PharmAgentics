@@ -32,7 +32,7 @@ TOOLS = {
     "screen_territories": "Which territories moved beyond their normal range",
     "territory_change": "How far one territory moved, and against what",
     "check_access": "Tests payer access as the driver, verdict by code",
-    "check_promotion": "Tests promotion as the driver (an association, read with a lag), verdict by code",
+    "check_promotion": "Tests promotion after the controls (access, competitor, calendar), against territories without a promotion change; verdict by code",
     "check_supply": "Tests supply as the driver, verdict by code",
     "check_competitor": "Tests the competitor as the driver, verdict by code",
     "competitor_status": "Competitive intelligence on Metacora, a continuing story",

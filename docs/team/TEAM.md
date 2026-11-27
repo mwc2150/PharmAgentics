@@ -8,13 +8,15 @@ How to use, host, run and deploy the PharmAgentics web app. For the design behin
 
 | Sign-in account | Role | What it sees |
 | :- | :- | :- |
-| `uat-briefing-analyst` | Commercial Analyst (P1) | Runs briefs, reviews the triage plan, sees every number's source, approves or rejects |
-| `uat-briefing-director` | Brand Director (P3) | Executive summaries of approved briefs only; no evidence |
+| `uat-briefing-analyst` | Commercial Analyst (P1) | Runs briefs, reviews the triage plan, sees every number's source, sends a brief for sign-off or rejects it, reads what was returned |
+| `uat-briefing-insights` | Insights Manager (P2) | Reads the analyst's full view of briefs sent for sign-off, read-only; signs off or returns them (comment required; single numbers can be flagged) |
+| `uat-briefing-director` | Brand Director (P3) | Executive summaries of signed-off briefs only; no evidence |
+| `uat-briefing-marketer` | Marketer (P4) | The same executive summaries as the Director, for now; no evidence |
 | `uat-forecast-analyst` | Commercial Analytics Analyst (CA) | Forecast section (coming soon) |
 | `uat-forecast-manager` | Brand Manager (BM) | Forecast section (coming soon) |
-| `uat-tester` | Test view (not a persona) | Both lanes. "View as" in the account menu switches between **Analyst** (P1 and CA) and **Leadership** (P3 and BM), with exactly those roles' rights, so one login sees everything the four personas see. For the team and the mentor; its events and feedback are marked `test` |
+| `uat-tester` | Test view (not a persona) | Both lanes. "View as" in the account menu switches between **Analyst** (P1 and CA), **Insights Manager** (P2), **Leadership** (P3 and BM) and **Marketer** (P4), with exactly those roles' rights, so one login sees everything the four personas see. For the team and the mentor; its events and feedback are marked `test` |
 
-The five passwords are shared on purpose (toy project, synthetic data): they are in [`deploy/demo-credentials.env`](../../deploy/demo-credentials.env), and `uv run python deploy/make_env.py` prints them. Never commit `deploy/.env.uat` (it holds the service secrets) or paste those secrets into chat, issues or slides.
+The seven passwords are shared on purpose (toy project, synthetic data): they are in [`deploy/demo-credentials.env`](../../deploy/demo-credentials.env), and `uv run python deploy/make_env.py` prints them. Never commit `deploy/.env.uat` (it holds the service secrets) or paste those secrets into chat, issues or slides.
 
 After the app has been idle, the first sign-in takes 15 to 30 seconds while the sign-in service wakes up. A "Starting the sign-in service" page retries by itself.
 
@@ -38,7 +40,7 @@ After that, every command in this guide works with `--account <your Google accou
    - **Agent team:** the manager, Data Forensics and the Driver Investigator run on a teammate's GPU machine if one is hosting (see below), or else on the cloud CPU host, which starts by itself. Experimental; you can type your own question.
 2. **Triage review.** Code proposes the stories to investigate. On the agent engine, the manager's changes are shown and flagged. Keep, drop or reorder the stories, then approve.
 3. **The brief.** Every underlined number is a claim: click it to see the query and record behind it. "How this brief was made" shows each stage and who did it: code, an agent or a person.
-4. Approve or reject the brief. Only approved briefs reach `uat-briefing-director`.
+4. Send the brief for sign-off, or reject it. `uat-briefing-insights` signs it off, or returns it with a comment (you read it on the brief, rerun, and send again). Only signed-off briefs reach `uat-briefing-director` and `uat-briefing-marketer`.
 
 ## Who runs the agent team
 

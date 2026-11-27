@@ -24,7 +24,7 @@ definition:
 story_text: As Magdalena, I want lifts tested against access, competitors and season, so that I never claim credit for a formulary win.
 given: a lift that follows an access restoration and a seasonal rise, with steady promotion.
 when: the brief tests promotion.
-then: promotion is "ruled out," access is the leading driver, and the seasonal share is noted.
+then: promotion is "not testable" (its activity held level), access is the leading driver, and the seasonal share is noted.
 reference_answer: BXA on the Mid-Atlantic Medicare Part D plan rose 21% (183 to 222 TRx a week) and NBRx 39% against the summer, right after the plan removed prior authorization and step therapy on 2025-11-01. Mid-Atlantic rep calls stayed near 50 a week. National BXA rose 18.2% over the same weeks, so part of the lift is seasonal.
 must_not_say:
   text: '"Q4 promotion lifted Mid-Atlantic."'
@@ -71,7 +71,7 @@ findings:
   territory: MID_ATLANTIC
   direction: up
   drivers_supported: [access]
-  drivers_ruled_out: [promotion]
+  drivers_ruled_out: []
   withheld: false
   reviewed: true
   cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1

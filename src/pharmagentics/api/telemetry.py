@@ -31,6 +31,9 @@ LANE_EVENTS = {
                  "forecast_submitted": "submissions"},
 }
 
+MIN_BRIEFS_TO_RATE = 10  # fewer decided briefs than this and the approval rate is not shown as a figure (UAT review 6.2)
+TOO_FEW = "too few to rate"
+
 router = APIRouter(prefix="/api", tags=["telemetry"])
 _lock = threading.Lock()
 _events: dict[str, dict] = {}
@@ -111,6 +114,28 @@ def _spread(values: list[float]) -> dict | None:
     return {"n": len(values), "p50": _percentile(values, 0.5), "p95": _percentile(values, 0.95)} if values else None
 
 
+APPROVING, REJECTING = ("signed_off", "approved"), ("rejected", "returned")  # "approved" is the decision from before sign-off
+
+
+def review_outcomes(events: list[dict]) -> dict:
+    """Decisions counted per brief, not per click: the latest decision of each brief stands, so a brief decided twice, or
+    returned and then signed off, counts once. A brief signed off (or approved before sign-off existed) counts as approved;
+    one the analyst rejected or the Insights Manager returned counts as rejected; one whose latest decision is "sent for
+    sign-off" is still waiting and is not counted. `approved_pct` is None, and `label` says "too few to rate", until
+    MIN_BRIEFS_TO_RATE briefs are decided. Events with no brief id cannot be matched to a brief and are left out."""
+    latest: dict[str, tuple[str, str]] = {}
+    for e in events:
+        if e.get("kind") == "reviewed" and e.get("brief_id") and e.get("decision") in (*APPROVING, *REJECTING, "sent"):
+            if e["brief_id"] not in latest or e["ts"] >= latest[e["brief_id"]][0]:
+                latest[e["brief_id"]] = (e["ts"], e["decision"])
+    decided = [d for _, d in latest.values() if d != "sent"]
+    approved = sum(d in APPROVING for d in decided)
+    briefs, enough = len(decided), len(decided) >= MIN_BRIEFS_TO_RATE
+    return {"briefs": briefs, "approved": approved, "rejected": briefs - approved, "min_briefs": MIN_BRIEFS_TO_RATE,
+            "enough": enough, "approved_pct": round(100 * approved / briefs) if enough else None,
+            "label": None if enough else TOO_FEW}
+
+
 def summarize_usage(events: list[dict], job_docs: list[dict], pulses: list[dict], surveys: list[dict],
                     votes: list[dict], questionnaire: dict) -> dict:
     """Aggregate live use per lane plus platform ratings. Pure: no I/O, no per-person rows."""
@@ -137,6 +162,7 @@ def summarize_usage(events: list[dict], job_docs: list[dict], pulses: list[dict]
             "votes": {"up": sum(v["vote"] == "up" for v in lane_votes), "down": sum(v["vote"] == "down" for v in lane_votes)},
         }
         if lane == "briefing":
+            out["review"] = review_outcomes(mine)
             out["engines"] = dict(Counter(e.get("engine") or "unknown" for e in requests))
             out["scripted_ms"] = _spread([e["latency_ms"] for e in requests if e.get("latency_ms") is not None])
             out["agent_jobs"] = dict(Counter(f"{j.get('kind', 'job')} {j['status']}" for j in kept_jobs))
@@ -182,8 +208,12 @@ def _live_usage() -> dict:
 
 
 def _signed_in(p: rbac.Principal) -> set[str]:
+    """The lanes the Evaluation page may show this user. Analysts (P1, CA), the Insights Manager (P2) and the test
+    login only; the Director, the Marketer and the Forecast Brand Manager are refused here, whatever the page shows."""
     if not p.lanes:
         raise HTTPException(status_code=403, detail="Your account has no PharmAgentics role.")
+    if not rbac.can_evaluate(p):
+        raise HTTPException(status_code=403, detail="The Evaluation page is not part of this role.")
     return {r.lane for r in p.lanes}
 
 

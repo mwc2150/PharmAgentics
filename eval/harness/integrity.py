@@ -14,8 +14,10 @@ from .paths import DATABASE, EVAL_PACK
 FE_IDS = {f"FE-{i:02d}" for i in range(1, 32)}
 BRIEFING_STORIES = ({f"P{p}-Q{q}" for p in range(1, 5) for q in range(1, 7)}
                     | {f"FU-{n}" for n in range(1, 7)}  # brief-006 FR-013
-                    | {"WIN-1", "WIN-2"})  # brief-007 FR-014
+                    | {"WIN-1", "WIN-2"}  # brief-007 FR-014
+                    | {"REV-1"})  # the mentor's review of 2026-11-20, item 2.1 (v2)
 FORECAST_STORIES = {f"{p}-Q{q}" for p in ("CA", "BM", "FM") for q in range(1, 7)}
+LIPIDARA_STORIES = {f"BXC-P{p}-Q{q}" for p in range(1, 5) for q in range(1, 7)}  # one per Briefing persona question, brand BXC
 
 
 def ev_ids(pack: Path = EVAL_PACK) -> set[str]:
@@ -25,7 +27,13 @@ def ev_ids(pack: Path = EVAL_PACK) -> set[str]:
 def id_problems(cases: list[Case]) -> list[str]:
     known = ev_ids() | FE_IDS
     problems = []
+    seen: dict[str, str] = {}
     for c in cases:
+        if c.id in seen:  # one id, one case: an id is how a run and a fact are named
+            problems.append(f"{c.story}: id {c.id} is also {seen[c.id]}")
+        seen[c.id] = c.story
+        if c.story.startswith("BXC-") != (c.brand == "BXC"):  # a Lipidara case is BXC-P1-Q1 and says brand: BXC, and only that
+            problems.append(f"{c.story}: story {c.story} and brand {c.brand} do not agree")
         prefix = "EV-" if c.lane == "briefing" else "FE-"
         for item in c.eval_items:
             if item not in known or not item.startswith(prefix):

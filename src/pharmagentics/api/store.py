@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
+from . import signoff
+
 logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -113,14 +115,20 @@ def _brief_key(bid: str) -> str:
 def save_brief(result: dict, by: str) -> dict:
     bid = brief_id(result)
     existing = get_brief(bid)
-    if existing and existing["result"].get("answer") == result.get("answer"):
+    if existing and (existing["result"].get("answer") == result.get("answer") or signoff.state_of(existing) == signoff.SIGNED_OFF):
+        # A rerun that gives the same text keeps its review state. A signed-off brief is frozen (brief-005 FR-007): a
+        # rerun never replaces it, so what P3 and P4 read cannot change under them.
         missing = {k: result[k] for k in ("triage", "flow", "events", "claim_events") if result.get(k) and not existing["result"].get(k)}
-        if missing:  # a brief stored before brief-002 Phase A gains its flow; the review state is kept
+        if missing and existing["result"].get("answer") == result.get("answer"):  # a brief stored before brief-002 Phase A gains its flow; the review state is kept
             existing["result"].update(missing)
             backend().write(_brief_key(bid), _dump(existing))
         return existing
     record = {"brief_id": bid, "created_at": now(), "created_by": by, "result": result,
-              "review_status": "pending", "reviewed_by": None, "reviewed_at": None, "review_reason": None}
+              "review_status": "pending", "reviewed_by": None, "reviewed_at": None, "review_reason": None,
+              "review_state": signoff.DRAFT}
+    if existing:  # a changed rerun starts a new draft; what was said about the brief before stays in its trail
+        record["review_trail"] = signoff.trail(existing) + [{"at": record["created_at"], "by": by, "persona": "P1", "action": "rerun",
+                                                              "from": signoff.state_of(existing), "to": signoff.DRAFT}]
     backend().write(_brief_key(bid), _dump(record))
     return record
 
@@ -134,25 +142,44 @@ def get_brief(bid: str) -> dict | None:
     return json.loads(text) if text else None
 
 
-def set_review(bid: str, decision: str, reason: str | None, by: str) -> dict:
+def move(bid: str, action: str, *, by: str, persona: str, comment: str | None = None, flags: list[dict] | None = None) -> dict:
+    """Apply one review transition (signoff.TRANSITIONS) and add it to the brief's trail. The caller has checked the
+    rights and the state. `review_status` keeps its old three values so an earlier release still reads the record."""
     record = get_brief(bid)
     if record is None:
         raise KeyError(bid)
-    record.update(review_status=decision, reviewed_by=by, reviewed_at=now(), review_reason=reason)
+    new = signoff.TRANSITIONS[action][2]
+    entry = {"at": now(), "by": by, "persona": persona, "action": signoff.DONE[action], "from": signoff.state_of(record), "to": new}
+    if comment:
+        entry["comment"] = comment
+    if flags:
+        entry["flags"] = flags
+    record["review_trail"] = signoff.trail(record) + [entry]
+    record.update(review_state=new, review_status=signoff.MIRROR[new])
+    if persona == "P1":
+        record.update(reviewed_by=by, reviewed_at=entry["at"], review_reason=comment)
+    elif new == signoff.SIGNED_OFF:
+        record.update(signed_off_by=by, signed_off_at=entry["at"])
     backend().write(_brief_key(bid), _dump(record))
     return record
 
 
-def approved(data_version: str | None, brands: set[str] | None = None) -> list[dict]:
+def listed(states: set[str] | frozenset[str], data_version: str | None, brands: set[str] | None = None) -> list[dict]:
+    """Briefs in any of `states` on a data version, for the brands given, newest week first."""
     store = backend()
     out = []
     for key in store.keys("briefs/"):
         text = store.read(key)
         record = json.loads(text) if text else None
-        if (record and record["review_status"] == "approved" and record["result"].get("data_version") == data_version
+        if (record and signoff.state_of(record) in states and record["result"].get("data_version") == data_version
                 and (brands is None or record["result"].get("brand_id", "BXA") in brands)):
             out.append(record)
     return sorted(out, key=lambda r: (r["result"]["week_start"], r["result"]["territory_id"]), reverse=True)
+
+
+def approved(data_version: str | None, brands: set[str] | None = None) -> list[dict]:
+    """Signed-off briefs (an approved brief from before sign-off counts as signed off)."""
+    return listed({signoff.SIGNED_OFF}, data_version, brands)
 
 
 def record_event(kind: str, **fields) -> None:

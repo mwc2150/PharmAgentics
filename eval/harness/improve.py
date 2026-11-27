@@ -182,7 +182,7 @@ def run(state_dir: Path | None = None, baseline: str | None = None, model: str |
             continue
         brand = (v.get("scope") or {}).get("brand_id", "BXA")
         if brand != "BXA":
-            # BXC has no agent yet: never rerun its feedback through the BXA writer.
+            # The lesson prompt and the rerun are Cardiovela-specific: never rerun another brand's feedback through the BXA writer.
             made.append({"id": proposal_id("case", source), "kind": "case", "source": source,
                          "brand_id": brand, "confident": False,
                          "reasons": ["scripted-only brand: review the figures before creating a regression case"],

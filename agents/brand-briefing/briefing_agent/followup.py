@@ -34,7 +34,7 @@ SECTION = re.compile(r"§\s*(\d+(?:\.\d+)?)")
 NUMBER = re.compile(r"(?<![\w-])\d[\d,]*(?:\.\d+)?%?")
 TOKEN = re.compile(r"\{c(\d+)\}")
 TIMED_OUT = "Didn't finish in time; nothing was guessed."
-PROMPT = """You answer one follow-up question about a weekly brand-performance brief for the fictional brand BXA
+PROMPT = """You answer one follow-up question about a weekly brand-performance brief for the fictional brand {brand}
 (synthetic data). The brief's sections are below with every number masked as [n]: you cannot copy them.
 
 Rules:
@@ -43,6 +43,8 @@ Rules:
 - Cite the section you answer about as "§3.1" (only sections listed below).
 - For a split by plan, specialty or channel, call split_change. Never generalize from a cut marked noisy.
 - The brief's sections are final: a check you rerun now confirms or adds detail; it does not reopen a story.
+- If neither the sections nor the tools can answer the question, say so plainly in one sentence and name what the brief
+  does cover. Never restate a section as if it answered a question it does not.
 - One to four short sentences. Use only what the tools and sections say. Causal words only for a High story.
 - Never name or number an individual rep. Say "competitive intelligence", never "surveillance". "New patients" only
   for NBRx. Never name a driver for a territory the brief marks as projected or estimated.
@@ -95,8 +97,9 @@ async def _agent_turn(brief: dict, question: str, section: str | None, spec: str
     base = server()
     params = base.model_copy(update={"env": {**(base.env or {}), "PHARMAGENTICS_MCP_FOLLOW_UP": "1"}})  # no story-so-far status
     async with Client(params) as mcp, AsyncExitStack() as stack:
+        brand = brief.get("brand_id") or "BXA"
         options = {"comparison": brief["comparison"]} if brief.get("comparison") else {}
-        await _call(mcp, "open_run", question=_scope_question(brief, question), **options)
+        await _call(mcp, "open_run", question=_scope_question(brief, question), brand_id=brand, **options)
         tools = MCPStdioTool(name="pharmagentics_follow_up", mcp_client=mcp, load_prompts=False,
                              allowed_tools=AGENT_TOOLS["data_forensics"] + AGENT_TOOLS["driver_investigator"]
                              + AGENT_TOOLS["follow_up"])
@@ -105,8 +108,8 @@ async def _agent_turn(brief: dict, question: str, section: str | None, spec: str
                       instructions="Answer with claim tokens only; never type a digit.", middleware=log.for_agent("follow_up"))
         about = f" about §{section}" if section else ""
         weeks = f"weeks of {brief.get('week_start')} to {brief.get('week_end')}" if _multi_week(brief) else f"week of {brief.get('week_start')}"
-        scope = f"BXA, {name(brief.get('territory_id') or 'NATIONAL')}, {weeks}"
-        prompt = PROMPT.format(scope=scope, sections=_masked(sections), about=about, question=question)
+        scope = f"{brand}, {name(brief.get('territory_id') or 'NATIONAL')}, {weeks}"
+        prompt = PROMPT.format(brand=brand, scope=scope, sections=_masked(sections), about=about, question=question)
         reply = (await agent.run(prompt)).text or ""
         run = json.loads(await _call(mcp, "export_run"))
         revised = False

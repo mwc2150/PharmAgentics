@@ -1,0 +1,97 @@
+id: C-038
+lane: briefing
+brand: BXC
+story: BXC-P1-Q6
+persona: P1 Commercial Analyst (Ace)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-08-24: How much do I have to rewrite before this goes to my manager?'
+review_note: null
+period: week of 2026-08-24
+anchor: Draft for 2026-08-24 (Lipidara)
+definition:
+  first_week: '2026-08-24'
+  last_week: '2026-08-24'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Ace, I want a draft in our Monday format that needs only wording fixes, so that the agent saves real time.
+given: the 2026-08-24 snapshot.
+when: the Lipidara (BXC) draft reaches Ace.
+then: it follows the team template, every figure is a filled claim token, and "new patients" appears only for NBRx.
+reference_answer: 'The data cannot measure rewriting; review does. What the data fixes is the content: for the week of 2026-08-24, a correct Lipidara draft carries a continuing Metacora line (week 26 since launch: Metacora 15.9% of the basket, Lipidara 30.5%) and nothing about a national "collapse": national BXC TRx was 4,125, 2.5% below its 4-week average. It carries no Southeast coverage story: Lipidara rep calls in Southeast averaged 36 a week in August, against a median of 33.'
+must_not_say:
+  text: '"new patients" for NRx, a Southeast coverage story for Lipidara, or any figure typed outside a claim token.'
+  phrases:
+  - Southeast coverage gap
+  semantic:
+  - new patients
+action: Ace edits wording only. Each edit gets a failure tag; a fix repeated in two weeks becomes a new eval case.
+eval_items:
+- EV-8.1
+- EV-7.4
+- EV-9.2
+facts:
+- id: national_bxc_trx
+  role: context
+  value: 4125
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2026-08-24'
+  reviewed: false
+- id: national_vs_4wk_avg_pct
+  role: must
+  value: -2.5
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2026-08-24'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-08-24' - 28 and DATE '2026-08-24' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  reviewed: false
+- id: bxc_share_pct
+  role: must
+  value: 30.5
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-08-24' and DATE '2026-08-24'
+  reviewed: false
+- id: metacora_share_pct
+  role: must
+  value: 15.9
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-08-24' and DATE '2026-08-24'
+  reviewed: false
+- id: metacora_weeks_since_launch
+  role: context
+  value: 26
+  sql: select (date_diff('day', DATE '2026-03-02', DATE '2026-08-24') / 7) + 1
+  reviewed: false
+- id: se_bxc_rep_calls_aug_avg
+  role: context
+  value: 36
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-08-03' and DATE '2026-08-31'
+  reviewed: false
+- id: se_bxc_rep_calls_median
+  role: context
+  value: 33
+  sql: select median(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'SOUTHEAST'
+  reviewed: false
+findings:
+- id: national_metacora_continuing
+  territory: NATIONAL
+  direction: null
+  drivers_supported:
+  - competitor
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+  needs: national_card
+  measure: competitor_share
+must_say:
+  phrases:
+  - Metacora
+  - continuing
+  reviewed: false
+source: docs/planning/user-stories-lipidara.md#BXC-P1-Q6

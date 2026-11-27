@@ -1,0 +1,105 @@
+id: C-036
+lane: briefing
+brand: BXC
+story: BXC-P1-Q4
+persona: P1 Commercial Analyst (Ace)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27: Where did this number come from?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27
+anchor: Mid-Atlantic plan, competitor access change, Aug to Oct 2025 (Lipidara)
+definition:
+  first_week: '2025-08-04'
+  last_week: '2025-10-27'
+  comparison:
+    kind: custom
+    start: '2025-06-02'
+    end: '2025-07-28'
+  territories: like_for_like
+  measure:
+  - nbrx
+  - trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Ace, I want one click from any figure to the query behind it, so that tracing takes seconds, not an afternoon.
+given: a story that cites a plan-level NBRx change and a competitor's access change.
+when: Ace clicks either number.
+then: it opens an evidence item naming the tool, its parameters (plan, product, weeks), the pinned snapshot and the trace span.
+reference_answer: 'Take the claim "BXC new-to-brand prescriptions on one Mid-Atlantic Medicare Part D plan rose 44%." It comes from the gated Rx view for plan SYN_MID_ATLANTIC_MEDICARE_PART_D_1: 28.3 NBRx a week over 12 weeks (Labor Day week left out), against 19.7 a week over the 9 weeks before (2025-06-02 to 2025-07-28). The cause cited beside it comes from access_status_monthly, and it belongs to a competitor: Cardiovela (BXA) moved on that plan from tier 2 to tier 3 and added prior authorization and step therapy, effective 2025-08-01. Lipidara''s own tier on the plan stayed at 3.'
+must_not_say:
+  text: a figure with no evidence link.
+  phrases: []
+  semantic: []
+action: Ace checks the link instead of re-querying. Reviewer minutes to trace are logged against the manual baseline.
+eval_items:
+- EV-6.1
+- EV-6.2
+- EV-6.3
+facts:
+- id: plan_nbrx_change_pct
+  role: must
+  value: 44
+  sql: select 100.0 * ((select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+  needs: plan_cut
+- id: plan_nbrx_before_per_week
+  role: must
+  value: 19.7
+  sql: select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28')
+  reviewed: false
+  needs: plan_cut
+- id: plan_nbrx_after_per_week
+  role: must
+  value: 28.3
+  sql: select (select sum(nbrx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01')
+  reviewed: false
+  needs: plan_cut
+- id: plan_trx_change_pct
+  role: context
+  value: 21.1
+  sql: select 100.0 * ((select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01') / (select sum(trx) * 1.0 / count(distinct week_start) from reporting.v_reportable_rx where product_id = 'BXC' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and week_start between DATE '2025-06-02' and DATE '2025-07-28') - 1)
+  reviewed: false
+  needs: plan_cut
+- id: bxa_plan_tier_jul_2025
+  role: context
+  value: 2
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-07-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA'
+  reviewed: false
+  needs: plan_cut
+- id: bxa_plan_tier_aug_2025
+  role: context
+  value: 3
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-08-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXA'
+  reviewed: false
+  needs: plan_cut
+- id: bxc_plan_tier_aug_2025
+  role: context
+  value: 3
+  sql: select formulary_tier from raw.access_status_monthly where month = DATE '2025-08-01' and plan_id = 'SYN_MID_ATLANTIC_MEDICARE_PART_D_1' and product_id = 'BXC'
+  reviewed: false
+  needs: plan_cut
+findings:
+- id: mid_atlantic_plan_nbrx_rise
+  territory: MID_ATLANTIC
+  direction: up
+  drivers_supported:
+  - competitor
+  drivers_ruled_out:
+  - access
+  - promotion
+  - supply
+  - data
+  withheld: false
+  reviewed: false
+  cut: plan:SYN_MID_ATLANTIC_MEDICARE_PART_D_1
+  needs: plan_cut
+  measure: nbrx
+source: docs/planning/user-stories-lipidara.md#BXC-P1-Q4

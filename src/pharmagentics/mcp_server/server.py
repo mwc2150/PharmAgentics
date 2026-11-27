@@ -23,6 +23,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pharmagentics.tools import DEFAULT_DB, Registry
 from pharmagentics.tools import queries as q
 from pharmagentics.tools import charts, continuing, memo, projection, promotion, splits, stages
+from pharmagentics.tools.brands import PRODUCTS
 from pharmagentics.tools.checks import (DRIVERS, OWNER, Check, check_competitor, check_data,
                                         confidence, context_baseline)
 from pharmagentics.tools.lag_checks import check_access, check_promotion, check_supply
@@ -70,17 +71,19 @@ class RunSession:
         self.competitor_facts: dict = {}
 
     # admin -------------------------------------------------------------------------------------
-    def open_run(self, question: str, comparison: Comparison | None = None, definition: Definition | None = None) -> str:
-        """Pin the period under the brief definition (brief-010): every tool of the run computes under it."""
+    def open_run(self, question: str, comparison: Comparison | None = None, definition: Definition | None = None,
+                 brand_id: str = "BXA") -> str:
+        """Pin the period under the brief definition (brief-010) for one brand (core-010): every tool of the run
+        computes under both. An unknown or unsupported brand raises before any data is read."""
         self.close()
         self.reg = Registry(self.db)
-        self.p = stages.resolve(self.reg, question, comparison=comparison, definition=definition)
+        self.p = stages.resolve(self.reg, question, brand_id, comparison=comparison, definition=definition)
         self.checks, self.stories, self.calls, self.seen = {}, {}, [], {}
         self.story_facts, self.story_detail, self.competitor_facts = {}, {}, {}
         if not self.p.requested:
             return stages.outside_release(self.p)
         lines = [f"Period: {stages.describe(self.p)}. Comparison: {memo.comparison_text(self.p)}. Source: {self.p.baseline_source}.",
-                 f"Data version {self.reg.data_version}. Product: BXA (Cardiovela)."]
+                 f"Data version {self.reg.data_version}. Product: {self.p.brand_id} ({PRODUCTS[self.p.brand_id]})."]
         if self.p.note:
             lines.append(self.p.note)
         if not self.p.definition.is_pre_selected:
@@ -151,7 +154,7 @@ class RunSession:
     def restatements(self) -> str:
         self._log("restatements")
         lines = stages.restatements(self.reg, self.p)
-        return self._out("\n".join(lines) if lines else "No BXA restatement touches these weeks.")
+        return self._out("\n".join(lines) if lines else f"No {self.p.brand_id} restatement touches these weeks.")
 
     def national_kpis(self) -> str:
         self._log("national_kpis")
@@ -192,7 +195,7 @@ class RunSession:
             return "No territory moved beyond its normal range against its peers. Routine week: no story to investigate."
         lines = ["Territories with a material change, largest impact first:"]
         for s in found:
-            why = f"BXA volume on plan {s['plan']} changed after an access change" if s["kind"] == "plan" else "beyond its normal range and its peers"
+            why = f"{p.brand_id} volume on the {splits.readable(s['plan'])} changed after an access change" if s["kind"] == "plan" else "beyond its normal range and its peers"
             lines.append(f"- {s['territory']} ({q.name(s['territory'])}): {why}.")
         if quiet:
             lines.append(f"Considered and dropped: {stages.dropped_count(self.reg, p, quiet)} territories moved within their normal range.")
@@ -216,15 +219,18 @@ class RunSession:
         if (again := self._repeat(name, t)):
             return again
         B = context_baseline(self.p.weeks, self.p.baseline) if reference and self.p.comparison is None else self.p.baseline
-        if fn is check_promotion:
-            return self._remember(name, t, self._record(
-                t, check_promotion(self.reg, t, self.p.weeks, self.p.baseline, source_baseline=B)))
+        brand = self.p.brand_id
+        if fn is check_promotion:  # the stated comparison weeks, as the scripted brief (assumptions first)
+            return self._remember(name, t, self._record(t, check_promotion(
+                self.reg, t, self.p.weeks, self.p.baseline, brand, use_selected_baseline=self.p.comparison is not None)))
         if fn is check_competitor and self.p.comparison is not None:
             return self._remember(name, t, self._record(
-                t, check_competitor(self.reg, t, self.p.weeks, B, exact_comparison=True, pct_format="pct")))
+                t, check_competitor(self.reg, t, self.p.weeks, B, brand, exact_comparison=True, pct_format="pct")))
         if fn is check_competitor:  # the shared check; the brief's percentages print the Briefing way (FR-016)
-            return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B, pct_format="pct")))
-        return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B)))
+            return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B, brand, pct_format="pct")))
+        if fn is check_access:
+            return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B, brand_id=brand)))
+        return self._remember(name, t, self._record(t, fn(self.reg, t, self.p.weeks, B, brand)))
 
     # Admin: the brief's code-built sections (build 3, brief-002 FR-026) --------------------------
     def brief_sections(self) -> dict:
@@ -256,6 +262,7 @@ class RunSession:
             raise ToolError("brief_sections must run before memo_close")
         told = [{"territory": t, "confidence": st["confidence"],
                  "drivers": [d for d, v in st["verdicts"].items() if v == "supported"],
+                 "in_range": stages.in_range(self.checks.get(t, {}).values()),
                  "lags": {d: c.detail["lag"] for d, c in self.checks.get(t, {}).items() if c.detail and "lag" in c.detail}}
                 for t, st in self.stories.items() if st["closed"]]
         story_charts = {}
@@ -293,7 +300,7 @@ class RunSession:
         cut_stories, cut_details = [], {}
         for plan in dict.fromkeys(cuts or []):
             t = splits.plan_territory(reg, plan)
-            if t is None or t not in p.ok or not p.has("plan") or p.brand_id != "BXA":
+            if t is None or t not in p.ok or not p.has("plan"):
                 continue
             block = memo.cut_block(reg, p, {"territory": t, "plan": plan}, list(self.checks.get(t, {}).values()) or None)
             cards[block.id], cut_details[block.id] = block.card, block.detail
@@ -321,7 +328,7 @@ class RunSession:
         movers = splits.segment_line(self._reg(), self.p, t)  # brief-010 FR-003
         lines = [head] + ([movers] if movers else []) + (["Checked, in this order:"] + [f"- {c.text}" for c in done] if done else ["No driver was tested before the cap."])
         lines.append(memo.without_next(self._status(t, closing=True)))  # its next check goes to §5
-        self.story_detail[t] = memo.story_detail(self._reg(), self.p, t)  # folded, not in the story's text
+        self.story_detail[t] = memo.story_detail(self._reg(), self.p, t, done)  # folded, not in the story's text
         return "\n".join(lines)
 
     def competitor_section(self, lead: str) -> str:
@@ -341,13 +348,14 @@ class RunSession:
         return stages.dropped_line(reg, p, quiet) if quiet else ""
 
     def _record(self, t: str, check: Check) -> str:
+        check = stages.credit_rule(self._reg(), self.p, t, check)  # within its normal range: no driver is credited
         self.checks.setdefault(t, {})[check.driver] = check
         if self.follow_up:
             return self._out(f"{q.name(t)}. {check.text}")
         return self._out(f"{q.name(t)}. {check.text}\n{self._status(t, closing=False)}")
 
     def split_change(self, territory: str, by: str) -> str:
-        """A territory's change split by plan, specialty or channel: each cut's weekly BXA TRx in the period
+        """A territory's change split by plan, specialty or channel: each cut's weekly brand TRx in the period
         against the weeks before, the largest moves first, small cells marked noisy (brief-003 FR-015)."""
         self._log("split_change", territory=territory, by=by)
         t = self._territory(territory)
@@ -400,7 +408,9 @@ class RunSession:
                     + (f", candidate drivers: {lead}" if level != "Low" else ", no driver supported yet")
                     + (f". Not tested yet: {', '.join(missing)}." if missing else ". Every driver is tested.")
                     + " Close the story with story_confidence.")
-        if level == "Low":
+        if level == "Low" and stages.in_range(done.values()):
+            text = f"Confidence for {q.name(t)}: Low. No driver is named: {q.name(t)} moved within its normal range, so there is no change to explain."
+        elif level == "Low":
             text = (f"Confidence for {q.name(t)}: Low. Unresolved, investigate next. No driver is named. "
                     f"Next: split {q.name(t)} by plan and specialty, and ask sales leadership for local context.")
         else:
@@ -416,16 +426,17 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
     s = RunSession(db, legend=legend)
     server = MCPServer(
         name="pharmagentics",
-        instructions=("Governed, read-only tools over the PharmAgentics synthetic data (product BXA, Cardiovela). "
+        instructions=("Governed, read-only tools over the PharmAgentics synthetic data (the product the run opens with, BXA Cardiovela unless open_run names another). "
                       "The caller opens a run first. Numbers come back as claim tokens like {c7}: write the token, "
                       "never the number; code fills it in."),
     )
     text = dict(structured_output=False)
 
     @server.tool(**text)
-    async def open_run(question: str, comparison: Comparison | None = None, definition: Definition | None = None) -> str:
-        """Admin: start a run for one question under a brief definition. Pins the period and the data version. Callers only, not agents."""
-        return s.open_run(question, comparison, definition)
+    async def open_run(question: str, comparison: Comparison | None = None, definition: Definition | None = None,
+                       brand_id: str = "BXA") -> str:
+        """Admin: start a run for one question and one brand under a brief definition. Pins the period and the data version. Callers only, not agents."""
+        return s.open_run(question, comparison, definition, brand_id)
 
     @server.tool(**text)
     async def export_run() -> str:
@@ -473,12 +484,12 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
 
     @server.tool(**text)
     async def restatements() -> str:
-        """BXA restatements touching the run's weeks: old and new values. Quote the new value with the note."""
+        """The brand's restatements touching the run's weeks: old and new values. Quote the new value with the note."""
         return s.restatements()
 
     @server.tool(**text)
     async def national_kpis() -> str:
-        """National BXA TRx: like for like against the weeks before, week over week for a one-week period, a headline total distorted by withheld cuts, and calendar effects."""
+        """National TRx of the run's brand: like for like against the weeks before, week over week for a one-week period, a headline total distorted by withheld cuts, and calendar effects."""
         return s.national_kpis()
 
     @server.tool(**text)
@@ -488,17 +499,17 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
 
     @server.tool(**text)
     async def screen_territories() -> str:
-        """Competitive intelligence: territories whose BXA change is beyond their normal range and their peers', largest impact first."""
+        """Competitive intelligence: territories whose change in the run's brand is beyond their normal range and their peers', largest impact first."""
         return s.screen_territories()
 
     @server.tool(**text)
     async def territory_change(territory: str) -> str:
-        """One territory's BXA TRx in the run's weeks against the weeks before, and the other territories' change."""
+        """One territory's TRx for the run's brand in the run's weeks against the weeks before, and the other territories' change."""
         return s.territory_change(territory)
 
     @server.tool(**text)
     async def check_access(territory: str) -> str:
-        """Driver check: did a payer plan in this territory change BXA tier, prior authorization, step therapy or coverage? Verdict by code."""
+        """Driver check: did a payer plan in this territory change the brand's tier, prior authorization, step therapy or coverage? Verdict by code."""
         return s.check_access(territory)
 
     @server.tool(**text)
@@ -508,7 +519,7 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
 
     @server.tool(**text)
     async def check_supply(territory: str) -> str:
-        """Driver check: was BXA inventory fill low or backordered in this territory? Verdict by code."""
+        """Driver check: was the brand's inventory fill low or backordered in this territory? Verdict by code."""
         return s.check_supply(territory)
 
     @server.tool(**text)
@@ -523,7 +534,7 @@ def build_server(db=DEFAULT_DB, legend: bool = False) -> MCPServer:
 
     @server.tool(**text)
     async def split_change(territory: str, by: Literal["plan", "specialty", "channel"]) -> str:
-        """A territory's change split by "plan", "specialty" or "channel": each cut's weekly BXA TRx in these weeks against the weeks before, largest moves first; small cells are marked noisy."""
+        """A territory's change split by "plan", "specialty" or "channel": each cut's weekly TRx for the run's brand in these weeks against the weeks before, largest moves first; small cells are marked noisy."""
         return s.split_change(territory, by)
 
     @server.tool(**text)

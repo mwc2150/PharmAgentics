@@ -26,7 +26,7 @@ def case_from(**extra):
 
 
 def test_every_briefing_case_states_every_definition_field():
-    assert len(BRIEFING) == 32
+    assert len(BRIEFING) == 33
     for path in sorted((GOLDEN_DIR / "briefing").glob("*.yaml")):
         data = yaml.safe_load(path.read_text(encoding="utf8"))
         assert "comparison" not in data, f"{path.stem}: the old top-level comparison is gone"

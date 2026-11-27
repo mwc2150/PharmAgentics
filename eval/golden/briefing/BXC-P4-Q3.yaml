@@ -1,0 +1,70 @@
+id: C-053
+lane: briefing
+brand: BXC
+story: BXC-P4-Q3
+persona: P4 Marketer (Magdalena)
+category: stress
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic: Did the campaign reach the people it was meant to reach?'
+review_note: null
+period: weeks of 2025-08-04 to 2025-10-27, Mid-Atlantic
+anchor: Impressions without reach data, Mid-Atlantic Aug to Oct 2025 (Lipidara)
+definition:
+  first_week: '2025-08-04'
+  last_week: '2025-10-27'
+  comparison:
+    kind: custom
+    start: '2025-06-02'
+    end: '2025-07-28'
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Magdalena, I want reach shown next to results, so that high impressions cannot hide low engagement.
+given: promotion data at territory level only.
+when: the Lipidara (BXC) brief shows a promotion story.
+then: it puts calls and impressions beside TRx for the same cut and weeks, and says that reach in the target segment cannot be shown yet.
+reference_answer: 'Partly. The data has digital impressions and rep calls by territory, product and week: in Mid-Atlantic in these weeks (Labor Day week left out), Lipidara impressions averaged 1,076 against a median of 1,138.5 and rep calls 32 against 33, so activity was steady while TRx rose 13.9%. It has no reach by target segment, no channel spend and no consumer campaigns.'
+must_not_say:
+  text: '"the campaign reached its target HCPs."'
+  phrases:
+  - the campaign reached its target HCPs
+  semantic: []
+action: Magdalena asks for channel spend and reach data. The brief tells her this is open (Architecture A16).
+eval_items:
+- EV-7.5
+facts:
+- id: ma_digital_impressions_aug_oct_avg
+  role: must
+  value: 1076
+  sql: select avg(digital_impressions) from raw.promo_activity where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01'
+  reviewed: false
+- id: ma_digital_impressions_median
+  role: must
+  value: 1138.5
+  sql: select median(digital_impressions) from raw.promo_activity where product_id = 'BXC' and territory_id = 'MID_ATLANTIC'
+  reviewed: false
+- id: ma_rep_calls_aug_oct_avg
+  role: context
+  value: 32
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01'
+  reviewed: false
+- id: ma_rep_calls_median
+  role: context
+  value: 33
+  sql: select median(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXC' and territory_id = 'MID_ATLANTIC'
+  reviewed: false
+- id: ma_change_pct
+  role: context
+  value: 13.9
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2025-06-02' and DATE '2025-07-28' or week_start between DATE '2025-08-04' and DATE '2025-10-27') group by 1 having count(*) = 22 and count(*) filter (where health_status = 'PASS') = 22) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-08-04' and DATE '2025-10-27' and week_start <> DATE '2025-09-01' and territory_id = 'MID_ATLANTIC' and territory_id in (select territory_id from ok)) / 12.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-06-02' and DATE '2025-07-28' and territory_id = 'MID_ATLANTIC' and territory_id in (select territory_id from ok)) / 9.0) - 1)
+  reviewed: false
+findings: []
+source: docs/planning/user-stories-lipidara.md#BXC-P4-Q3

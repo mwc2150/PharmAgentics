@@ -19,7 +19,11 @@ export type Evidence = {
   data_version: string | null
 }
 export type Claim = { value: string; evidence_id: string }
-export type ReviewStatus = "pending" | "approved" | "rejected"
+// brief-005: P1 sends a brief for sign-off, P2 signs it off or returns it; only a signed-off brief reaches P3 and P4.
+export type ReviewStatus = "draft" | "sent" | "signed_off" | "returned" | "rejected"
+export type ClaimFlag = { claim: number; value: string; evidence_id: string; note: string | null }  // a claim the Insights Manager marked as wrong
+export type TrailEntry = { at: string; persona: string; action: string; from?: string; to?: string; comment?: string | null; flags?: ClaimFlag[]; legacy?: boolean }
+export type ReturnNote = { at: string; comment: string | null; flags: ClaimFlag[] | null }
 export type BriefingResult = {
   brief_id: string
   view: "analyst"
@@ -27,6 +31,9 @@ export type BriefingResult = {
   review_status: ReviewStatus
   reviewed_at: string | null
   review_reason: string | null
+  signed_off_at?: string | null
+  review_trail?: TrailEntry[]    // analyst and Insights Manager views only: every send, return and sign-off, with comments and flags
+  returned?: ReturnNote | null   // set while the brief is returned: what the analyst reads before rerunning
   engine: "scripted" | "agent"
   system: string
   question: string
@@ -101,6 +108,18 @@ export type StoryCardBlock = {
   drivers_checked: string[]
   headline_citations?: Span[]
 }
+// v2 (Marketer, P4): the promotion read of one territory story, as the server sends it. Strings are filled by code.
+export type PromotionMeasure = { measure?: string; channel?: string; before: string; after: string; change: string | null; direction: string }
+export type PromotionRead = {
+  verdict: "supported" | "ruled_out" | "not_testable" | "not_separable" | "within_range" | string
+  lag_label: string
+  new_patients: PromotionMeasure
+  trx: PromotionMeasure
+  channels: (PromotionMeasure & { channel: string; moved: boolean })[]
+  effect?: { low: string; high: string; word: string; territories: string; phrase: string }
+  separable_from?: string[]
+  recheck: string
+}
 export type MemoSection = {
   number: string
   title: string
@@ -115,6 +134,7 @@ export type MemoSection = {
   card?: StoryCardBlock | null            // brief-008: each story section
   detail?: string | null                  // brief-008: analyst view only, folded under "Show detail"
   detail_citations?: Span[]               // analyst view only
+  promotion?: PromotionRead               // the Marketer's view only, on a territory story
 }
 // brief-002 Phase A: the code triage plan P1 reviews, and how a brief was made.
 export type StoryCard = {
@@ -200,6 +220,7 @@ export type LeadershipBrief = {
   sections?: MemoSection[] | null  // brief-003 FR-026: §1, §2, §3 without checks, §5; no claims, tables or queries
   definition?: BriefDefinition | null  // brief-010: the same definition as the analyst brief; it holds no SQL and no arguments
   process_summary?: string | null  // brief-009 FR-005: one line on how it was built; leaders never get the events
+  budget_note?: string  // the Marketer's view only: what data would answer the budget question
 }
 export type PublishedBrief = {
   brief_id: string
@@ -219,9 +240,10 @@ export type LaneRole = {
   actions: string[]
   available: boolean
 }
-export type ViewAs = "analyst" | "leadership"
-// tester: the test login, which switches between the analyst and the leadership roles of both lanes (view_as).
-export type Me = { name: string; auth_mode: "oidc" | "dev"; brand_ids: string[]; lanes: { briefing?: LaneRole; forecast?: LaneRole }; tester?: boolean; view_as?: ViewAs | null }
+export type ViewAs = "analyst" | "insights" | "leadership" | "marketer"
+// tester: the test login, which switches between the analyst (P1, CA), Insights Manager (P2), leadership (P3, BM) and Marketer (P4) roles (view_as).
+export type Me = { name: string; username?: string;  // username: the sign-in name, shown when /api/me sends it
+   auth_mode: "oidc" | "dev"; brand_ids: string[]; lanes: { briefing?: LaneRole; forecast?: LaneRole }; evaluation?: boolean; tester?: boolean; view_as?: ViewAs | null }
 // Data classification per tab and view (core-009): labels only, from src/pharmagentics/api/classification.json.
 export type ClassLevel = { id: string; label: string; description: string }
 export type Classification = { version: string; levels: ClassLevel[]; tabs: Record<string, string>; clearance: Record<string, string> }
@@ -296,7 +318,7 @@ function expectObject(v: unknown): asserts v is Record<string, unknown> {
 function stringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every(x => typeof x === "string")
 }
-const REVIEW = new Set(["pending", "approved", "rejected"])
+const REVIEW = new Set(["draft", "sent", "signed_off", "returned", "rejected"])
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!BASE) throw new Error("API URL is not configured. Set VITE_PHARMAGENTICS_API_BASE_URL. No mock fallback is enabled.")
@@ -428,8 +450,21 @@ export async function listPublished(): Promise<PublishedBrief[]> {
   if (!Array.isArray(v)) throw new Error("The backend published-briefs contract is incompatible with this frontend.")
   return v as PublishedBrief[]
 }
-export async function reviewBrief(id: string, decision: "approved" | "rejected", reason?: string): Promise<BriefingResult> {
+// P1: send the brief for sign-off, or reject it (a rejection needs a reason).
+export async function reviewBrief(id: string, decision: "sent" | "rejected", reason?: string): Promise<BriefingResult> {
   return checkAnalyst(await api(`/api/briefing/${encodeURIComponent(id)}/review`, post({ decision, reason: reason || null })))
+}
+// P2: sign a brief off, or return it with a comment (needed) and flags on single claims (by index in the brief's claims).
+export async function signoffBrief(id: string, decision: "signed_off" | "returned", comment?: string, flags: { claim: number; note?: string | null }[] = []): Promise<BriefingResult> {
+  return checkAnalyst(await api(`/api/briefing/${encodeURIComponent(id)}/signoff`, post({ decision, comment: comment || null, flags })))
+}
+export type QueueRow = { brief_id: string; brand_id: string; week_start: string; week_end?: string | null; territory_id: string; engine: string; abstained: boolean
+  review_status: "sent" | "returned" | "signed_off"; sent_at: string | null; signed_off_at: string | null; returned_at: string | null }
+// The sign-off queue: P2 gets the briefs sent, returned and signed off; P1 the ones waiting on P2 and the ones returned to them.
+export async function listQueue(): Promise<QueueRow[]> {
+  const v: unknown = await api("/api/briefing/queue")
+  if (!Array.isArray(v)) throw new Error("The backend sign-off queue contract is incompatible with this frontend.")
+  return v as QueueRow[]
 }
 
 // Agent jobs (core-007 FR-028/FR-031): run by teammate or cloud CPU hosts; the app only queues and checks them.

@@ -1,5 +1,6 @@
 """The fixed catalog of driver checks both lanes share. Each check computes a verdict by code:
-supported, ruled_out or insufficient, with a sentence whose numbers are claim tokens."""
+supported, ruled_out or insufficient (and, for promotion, not_separable or not_testable), with a sentence whose numbers
+are claim tokens."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,7 +28,7 @@ DECISION = {  # what a next check unlocks (brief-003 §5 Next checks)
 @dataclass
 class Check:
     driver: str
-    verdict: str  # supported | ruled_out | insufficient
+    verdict: str  # supported | ruled_out | insufficient | not_separable | not_testable (promotion only) | within_range (none is a call on the card)
     text: str  # template with claim tokens
     detail: dict | None = None
 
@@ -78,9 +79,9 @@ def check_promotion(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, pc
         pct = reg.claim("lookup_promo", q.pct_change(q.context_mean("promo_activity", "rep_calls_aggregated", W, terr, product=brand_id),
                                                       q.context_mean("promo_activity", "rep_calls_aggregated", B, terr, product=brand_id)), pct_format, territory=terr)
         return Check("promotion", "supported",
-                     f"Promotion: supported, as an association. Aggregated rep calls averaged {a} a week against {b} before "
-                     f"({pct} lower). Method: this territory's weeks before, compared with the same weeks elsewhere.")
-    return Check("promotion", "ruled_out", f"Promotion: ruled out. Aggregated rep calls held at {a} a week against {b} before.")
+                     f"Promotion: supported, as an association. Aggregated rep calls averaged {a} a week against {b} in the "
+                     f"comparison weeks ({pct} lower). Method: this territory's weeks before, compared with the same weeks elsewhere.")
+    return Check("promotion", "ruled_out", f"Promotion: ruled out. Aggregated rep calls held at {a} a week against {b} in the comparison weeks.")
 
 
 def check_supply(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, pct_format: str = "pct1") -> Check:
@@ -106,7 +107,7 @@ def check_competitor(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, e
     if exact_comparison and (not B or B[-1] < launched):
         return Check("competitor", "insufficient",
                      f"Competitor launch: inconclusive. The chosen comparison ends before Metacora launched on {launched}.")
-    ref = B if exact_comparison else [w for w in B if w >= launched] or list(W)
+    ref = competitor_weeks(W, B, launched, exact_comparison)
     here, elsewhere = q.share(ref, "BXE", terrs=[terr]), q.share(ref, "BXE", exclude=terr)
     gap = (reg.scalar(here) or 0) - (reg.scalar(elsewhere) or 0)
     h = reg.claim("compare_competitors", here, pct_format, territory=terr, weeks="before the change")
@@ -116,6 +117,24 @@ def check_competitor(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *, e
                      f"Competitor launch: ruled out as a local cause. Before the change Metacora held {h} of the basket here against {e} elsewhere.")
     return Check("competitor", "supported",
                  f"Competitor launch: supported. Before the change Metacora held {h} of the basket here against {e} elsewhere.")
+
+
+def competitor_weeks(W, B, launched: str, exact: bool) -> list[str]:
+    """The weeks the competitor check reads Metacora's share over: the chosen comparison when the analyst picked one,
+    else the weeks since launch inside B (the context weeks), else the period itself. One function, so the check
+    and the Assumptions sentence that states its weeks cannot disagree."""
+    return list(B) if exact else [w for w in B if w >= launched] or list(W)
+
+
+def competitor_assumption(reg: Registry, W, B, *, exact: bool) -> str | None:
+    """The Assumptions sentence for the competitor check's weeks (assumptions first: a check that reads other weeks
+    than the comparison states them). B is what run_checks passes the check: the context weeks unless chosen."""
+    launched = launch_date(reg)
+    if exact or not W or launched is None or launched > W[-1]:
+        return None  # a chosen comparison is read as stated; its own story line says when it predates the launch
+    weeks = competitor_weeks(W, B, launched, exact)
+    span = f"the week of {weeks[0]}" if len(weeks) == 1 else f"{weeks[0]} to {weeks[-1]}"
+    return f"Metacora's local share: {span}."
 
 
 COMPETITOR_FLOOR = 5.0  # basket share (points) below which Metacora is not a national story
@@ -146,15 +165,23 @@ def check_data(reg: Registry, terr: str, W, B, brand_id: str = "BXA") -> Check:
 
 def confidence(checks: list[Check]) -> tuple[str, str]:
     """High: one supported, every other ruled out. Medium: one supported with others open, or several
-    supported. Low: none supported, so the agent abstains. Promotion alone is an association: Medium at most."""
+    supported. Low: none supported, so the agent abstains. Promotion alone is an association: Medium at most.
+    A promotion that cannot be separated from a supported driver is an open alternative: that driver stays a candidate,
+    never the sole leader, and the lead says so. A promotion that did not move (not_testable) is no competing explanation
+    of the change, so it does not hold a story below High, though it is never called ruled out."""
     supported = [c for c in checks if c.verdict == "supported"]
     if not supported:
         return "Low", "unresolved, investigate next"
-    if len(supported) == 1 and all(c.verdict == "ruled_out" for c in checks if c is not supported[0]):
+    if len(supported) == 1 and all(c.verdict in ("ruled_out", "not_testable") for c in checks if c is not supported[0]):
         level = "Medium" if supported[0].driver == "promotion" else "High"
     else:
         level = "Medium"
-    return level, " and ".join(c.driver for c in supported)
+    lead = " and ".join(c.driver for c in supported)
+    tangled = next((c for c in checks if c.driver == "promotion" and c.verdict == "not_separable"), None)
+    if tangled is not None:
+        lead += "; promotion cannot be separated from " + " and ".join(
+            dict.fromkeys(d for d in ((tangled.detail or {}).get("promotion") or {}).get("separable_from") or [c.driver for c in supported]))
+    return level, lead
 
 
 def context_baseline(W, B) -> list[str]:
@@ -165,7 +192,7 @@ def context_baseline(W, B) -> list[str]:
 
 def run_checks(reg: Registry, terr: str, W, B, brand_id: str = "BXA", *,
                use_selected_baseline: bool = False, pct_format: str = "pct1") -> list[Check]:
-    ref = B if use_selected_baseline else context_baseline(W, B)
+    ref = B if use_selected_baseline else context_baseline(W, B)  # competitor only; its weeks are stated (memo.assumptions)
     return [check_data(reg, terr, W, B, brand_id), check_access(reg, terr, W, B, brand_id, pct_format=pct_format),
-            check_promotion(reg, terr, W, ref, brand_id, pct_format=pct_format), check_supply(reg, terr, W, B, brand_id, pct_format=pct_format),
+            check_promotion(reg, terr, W, B, brand_id, pct_format=pct_format), check_supply(reg, terr, W, B, brand_id, pct_format=pct_format),
             check_competitor(reg, terr, W, ref, brand_id, exact_comparison=use_selected_baseline, pct_format=pct_format)]

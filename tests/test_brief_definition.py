@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "agents" / "brand-briefing"))
 
 from pharmagentics.tools import DEFAULT_DB  # noqa: E402
+from signoff_helpers import approve  # noqa: E402
 from pharmagentics.tools import definition as defs  # noqa: E402
 from pharmagentics.tools.definition import Definition  # noqa: E402
 from pharmagentics.tools.registry import digits_outside_tokens  # noqa: E402
@@ -234,7 +235,10 @@ def test_measure_trx_and_nbrx_is_both_and_puts_nbrx_beside_trx():
     labels = [k["label"] for k in section(env, "1")["kpis"]]
     assert any("TRx" in x for x in labels) and any("new patients (NBRx)" in x for x in labels)
     story = next(s for s in env["sections"] if s["number"].startswith("3.") and s.get("card") and s["card"]["territory"])
-    assert "New patients (NBRx) averaged" in story["text"] and "New patients (NBRx)" in story["card"]["headline"]
+    # The story's lines may sit in the folded detail when the brief is at the word budget (memo.compose); either way
+    # the NBRx sentence is part of the story.
+    assert "New patients (NBRx) averaged" in story["text"] + (story.get("detail") or "")
+    assert "New patients (NBRx)" in story["card"]["headline"]
     # the same definition said as the string "both" is the same brief
     assert brief(STORY, definition={"measure": "both"})["answer"] == text
 
@@ -468,11 +472,11 @@ def test_a_brief_is_stored_and_returned_with_its_definition_and_leaders_see_it_i
     assert analyst.post("/api/briefing/query", json=body).json()["brief_id"] == brief_["brief_id"]
     plain = analyst.post("/api/briefing/query", json=QUERY).json()
     assert plain["brief_id"] != brief_["brief_id"] and plain["definition"]["measure"] == ["trx"]
-    assert plain["definition"]["grain"] == GRAINS and "new patients" not in plain["answer"].lower()
+    assert plain["definition"]["grain"] == GRAINS and "new patients" not in re.sub(r"new patients \(nbrx\)", "", plain["answer"].lower())  # only beside NBRx, as the promotion line states it
     stored = analyst.get(f"/api/briefing/{brief_['brief_id']}").json()
     assert stored["definition"] == d
     # the leader sees it in words in the Assumptions block, and never the claims, args or SQL
-    assert analyst.post(f"/api/briefing/{brief_['brief_id']}/review", json={"decision": "approved"}).status_code == 200
+    assert approve(analyst, brief_["brief_id"])["review_status"] == "signed_off"
     leader = _client(tmp_path, monkeypatch, "dev-director")
     seen = leader.get(f"/api/briefing/{brief_['brief_id']}").json()
     assert seen["view"] == "leadership" and seen["definition"] == d

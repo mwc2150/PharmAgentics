@@ -69,14 +69,14 @@ def screen(reg: Registry, p, covered: set[str], cut_plans: set[str] = frozenset(
     period's last week, and had not ended before the period; an access restriction when it began before the first week
     and was not lifted before it. The territory (or the plan, for access) must have fallen against its own level before
     the event by at least the material change, and a plan must clear the small-cell floor. Makes no claim."""
-    if not (p.weeks and p.baseline) or p.calendar or p.brand_id != "BXA" or p.promotion_review:
+    if not (p.weeks and p.baseline) or p.calendar or p.promotion_review:
         return []
     W = p.weeks
     scratch = reg.scratch()  # the screen's reads are not this run's claims
     found = []
     focus = None if p.focus in (None, "NATIONAL") else p.focus
     if p.has("territory"):
-        for lapse in promotion.lapses(scratch, focus):
+        for lapse in promotion.lapses(scratch, focus, p.brand_id):
             t = lapse.territory
             if (t in covered or t not in p.ok or not lapse.start < W[0] <= lapse.end
                     or q.shift(lapse.start, promotion.LAPSE_WEEKS - 1) > W[-1] or _before(lapse.start)[0] < p.first):

@@ -139,7 +139,8 @@ def _note(events: EventLog | None, step: str, *, tool: str | None = None, args: 
         events.emit("Code", "code", step, tool=tool, args=args, verdict=verdict, summary=summary or text.split("\n")[0], text=text)
 
 
-_VERDICT = {"supported": "supported", "ruled_out": "ruled out", "insufficient": "inconclusive"}
+_VERDICT = {"supported": "supported", "ruled_out": "ruled out", "insufficient": "inconclusive",
+            "not_separable": "inconclusive", "not_testable": "inconclusive", "within_range": "inconclusive"}
 
 
 def _front(reg: Registry, question: str, brand_id: str = "BXA", *, comparison: Comparison | None = None,
@@ -325,6 +326,7 @@ def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBloc
     """One story: head, the checks in order, the closing confidence. Its next check goes to §5."""
     t = s["territory"]
     checks = run_checks(reg, t, p.weeks, p.baseline, brand_id=p.brand_id, use_selected_baseline=p.comparison is not None)
+    checks = [stages.credit_rule(reg, p, t, c) for c in checks]  # within its normal range: no driver is credited
     level, lead = confidence(checks)
     for c in checks:  # brief-009: one event per check, in the order run
         _note(events, "Check the data" if c.driver == "data" else "Test a driver", tool=f"check_{c.driver}", args={"territory": t},
@@ -335,7 +337,9 @@ def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBloc
     lines = [head] + ([movers] if movers else []) + ["Checked, in this order:"] + [f"- {c.text}" for c in checks]
     supported = [c.driver for c in checks if c.verdict == "supported"]
     lags = {c.driver: c.detail["lag"] for c in checks if c.detail and "lag" in c.detail}
-    if level == "Low":
+    if level == "Low" and stages.in_range(checks):
+        lines.append(stages.in_range_closing(t))
+    elif level == "Low":
         lines.append(f"Confidence: {level}. Unresolved, investigate next. No driver is named.")
     else:
         verb = "Leading driver" if level == "High" else "Candidate drivers"
@@ -343,7 +347,7 @@ def _story(reg, n, s, p, events: EventLog | None = None) -> tuple[memo.StoryBloc
     _note(events, "Close the story", tool="story_confidence", args={"territory": t}, verdict="done", summary=lines[-1])
     plan = next((c.detail["plan"] for c in checks if c.driver == "access" and c.detail), None)
     chart = charts.story(reg, p, t, supported if level != "Low" else [], plan)
-    detail = memo.story_detail(reg, p, t)
+    detail = memo.story_detail(reg, p, t, checks)
     block = memo.StoryBlock(story_id(s), name(t), lines, chart=chart, detail=detail,
                             card=memo.story_card(name(t), facts, level, [c.driver for c in checks], territory=t, checks=checks, measure=p.col))
     return block, {

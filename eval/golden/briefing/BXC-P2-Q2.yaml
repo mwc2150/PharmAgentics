@@ -1,0 +1,117 @@
+id: C-040
+lane: briefing
+brand: BXC
+story: BXC-P2-Q2
+persona: P2 Insights Manager (Marcus)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Weeks of 2026-05-11 to 2026-06-29: What explanations were considered, and why were the others ruled out?'
+review_note: null
+period: weeks of 2026-05-11 to 2026-06-29
+anchor: Metacora era, competing explanations (Lipidara)
+definition:
+  first_week: '2026-05-11'
+  last_week: '2026-06-29'
+  comparison:
+    kind: pre_launch
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Marcus, I want competing explanations tested and recorded, so that "what about the competitor?" has an answer on the spot.
+given: a national share loss with one live competitor launch and stable access, promotion, supply and feeds.
+when: the Lipidara (BXC) brief investigates.
+then: the story names the competitor as the leading driver and lists each alternative with its verdict and evidence link.
+reference_answer: 'Competitor, supported. Metacora (BXE) launched on 2026-03-02 and held 11.8% of the four-brand basket in these weeks. Lipidara''s share was 31.2%, against 35.4% in the four weeks before launch (2026-02-02 to 2026-02-23), and its TRx averaged 17.7% below those four weeks. Access, ruled out: no Lipidara plan changed tier, prior authorization or step therapy between 2026-02 and 2026-06, and Metacora entered at tier 3, the same tier as Lipidara (3). Promotion, ruled out: Lipidara rep calls across all territories averaged 211 a week against 220 before, and no territory fell below 0.85 of its own pre-launch level. Supply, ruled out: Lipidara inventory fill never fell below 0.956. Data artifact, ruled out: no feed flags in these weeks, every territory passes.'
+must_not_say:
+  text: a single cause with no alternatives on record.
+  phrases: []
+  semantic: []
+action: Marcus walks into the brand meeting with the ruled-out list. The brief tells him to involve market access and marketing on the competitive response.
+eval_items:
+- EV-4.1
+- EV-4.2
+- EV-5.1
+facts:
+- id: bxc_change_pct
+  role: must
+  value: -17.7
+  sql: with ok as (select territory_id from reporting.v_feed_health where (week_start between DATE '2026-05-11' and DATE '2026-06-29' or week_start between DATE '2026-02-02' and DATE '2026-02-23') group by 1 having count(*) = 12 and count(*) filter (where health_status = 'PASS') = 12) select 100.0 * (((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-05-11' and DATE '2026-06-29' and territory_id in (select territory_id from ok)) / 8.0) / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23' and territory_id in (select territory_id from ok)) / 4.0) - 1)
+  reviewed: false
+- id: bxc_share_pre_launch_pct
+  role: must
+  value: 35.4
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-02-02' and DATE '2026-02-23'
+  reviewed: false
+- id: bxc_share_period_pct
+  role: must
+  value: 31.2
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXC') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-05-11' and DATE '2026-06-29'
+  reviewed: false
+- id: metacora_share_period_pct
+  role: must
+  value: 11.8
+  sql: select 100.0 * sum(trx) filter (where product_id = 'BXE') / sum(trx) from reporting.v_weekly_rx_kpis where week_start between DATE '2026-05-11' and DATE '2026-06-29'
+  reviewed: false
+- id: bxc_plans_with_access_change
+  role: context
+  value: 0
+  sql: select count(*) from raw.access_status_monthly a join raw.access_status_monthly b on a.plan_id = b.plan_id and a.product_id = b.product_id where a.product_id = 'BXC' and a.month = DATE '2026-02-01' and b.month = DATE '2026-06-01' and (a.formulary_tier <> b.formulary_tier or a.prior_authorization <> b.prior_authorization or a.step_therapy <> b.step_therapy or a.covered <> b.covered)
+  reviewed: false
+- id: bxc_formulary_tier_jun_2026
+  role: context
+  value: 3
+  sql: select max(formulary_tier) from raw.access_status_monthly where product_id = 'BXC' and month = DATE '2026-06-01'
+  reviewed: false
+- id: metacora_formulary_tier_jun_2026
+  role: context
+  value: 3
+  sql: select max(formulary_tier) from raw.access_status_monthly where product_id = 'BXE' and month = DATE '2026-06-01'
+  reviewed: false
+- id: bxc_rep_calls_before_per_week
+  role: context
+  value: 220
+  sql: select sum(rep_calls_aggregated) * 1.0 / 4 from raw.promo_activity where product_id = 'BXC' and week_start between DATE '2026-02-02' and DATE '2026-02-23'
+  reviewed: false
+- id: bxc_rep_calls_period_per_week
+  role: context
+  value: 211
+  sql: select sum(rep_calls_aggregated) * 1.0 / 8 from raw.promo_activity where product_id = 'BXC' and week_start between DATE '2026-05-11' and DATE '2026-06-29'
+  reviewed: false
+- id: bxc_min_fill_rate_period
+  role: context
+  value: 0.956
+  sql: select min(inventory_fill_rate) from raw.inventory_weekly where product_id = 'BXC' and week_start between DATE '2026-05-11' and DATE '2026-06-29'
+  reviewed: false
+- id: feed_flags_in_period
+  role: context
+  value: 0
+  sql: select count(*) from reporting.v_feed_health where week_start between DATE '2026-05-11' and DATE '2026-06-29' and health_status <> 'PASS'
+  reviewed: false
+- id: lowest_territory_rep_calls_ratio
+  role: context
+  value: 0.85
+  sql: select min(r) from (select avg(rep_calls_aggregated) filter (where week_start between DATE '2026-05-11' and DATE '2026-06-29') / avg(rep_calls_aggregated) filter (where week_start between DATE '2026-02-02' and DATE '2026-02-23') r from raw.promo_activity where product_id = 'BXC' group by territory_id)
+  reviewed: false
+findings:
+- id: national_bxc_share_loss
+  territory: NATIONAL
+  direction: down
+  drivers_supported:
+  - competitor
+  drivers_ruled_out:
+  - access
+  - promotion
+  - supply
+  - data
+  withheld: false
+  reviewed: false
+  measure: bxa_share
+source: docs/planning/user-stories-lipidara.md#BXC-P2-Q2

@@ -22,7 +22,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from . import brand_access, forecast_store, rbac, store, views
+from . import brand_access, forecast_store, rbac, signoff, store, views
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
@@ -365,20 +365,20 @@ def _answer(p: rbac.Principal, lane: str, ref: str, view: str) -> dict:
 
         bid, n = ref.split(":t")
         record = brand_access.brief_for(p, role, bid)
-        shown = threads.turn_shown(p, bid, int(n)) if record and "review" in role.actions else None
+        shown = threads.turn_shown(p, bid, int(n)) if record and "analyst" in role.views else None  # P1 and P2, as threads
         if shown is None:
             raise HTTPException(status_code=404, detail="No such follow-up.")
         r = record["result"]
         return {"scope": _brief_scope(r),
                 "engine": "scripted", "system": r.get("system"), "data_version": r.get("data_version"),
-                "review_status": record["review_status"], "shown": shown}
+                "review_status": signoff.state_of(record), "shown": shown}
     if lane == "briefing":
         record = brand_access.brief_for(p, role, ref)
         r = record["result"]
         shown = r.get("answer") or ""
         return {"scope": _brief_scope(r),
                 "engine": r.get("engine"), "system": r.get("system"), "data_version": r.get("data_version"),
-                "review_status": record["review_status"],
+                "review_status": signoff.state_of(record),
                 "shown": views.executive_summary(shown, r.get("sections")) if view == "leadership" else shown}
     brand_access.require_brand(p, "BXA")
     record = forecast_store.get(ref)

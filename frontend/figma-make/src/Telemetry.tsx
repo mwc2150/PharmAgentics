@@ -21,6 +21,10 @@ const label = (k: string) => RUN_LABELS[k] ?? k.replace(/[_.]/g, " ").replace(/^
 // logged before pooling existed falls back to the per-case mean.
 const keyFacts = (m: Record<string, number>) => m.key_fact_recall_pooled ?? m.key_fact_recall
 const findings = (m: Record<string, number>) => m.finding_recall_pooled ?? m.finding_recall
+// Code fills every number an agent brief states, so for an agent the key-fact score only shows what it dropped: the
+// scripted engine's key facts found minus the agent's, on the latest runs (core-011 "numbers lost by the agent"; target 0).
+const AGENT_SYSTEM = /_(agent|lowcode)(@[A-Z]+|$)/
+const LOST_TITLE = "Numbers lost by the agent: the scripted engine's key facts found minus this run's (target 0). Code fills every number, so this shows only what the agent dropped."
 const runValue = (k: string, v: number) => k.endsWith("_target_met") ? (v >= 0.5 ? "Yes" : "No") : k === "over_word_budget" ? String(Math.round(v)) : pct(v)
 const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toFixed(2))
 // A score as people read it: a share as a percent, a count as a whole number, a flag as Yes/No; no unit means a share.
@@ -56,7 +60,7 @@ function Rows({ rows }: { rows: [string, ReactNode][] }) {
 function laneRows(lane: "briefing" | "forecast", u: LaneUsage): [string, ReactNode][] {
   const rows: [string, ReactNode][] = [
     [lane === "briefing" ? "Briefs requested" : "Forecast explanations run", u.requests],
-    ["Opened", u.opens], ["Review decisions", list(u.decisions)], ["Answer votes", `${u.votes.up} up, ${u.votes.down} down`],
+    ["Opened", u.opens], ["Review decisions (events)", list(u.decisions)], ["Answer votes", `${u.votes.up} up, ${u.votes.down} down`],
   ]
   if (lane === "briefing") rows.push(["Engines", list(u.engines)], ["Scripted response time", spread(u.scripted_ms, "s", 1000)],
     ["Agent jobs", list(u.agent_jobs)], ["Agent brief, queue to result", spread(u.agent_seconds, "s")])
@@ -178,23 +182,31 @@ const COLS = "sm:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem]"
 function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<string, number> }) {
   const cell = (v: number | undefined) => (v != null ? pct(v) : "–")
   const t = (k: string) => targets?.[k] != null ? ` (target ${pct(targets[k])})` : ""
+  const keyFactCell = (r: TelemetryRun) => {
+    const kf = keyFacts(r.metrics)
+    // the same lane's and brand's scripted run: briefing_agent@BXC is set against briefing_scripted@BXC
+    const scripted = runs.find(x => x.lane === r.lane && x.system === r.system.replace(AGENT_SYSTEM, "_scripted$2"))
+    const scriptedKf = scripted ? keyFacts(scripted.metrics) : undefined
+    if (!AGENT_SYSTEM.test(r.system) || kf == null || scriptedKf == null) return cell(kf)
+    return <span title={LOST_TITLE}>{Math.round(Math.max(0, scriptedKf - kf) * 100)} pts lost</span>
+  }
   return <section className={PANEL}>
-    <div className={`hidden gap-4 border-b border-rule px-5 py-2 text-[11px] text-muted sm:grid ${COLS}`}>
-      <span>System</span><span>Run</span><span className="text-right" title={`Share of the golden key facts the run stated, all cases pooled${t("key_fact_recall")}`}>Key facts found</span>
+    <div className={`hidden gap-4 border-b border-rule py-2 pl-10 pr-5 text-[11px] text-muted sm:grid ${COLS}`}>
+      <span>System</span><span>Run</span><span className="text-right" title={`Share of the golden key facts the run stated, all cases pooled${t("key_fact_recall")}. Agent rows show the points lost against the scripted engine instead (target 0).`}>Key facts found</span>
       <span className="text-right" title={`Share of the golden findings the run reached, all cases pooled${t("finding_recall")}`}>Findings found</span>
       <span className="text-right">Number recall</span><span className="text-right">Claims reconcile</span>
     </div>
     <ul className="divide-y divide-rule">{runs.map(r => <li key={r.run_id}>
       <details>
-        <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60 ${COLS}`}>
+        <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 py-3 pl-10 pr-5 hover:bg-paper/60 ${COLS}`}>
           <span className="min-w-0"><span className="block truncate text-sm">{name(r)}</span>{r.model && <span className="block truncate text-xs text-muted">{modelName(r.model)}</span>}</span>
           <span className="text-xs text-muted sm:text-sm">{when(r.started)}</span>
-          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{cell(keyFacts(r.metrics))}</span>
+          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{keyFactCell(r)}</span>
           <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Findings </span>{cell(findings(r.metrics))}</span>
           <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Number recall </span>{cell(r.metrics.golden_number_recall)}</span>
           <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile)}</span>
         </summary>
-        <div className="px-5 pb-4">
+        <div className="pb-4 pl-10 pr-5">
           <p className="mb-2 text-xs text-muted">{r.cases} questions · {r.reruns} rerun{r.reruns > 1 ? "s" : ""}{r.minutes != null ? ` · ${r.minutes} min` : ""} · run {r.run_id} · code {r.code_version || "n/a"} · data {r.data_version || "n/a"}</p>
           <Rows rows={Object.entries(r.metrics).map(([k, v]) => [label(k), runValue(k, v)])}/>
           {!!Object.keys(r.judge_metrics).length && <p className="mt-3 text-xs text-muted">Judge scores (report only): {Object.entries(r.judge_metrics).map(([k, v]) => `${label(k)} ${pct(v)}`).join(" · ")}</p>}
@@ -216,7 +228,14 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
   }, [])
   const b = u?.lanes.briefing ?? u?.lanes.forecast
   const reviewed = b ? Object.values(b.decisions).reduce((x, y) => x + y, 0) : 0
-  const approved = b ? (b.decisions.approved ?? b.decisions.approve ?? 0) : 0
+  const approved = b ? (b.decisions.signed_off ?? b.decisions.approved ?? b.decisions.approve ?? 0) : 0
+  const rv = b?.review  // per brief, latest decision; the Forecast lane has none and keeps the event count
+  const approvedTile: [string, string, string] = rv
+    ? (rv.enough && rv.approved_pct != null
+      ? ["Approved", `${Math.round(rv.approved_pct)}%`, `${rv.approved} of ${rv.briefs} briefs approved`]
+      : ["Approved", rv.briefs ? (rv.label ?? "too few to rate").replace(/^./, c => c.toUpperCase()) : "–",
+         rv.briefs ? `${rv.briefs} brief${rv.briefs === 1 ? "" : "s"} decided, ${rv.min_briefs} needed` : "nothing reviewed yet"])
+    : ["Approved", reviewed ? `${Math.round((approved / reviewed) * 100)}%` : "–", reviewed ? `${approved} of ${reviewed} decisions` : "nothing reviewed yet"]
   const lead = t?.latest.find(r => !r.control)
   // The SUS of the first questionnaire and the UMUX-Lite SUS-equivalent of the second, weighted by responses
   const parts = [u?.sus && {n: u.sus.n, mean: u.sus.mean}, u?.umux && {n: u.umux.n, mean: u.umux.sus_equivalent_mean}].filter(Boolean) as {n: number, mean: number}[]
@@ -230,7 +249,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
     {!t && !u && !err.length && <div className="pa-skeleton h-32 rounded-xl"/>}
     {u && b && <Figures items={[
       [u.lanes.briefing ? "Briefs requested" : "Explanations run", String(b.requests), u.since ? `since ${when(u.since)}` : "none yet"],
-      ["Approved", reviewed ? `${Math.round((approved / reviewed) * 100)}%` : "–", reviewed ? `${approved} of ${reviewed} reviewed` : "nothing reviewed yet"],
+      approvedTile,
       ["Typical response (live use)", b.scripted_ms ? `${((b.scripted_ms.p50 ?? 0) / 1000).toFixed(1)} s` : "–", b.scripted_ms ? "scripted engine, median of live requests" : "no timed requests",
         goldenBrief != null && `golden set: ${goldenBrief.toFixed(1)} s a brief`],
       ["Usability (SUS scale)", usability ? String(usability.mean) : "–", usability ? `of 100, ${usability.n} response${usability.n === 1 ? "" : "s"}` : "no responses yet"],

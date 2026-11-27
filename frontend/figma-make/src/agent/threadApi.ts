@@ -24,14 +24,17 @@ export type Thread = {
   shared_from: string | null
   turns: Turn[]
   max_turns: number
+  used_turns: number  // free-text (agent) turns; the suggested questions do not count
+  free_text: boolean  // false when the app has no model: the box is disabled
+  free_text_reason: string | null
   share_path: string | null
   suggestions: Record<string, string[]>
 }
 
 const base = (id: string) => `/api/briefing/${encodeURIComponent(id)}/thread`
 export const getThread = (id: string) => api<Thread>(base(id))
-export const askThread = (id: string, question: string, section?: string | null, engine: "scripted" | "agent" = "scripted") =>
-  api<Thread>(`${base(id)}/ask`, post({ question, section: section ?? null, engine }))
+export const askThread = (id: string, question: string, section?: string | null) =>
+  api<Thread>(`${base(id)}/ask`, post({ question, section: section ?? null }))
 export const saveThread = (id: string) => api<Thread>(`${base(id)}/save`, post({}))
 export const openShared = (id: string, owner: string) => api<Thread>(`${base(id)}/shared/${encodeURIComponent(owner)}`)
 export const continueShared = (id: string, owner: string) => api<Thread>(`${base(id)}/continue/${encodeURIComponent(owner)}`, post({}))

@@ -9,13 +9,15 @@ skeleton. Headings carry no digits (research R6): section numbers live in the st
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field, replace
 
+from . import checks
 from . import queries as q
 from . import stages
 from .checks import DECISION, OWNER, confidence, launch_date
-from .lag_checks import LAG_LABELS
+from .lag_checks import LAG_LABELS, effect_words
 from .projection import Projection, _label, method_lines
 from .registry import Registry
 from . import definition, splits
@@ -183,6 +185,17 @@ def _compose(parts: MemoParts) -> tuple[str, list[dict]]:
     return "\n".join(out), sections
 
 
+def _filled(value, fill):
+    """A card's structured data with every claim token in its strings filled."""
+    if isinstance(value, str):
+        return fill(value)[0]
+    if isinstance(value, list):
+        return [_filled(v, fill) for v in value]
+    if isinstance(value, dict):
+        return {k: _filled(v, fill) for k, v in value.items()}
+    return value
+
+
 def render_sections(sections: list[dict], claims: list[dict], index: dict[int, int] | None = None) -> list[dict]:
     """Fill each section's tokens, with where each claim sits (inline citations). `claims` are the claims the
     tokens number; `index` maps a token number to its position in the envelope's claims when the envelope keeps
@@ -204,6 +217,7 @@ def render_sections(sections: list[dict], claims: list[dict], index: dict[int, i
             blocks += [c for r in table["rows"] for c in r["cells"]] + [table.get("note") or ""]
         if card:
             blocks.append(card["headline"])
+            blocks.append(json.dumps(card.get("promotion") or {}))
         used = list(dict.fromkeys(int(n) for n in TOKEN.findall("\n".join([text, prose, extra] + blocks))))
         refs = [index[n] if index is not None else n - 1 for n in used
                 if 0 < n <= len(claims) and (index is None or n in index)]
@@ -230,6 +244,8 @@ def render_sections(sections: list[dict], claims: list[dict], index: dict[int, i
         if card:
             headline, h_spans = fill(card["headline"])
             item["card"] = {**card, "headline": headline, "headline_citations": h_spans}
+            if card.get("promotion"):
+                item["card"]["promotion"] = _filled(card["promotion"], fill)
         out.append(item)
     return out
 
@@ -374,6 +390,9 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
         x, b = q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id, col=p.col), q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id, col=p.col)
         change = reg.scalar(q.pct_change(x, b)) or 0
         pct = reg.claim("get_metric", q.pct_change(x, b), "pct", territory=t)
+        if stages.within_normal_range(reg, p, t):  # asked about, not material: never presented as a change
+            return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}), within its normal range; "
+                    "reported because the question asks about it.")
         return (f"Least sure: the {q.name(t)} change ({stages.word(change)} {pct}); its confidence, {s['confidence']}, "
                 "is the lowest of this brief's stories.")
     if len(p.weeks) == 1 and p.baseline and p.has("national"):
@@ -389,6 +408,19 @@ def _least_sure(reg: Registry, p, proj: Projection, stories: list[dict]) -> str 
     return None
 
 
+def _territory_lead(reg: Registry, p) -> str | None:
+    """§1's opening line when the question names one territory (UAT review 3.7): that territory's change on the
+    comparison weeks, before the national figures. None when the question names no territory, the territory has no
+    like-for-like change (a withheld week) or there are no comparison weeks. Every number is a claim."""
+    t = p.focus
+    if not t or t == "NATIONAL" or t not in p.ok or not p.baseline or not p.has("territory"):
+        return None
+    sql = q.pct_change(q.mean_weekly(p.weeks, terrs=[t], product=p.brand_id, col=p.col),
+                       q.mean_weekly(p.baseline, terrs=[t], product=p.brand_id, col=p.col))
+    pct = reg.claim("get_metric", sql, "pct", territory=t, scope="against the comparison weeks")
+    return f"{q.name(t)}: {p.brand_id} {p.measure_label} is {stages.word(reg.scalar(sql) or 0)} {pct} against {comparison_text(p)}."
+
+
 def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restated: bool, facts: dict | None = None) -> list[str]:
     """§1 in FR-021 order, after a data warning or restatement note when there is one. `stories` are the
     territory stories in brief order: {territory, confidence}. `facts` receives the claims the KPI strip reuses."""
@@ -396,6 +428,8 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
     lines = [x for x in [_warning(p, proj)] if x]
     if restated:
         lines.append("Data note: an earlier week was restated. The new value and the reason are in The numbers.")
+    if (lead := _territory_lead(reg, p)):
+        lines.append(lead)
     W = proj.weeks
     facts["brand"] = p.brand_id
     if not p.has("national"):
@@ -419,7 +453,7 @@ def bottom_line(reg: Registry, p, proj: Projection, stories: list[dict], restate
         facts["share"] = share
         lines.append(f"{p.brand_id} held {share} of the four-brand market basket.")
         launched = launch_date(reg)
-        if launched is not None and launched <= W[-1] and p.brand_id == "BXA":
+        if launched is not None and launched <= W[-1]:
             pre = [q.shift(launched, -i) for i in range(4, 0, -1)]
             facts["pre"] = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct", product=p.brand_id, weeks="before launch")
             facts["share_word"] = stages.word((reg.scalar(q.share(W, p.brand_id)) or 0) - (reg.scalar(q.share(pre, p.brand_id)) or 0))
@@ -469,16 +503,19 @@ def appendix(reg: Registry, brand_id: str = "BXA", *, p=None, proj: Projection |
     """§6 text: the data version and the Assumptions block. The method and the glossary are folded (compose)."""
     brand_id = briefing_brand(p.brand_id if p is not None else brand_id)
     lines = [f"Data version {reg.data_version}. Product: {brand_id} ({PRODUCTS[brand_id]}), synthetic data."]
-    return lines + (assumptions(p, proj, restated) if p is not None else [])
+    return lines + (assumptions(p, proj, restated, reg=reg) if p is not None else [])
 
 
-def assumptions(p, proj: Projection | None, restated: bool = False) -> list[str]:
+def assumptions(p, proj: Projection | None, restated: bool = False, *, reg: Registry | None = None) -> list[str]:
     """The Assumptions block (brief-007 FR-012; the Week 6 assumption book): each assumption with its source, in
     at most five items (brief-008 FR-004)."""
-    source = "the brief's default rule, the four weeks before the period" if p.comparison is None else p.baseline_source
+    source = "the brief's default rule" if p.comparison is None else p.baseline_source
     fewer = (f" The release starts on {p.first}, so fewer weeks exist."
              if p.comparison is None and p.baseline and len(p.baseline) < stages.BASELINE_WEEKS else "")
-    lines = ["Assumptions:", f"- Comparison weeks: {comparison_text(p)}. Source: {source}.{fewer}"]
+    screened = stages.screen_weeks(reg, p) if reg is not None and p.has("territory") else p.baseline
+    screen = (f" Material-change screen: {screened[0]} to {screened[-1]}."
+              if screened and screened != list(p.baseline) else "")
+    lines = ["Assumptions:", f"- Comparison weeks: {comparison_text(p)}. Source: {source}.{fewer}{screen}"]
     lines.append("- Like for like: changes use only territories whose feed passed the gate in every week compared. "
                  "Withheld cuts are left out of every change and story, and never read as zero demand."
                  + (" Calendar weeks are left out of the stories." if p.calendar_note else " Holiday weeks are left out.")
@@ -491,9 +528,14 @@ def assumptions(p, proj: Projection | None, restated: bool = False) -> list[str]
         lines.append(f"- Not observed: {', '.join(q.name(t) for t in marked)} "
                      f"{'is' if len(marked) == 1 else 'are'} projected or estimated, not counted. Source: panel coverage "
                      "and each territory's recent share of national.")
-    if p.brand_id == "BXA":
-        lines.append("- Drivers: the checks evaluate the same week and delays of one and two weeks. "
-                     "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag.")
+    # Every driver check reads the comparison weeks; the one that reads other weeks says which (assumptions first).
+    exact = p.comparison is not None
+    context = p.baseline if exact else checks.context_baseline(p.weeks, p.baseline) if p.weeks else []
+    rival = checks.competitor_assumption(reg, p.weeks, context, exact=exact) if reg is not None else None
+    lines.append("- Drivers: the checks evaluate the same week and delays of one and two weeks. "
+                 "A supported timing requires activity to move with reportable TRx. Monthly access data cannot identify a weekly lag. "
+                 "Promotion: controls first, then comparable territories."
+                 + (f" {rival}" if rival else ""))
     return lines
 
 
@@ -523,6 +565,9 @@ def next_checks(p, stories: list[dict], competitor: bool) -> list[str]:
     for a continuing competitor story, and a re-read line when the question asks when more will be known."""
     lines = []
     for s in stories:
+        if not s.get("drivers") and (s.get("in_range") or stages.in_range(s.get("checks") or [])):
+            continue  # a cause was found but the change is within its normal range: context, nothing to investigate
+            # (review H-1, REV-1). A change nothing explains (P2-Q3) still gets its next check.
         name = q.name(s["territory"])
         drivers = [d for d in s.get("drivers", []) if d in OWNER]
         if s["confidence"] == "Low" or not drivers:
@@ -780,9 +825,54 @@ def story_card(name: str, facts: dict, confidence: str, drivers: list[str], *, t
     if facts.get("xm"):
         x = facts["xm"]
         headline += f" {x['label'][:1].upper()}{x['label'][1:]} {_verb(x['word'], x['pct'])}."
-    return {"headline": headline,
+    card = {"headline": headline,
             "confidence": confidence, "drivers_checked": [DRIVER_NAMES.get(d, d) for d in drivers],
             "territory": territory, "direction": facts["word"], "drivers_supported": supported, "drivers_ruled_out": ruled_out, "cut": None}
+    if (promo := promotion_card(checks)) is not None:
+        card["promotion"] = promo
+    return card
+
+
+def _promotion_detail(checks) -> dict | None:
+    """The promotion check's structure (lag_checks.check_promotion), when it ran and was not inconclusive."""
+    check = next((c for c in checks if c.driver == "promotion"), None)
+    return ((check.detail or {}).get("promotion") if check is not None else None) or None
+
+
+def promotion_card(checks) -> dict | None:
+    """The promotion verdict as structured data for a story card (analysts' view): new patients first and TRx as the
+    follow-through, then all four channels at the verdict's lag, the effect against territories without a promotion change
+    and the re-check date. Every figure is a claim token; `verdict` is one of supported, ruled_out, not_separable or
+    not_testable (the last two are never in the card's drivers_supported or drivers_ruled_out). No rep-level data."""
+    d = _promotion_detail(checks)
+    if d is None:
+        return None
+    keys = ("verdict", "lag", "lag_label", "tested", "new_patients", "trx", "channels", "effect", "separable_from", "recheck")
+    return {k: d[k] for k in keys if d.get(k) is not None or k == "effect"}
+
+
+def promotion_lines(checks) -> list[str]:
+    """The promotion detail for the story's folded part: the lag read, new patients then TRx, the four channels, how the
+    comparison range is built, and when a fuller read is possible. Built from the card's own structure, so the two agree."""
+    d = _promotion_detail(checks)
+    if d is None:
+        return []
+    lines = [f"Promotion detail, read at the {d['lag_label']} (the period against the comparison weeks, aggregated activity, weekly averages):"]
+    for m in (d["new_patients"], d["trx"]):
+        what = "New patients (NBRx)" if m["measure"] == "NBRx" else "TRx"
+        lines.append(f"- {what}: {m['before']} to {m['after']} ({m['direction']} {m['change']}).")
+    for ch in d["channels"]:
+        change = f" ({ch['direction']} {ch['change']})" if ch["change"] else f" ({ch['direction']})"
+        lines.append(f"- {ch['channel'][:1].upper()}{ch['channel'][1:]}: {ch['before']} to {ch['after']}{change}.")
+    e = d.get("effect")
+    if e:
+        lines.append(f"- Comparison: {e['territories']} other territories held their promotion level (no channel moved by {e['threshold']} or more at this lag) "
+                     "and are the comparison. Each gives one implied effect: this territory's TRx a week in the period, less its TRx in the comparison weeks "
+                     f"scaled by that territory's own change. The range, {effect_words(e)}, runs from the lowest to the highest of them.")
+    if d["verdict"] == "not_separable":
+        lines.append(f"- Not separable from: {', '.join(DRIVER_NAMES.get(x, x) for x in d.get('separable_from') or [])}, supported in the same weeks.")
+    lines.append(f"- Lags tested: {', '.join(d['tested'][:-1])} and {d['tested'][-1]}. A fuller read is possible after {d['recheck']}.")
+    return lines
 
 
 def competitor_card(p, facts: dict) -> dict:
@@ -838,9 +928,9 @@ def cut_checks(reg: Registry, p, territory: str, plan: str, checks=None) -> list
     own = list(checks) if complete else run_checks(reg, territory, p.weeks, p.baseline, brand_id=p.brand_id,
                                                     use_selected_baseline=p.comparison is not None)
     with reg.under(measure="trx"):  # the access check reads TRx whatever the primary measure
-        access = check_access(reg, territory, p.weeks, p.baseline, plan=plan)
-    by = {c.driver: c for c in own}
-    by["access"] = access
+        access = check_access(reg, territory, p.weeks, p.baseline, plan=plan, brand_id=p.brand_id)
+    by = {c.driver: stages.credit_rule(reg, p, territory, c) for c in own}  # the territory's verdicts, under its range
+    by["access"] = access  # checked on the plan's own TRx
     return [by[d] for d in _DRIVER_ORDER if d in by]
 
 
@@ -879,16 +969,17 @@ def cut_block(reg: Registry, p, cut: dict, checks=None) -> StoryBlock:
         lead = f"{name} in {where}: {p.brand_id} {m['label']}" if i == 0 else m["label"][:1].upper() + m["label"][1:]
         lines.append(f"{lead} averaged {m['after']} a week on the comparison weeks against {m['before']} before ({m['word']} {m['pct']}).")
     level, lead = confidence(done)
-    lines.append(f"Confidence: {level}. Unresolved, investigate next. No driver is named." if level == "Low" else
+    lines.append(stages.in_range_closing(territory) if stages.in_range(done) and level == "Low" else
+                 f"Confidence: {level}. Unresolved, investigate next. No driver is named." if level == "Low" else
                  f"Confidence: {level}. {'Leading driver' if level == 'High' else 'Candidate drivers'}: {lead}.")
     detail = ["Checked for this plan, in this order:"] + [f"- {c.text}" for c in done]
     detail.append(f"Data, promotion, supply and competitor have no plan-level test, so they carry the {where} verdicts.")
     return StoryBlock(f"cut:{plan}", f"{name} in {where}", lines, card=card, detail=detail)
 
 
-def story_detail(reg: Registry, p, territory: str) -> list[str]:
-    """The splits, readable and rounded, for the story's folded detail."""
-    return splits.readable_lines(reg, p, territory)
+def story_detail(reg: Registry, p, territory: str, checks=()) -> list[str]:
+    """The splits, readable and rounded, then the promotion detail of the story's checks, for the folded detail."""
+    return splits.readable_lines(reg, p, territory) + promotion_lines(checks)
 
 
 def restatement_block(restated: list[dict]) -> StoryBlock | None:

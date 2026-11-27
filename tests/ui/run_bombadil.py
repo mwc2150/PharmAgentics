@@ -42,7 +42,7 @@ def docker(*args: str, check: bool = True) -> subprocess.CompletedProcess:
 
 
 def seed(base: str) -> str:
-    """Sign in as the analyst, generate one scripted brief and approve it, so every role has a brief to open."""
+    """Sign in as the analyst, generate one scripted brief, send it and have it signed off, so every role has a brief to open."""
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
     opener.open(urllib.request.Request(f"{base}/auth/dev-login", data=b"username=dev-analyst", method="POST"))
 
@@ -54,7 +54,13 @@ def seed(base: str) -> str:
 
     week = call("/api/briefing/context")["latest_week"]
     brief = call("/api/briefing/query", {"week_start": week})
-    call(f"/api/briefing/{brief['brief_id']}/review", {"decision": "approved"})
+    call(f"/api/briefing/{brief['brief_id']}/review", {"decision": "sent"})
+    # the Insights Manager signs it off (brief-005), so the Director and the Marketer have a brief to open
+    insights = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    insights.open(urllib.request.Request(f"{base}/auth/dev-login", data=b"username=dev-insights", method="POST"))
+    req = urllib.request.Request(f"{base}/api/briefing/{brief['brief_id']}/signoff", data=json.dumps({"decision": "signed_off"}).encode(),
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    insights.open(req, timeout=120).read()
     return brief["brief_id"]
 
 
@@ -67,7 +73,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--time-limit", default="5m")
     ap.add_argument("--image", help="an existing app image; default: build pharmagentics:bombadil from the working tree")
-    ap.add_argument("--seed", action="store_true", help="approve one scripted brief first, so brief screens are reachable")
+    ap.add_argument("--seed", action="store_true", help="sign off one scripted brief first, so brief screens are reachable")
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
@@ -94,7 +100,7 @@ def main() -> int:
         else:
             sys.exit(f"The app did not answer; see `docker logs {APP}`.")
         if a.seed:
-            print(f"Seeded an approved brief: {seed(f'http://{gateway}:{PORT}')}")
+            print(f"Seeded a signed-off brief: {seed(f'http://{gateway}:{PORT}')}")
         run = wsl(f"bombadil browser test --headless --no-sandbox --time-limit {a.time_limit} "
                   f"--output-path {to_wsl(out)}/trace http://127.0.0.1:{PORT} {to_wsl(ROOT / 'tests/ui/bombadil.spec.ts')}",
                   check=False)

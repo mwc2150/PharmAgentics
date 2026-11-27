@@ -1,0 +1,95 @@
+id: C-035
+lane: briefing
+brand: BXC
+story: BXC-P1-Q3
+persona: P1 Commercial Analyst (Ace)
+category: null_week
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2025-04-14: Which changes are big enough to make the brief?'
+review_note: null
+period: week of 2025-04-14
+anchor: Quiet week, 2025-04-14 (Lipidara)
+definition:
+  first_week: '2025-04-14'
+  last_week: '2025-04-14'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain:
+  - national
+  - territory
+  - plan
+  - channel
+  - specialty
+  relative_to: other_territories
+story_text: As Ace, I want normal territory swings left out, so that the brief is consistent week to week and nobody chases noise.
+given: a week with no injected event and normal territory noise.
+when: the Lipidara (BXC) brief runs.
+then: 'it is a routine brief: KPI table, no stories, at most one line that territory swings stayed in their normal range.'
+reference_answer: 'National BXC TRx was 4,590, 2.6% below its 4-week average. Territories swung widely: Mid-Atlantic up 29.6% week over week, South Central down 23.0%, Southeast down 17.9% and Northwest down 16.4%. Those swings are normal here: before Metacora launched, outside holiday weeks, a territory moved more than 15% in a week in 15.3% to 27.1% of weeks. No Lipidara access change sits in that week (there is none in the whole release) and BXC inventory fill was 0.970 or higher in every territory.'
+must_not_say:
+  text: '"Mid-Atlantic surged 30%."'
+  phrases:
+  - Mid-Atlantic surged 30%
+  semantic: []
+action: Ace ships the routine brief in minutes. The brief tells Ace nothing needs investigating.
+eval_items:
+- EV-3.2
+- EV-3.3
+facts:
+- id: national_bxc_trx
+  role: must
+  value: 4590
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2025-04-14'
+  reviewed: false
+- id: national_vs_4wk_avg_pct
+  role: must
+  value: -2.6
+  sql: with n as (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start = DATE '2025-04-14'), a as (select avg(s) v from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start between DATE '2025-04-14' - 28 and DATE '2025-04-14' - 7 group by 1)) select 100.0 * ((select * from n) / a.v - 1) from a
+  reviewed: false
+- id: ma_wow_pct
+  role: must
+  value: 29.6
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and week_start = DATE '2025-04-14') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'MID_ATLANTIC' and week_start = DATE '2025-04-07') - 1)
+  reviewed: false
+- id: sc_wow_pct
+  role: context
+  value: -23.0
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'SOUTH_CENTRAL' and week_start = DATE '2025-04-14') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'SOUTH_CENTRAL' and week_start = DATE '2025-04-07') - 1)
+  reviewed: false
+- id: se_wow_pct
+  role: context
+  value: -17.9
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start = DATE '2025-04-14') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'SOUTHEAST' and week_start = DATE '2025-04-07') - 1)
+  reviewed: false
+- id: nw_wow_pct
+  role: context
+  value: -16.4
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'NORTHWEST' and week_start = DATE '2025-04-14') / (select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXC' and territory_id = 'NORTHWEST' and week_start = DATE '2025-04-07') - 1)
+  reviewed: false
+- id: big_swing_weeks_min_pct
+  role: context
+  value: 15.3
+  sql: select min(p) from (select territory_id, 100.0 * count(*) filter (where abs(trx * 1.0 / prev - 1) > 0.15) / count(*) p from (select week_start, territory_id, trx, lag(trx) over (partition by territory_id order by week_start) prev, lag(week_start) over (partition by territory_id order by week_start) pw from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start < DATE '2026-03-02' and week_start not in (select week_start from raw.calendar where business_days < 5)) where pw = week_start - 7 group by 1)
+  reviewed: false
+- id: big_swing_weeks_max_pct
+  role: context
+  value: 27.1
+  sql: select max(p) from (select territory_id, 100.0 * count(*) filter (where abs(trx * 1.0 / prev - 1) > 0.15) / count(*) p from (select week_start, territory_id, trx, lag(trx) over (partition by territory_id order by week_start) prev, lag(week_start) over (partition by territory_id order by week_start) pw from reporting.v_weekly_rx_kpis where product_id = 'BXC' and week_start < DATE '2026-03-02' and week_start not in (select week_start from raw.calendar where business_days < 5)) where pw = week_start - 7 group by 1)
+  reviewed: false
+- id: bxc_min_fill_rate_week
+  role: context
+  value: 0.97
+  sql: select min(inventory_fill_rate) from raw.inventory_weekly where product_id = 'BXC' and week_start = DATE '2025-04-14'
+  reviewed: false
+- id: bxc_access_changes_in_release
+  role: context
+  value: 0
+  sql: select count(*) from (select plan_id, month, formulary_tier, lag(formulary_tier) over w pt, prior_authorization pa, lag(prior_authorization) over w ppa, step_therapy st, lag(step_therapy) over w pst, covered c, lag(covered) over w pc from raw.access_status_monthly where product_id = 'BXC' window w as (partition by plan_id order by month)) where pt is not null and (formulary_tier <> pt or pa <> ppa or st <> pst or c <> pc)
+  reviewed: false
+findings: []
+source: docs/planning/user-stories-lipidara.md#BXC-P1-Q3

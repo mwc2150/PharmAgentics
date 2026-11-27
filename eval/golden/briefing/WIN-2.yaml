@@ -50,7 +50,7 @@ findings:
 - id: southeast_july_window
   territory: SOUTHEAST
   direction: down
-  drivers_supported: []
+  drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
   reviewed: true

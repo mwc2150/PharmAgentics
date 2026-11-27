@@ -22,6 +22,7 @@ def test_frontend_contains_only_supported_feature_modules():
         "Memo.tsx",
         "MessageBar.tsx",
         "Overview.tsx",
+        "Promotion.tsx",
         "Telemetry.tsx",
         "Timeline.tsx",
         "agent/briefingApi.ts",
