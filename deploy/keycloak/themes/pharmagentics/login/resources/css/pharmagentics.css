@@ -94,6 +94,22 @@ html, body, #keycloak-bg, .login-pf body {
 .pf-v5-c-button.pf-m-primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--pa-primarydeep) !important; }
 .pf-v5-c-button:focus-visible { outline: 2px solid var(--pa-primary) !important; outline-offset: 2px; }
 
+/* Signing out (logout-confirm): the line under the title, then Sign out and Stay signed in side by side. Keycloak's
+   empty option and clearfix blocks go; the way back is a secondary button, the same height as the primary one. */
+#kc-logout-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+#kc-logout-confirm .instruction { flex-basis: 100%; margin: 0 0 8px; color: var(--pa-muted); font-size: 15px; line-height: 1.5; }
+#kc-logout-confirm form, #kc-logout-confirm .pf-v5-c-form__group { margin: 0 !important; padding: 0 !important; }
+#kc-logout-confirm #kc-form-options, #kc-logout-confirm .clearfix { display: none !important; }
+#kc-logout-confirm #kc-info-message:not(:has(a)) { display: none; }
+#kc-logout-confirm #kc-info-message p { margin: 0; }
+#kc-logout-confirm #kc-info-message a {
+  display: inline-block; padding: 9px 20px; border: 1px solid var(--pa-edge); border-radius: 14px;
+  color: var(--pa-ink); font: 500 15px/1.4 "IBM Plex Sans", system-ui, sans-serif; text-decoration: none;
+  transition: background-color .15s;
+}
+#kc-logout-confirm #kc-info-message a:hover { background: var(--pa-paper); color: var(--pa-ink); }
+#kc-logout-confirm #kc-info-message a:focus-visible { outline: 2px solid var(--pa-primary); outline-offset: 2px; }
+
 /* Messages: a word and an outline, never a filled banner. */
 .pf-v5-c-alert {
   background: transparent !important; border: 1px solid var(--pa-edge) !important; border-radius: 14px !important;
