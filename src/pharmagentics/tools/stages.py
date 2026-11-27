@@ -779,14 +779,15 @@ def competitor_status(reg: Registry, p: Period, lead: str = "Competitor Metacora
     pre = [q.shift(launched, -i) for i in range(4, 0, -1)]
     since = reg.claim("compare_competitors", f"select datediff('week', DATE '{launched}', week_start) from raw.calendar "
                       f"where week_start = DATE '{W[-1]}'", "int")
-    earlier = [q.shift(w, -8) for w in W]
-    trend = (reg.scalar(share_w) or 0) - (reg.scalar(q.share(earlier, "BXE")) or 0)
-    direction = "still growing" if trend > 1 else "now flat" if trend > -1 else "declining"
+    # The direction reads the brief's stated comparison weeks, as the national card does (assumptions first; UAT review
+    # 2026-11-27, C-13: "still growing" came from an unstated window eight weeks back while the chart was flat).
+    then = reg.scalar(q.share(p.baseline, "BXE")) if p.baseline else None
+    direction = f", share {word((reg.scalar(share_w) or 0) - then)} on the comparison weeks" if then is not None else ""
     bxe = reg.claim("compare_competitors", share_w, "pct", product="BXE")
     bxa = reg.claim("compare_competitors", q.share(W, p.brand_id), "pct", product=p.brand_id)
     bxa_pre = reg.claim("compare_competitors", q.share(pre, p.brand_id), "pct", product=p.brand_id, weeks="before launch")
     if facts is not None:
         facts.update(bxe=bxe, bxa=bxa, pre=bxa_pre)
-    return (f"{lead} (launched {launched}). This is a continuing story, week {since} since launch, {direction}. "
+    return (f"{lead} (launched {launched}). This is a continuing story, week {since} since launch{direction}. "
             f"Metacora held {bxe} of the four-brand basket and {p.brand_id} held {bxa}, against {bxa_pre} for {p.brand_id} in the four weeks before launch. "
             f"Confidence: Medium. The share loss is measured; its effect on volume is not separated from other drivers. Next: involve marketing and sales.")
