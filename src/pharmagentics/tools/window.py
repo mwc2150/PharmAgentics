@@ -12,6 +12,10 @@ from .queries import TERRITORY_NAMES, iso, mondays, shift
 _MONTHS = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
 _ISO = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 _SPAN = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: to (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)? (\d{4})\b")
+_MONTH = r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?"
+_MDY = re.compile(rf"\b{_MONTH} (\d{{1,2}})(?:st|nd|rd|th)?,? (\d{{4}})\b", re.I)  # Aug 24, 2026 / August 24th 2026
+_DMY = re.compile(rf"\b(\d{{1,2}}) {_MONTH},? (\d{{4}})\b", re.I)  # 24 Aug 2026
+_SLASH = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")  # 8/24/2026, month first (US)
 _PROMOTION = re.compile(
     r"\b(?:campaigns?|promotions?|promotional|reach(?:ed|ing)?|respond(?:ed|ing)?|response|"
     r"lift|spend|next dollar|return on investment|ROI)\b", re.I
@@ -71,7 +75,24 @@ def _monday(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 
+def _as_iso(year: int, month: int, day: int, written: str) -> str:
+    try:
+        return date(year, month, day).isoformat()
+    except ValueError:
+        return written  # not a real day (Feb 30): left as written, so it is not read as a week
+
+
+def written_dates_to_iso(text: str) -> str:
+    """Dates as the app prints them ("Aug 24, 2026") and the common written forms, rewritten as ISO days, so the reader
+    takes the week the user typed instead of falling back to the latest one (UAT review 2026-11-27, C-6)."""
+    text = _MDY.sub(lambda m: _as_iso(int(m[3]), _MONTHS[m[1].lower()], int(m[2]), m[0]), text)
+    text = _DMY.sub(lambda m: _as_iso(int(m[3]), _MONTHS[m[2].lower()], int(m[1]), m[0]), text)
+    return _SLASH.sub(lambda m: _as_iso(int(m[3]), int(m[1]), int(m[2]), m[0]), text)
+
+
 def parse(question: str, first_week: str, latest_week: str, *, briefing: bool = False) -> dict:
+    if briefing:  # the Forecast lane's reading is unchanged (Alvin and Sienna's call)
+        question = written_dates_to_iso(question)
     head = question.split(":", 1)[0]
     dates = _ISO.findall(head)
     promotion = briefing and bool(_PROMOTION.search(question))
@@ -92,7 +113,9 @@ def parse(question: str, first_week: str, latest_week: str, *, briefing: bool = 
         note = f"No week was given. The Promotion review covers the full release from {first_week} to {latest_week}."
     else:
         weeks = [latest_week]
-        note = f"No week was given, so this uses the latest closed week, {latest_week}."
+        unread = briefing and any(r.search(head) for r in (_MDY, _DMY, _SLASH))  # a date that is not a real day
+        note = (f"The date in the question is not a real day, so this uses the latest closed week, {latest_week}." if unread
+                else f"No week was given, so this uses the latest closed week, {latest_week}.")
     inside = [w for w in weeks if first_week <= w <= latest_week]
     territory = next((tid for tid, label in TERRITORY_NAMES.items() if re.search(rf"\b{re.escape(label)}\b", head, re.I)), None)
     parsed = {"weeks": inside, "requested": weeks, "territory": territory, "note": note}

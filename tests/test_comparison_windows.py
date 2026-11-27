@@ -98,3 +98,35 @@ def test_the_confidence_question_is_not_a_promotion_question():
     asked = parse("How confident is the estimate, and when will we know more?", first, latest, briefing=True)
     assert not asked["promotion"] and asked["weeks"] == [latest]
     assert parse("Where should the next dollar go?", first, latest, briefing=True)["promotion"]
+
+
+@pytest.mark.parametrize("asked, weeks", [
+    ("Why did Southeast change in the week of Aug 24, 2026?", ["2026-08-24"]),
+    ("Week of August 26th 2026 in Southeast: How did BXA do?", ["2026-08-24"]),  # a Wednesday reads as its week
+    ("24 Aug 2026, Pacific: what moved?", ["2026-08-24"]),
+    ("8/24/2026 Southeast: what moved?", ["2026-08-24"]),
+    ("Sept. 7, 2026: how did BXA do?", ["2026-09-07"]),
+    ("Aug 3, 2026 to Aug 31, 2026 in Southeast: why?", ["2026-08-03", "2026-08-10", "2026-08-17", "2026-08-24", "2026-08-31"]),
+    ("Aug 2026: how did BXA do?", ["2026-08-03", "2026-08-10", "2026-08-17", "2026-08-24", "2026-08-31"]),
+])
+def test_the_briefing_reader_takes_the_dates_the_app_prints(asked, weeks):
+    """UAT review 2026-11-27, C-6: "week of Aug 24, 2026" fell back to the latest week. The Forecast reading is unchanged."""
+    from pharmagentics.tools.window import parse
+
+    first, latest = "2024-10-14", "2026-10-05"
+    got = parse(asked, first, latest, briefing=True)
+    assert got["weeks"] == weeks and got["note"] is None
+    assert parse(asked.replace("Aug 24, 2026", "2026-08-24"), first, latest, briefing=True)["weeks"] == weeks
+
+
+def test_a_date_that_is_not_a_real_day_is_named_not_ignored():
+    from pharmagentics.tools.window import parse
+
+    got = parse("Week of Feb 30, 2026 in Southeast: How did BXA do?", "2024-10-14", "2026-10-05", briefing=True)
+    assert got["weeks"] == ["2026-10-05"] and got["note"].startswith("The date in the question is not a real day")
+
+
+def test_the_forecast_reading_of_written_dates_is_unchanged():
+    from pharmagentics.tools.window import parse
+
+    assert parse("Why did Southeast change in the week of Aug 24, 2026?", "2024-10-14", "2026-10-05")["weeks"] == ["2026-10-05"]
