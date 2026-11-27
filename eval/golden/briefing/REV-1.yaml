@@ -1,0 +1,96 @@
+id: C-057
+lane: briefing
+story: REV-1
+persona: P1 Commercial Analyst (Ace)
+category: real_event
+scenario: null
+split: dev
+status: draft
+question: 'Week of 2026-10-05, Southeast: How did BXA TRx move, and why?'
+review_note: From the mentor's review of 2026-11-20 (item 2.1). Drafted 2026-11-27 for Michael's review.
+period: week of 2026-10-05
+anchor: Southeast recovery after the August rep-coverage lapse
+definition:
+  first_week: '2026-10-05'
+  last_week: '2026-10-05'
+  comparison:
+    kind: previous
+    weeks: 4
+  territories: like_for_like
+  measure: trx
+  grain: [national, territory, plan, channel, specialty]
+  relative_to: other_territories
+story_text: As Ace, I want a territory I ask about read against its own normal range and its recent history, so that a recovery is not reported as a new promotion push.
+given: Southeast's rep coverage lapsed from 2026-08-03 to 2026-08-31 (calls 15 to 26 a week) and came back in September.
+when: the analyst asks about Southeast for the week of 2026-10-05.
+then: the brief says the change is within Southeast's normal range, names the August lapse and its recovery as context, and supports no driver for it.
+reference_answer: 'Southeast had 793 BXA TRx in the week of 2026-10-05, up 19.6% on the average of the four weeks before (663 a week, 2026-09-07 to 2026-09-28) but inside the range of those weeks (529 to 799), so the change is within its normal range. Rep calls were 61 against 52 a week in those weeks, under the bar for a promotion change; they had lapsed to 15 to 26 a week from 2026-08-03 to 2026-08-31. The movement is recovery after that lapse, not a new promotion push.'
+must_not_say:
+  text: '"Promotion pushed Southeast up 51%", or calls compared with a window the brief does not state.'
+  phrases:
+  - 51% higher
+  semantic:
+  - a new promotion push lifted Southeast
+must_say:
+  phrases:
+  - within its normal range
+  - lapse
+action: Ace keeps Southeast as context, not a story, and notes the recovery.
+eval_items:
+- EV-4.3
+- EV-7.3
+facts:
+- id: se_trx_week
+  value: 793
+  sql: select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-10-05'
+  role: must
+  reviewed: false
+- id: se_change_pct
+  value: 19.6
+  sql: select 100.0 * ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-10-05') / ((select sum(trx) from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28') / 4.0) - 1)
+  role: must
+  reviewed: false
+- id: se_comparison_mean
+  value: 663
+  sql: select sum(trx) / 4.0 from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28'
+  role: context
+  reviewed: false
+- id: se_band_low
+  value: 529
+  sql: select min(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28' group by 1)
+  role: context
+  reviewed: false
+- id: se_band_high
+  value: 799
+  sql: select max(s) from (select week_start, sum(trx) s from reporting.v_weekly_rx_kpis where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28' group by 1)
+  role: context
+  reviewed: false
+- id: se_calls_week
+  value: 61
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start = DATE '2026-10-05'
+  role: context
+  reviewed: false
+- id: se_calls_comparison
+  value: 52
+  sql: select avg(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-09-07' and DATE '2026-09-28'
+  role: context
+  reviewed: false
+- id: se_lapse_calls_low
+  value: 15
+  sql: select min(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-08-03' and DATE '2026-08-31'
+  role: context
+  reviewed: false
+- id: se_lapse_calls_high
+  value: 26
+  sql: select max(rep_calls_aggregated) from raw.promo_activity where product_id = 'BXA' and territory_id = 'SOUTHEAST' and week_start between DATE '2026-08-03' and DATE '2026-08-31'
+  role: context
+  reviewed: false
+findings:
+- id: southeast_within_range_recovery
+  territory: SOUTHEAST
+  direction: up
+  drivers_supported: []
+  drivers_ruled_out: []
+  withheld: false
+  reviewed: false
+source: docs/reviews/2026-11-27-uat-review-v1.md#H-1

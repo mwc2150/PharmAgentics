@@ -7,9 +7,10 @@ scenario: null
 split: dev
 status: draft
 question: Did the campaign reach the people it was meant to reach?
-review_note: The story states no period; add the weeks to the question before freezing.
+review_note: A release-wide Promotion review (intent stated 2026-11-27); its comparison is each lapse against the weeks before it, which the review states.
 period: null
 anchor: Impressions without reach data
+intent: promotion_review
 definition:
   first_week: null
   last_week: null
@@ -48,7 +49,7 @@ findings:
 - id: southeast_coverage_gap
   territory: SOUTHEAST
   direction: down
-  drivers_supported: []
+  drivers_supported: [promotion]
   drivers_ruled_out: []
   withheld: false
   reviewed: true
