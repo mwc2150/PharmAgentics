@@ -166,3 +166,26 @@ def test_a_vote_on_a_follow_up_records_that_turn(brief_id):
     assert json.loads(store.backend().read(vote))["vote"] == "up"
     assert a.post("/api/feedback/vote", json={"lane": "briefing", "ref": f"{brief_id}:t9", "view": "analyst",
                                               "vote": "up"}).status_code == 404
+
+
+@needs_db
+def test_the_insights_manager_asks_follow_ups_on_a_brief_sent_for_sign_off(brief_id):
+    """Michael, 2026-11-27 (#6): P2 reads the analyst view, so P2 can ask; the thread is P2's own, not the analyst's.
+    A draft the analyst has not sent stays out of reach (404), like the brief itself."""
+    a, i = signed_in("dev-analyst"), signed_in("dev-insights")
+    assert i.get(f"/api/briefing/{brief_id}/thread").status_code == 404  # still a draft
+    assert a.post(f"/api/briefing/{brief_id}/review", json={"decision": "sent"}).status_code == 200
+    t = i.post(f"/api/briefing/{brief_id}/thread/ask", json={"question": "Restate the bottom line"})
+    assert t.status_code == 200 and t.json()["mine"] and len(t.json()["turns"]) == 1
+    assert a.get(f"/api/briefing/{brief_id}/thread").json()["turns"] == []  # one thread per reader
+    r = i.post("/api/feedback/vote", json={"lane": "briefing", "ref": f"{brief_id}:t1", "view": "analyst", "vote": "down"})
+    assert r.status_code in (200, 201), r.text  # P2 can vote on P2's own follow-up answer
+
+
+@needs_db
+def test_the_marketer_never_reaches_a_thread(brief_id):
+    from signoff_helpers import approve
+    approve(signed_in("dev-analyst"), brief_id)
+    m = signed_in("dev-marketer")
+    assert m.get(f"/api/briefing/{brief_id}/thread").status_code == 404
+    assert m.post(f"/api/briefing/{brief_id}/thread/ask", json={"question": "Restate the bottom line"}).status_code == 404

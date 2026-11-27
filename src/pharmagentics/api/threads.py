@@ -1,8 +1,8 @@
 """Threads of follow-ups on a brief (brief-006 slice 3; ADR 0002).
 
 One thread per analyst per brief, kept in the state store at `threads/<brief_id>/<owner>.json`, where `<owner>` is
-a short hash of the analyst's subject, so no name sits in a key. A thread is never part of the approved brief:
-leaders cannot reach any of these routes (404, so a thread's existence is not disclosed). Unsaved threads untouched
+a short hash of the reader's subject, so no name sits in a key. The analyst (P1) and the Insights Manager (P2) each have
+their own thread. A thread is never part of the signed-off brief: leaders cannot reach any of these routes (404, so a thread's existence is not disclosed). Unsaved threads untouched
 for 30 days are deleted when threads are opened (and once per process). Saved threads are kept, can be opened
 read-only by any Briefing analyst through their share path, and feed the feedback review list (core-008).
 """
@@ -104,9 +104,10 @@ def _purge_once() -> None:
 
 
 def analyst(brief_id: str, who=Depends(rbac.require_briefing)) -> tuple[rbac.Principal, dict]:
-    """Only roles that review briefs (analysts) reach threads; anyone else, and any unknown brief, gets 404."""
+    """Only roles that read the analyst view reach threads: the analyst (P1) and the Insights Manager (P2, on the briefs
+    that role may open: sent, returned, signed off). Leaders, and any unknown brief, get 404 (Michael, 2026-11-27)."""
     p, role = who
-    if "review" not in role.actions:
+    if "analyst" not in role.views:
         raise HTTPException(status_code=404, detail="No such thread.")
     record = brand_access.brief_for(p, role, brief_id)
     _purge_once()

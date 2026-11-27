@@ -365,7 +365,7 @@ def _answer(p: rbac.Principal, lane: str, ref: str, view: str) -> dict:
 
         bid, n = ref.split(":t")
         record = brand_access.brief_for(p, role, bid)
-        shown = threads.turn_shown(p, bid, int(n)) if record and "review" in role.actions else None
+        shown = threads.turn_shown(p, bid, int(n)) if record and "analyst" in role.views else None  # P1 and P2, as threads
         if shown is None:
             raise HTTPException(status_code=404, detail="No such follow-up.")
         r = record["result"]
