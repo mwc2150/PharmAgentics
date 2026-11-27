@@ -104,7 +104,8 @@ async def _agent_turn(brief: dict, question: str, section: str | None, spec: str
                              allowed_tools=AGENT_TOOLS["data_forensics"] + AGENT_TOOLS["driver_investigator"]
                              + AGENT_TOOLS["follow_up"])
         await stack.enter_async_context(tools)
-        agent = Agent(client=chat_client(spec), name="follow_up", tools=tools, default_options=chat_options(spec),
+        # The follow-up agent loops over tool calls, so its prompt is cached (chat_options).
+        agent = Agent(client=chat_client(spec), name="follow_up", tools=tools, default_options=chat_options(spec, cache=True),
                       instructions="Answer with claim tokens only; never type a digit.", middleware=log.for_agent("follow_up"))
         about = f" about §{section}" if section else ""
         weeks = f"weeks of {brief.get('week_start')} to {brief.get('week_end')}" if _multi_week(brief) else f"week of {brief.get('week_start')}"

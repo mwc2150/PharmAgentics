@@ -302,7 +302,8 @@ async def _scope_proposal(question: str, spec: str, log: RunLog, brand_id: str =
         first, latest, territories = _release_bounds()
         log.llm_calls += 1  # the reader is one model call, made even when its answer is unusable
         return await asyncio.to_thread(reader.scope_proposal, question, spec=spec, first=first, latest=latest,
-                                       territories=territories, brand_id=brand_id)
+                                       territories=territories, brand_id=brand_id,
+                                       middleware=[log.chat("scope_reader", count_call=False)])  # its tokens; counted above
     except Exception:  # noqa: BLE001 - no usable reading: no scope_proposal, and the scorer says so
         return None
 
