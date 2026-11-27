@@ -27,11 +27,11 @@ const CELL = "px-1.5 sm:px-2.5 py-1.5"
 // Wide enough, the rows are table rows. On a phone each row stacks into a block (the name and the change on one line, the
 // figures and the marker under it), so nothing is cut off and nothing scrolls sideways.
 function Row({label, m, moved}: {label: string, m: PromotionMeasure, moved?: boolean}) {
-  return <tr className="border-b border-rule/60 align-baseline max-sm:grid max-sm:grid-cols-[1fr_auto] max-sm:gap-x-3 max-sm:py-2">
-    <th scope="row" className={`${CELL} text-left font-medium text-ink max-sm:col-start-1 max-sm:row-start-1 max-sm:px-0 max-sm:py-0`}>{label}</th>
-    <td className={`${CELL} whitespace-nowrap text-right text-ink max-sm:col-start-1 max-sm:row-start-2 max-sm:px-0 max-sm:py-0 max-sm:text-left`}>{m.before} <span aria-hidden="true" className="text-muted">→</span><span className="sr-only"> to </span> {m.after}</td>
-    <td className={`${CELL} whitespace-nowrap text-right text-ink max-sm:col-start-2 max-sm:row-start-1 max-sm:px-0 max-sm:py-0`}>{m.change ? `${m.direction} ${m.change}` : m.direction}</td>
-    <td className={`${CELL} text-left max-sm:col-start-2 max-sm:row-start-2 max-sm:px-0 max-sm:py-0 max-sm:text-right`}>{moved && <span className="rounded-full border border-rule px-2 py-0.5 text-[11px] text-muted">moved</span>}</td>
+  return <tr role="row" className="border-b border-rule/60 align-baseline max-sm:grid max-sm:grid-cols-[1fr_auto] max-sm:gap-x-3 max-sm:py-2">
+    <th scope="row" role="rowheader" className={`${CELL} text-left font-medium text-ink max-sm:col-start-1 max-sm:row-start-1 max-sm:px-0 max-sm:py-0`}>{label}</th>
+    <td role="cell" className={`${CELL} whitespace-nowrap text-right text-ink max-sm:col-start-1 max-sm:row-start-2 max-sm:px-0 max-sm:py-0 max-sm:text-left`}>{m.before} <span aria-hidden="true" className="text-muted">→</span><span className="sr-only"> to </span> {m.after}</td>
+    <td role="cell" className={`${CELL} whitespace-nowrap text-right text-ink max-sm:col-start-2 max-sm:row-start-1 max-sm:px-0 max-sm:py-0`}>{m.change ? `${m.direction} ${m.change}` : m.direction}</td>
+    <td role="cell" className={`${CELL} text-left max-sm:col-start-2 max-sm:row-start-2 max-sm:px-0 max-sm:py-0 max-sm:text-right`}>{moved && <span className="rounded-full border border-rule px-2 py-0.5 text-[11px] text-muted">moved</span>}</td>
   </tr>
 }
 
@@ -44,15 +44,16 @@ export function PromotionPanel({promotion: p, id}: {promotion: PromotionRead, id
     {verdict && <p data-testid="promotion-verdict" className="mt-1.5 max-w-[68ch] font-sans text-[15px] leading-snug text-ink"><span className="font-semibold">{verdict.lead}:</span> {verdict.rest}</p>}
     <p className="mt-3 font-sans text-[12px] text-muted sm:hidden">Weekly averages: before → after, and the change.</p>
     <div className="mt-3 overflow-x-auto max-sm:mt-1" tabIndex={0} role="region" aria-label="Promotion figures">
-      <table className="w-full border-collapse max-sm:block font-sans text-[13px] tabular-nums">
+      {/* Explicit roles: on a phone the rows are blocks and grids, which can drop a table's semantics; the roles keep it a table */}
+      <table role="table" className="w-full border-collapse max-sm:block font-sans text-[13px] tabular-nums">
         <caption className="sr-only">New patients, TRx and the four promotion channels, comparison weeks against this period, weekly averages</caption>
-        <thead className="max-sm:sr-only"><tr className="border-b border-rule">
-          <th scope="col" className={`${CELL} text-left text-[11px] font-medium text-muted`}>Weekly average</th>
-          <th scope="col" className={`${CELL} text-right text-[11px] font-medium text-muted`}>Before → after</th>
-          <th scope="col" className={`${CELL} text-right text-[11px] font-medium text-muted`}>Change</th>
-          <th scope="col" className="px-1.5 sm:px-2.5 py-1.5"><span className="sr-only">Moved</span></th>
+        <thead role="rowgroup" className="max-sm:sr-only"><tr role="row" className="border-b border-rule">
+          <th scope="col" role="columnheader" className={`${CELL} text-left text-[11px] font-medium text-muted`}>Weekly average</th>
+          <th scope="col" role="columnheader" className={`${CELL} text-right text-[11px] font-medium text-muted`}>Before → after</th>
+          <th scope="col" role="columnheader" className={`${CELL} text-right text-[11px] font-medium text-muted`}>Change</th>
+          <th scope="col" role="columnheader" className="px-1.5 sm:px-2.5 py-1.5"><span className="sr-only">Moved</span></th>
         </tr></thead>
-        <tbody className="max-sm:block">
+        <tbody role="rowgroup" className="max-sm:block">
           <Row label="New patients (NBRx)" m={p.new_patients}/>
           <Row label="TRx" m={p.trx}/>
           {p.channels.map(c => <Row key={c.channel} label={title(c.channel)} m={c} moved={c.moved}/>)}
