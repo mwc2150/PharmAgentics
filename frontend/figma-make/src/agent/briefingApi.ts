@@ -108,6 +108,18 @@ export type StoryCardBlock = {
   drivers_checked: string[]
   headline_citations?: Span[]
 }
+// v2 (Marketer, P4): the promotion read of one territory story, as the server sends it. Strings are filled by code.
+export type PromotionMeasure = { measure?: string; channel?: string; before: string; after: string; change: string | null; direction: string }
+export type PromotionRead = {
+  verdict: "supported" | "ruled_out" | "not_testable" | "not_separable" | "within_range" | string
+  lag_label: string
+  new_patients: PromotionMeasure
+  trx: PromotionMeasure
+  channels: (PromotionMeasure & { channel: string; moved: boolean })[]
+  effect?: { low: string; high: string; word: string; territories: string; phrase: string }
+  separable_from?: string[]
+  recheck: string
+}
 export type MemoSection = {
   number: string
   title: string
@@ -122,6 +134,7 @@ export type MemoSection = {
   card?: StoryCardBlock | null            // brief-008: each story section
   detail?: string | null                  // brief-008: analyst view only, folded under "Show detail"
   detail_citations?: Span[]               // analyst view only
+  promotion?: PromotionRead               // the Marketer's view only, on a territory story
 }
 // brief-002 Phase A: the code triage plan P1 reviews, and how a brief was made.
 export type StoryCard = {
@@ -207,6 +220,7 @@ export type LeadershipBrief = {
   sections?: MemoSection[] | null  // brief-003 FR-026: §1, §2, §3 without checks, §5; no claims, tables or queries
   definition?: BriefDefinition | null  // brief-010: the same definition as the analyst brief; it holds no SQL and no arguments
   process_summary?: string | null  // brief-009 FR-005: one line on how it was built; leaders never get the events
+  budget_note?: string  // the Marketer's view only: what data would answer the budget question
 }
 export type PublishedBrief = {
   brief_id: string
