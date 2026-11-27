@@ -31,6 +31,9 @@ LANE_EVENTS = {
                  "forecast_submitted": "submissions"},
 }
 
+MIN_BRIEFS_TO_RATE = 10  # fewer decided briefs than this and the approval rate is not shown as a figure (UAT review 6.2)
+TOO_FEW = "too few to rate"
+
 router = APIRouter(prefix="/api", tags=["telemetry"])
 _lock = threading.Lock()
 _events: dict[str, dict] = {}
@@ -111,6 +114,23 @@ def _spread(values: list[float]) -> dict | None:
     return {"n": len(values), "p50": _percentile(values, 0.5), "p95": _percentile(values, 0.95)} if values else None
 
 
+def review_outcomes(events: list[dict]) -> dict:
+    """The analyst's decisions counted per brief, not per click: the latest decision of each brief stands, so an
+    approval that was later changed, or a brief decided twice, counts once. `approved_pct` is None, and `label`
+    says "too few to rate", until MIN_BRIEFS_TO_RATE briefs are decided. Events with no brief id cannot be matched
+    to a brief and are left out."""
+    latest: dict[str, tuple[str, str]] = {}
+    for e in events:
+        if e.get("kind") == "reviewed" and e.get("brief_id") and e.get("decision") in ("approved", "rejected"):
+            if e["brief_id"] not in latest or e["ts"] >= latest[e["brief_id"]][0]:
+                latest[e["brief_id"]] = (e["ts"], e["decision"])
+    approved = sum(d == "approved" for _, d in latest.values())
+    briefs, enough = len(latest), len(latest) >= MIN_BRIEFS_TO_RATE
+    return {"briefs": briefs, "approved": approved, "rejected": briefs - approved, "min_briefs": MIN_BRIEFS_TO_RATE,
+            "enough": enough, "approved_pct": round(100 * approved / briefs) if enough else None,
+            "label": None if enough else TOO_FEW}
+
+
 def summarize_usage(events: list[dict], job_docs: list[dict], pulses: list[dict], surveys: list[dict],
                     votes: list[dict], questionnaire: dict) -> dict:
     """Aggregate live use per lane plus platform ratings. Pure: no I/O, no per-person rows."""
@@ -137,6 +157,7 @@ def summarize_usage(events: list[dict], job_docs: list[dict], pulses: list[dict]
             "votes": {"up": sum(v["vote"] == "up" for v in lane_votes), "down": sum(v["vote"] == "down" for v in lane_votes)},
         }
         if lane == "briefing":
+            out["review"] = review_outcomes(mine)
             out["engines"] = dict(Counter(e.get("engine") or "unknown" for e in requests))
             out["scripted_ms"] = _spread([e["latency_ms"] for e in requests if e.get("latency_ms") is not None])
             out["agent_jobs"] = dict(Counter(f"{j.get('kind', 'job')} {j['status']}" for j in kept_jobs))
