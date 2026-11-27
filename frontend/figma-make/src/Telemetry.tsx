@@ -21,6 +21,10 @@ const label = (k: string) => RUN_LABELS[k] ?? k.replace(/[_.]/g, " ").replace(/^
 // logged before pooling existed falls back to the per-case mean.
 const keyFacts = (m: Record<string, number>) => m.key_fact_recall_pooled ?? m.key_fact_recall
 const findings = (m: Record<string, number>) => m.finding_recall_pooled ?? m.finding_recall
+// Code fills every number an agent brief states, so for an agent the key-fact score only shows what it dropped: the
+// scripted engine's key facts found minus the agent's, on the latest runs (core-011 "numbers lost by the agent"; target 0).
+const AGENT_SYSTEM = /_(agent|lowcode)(@[A-Z]+|$)/
+const LOST_TITLE = "Numbers lost by the agent: the scripted engine's key facts found minus this run's (target 0). Code fills every number, so this shows only what the agent dropped."
 const runValue = (k: string, v: number) => k.endsWith("_target_met") ? (v >= 0.5 ? "Yes" : "No") : k === "over_word_budget" ? String(Math.round(v)) : pct(v)
 const pct = (v: number) => (v <= 1 && v >= 0 ? `${Math.round(v * 100)}%` : v.toFixed(2))
 // A score as people read it: a share as a percent, a count as a whole number, a flag as Yes/No; no unit means a share.
@@ -178,9 +182,17 @@ const COLS = "sm:grid-cols-[minmax(0,1fr)_7rem_6rem_6rem_6rem_6rem]"
 function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<string, number> }) {
   const cell = (v: number | undefined) => (v != null ? pct(v) : "–")
   const t = (k: string) => targets?.[k] != null ? ` (target ${pct(targets[k])})` : ""
+  const keyFactCell = (r: TelemetryRun) => {
+    const kf = keyFacts(r.metrics)
+    // the same lane's and brand's scripted run: briefing_agent@BXC is set against briefing_scripted@BXC
+    const scripted = runs.find(x => x.lane === r.lane && x.system === r.system.replace(AGENT_SYSTEM, "_scripted$2"))
+    const scriptedKf = scripted ? keyFacts(scripted.metrics) : undefined
+    if (!AGENT_SYSTEM.test(r.system) || kf == null || scriptedKf == null) return cell(kf)
+    return <span title={LOST_TITLE}>{Math.round(Math.max(0, scriptedKf - kf) * 100)} pts lost</span>
+  }
   return <section className={PANEL}>
     <div className={`hidden gap-4 border-b border-rule px-5 py-2 text-[11px] text-muted sm:grid ${COLS}`}>
-      <span>System</span><span>Run</span><span className="text-right" title={`Share of the golden key facts the run stated, all cases pooled${t("key_fact_recall")}`}>Key facts found</span>
+      <span>System</span><span>Run</span><span className="text-right" title={`Share of the golden key facts the run stated, all cases pooled${t("key_fact_recall")}. Agent rows show the points lost against the scripted engine instead (target 0).`}>Key facts found</span>
       <span className="text-right" title={`Share of the golden findings the run reached, all cases pooled${t("finding_recall")}`}>Findings found</span>
       <span className="text-right">Number recall</span><span className="text-right">Claims reconcile</span>
     </div>
@@ -189,7 +201,7 @@ function Scores({ runs, targets }: { runs: TelemetryRun[], targets?: Record<stri
         <summary className={`grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper/60 ${COLS}`}>
           <span className="min-w-0"><span className="block truncate text-sm">{name(r)}</span>{r.model && <span className="block truncate text-xs text-muted">{modelName(r.model)}</span>}</span>
           <span className="text-xs text-muted sm:text-sm">{when(r.started)}</span>
-          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{cell(keyFacts(r.metrics))}</span>
+          <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Key facts </span>{keyFactCell(r)}</span>
           <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Findings </span>{cell(findings(r.metrics))}</span>
           <span className="text-sm tabular-nums sm:text-right"><span className="text-xs text-muted sm:hidden">Number recall </span>{cell(r.metrics.golden_number_recall)}</span>
           <span className="text-right text-sm tabular-nums"><span className="text-xs text-muted sm:hidden">Claims </span>{cell(r.metrics.claims_reconcile)}</span>
