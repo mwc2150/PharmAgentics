@@ -7,7 +7,7 @@ import { getSurveyResponses, type SurveyResponses } from "./agent/feedbackApi"
 const PANEL = "pa-panel rounded-xl border border-rule bg-sheet"
 const cell = (v: unknown) => typeof v === "number" ? String(v) : "–"
 const text = (v: unknown) => typeof v === "string" && v ? v : "–"
-const stamp = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+const stamp = (iso: string) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })
 
 export function FeedbackResponses() {
   const [r, setR] = useState<SurveyResponses | null>(null)
