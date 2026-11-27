@@ -43,7 +43,7 @@ export function PromotionPanel({promotion: p, id}: {promotion: PromotionRead, id
     <h5 id={id} className="font-sans text-[11px] font-medium uppercase tracking-wider text-muted">Promotion</h5>
     {verdict && <p data-testid="promotion-verdict" className="mt-1.5 max-w-[68ch] font-sans text-[15px] leading-snug text-ink"><span className="font-semibold">{verdict.lead}:</span> {verdict.rest}</p>}
     <p className="mt-3 font-sans text-[12px] text-muted sm:hidden">Weekly averages: before → after, and the change.</p>
-    <div className="mt-3 overflow-x-auto max-sm:mt-1" tabIndex={0} role="region" aria-label="Promotion figures">
+    <div className="relative mt-3 overflow-x-auto max-sm:mt-1" tabIndex={0} role="region" aria-label="Promotion figures">
       {/* Explicit roles: on a phone the rows are blocks and grids, which can drop a table's semantics; the roles keep it a table */}
       <table role="table" className="w-full border-collapse max-sm:block font-sans text-[13px] tabular-nums">
         <caption className="sr-only">New patients, TRx and the four promotion channels, comparison weeks against this period, weekly averages</caption>

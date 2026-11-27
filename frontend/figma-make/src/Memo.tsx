@@ -262,7 +262,7 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
   const lastData = basisAt > 0 ? basisAt - 1 : table.columns.length - 1
   const align = (j: number) => j === 0 || j === basisAt ? "text-left" : "text-right"
   // The figures spin in like the tiles above (Michael, 2026-11-27), row by row, once the table scrolls into view.
-  return <InView className="my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
+  return <InView className="relative my-4 overflow-x-auto" tabIndex={0} role="region" aria-label="Territory figures">
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
       <caption className="sr-only">Territory figures{table.note ? `. ${longDates(table.note)}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>

@@ -65,7 +65,7 @@ function Comparison({ c }: { c: AgentComparison }) {
   const groups = [...new Set(c.rows.map(r => r.group))]
   // The figures spin in, row by row, when the table is seen (as a brief's tables do).
   const spin = (r: CompareRow, v: number | null, at: number) => { const s = show(r, v); return s === "—" ? s : <RollIn key={s} text={s} delay={120 + at * 45}/> }
-  return <InView className={`${PANEL} overflow-x-auto`}>
+  return <InView className={`${PANEL} relative overflow-x-auto`}>
     <table className="w-full min-w-[30rem] text-sm">
       <caption className="sr-only">Scripted engine against agent team on the same golden questions</caption>
       <thead><tr className="border-b border-rule text-left text-xs text-muted">

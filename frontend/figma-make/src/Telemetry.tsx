@@ -44,10 +44,14 @@ function Heading({ title, note }: { title: string, note?: ReactNode }) {
   return <div className="pt-2"><h3 className="text-lg font-bold leading-[1.6]"><span className="pa-mark">{title}</span></h3>{note && <p className="mt-2 text-sm text-muted">{note}</p>}</div>
 }
 
+const NUMERIC = /\d/
+
 function Figures({ items }: { items: [string, string, ReactNode, ReactNode?][] }) {
   return <section aria-label="Headline figures" className={`${PANEL} grid grid-cols-2 lg:grid-cols-4`}>
-    {items.map(([k, v, sub, sub2], i) => <div key={k} className={`p-5 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
-      <div className="text-xs text-muted">{k}</div><div className="mt-2 font-serif text-3xl tabular-nums"><RollIn key={v} text={v} delay={150 + i * 90}/></div><div className="mt-1.5 text-xs text-muted">{sub}</div>{sub2 && <div className="mt-0.5 text-xs text-muted">{sub2}</div>}
+    {items.map(([k, v, sub, sub2], i) => <div key={k} className={`min-w-0 p-5 ${i % 2 ? "border-l border-rule" : ""} ${i > 1 ? "border-t border-rule lg:border-t-0" : ""} ${i === 2 ? "lg:border-l" : ""}`}>
+      <div className="text-xs text-muted">{k}</div>{/* A figure spins in; a figure that is words ("Too few to rate") is plain text that wraps to the tile */}
+      {NUMERIC.test(v) && !/[a-z]{3,}/i.test(v) ? <div className="mt-2 font-serif text-3xl tabular-nums"><RollIn key={v} text={v} delay={150 + i * 90}/></div>
+        : <div className="mt-2 break-words font-serif text-2xl leading-tight">{v}</div>}<div className="mt-1.5 text-xs text-muted">{sub}</div>{sub2 && <div className="mt-0.5 text-xs text-muted">{sub2}</div>}
     </div>)}
   </section>
 }
@@ -137,7 +141,7 @@ function CaseTableView({ t, open }: { t: CaseTable, open: boolean }) {
       <span className="text-sm font-semibold">{tableName(t)}</span>
       <span className="text-xs text-muted">{LANES[t.lane] ?? t.lane} · run {t.run_id} · {when(t.started)} · {t.rows.length} cases · {stuck} stuck · {worse} worse than the last run</span>
     </summary>
-    <div role="region" tabIndex={0} aria-label={`${tableName(t)}, per-case scores`} className="overflow-x-auto border-t border-rule">
+    <div role="region" tabIndex={0} aria-label={`${tableName(t)}, per-case scores`} className="relative overflow-x-auto border-t border-rule">
       <table className="w-full min-w-max text-left text-sm">
         <thead className="text-xs text-muted">
           {groups && <tr>
@@ -264,7 +268,7 @@ export function TelemetryWorkspace({ label, tester }: { label?: ReactNode, teste
       {t.latest.some(r => r.control) && <><Heading title="Controls"/><Scores runs={t.latest.filter(r => r.control)} targets={t.targets}/></>}
       {!!t.cases?.systems.length && <PerCase tables={t.cases.systems} targets={t.cases.targets}/>}
       {!!t.runs.length && <details className={`${PANEL} p-5`}><summary className="cursor-pointer text-sm font-semibold">All runs ({t.runs.length})</summary>
-        <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
+        <div className="relative mt-3 overflow-x-auto"><table className="w-full text-left text-sm">
           <thead className="text-xs text-muted"><tr><th className="py-1 pr-4 font-medium">Date</th><th className="pr-4 font-medium">System</th><th className="pr-4 font-medium">Lane</th><th className="pr-4 font-medium">Key facts found</th><th className="pr-4 font-medium">Findings found</th><th className="pr-4 font-medium">Number recall</th><th className="font-medium">Claims reconcile</th></tr></thead>
           <tbody>{t.runs.map(r => <tr key={r.run_id} className="border-t border-rule"><td className="py-1 pr-4 tabular-nums">{when(r.started)}</td><td className="pr-4">{name(r)}</td><td className="pr-4">{LANES[r.lane] ?? r.lane}</td>
             <td className="pr-4 tabular-nums">{keyFacts(r.metrics) != null ? pct(keyFacts(r.metrics)) : "–"}</td><td className="pr-4 tabular-nums">{findings(r.metrics) != null ? pct(findings(r.metrics)) : "–"}</td>

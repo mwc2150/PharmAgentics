@@ -389,7 +389,7 @@ function ReportEditor({id, analyst, canPreview, onBack, onOpenRun}: {id: string,
   </div>
 }
 
-function ForecastReports({me, onOpenRun, approvedOnly=false}: {me: Me, onOpenRun: (runId: string) => void, approvedOnly?: boolean}) {
+function ForecastReports({me, onOpenRun, approvedOnly=false, onEditing}: {me: Me, onOpenRun: (runId: string) => void, approvedOnly?: boolean, onEditing?: (open: boolean) => void}) {
   const r = me.lanes.forecast
   const analyst = !!r?.actions.includes("run")
   const canPreview = analyst && !!r?.views.includes("leadership")
@@ -400,6 +400,8 @@ function ForecastReports({me, onOpenRun, approvedOnly=false}: {me: Me, onOpenRun
   const approved = useApprovedList<ReportSummary>("forecast", approvedOnly && !open, async()=>(await listReports()).filter(x=>x.review_status === "approved"), x=>x.reviewed_at)
   const rows = approvedOnly ? approved.items : all, error = approvedOnly ? approved.error : failed
   useEffect(()=>{ if (!open && !approvedOnly) listReports().then(setAll).catch(e=>setFailed(message(e))) }, [open, approvedOnly])
+  useEffect(()=>{ onEditing?.(!!open) }, [open])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(()=>()=>onEditing?.(false), [])  // eslint-disable-line react-hooks/exhaustive-deps
   if (open) return <ReportEditor id={open} analyst={analyst} canPreview={canPreview} onBack={()=>pageChange(()=>setOpen(null))} onOpenRun={onOpenRun}/>
   return <div className="space-y-6">
     {error && <Notice tone="error" role="alert">{error}</Notice>}
@@ -561,6 +563,7 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   // survive; only "All forecast questions" clears the run. The ref lets a late poll refresh the tab now showing.
   const sectionRef = useRef(section)
   sectionRef.current = section
+  const [editing,setEditing] = useState(false)  // a report is open in the editor (two columns): the page widens for it
   const [bgRunning,setBgRunning] = useState(false)  // some run of this analyst is still investigating (reported to the sidebar)
   const isRunning = (rs: ForecastSummary[]) => rs.some(x=>x.job_status === "running")
   // Match the Briefing workspace: the analyst can always return to the list of
@@ -594,13 +597,13 @@ function ForecastWorkspace({me, section, onSection, onBusy}: {me: Me, section: F
   }
   const submit = async () => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await submitForecast(selected.forecast_run_id)); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
   const decide = async (decision: "approved" | "rejected" | "returned") => { if (!selected) return; setBusy(true); setError(null); try { setSelected(await reviewForecast(selected.forecast_run_id, decision, note)); setNote(""); await refresh() } catch(e) { setError(message(e)) } finally { setBusy(false) } }
-  return <div className={`${section === "reports" ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
+  return <div className={`${section === "reports" && editing ? "workspace-wide" : "workspace-content"} space-y-6 py-8 sm:py-10 pa-rise`}>
     {/* One greeting per lane: on its landing section (the same one Shell opens), with no run open */}
     {section === (analyst ? "workbench" : "reports") && !selected && <Greeting detail={context ? `Forecast versus actual, through ${labelWeek(context.latest_week)}.` : undefined}/>}
     <SubTabs label="Forecast explanation" value={section} onChange={s=>pageChange(()=>onSection(s))} dots={{approved: news.has("forecast") && section !== "approved"}} options={(analyst
       ? [["workbench", "New explanation", "forecast.new"], ["reports", "Reports", "forecast.reports"], ["approved", "Approved reports", "forecast.approved"]]
       : [["reports", "Reports to review", "forecast.review"], ["approved", "Approved reports", "forecast.approved"]]) as readonly (readonly [ForecastSection, string, string])[]}/>
-    {section !== "workbench" ? <ForecastReports key={section} me={me} approvedOnly={section === "approved"} onOpenRun={id=>{ pendingRun = id; pageChange(()=>onSection("workbench")) }}/> : <>
+    {section !== "workbench" ? <ForecastReports key={section} me={me} approvedOnly={section === "approved"} onEditing={setEditing} onOpenRun={id=>{ pendingRun = id; pageChange(()=>onSection("workbench")) }}/> : <>
     {error && <Notice tone="error" role="alert">{error}</Notice>}
     {selected ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">
