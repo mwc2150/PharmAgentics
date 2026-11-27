@@ -192,7 +192,7 @@ class RunSession:
             return "No territory moved beyond its normal range against its peers. Routine week: no story to investigate."
         lines = ["Territories with a material change, largest impact first:"]
         for s in found:
-            why = f"BXA volume on plan {s['plan']} changed after an access change" if s["kind"] == "plan" else "beyond its normal range and its peers"
+            why = f"BXA volume on the {splits.readable(s['plan'])} changed after an access change" if s["kind"] == "plan" else "beyond its normal range and its peers"
             lines.append(f"- {s['territory']} ({q.name(s['territory'])}): {why}.")
         if quiet:
             lines.append(f"Considered and dropped: {stages.dropped_count(self.reg, p, quiet)} territories moved within their normal range.")

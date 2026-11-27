@@ -57,7 +57,7 @@ def _cut_card(reg, f: Front, cut: dict, rank: int) -> dict:
         "id": cut_id(cut), "kind": "cut", "territory": t, "title": f"{name} in {qy.name(t)}", "rank": rank,
         "proposed": "investigate", "what_moved": moved,
         "decision": f"A plan cut card beside the {qy.name(t)} story: {why} (code screen). " + CUT_ACTION,
-        "population": _population(p), "granularity": f"Plan {plan}, in {qy.name(t)}.", "time": _time(p),
+        "population": _population(p), "granularity": f"{name}, in {qy.name(t)}.", "time": _time(p),
     }
 
 
@@ -75,7 +75,7 @@ def _continuing_card(reg, f: Front, event: dict, rank: int) -> dict:
         "proposed": "investigate", "what_moved": moved,
         "decision": (f"The {cause} began on {event['start']}, before the comparison weeks, so the change on those weeks hides it "
                      f"(code screen). " + CUT_ACTION),
-        "population": _population(p), "granularity": f"Territory {qy.name(t)}" + (f", plan {event['plan']}." if event["plan"] else "."),
+        "population": _population(p), "granularity": f"Territory {qy.name(t)}" + (f", {splits.readable(event['plan'])}." if event["plan"] else "."),
         "time": _time(p),
     }
 
@@ -99,18 +99,19 @@ def _card(reg, f: Front, s: dict | None, rank: int, proposed: str) -> dict:
     if s["kind"] == "plan":
         x, b = qy.mean_weekly(p.weeks, plan=s["plan"], product=p.brand_id), qy.mean_weekly(p.baseline, plan=s["plan"], product=p.brand_id)
         change = reg.scalar(qy.pct_change(x, b)) or 0
-        moved = (f"Plan {s['plan']} in {qy.name(t)}: {p.brand_id} TRx averaged {reg.claim('get_metric', x, 'int', plan=s['plan'])} a week "
+        name = splits.readable(s["plan"])
+        moved = (f"{name} in {qy.name(t)}: {p.brand_id} TRx averaged {reg.claim('get_metric', x, 'int', plan=s['plan'])} a week "
                  f"against {reg.claim('get_metric', b, 'int', plan=s['plan'])} before "
                  f"({stages.word(change)} {reg.claim('get_metric', qy.pct_change(x, b), 'pct', plan=s['plan'])}).")
         why = f"A payer access change on this plan, and its {p.brand_id} TRx moved past the plan-level threshold (code screen)."
-        grain = f"Plan {s['plan']}, in {qy.name(t)}."
+        grain = f"{name}, in {qy.name(t)}."
     else:
         moved = stages.territory_change(reg, p, t)
         why = ("The question names this territory, so code always proposes it." if t == p.focus else
                "Its change is beyond its own normal range and beyond the other territories' change (code screen).")
         grain = f"Territory: {qy.name(t)}. Cuts of the change by plan, specialty and channel."
     return {
-        "id": story_id(s), "kind": s["kind"], "territory": t, "title": qy.name(t) if s["kind"] == "territory" else f"{qy.name(t)}, plan {s['plan']}",
+        "id": story_id(s), "kind": s["kind"], "territory": t, "title": qy.name(t) if s["kind"] == "territory" else f"{qy.name(t)}, {splits.readable(s['plan'])}",
         "rank": rank, "proposed": proposed, "what_moved": moved,
         "decision": why + " " + (INVESTIGATE_ACTION if proposed == "investigate" else
                                  f"Over the story cap of this brief; code leaves it for the next one."),
