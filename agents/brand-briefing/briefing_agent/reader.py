@@ -24,20 +24,22 @@ def instructions(*, first: str, latest: str, territories: list[str], brand_id: s
     return text
 
 
-async def _run_agent(spec: str, system: str, question: str, set_scope: Callable[..., str], seconds: float) -> None:
+async def _run_agent(spec: str, system: str, question: str, set_scope: Callable[..., str], seconds: float,
+                     middleware: list | None = None) -> None:
     from agent_framework import Agent, tool
 
     from pharmagentics.llm import chat_client, chat_options
 
     agent = Agent(client=chat_client(spec), name="scope_reader", instructions=system, tools=[tool(set_scope)],
-                  default_options=chat_options(spec))
+                  default_options=chat_options(spec), **({"middleware": middleware} if middleware else {}))
     await asyncio.wait_for(agent.run("Question: " + question), timeout=seconds)
 
 
 def propose(question: str, *, spec: str, first: str, latest: str, territories: list[str], brand_id: str = "BXA",
-            seconds: float = 25.0) -> dict:
+            seconds: float = 25.0, middleware: list | None = None) -> dict:
     """The model's raw proposal: period_start, period_end, territory, comparison_weeks, promotion_review. Unchecked.
-    Raises when the model makes no tool call; the caller treats any exception as "use the rules"."""
+    Raises when the model makes no tool call; the caller treats any exception as "use the rules". `middleware` lets
+    a run log record the call (its tokens)."""
     got: dict = {}
 
     def set_scope(period_start: Annotated[str, "YYYY-MM-DD"], period_end: Annotated[str, "YYYY-MM-DD"],
@@ -58,7 +60,7 @@ def propose(question: str, *, spec: str, first: str, latest: str, territories: l
         return "Recorded. Stop."
 
     system = instructions(first=first, latest=latest, territories=territories, brand_id=brand_id)
-    asyncio.run(_run_agent(spec, system, question, set_scope, seconds))
+    asyncio.run(_run_agent(spec, system, question, set_scope, seconds, **({"middleware": middleware} if middleware else {})))
     if not got:
         raise ValueError("The model made no usable scope call.")
     return got
@@ -122,11 +124,12 @@ def to_proposal(raw: dict, territories: list[str]) -> dict:
 
 
 def scope_proposal(question: str, *, spec: str, first: str, latest: str, territories: list[str],
-                   seconds: float = 25.0, ask: Callable[..., dict] | None = None, brand_id: str = "BXA") -> dict:
+                   seconds: float = 25.0, ask: Callable[..., dict] | None = None, brand_id: str = "BXA",
+                   middleware: list | None = None) -> dict:
     """What the model reads from the question TEXT (the code-written prefix is cut off), with the prefix's week as
     "today" so "this week" resolves. A real test of inference: the brief still runs on the prefix scope. Raises on
     any failure; the caller records nothing then. `ask` replaces the model call in tests."""
     text, week = split_prefix(question)
-    raw = (ask or propose)(text, spec=spec, first=first, latest=week or latest, territories=territories, seconds=seconds,
-                           brand_id=brand_id)
+    kw = dict(spec=spec, first=first, latest=week or latest, territories=territories, seconds=seconds, brand_id=brand_id)
+    raw = ask(text, **kw) if ask else propose(text, **kw, middleware=middleware)
     return to_proposal(raw, territories)

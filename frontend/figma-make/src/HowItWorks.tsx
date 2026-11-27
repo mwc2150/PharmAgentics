@@ -18,6 +18,7 @@ function show(row: CompareRow, v: number | null): string {
   if (v === null || v === undefined) return "—"
   if (row.unit === "share") return `${Math.round(v * 100)}%`
   if (row.unit === "seconds") return v >= 100 ? `${Math.round(v)} s` : `${v.toFixed(1)} s`
+  if (row.unit === "cost") return v === 0 ? "$0" : v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`  // a brief costs cents
   return v.toFixed(1)
 }
 

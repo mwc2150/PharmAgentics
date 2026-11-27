@@ -83,7 +83,8 @@ def test_the_comparison_reads_the_latest_scripted_and_agent_runs(monkeypatch):
     def run(system, started, **metrics):
         return {"run_id": system[:4] + started[-2:], "started": started, "system": system, "lane": "briefing", "control": False,
                 "cases": 32, "model": "anthropic:claude-haiku-5-5" if system == "briefing_agent" else None, "metrics": metrics}
-    snap = {"latest": [run("briefing_agent", "2026-11-22T20:54", key_fact_recall=0.7, latency_brief_p50=81.7, llm_calls=10.6),
+    snap = {"latest": [run("briefing_agent", "2026-11-22T20:54", key_fact_recall=0.7, latency_brief_p50=81.7, llm_calls=10.6,
+                           cost_usd_brief=0.0123),
                        run("briefing_scripted", "2026-11-22T20:43", key_fact_recall=0.71, latency_brief_p50=17.7),
                        run("forecast_scripted", "2026-11-22T21:00", key_fact_recall=0.1)]}
     monkeypatch.setattr(telemetry, "snapshot", lambda: snap)
@@ -93,6 +94,9 @@ def test_the_comparison_reads_the_latest_scripted_and_agent_runs(monkeypatch):
     rows = {r["label"]: r for r in cmp["rows"]}
     assert rows["Key facts found"]["scripted"] == 0.71 and rows["Key facts found"]["agent"] == 0.7
     assert rows["Model calls a brief"]["scripted"] is None and rows["Model calls a brief"]["agent"] == 10.6
+    assert rows["Cost a brief"]["agent"] == 0.0123 and rows["Cost a brief"]["scripted"] == 0.0  # no model, no cost
+    snap["latest"][0]["metrics"].pop("cost_usd_brief")  # a run from before costs were recorded
+    rows = {r["label"]: r for r in signed_in("dev-director").get("/api/briefing/agents").json()["comparison"]["rows"]}
     assert rows["Cost a brief"]["agent"] is None and "Not recorded" in rows["Cost a brief"]["note"]
     assert body["model"] == {"spec": "anthropic:claude-haiku-5-5", "source": "evaluation"}
 

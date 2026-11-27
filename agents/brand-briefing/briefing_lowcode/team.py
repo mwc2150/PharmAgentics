@@ -73,7 +73,9 @@ class RunLog:
         self.reports: list[tuple[str, str]] = []  # (agent, text) for every specialist turn
         self.tools: list[str] = []
         self.llm_calls = 0
-        self.tokens = {"input": 0, "output": 0}
+        # "input" is every input token, cached or not; "cache_read" and "cache_write" are the parts of it read from and
+        # written to Anthropic's prompt cache, which the cost estimate prices differently (eval/harness/cost.py).
+        self.tokens = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
 
     def for_agent(self, name: str) -> list:
         log = self
@@ -99,7 +101,8 @@ class RunLog:
         mws: list = [_Tool(), log.chat(name)]
         return [_Agent(), *mws]
 
-    def chat(self, name: str) -> ChatMiddleware:
+    def chat(self, name: str, count_call: bool = True) -> ChatMiddleware:
+        """Record each model call: a span, its tokens and (unless the caller counts calls itself) the call count."""
         log = self
 
         class _Chat(ChatMiddleware):
@@ -107,10 +110,13 @@ class RunLog:
                 last = context.messages[-1].text if context.messages else ""
                 with span(f"llm:{name}", "CHAT_MODEL", inputs={"last_message": last[-4000:]}) as sp:
                     await call_next()
-                    log.llm_calls += 1
+                    if count_call:
+                        log.llm_calls += 1
                     usage = getattr(context.result, "usage_details", None) or {}
                     log.tokens["input"] += usage.get("input_token_count") or 0
                     log.tokens["output"] += usage.get("output_token_count") or 0
+                    log.tokens["cache_read"] += usage.get("cache_read_input_token_count") or 0
+                    log.tokens["cache_write"] += usage.get("cache_creation_input_token_count") or 0
                     finish(sp, {"text": getattr(context.result, "text", "") or "", "usage": dict(usage)})
                 await log.record_chat(name, last, getattr(context.result, "text", "") or "")
 
