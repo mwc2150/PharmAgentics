@@ -983,7 +983,7 @@ function AnalystApp({me}: {me: Me}) {
   // question reader only proposes values (marked until the analyst touches the field).
   const [choices,setChoices] = useState<DefinitionChoices>(DEFAULT_CHOICES)
   const [proposed,setProposed] = useState<DefinitionField[]>([])
-  const reviewPromotion = brand === "BXA" && promotion
+  const reviewPromotion = promotion
   const releaseWeeks = context?.available_weeks ?? []
   const invalidPeriod = reviewPromotion ? null : periodError(week, weekEnd, releaseWeeks)
   const period = reviewPromotion ? [] : periodWeeks(week, weekEnd, releaseWeeks)
@@ -1000,7 +1000,7 @@ function AnalystApp({me}: {me: Me}) {
   const [chip,setChip] = useState<Chip | null>(null)  // brief-006: the message bar
   const [barEvidence,setBarEvidence] = useState<{id: string} | null>(null)
   // brief-010: the bar on the form reads the question into it; the question then rides with Generate as the brief's question.
-  const reader = useQuestionReader({brand,context,onApply:(v,q)=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(brand==="BXA" && v.promotion); setComparisons(v.comparison)
+  const reader = useQuestionReader({brand,context,onApply:(v,q)=>{ if(v.territory) setTerritory(v.territory); setWeek(v.week); setWeekEnd(v.weekEnd); setPromotion(v.promotion); setComparisons(v.comparison)
     setChoices(c=>({...c,...v.choices})); setProposed(v.proposed); setAsk(q) }, onStart:()=>setAsk("")})
   const clearQuestion = () => { setAsk(""); reader.clear() }
   const generation = useRef(0)
@@ -1171,7 +1171,7 @@ function AnalystApp({me}: {me: Me}) {
         <label className={LABEL}>Territory
           <select className={FIELD} value={territory} onChange={e=>setTerritory(e.target.value)} disabled={!selectable}>{context?.territory_ids.map(id=><option key={id} value={id}>{labelTerritory(id)}</option>)}</select>
         </label>
-        {brand === "BXA" && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promotion} onChange={e=>setPromotion(e.target.checked)} /> Promotion review across the release</label>}
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={promotion} onChange={e=>setPromotion(e.target.checked)} /> Promotion review across the release</label>
         <fieldset><legend className="mb-1.5 text-xs font-medium text-muted">Engine</legend>
           <div className="divide-y divide-rule rounded-lg border border-rule">
             <label className="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-paper/50"><input type="radio" name="engine" checked={engine==="scripted"} onChange={()=>setEngine("scripted")} className="mt-1"/><span><span className={`block text-sm ${engine==="scripted" ? "text-ink" : "text-muted"}`}>Scripted</span><span className="block text-xs text-muted">Instant. Runs the standard checks in a fixed order.</span></span></label>

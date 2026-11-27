@@ -68,7 +68,6 @@ export function scopeToForm(scope: BriefingScope, context: ReleaseContext, brand
     if ("error" in named) return named
     comparison = named
   }
-  if (scope.promotion_review && brand !== "BXA") return { error: "The Promotion review is available for BXA only." }
   const proposal = proposedChoices(def)
   if ("error" in proposal) return proposal
   return { values: { territory: scope.territory_id, week: first, weekEnd: last, promotion: scope.promotion_review,

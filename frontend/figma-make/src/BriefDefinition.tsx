@@ -36,7 +36,7 @@ const RELATIVE_NOTES: Record<RelativeTo, string> = {
 }
 const GRAIN_NOTES: Record<GrainLevel, string> = {
   national: "The KPI strip, the trend chart and the Metacora story", territory: "The territory table and territory stories",
-  plan: "Payer-plan cards (BXA only)", channel: "Percent change by payer channel", specialty: "Percent change by prescriber specialty",
+  plan: "Payer-plan cards", channel: "Percent change by payer channel", specialty: "Percent change by prescriber specialty",
 }
 
 /** A value or a list as a list, without repeats, in the order given. */
