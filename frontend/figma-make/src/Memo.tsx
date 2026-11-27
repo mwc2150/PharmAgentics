@@ -257,16 +257,16 @@ function TerritoryTableView({table, claims, onOpen}: {table: TerritoryTable, cla
     <table className="w-full border-collapse font-sans text-[13px] tabular-nums">
       <caption className="sr-only">Territory figures{table.note ? `. ${longDates(table.note)}` : ""}</caption>
       <thead><tr className="border-b border-rule">{table.columns.map((c, j) =>
-        <th key={j} scope="col" className={`px-2.5 py-1.5 text-[11px] font-medium text-muted ${align(j)}`}>{c}</th>)}</tr></thead>
+        <th key={j} scope="col" className={`px-1.5 sm:px-2.5 py-1.5 text-[11px] font-medium text-muted ${align(j)}`}>{c}</th>)}</tr></thead>
       <tbody>{table.rows.map((r, i) => {
         const withheld = r.basis === "withheld"
         return <tr key={i} className="break-inside-avoid border-b border-rule/60 align-baseline">
           {table.columns.map((_, j) => {
             const cell = r.cells[j] ?? ""
-            if (j === 0) return <th key={j} scope="row" className="px-2.5 py-1.5 text-left font-medium text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></th>
-            if (withheld && j >= 1 && j <= lastData) return j === 1 ? <td key={j} colSpan={lastData} className="px-2.5 py-1.5 text-right italic text-muted">withheld</td> : null
-            if (j === basisAt) return <td key={j} className="px-2.5 py-1.5 text-left">{withheld ? <span aria-hidden="true" className="text-muted">—</span> : <BasisLabel row={r} text={cell || r.basis}/>}</td>
-            return <td key={j} className="px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></td>
+            if (j === 0) return <th key={j} scope="row" className="px-1.5 sm:px-2.5 py-1.5 text-left font-medium text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></th>
+            if (withheld && j >= 1 && j <= lastData) return j === 1 ? <td key={j} colSpan={lastData} className="px-1.5 sm:px-2.5 py-1.5 text-right italic text-muted">withheld</td> : null
+            if (j === basisAt) return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-left">{withheld ? <span aria-hidden="true" className="text-muted">—</span> : <BasisLabel row={r} text={cell || r.basis}/>}</td>
+            return <td key={j} className="px-1.5 sm:px-2.5 py-1.5 text-right text-ink"><Cited text={cell} spans={r.cell_citations?.[j]} claims={claims} onOpen={onOpen}/></td>
           })}
         </tr>
       })}</tbody>

@@ -35,6 +35,8 @@ type Ctx = {
   signOut: () => void
   setPulse: (p: { rating: Rating; at: string }) => void
   where: PulseWhere
+  inlineShown: number  // how many follow-up answers show their own vote card right now
+  trackInline: (delta: 1 | -1) => void
 }
 const FeedbackCtx = createContext<Ctx | null>(null)
 function useFeedback(): Ctx {
@@ -52,6 +54,8 @@ export function FeedbackProvider({ where, children }: { where: PulseWhere; child
   const [status, setStatus] = useState<FeedbackStatus | null>(null)
   const [surveyOpen, setSurveyOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
+  const [inlineShown, setInlineShown] = useState(0)
+  const trackInline = useCallback((delta: 1 | -1) => setInlineShown(n => Math.max(0, n + delta)), [])
   const refresh = useCallback(() => { getFeedbackStatus().then(setStatus).catch(() => setStatus(null)) }, [])
   useEffect(() => { refresh() }, [refresh])
   const ctx = useMemo<Ctx>(() => ({
@@ -60,7 +64,8 @@ export function FeedbackProvider({ where, children }: { where: PulseWhere; child
     openSuggest: () => setSuggestOpen(true),
     signOut: () => window.location.assign("/auth/logout"),  // never asks for a rating (core-008 FR-003)
     setPulse: p => setStatus(s => s ? { ...s, pulse: p } : s),
-  }), [status, where])
+    inlineShown, trackInline,
+  }), [status, where, inlineShown, trackInline])
   return <FeedbackCtx.Provider value={ctx}>
     {children}
     {surveyOpen && <SurveyModal onClose={() => setSurveyOpen(false)} onSubmitted={refresh} />}
@@ -151,7 +156,16 @@ export function AnswerFeedback({ lane, refId, view, agent = false, inline = fals
     catch (e) { setError(message(e)) }
     finally { setBusy(false) }
   }
-  if (step_ === "loading" || step_ === "done") return null
+  const shown = step_ !== "loading" && step_ !== "done"
+  const { trackInline } = f
+  // One vote prompt at a time: while a follow-up answer shows its own card, the page's card steps aside, and it comes back
+  // (if the page was not voted on) once the follow-up's card is answered or closed. The newest question gets the prompt.
+  useEffect(() => {
+    if (!inline || !shown) return
+    trackInline(1)
+    return () => trackInline(-1)
+  }, [inline, shown, trackInline])
+  if (!shown || (!inline && f.inlineShown > 0)) return null
 
   const rating = f.status?.pulse?.rating ?? null
   const row = "flex flex-wrap items-center justify-between gap-x-4 gap-y-2"

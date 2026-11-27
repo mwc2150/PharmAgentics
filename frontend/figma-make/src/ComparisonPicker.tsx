@@ -131,7 +131,7 @@ export function ComparisonPicker({ value, onChange, period, weeks, disabled, lab
     <legend className="text-xs font-medium text-muted">Compare with</legend>
     <ol className="space-y-2">{rows.map(row)}</ol>
     <div className="text-xs">
-      <button type="button" className="text-primaryink hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined || cannotSeed}
+      <button type="button" className="min-h-6 text-primaryink hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline" disabled={unused === undefined || cannotSeed}
         title={cannotSeed ? "The release has no earlier weeks for the default. Choose a main comparison first." : undefined}
         onClick={() => unused && !cannotSeed && onChange([...base, blank(unused)])}>Add a comparison</button>
     </div>

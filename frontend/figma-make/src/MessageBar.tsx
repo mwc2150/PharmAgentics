@@ -92,7 +92,7 @@ export function MessageBar({briefId, pending, chip, onClearChip, onRead, readBus
   const form = !briefId && !!onRead  // the New briefing form
   const shownError = error ?? readError
 
-  return <div className="sticky bottom-0 z-20 -mx-2 mt-8 bg-gradient-to-t from-paper via-paper to-paper/0 px-2 pb-3 pt-6" role="region" aria-label={form ? "Ask a question" : "Follow-up questions"}>
+  return <div className="pa-bars sticky bottom-0 z-20 -mx-2 mt-8 bg-gradient-to-t from-paper via-paper to-paper/0 px-2 pb-3 pt-6" role="region" aria-label={form ? "Ask a question" : "Follow-up questions"}>
     {thread && thread.turns.length > 0 && <div className="mb-2 rounded-2xl border border-rule bg-paper/95 shadow-2xl backdrop-blur">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-4 py-2 text-xs text-muted">
         <span>{readOnly ? "Shared thread, read-only" : `Free-text follow-ups, ${thread.used_turns} of ${thread.max_turns}`}{thread.shared_from ? " · continued from a shared thread" : ""}</span>
