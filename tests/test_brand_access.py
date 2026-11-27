@@ -55,7 +55,7 @@ def test_same_role_different_account_grants_and_empty_access():
     assert a.get("/api/me").json()["lanes"] == b.get("/api/me").json()["lanes"]
     ca, cb = a.get("/api/briefing/context").json(), b.get("/api/briefing/context").json()
     assert ca["product_ids"] == ["BXA", "BXC"] and cb["product_ids"] == ["BXA"]
-    assert {x["id"]: x["engines"] for x in ca["brands"]} == {"BXA": ["scripted", "agent"], "BXC": ["scripted"]}
+    assert {x["id"]: x["engines"] for x in ca["brands"]} == {"BXA": ["scripted", "agent"], "BXC": ["scripted", "agent"]}
     empty = signed_in("dev-analyst-no-brands").get("/api/briefing/context")
     assert empty.status_code == 200
     assert empty.json()["product_ids"] == empty.json()["brands"] == [] and empty.json()["brand_id"] is None
@@ -184,13 +184,20 @@ def test_flagged_cuts_are_withheld_for_bxc(territory, week, reason, basis):
         reg.close()
 
 
-def test_bxc_agent_submission_is_rejected_even_with_a_grant():
-    a = signed_in("dev-analyst-multibrand")
+def test_bxc_agent_submission_needs_the_grant_and_carries_the_brand():
+    """The agent engine runs for Lipidara (core-010 v2): a granted analyst submits a BXC job, which carries its brand;
+    an analyst with the same persona and no BXC grant is refused before anything is checked or queued."""
     with patch.object(service, "_check_scope") as scope:
-        response = a.post("/api/agent/jobs", json={"kind": "triage", "query": Q})
-        assert response.status_code == 400 and "does not support" in response.text
+        denied = signed_in("dev-analyst").post("/api/agent/jobs", json={"kind": "triage", "query": Q})
+        assert denied.status_code == 403
         scope.assert_not_called()
     assert jobs.all_jobs() == []
+    with patch.object(service, "_check_scope") as scope:
+        response = signed_in("dev-analyst-multibrand").post("/api/agent/jobs", json={"kind": "triage", "query": Q})
+        assert response.status_code == 200, response.text
+        scope.assert_called_once()
+    [job] = jobs.all_jobs()
+    assert job["payload"]["query"]["brand_id"] == "BXC"
 
 
 def test_agent_worker_and_result_admission_refuse_a_different_brand():
@@ -199,8 +206,8 @@ def test_agent_worker_and_result_admission_refuse_a_different_brand():
     from briefing_agent.worker import run_job
     from pharmagentics.api.app import accept_result
 
-    with pytest.raises(ValueError, match="BXA only"):
-        run_job({"kind": "triage", "payload": {"query": Q}}, None)
+    with pytest.raises(ValueError, match="does not support"):
+        run_job({"kind": "triage", "payload": {"query": {**Q, "brand_id": "BXD"}}}, None)  # no Briefing engine at all
     j = jobs.submit("triage", {"query": {**Q, "brand_id": "BXA"}}, by="test")
     assert jobs.next_job(None)["id"] == j["id"]
     assert accept_result(j["id"], True, {"brand_id": "BXC", "state": "ROUTINE"}, None)["status"] == "failed"
@@ -208,11 +215,19 @@ def test_agent_worker_and_result_admission_refuse_a_different_brand():
 
 
 @needs_db
-def test_bxc_agent_followup_cannot_call_the_bxa_agent(bxc):
+def test_a_bxc_agent_followup_runs_on_the_bxc_brief(bxc):
     a = signed_in("dev-analyst-multibrand")
-    with patch("pharmagentics.api.agent_host.model") as model:
-        assert a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Explain the change", "engine": "agent"}).status_code == 400
-        model.assert_not_called()
+    seen = {}
+
+    def turn(result, question, section, model):
+        seen.update(brand=result["brand_id"], model=model)
+        return {"answer": "Held.", "claims": [], "evidence": [], "cited": [], "kind": "agent", "engine": "agent", "revised": False}
+
+    with patch("pharmagentics.api.agent_host.model", return_value="stub:model"), \
+            patch("briefing_agent.followup.answer", side_effect=turn):
+        got = a.post(f"/api/briefing/{bxc}/thread/ask", json={"question": "Explain the change", "engine": "agent"})
+    assert got.status_code == 200, got.text
+    assert seen == {"brand": "BXC", "model": "stub:model"}
 
 
 @needs_db

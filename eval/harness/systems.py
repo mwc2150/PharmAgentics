@@ -112,7 +112,7 @@ def transcript(system: str, brief: dict, turn: dict, brief_seconds: float, turn_
 
 class BriefingScripted(_ScriptedLane):
     name, folder, package = "briefing_scripted", "brand-briefing", "briefing_baseline"
-    brands = ("BXA", "BXC")  # core-010: BRIEFING_ENGINES["BXC"] is ("scripted",)
+    brands = ("BXA", "BXC")  # core-010: both brands have the scripted engine
 
     def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None,
                 brand_id: str = "BXA") -> dict:
@@ -171,6 +171,7 @@ class BriefingAgent(BriefingLowCode):
     plan, a bounded team per story, code-built sections with the writer's answer and story sentences."""
 
     name = "briefing_agent"
+    brands = ("BXA", "BXC")  # core-010: BRIEFING_ENGINES lists the agent for both; the brand reaches the engine as `brand_id`
 
     def __init__(self, cases: list[Case], model: str | None = None):
         _lane_package("brand-briefing", "briefing_lowcode")  # build 3 reuses build 2's middleware
@@ -181,12 +182,13 @@ class BriefingAgent(BriefingLowCode):
         self.model = model_spec(model)
         self.params = {"agent_config_version": pkg.config_version()}
 
-    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None) -> dict:
+    def predict(self, question: str, comparison: dict | None = None, definition: dict | None = None,
+                brand_id: str = "BXA") -> dict:
         options = {**_comparison_options(comparison), **definition_option(self._answer, definition)}
-        return AnswerEnvelope.model_validate(self._answer(question, self.model, **options)).model_dump()
+        return AnswerEnvelope.model_validate(self._answer(question, self.model, brand_id=brand_id, **options)).model_dump()
 
     def predict_follow_up(self, question: str, follow_up: str, section: str | None, comparison: dict | None = None,
-                          definition: dict | None = None) -> dict:
+                          definition: dict | None = None, brand_id: str = "BXA") -> dict:
         """The agent's brief, then one agent follow-up on it (brief-006 slice 4). A turn that runs out of time is
         a run error, never a score (FR-010)."""
         import time
@@ -195,9 +197,9 @@ class BriefingAgent(BriefingLowCode):
         from briefing_baseline import pipeline
         started = time.perf_counter()
         options = _comparison_options(comparison)
-        brief = self._answer(question, self.model, **options, **definition_option(self._answer, definition))
+        brief = self._answer(question, self.model, brand_id=brand_id, **options, **definition_option(self._answer, definition))
         middle = time.perf_counter()
-        turn = followup.answer({**brief, **pipeline.scope(question, **options)}, follow_up, section, self.model)
+        turn = followup.answer({**brief, **pipeline.scope(question, brand_id=brand_id, **options)}, follow_up, section, self.model)
         if turn.get("error") == "timeout":
             raise TimeoutError(f"follow-up: {turn['answer']}")
         return transcript(f"{self.name}:{self.model}", brief, turn, middle - started, time.perf_counter() - middle)

@@ -122,10 +122,11 @@ def to_proposal(raw: dict, territories: list[str]) -> dict:
 
 
 def scope_proposal(question: str, *, spec: str, first: str, latest: str, territories: list[str],
-                   seconds: float = 25.0, ask: Callable[..., dict] | None = None) -> dict:
+                   seconds: float = 25.0, ask: Callable[..., dict] | None = None, brand_id: str = "BXA") -> dict:
     """What the model reads from the question TEXT (the code-written prefix is cut off), with the prefix's week as
     "today" so "this week" resolves. A real test of inference: the brief still runs on the prefix scope. Raises on
     any failure; the caller records nothing then. `ask` replaces the model call in tests."""
     text, week = split_prefix(question)
-    raw = (ask or propose)(text, spec=spec, first=first, latest=week or latest, territories=territories, seconds=seconds)
+    raw = (ask or propose)(text, spec=spec, first=first, latest=week or latest, territories=territories, seconds=seconds,
+                           brand_id=brand_id)
     return to_proposal(raw, territories)

@@ -95,9 +95,9 @@ def test_every_lipidara_fact_recomputes_from_the_data():
 
 # ---- which system answers for which brand ----------------------------------------------------------------------------
 
-def test_only_the_scripted_briefing_baseline_and_the_reference_control_support_lipidara():
-    assert {name for name, cls in SYSTEMS.items() if "BXC" in cls.brands} == {"reference", "briefing_scripted"}
-    for name in ("briefing_agent", "briefing_lowcode", "naive_llm", "forecast_scripted", "forecast_rules", "forecast_agent",
+def test_only_the_briefing_engines_and_the_reference_control_support_lipidara():
+    assert {name for name, cls in SYSTEMS.items() if "BXC" in cls.brands} == {"reference", "briefing_scripted", "briefing_agent"}
+    for name in ("briefing_lowcode", "naive_llm", "forecast_scripted", "forecast_rules", "forecast_agent",
                  "forecast_investigator"):
         assert SYSTEMS[name].brands == ("BXA",), name
 

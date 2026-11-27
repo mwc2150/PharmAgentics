@@ -7,7 +7,7 @@ import re
 _RULES = [
     (r"\b(next|where should|how should|best|better)\b.*\b(dollar|spend|budget|invest|money|channel)s?\b|\b(rank|allocate|allocation)\b.*\b(channel|spend|budget)s?\b",
      "The data cannot rank channels or spend: it holds aggregated promotion activity, not channel spend or its "
-     "returns. What it supports is where coverage lapsed and what BXA did in those weeks; see the stories below."),
+     "returns. What it supports is where coverage lapsed and what {brand} did in those weeks; see the stories below."),
     (r"\b(roi|return on investment|attribut\w*|incremental lift)\b",
      "The data cannot measure ROI or attribute lift to a campaign: promotion is tested only as an association "
      "with a named comparison."),
@@ -18,11 +18,11 @@ _RULES = [
 ]
 
 
-def out_of_scope(question: str) -> str | None:
+def out_of_scope(question: str, brand_id: str = "BXA") -> str | None:
     """The scope statement for a question the data cannot answer, else None. Only the text after the
     first colon is read, so the code-written 'Week of … in …:' prefix never triggers a rule."""
     ask = question.split(":", 1)[-1].lower()
     for pattern, statement in _RULES:
         if re.search(pattern, ask):
-            return statement
+            return statement.replace("{brand}", brand_id)
     return None
